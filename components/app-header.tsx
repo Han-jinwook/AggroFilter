@@ -1,0 +1,188 @@
+"use client"
+
+import type React from "react"
+
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { FileText, TrendingUp, User } from "lucide-react"
+import { useState, useEffect } from "react"
+
+export function checkLoginStatus(): boolean {
+  if (typeof window === "undefined") return false
+  const nickname = localStorage.getItem("userNickname")
+  return !!(nickname && nickname.length > 0)
+}
+
+export function openLoginModal() {
+  window.dispatchEvent(new CustomEvent("openLoginModal"))
+}
+
+interface AppHeaderProps {
+  onLoginClick?: () => void
+}
+
+export function AppHeader({ onLoginClick }: AppHeaderProps) {
+  const pathname = usePathname()
+  const [nickname, setNickname] = useState("")
+  const [profileImage, setProfileImage] = useState("")
+
+  useEffect(() => {
+    const loadProfile = () => {
+      const savedNickname = localStorage.getItem("userNickname") || ""
+      const savedProfileImage = localStorage.getItem("userProfileImage") || ""
+      setNickname(savedNickname)
+      setProfileImage(savedProfileImage)
+    }
+
+    loadProfile()
+
+    const handleProfileUpdate = () => {
+      loadProfile()
+    }
+
+    window.addEventListener("profileUpdated", handleProfileUpdate)
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate)
+    }
+  }, [])
+
+  const isActive = (path: string) => {
+    return pathname.startsWith(path)
+  }
+
+  const getFirstChar = (text: string) => {
+    if (!text || text.length === 0) return "C"
+    return text.charAt(0).toUpperCase()
+  }
+
+  const isLoggedIn = nickname.length > 0
+
+  const handleLoginClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!isLoggedIn) {
+      onLoginClick?.()
+    }
+  }
+
+  const handleMyPageClick = (e: React.MouseEvent) => {
+    if (!isLoggedIn) {
+      e.preventDefault()
+      onLoginClick?.()
+    }
+  }
+
+  const MenuItem = ({
+    icon: Icon,
+    label,
+    active,
+    onClick,
+    href,
+  }: {
+    icon: any
+    label: string
+    active?: boolean
+    onClick?: (e: React.MouseEvent) => void
+    href?: string
+  }) => {
+    const content = (
+      <>
+        <div
+          className={`p-2 rounded-xl transition-colors ${
+            active
+              ? "bg-slate-900 text-white"
+              : "group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white"
+          }`}
+        >
+          <Icon className={`h-5 w-5 transition-transform ${active ? "" : "group-hover:scale-110"}`} />
+        </div>
+        <span
+          className={`text-[10px] font-bold transition-colors ${
+            active ? "text-slate-900" : "text-slate-500 group-hover:text-slate-900"
+          }`}
+        >
+          {label}
+        </span>
+      </>
+    )
+
+    const className =
+      "flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
+
+    if (href) {
+      return (
+        <Link href={href} className={className} onClick={onClick}>
+          {content}
+        </Link>
+      )
+    }
+
+    return (
+      <button onClick={onClick} className={className}>
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <header className="relative border-b border-slate-200 bg-white/80 px-4 md:px-6 backdrop-blur-xl h-20 flex items-center">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
+        <Link href="/" className="flex items-center gap-1 cursor-pointer group no-underline">
+          <Image
+            src="/images/character-logo.png"
+            alt="AggroFilter"
+            width={160}
+            height={80}
+            className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
+            priority
+          />
+          <div className="flex flex-col items-center justify-center h-14 text-slate-500 font-bold text-[10px] leading-tight tracking-wider opacity-80">
+            <span className="font-bold text-slate-600">유</span>
+            <span className="font-bold text-slate-600">튜</span>
+            <span className="font-bold text-slate-600">브</span>
+          </div>
+        </Link>
+
+        <div className="flex items-center gap-1 sm:gap-6">
+          <MenuItem
+            icon={FileText}
+            label="My Page"
+            href={isLoggedIn ? "/my-page?tab=analysis" : undefined}
+            onClick={isLoggedIn ? undefined : handleMyPageClick}
+            active={isActive("/my-page")}
+          />
+
+          <MenuItem icon={TrendingUp} label="분석 Plaza" href="/plaza" active={isActive("/plaza")} />
+
+          {isLoggedIn ? (
+            <Link
+              href="/settings"
+              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+            >
+              {profileImage ? (
+                <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
+                  <img
+                    src={profileImage || "/placeholder.svg"}
+                    alt="Profile"
+                    className="h-9 w-9 rounded-lg object-cover shadow-sm"
+                  />
+                </div>
+              ) : (
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                  <span className="text-sm font-bold w-5 h-5 flex items-center justify-center">
+                    {getFirstChar(nickname)}
+                  </span>
+                </div>
+              )}
+              <span className="text-[10px] font-bold text-slate-900">{nickname}</span>
+            </Link>
+          ) : (
+            <MenuItem icon={User} label="로그인" onClick={handleLoginClick} />
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default AppHeader
