@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { AppHeader } from "@/components/app-header"
-import { LoginModal } from "@/components/login-modal"
-import { HeroSection } from "@/components/home/hero-section"
-import { AnalysisStatus, AnalysisCharacter } from "@/components/home/analysis-status"
-import { FeatureCards } from "@/components/home/feature-cards"
-import { OnboardingGuide } from "@/components/home/onboarding-guide"
-import { Disclaimer } from "@/components/home/disclaimer"
+import { AppHeader } from "@/components/c-app-header"
+import { LoginModal } from "@/components/c-login-modal"
+import { HeroSection } from "@/app/c-home/hero-section"
+import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
+import { FeatureCards } from "@/app/c-home/feature-cards"
+import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
+import { UrlDisplayBox } from "@/components/c-url-display-box"
+import { Disclaimer } from "@/app/c-home/disclaimer"
 
 export default function MainPage() {
   const router = useRouter()
@@ -28,7 +29,7 @@ export default function MainPage() {
   useEffect(() => {
     if (isCompleted) {
       const timer = setTimeout(() => {
-        router.push("/result")
+        router.push("/p-result")
       }, 3000)
       return () => clearTimeout(timer)
     }

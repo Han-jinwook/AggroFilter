@@ -1,17 +1,64 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/c-badge"
 import { ArrowLeft, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Play, ExternalLink, Share2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/c-button"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/c-accordion"
+import { Card, CardContent } from "@/components/ui/c-card"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { AppHeader } from "@/components/app-header" // Import AppHeader
+import { AppHeader } from "@/components/c-app-header" // Import AppHeader
 
-const TrendChart = ({ data, color }: { data: number[]; color: string }) => {
+// Type Definitions based on Naming Convention
+interface TVideo {
+  id: number;
+  title: string;
+  date: string;
+  score: number;
+  thumbnail: string;
+  views: string;
+}
+
+interface TTopic {
+  id: string;
+  name: string;
+  rankPercent: number;
+  rank: number;
+  totalChannels: number;
+  count: number;
+  score: number;
+  videos: TVideo[];
+}
+
+interface TChannelData {
+  id: string;
+  name: string;
+  subscribers: string;
+  totalAnalysis: number;
+  profileImage: string;
+  trustScore: number;
+  trustGrade: string;
+  stats: {
+    accuracy: number;
+    aggro: string;
+    trend: string;
+    trendData: number[];
+  };
+  topics: TTopic[];
+}
+
+interface TTrendChartProps {
+  data: number[];
+  color: string;
+}
+
+interface TChannelPageProps {
+  params: { id: string };
+}
+
+const TrendChart = ({ data, color }: TTrendChartProps) => {
   if (!data || data.length === 0) return null
 
   const max = Math.max(...data)
@@ -48,8 +95,8 @@ const TrendChart = ({ data, color }: { data: number[]; color: string }) => {
   )
 }
 
-export default function ChannelPage({ params }: { params: { id: string } }) {
-  const channelData = {
+export default function ChannelPage({ params }: TChannelPageProps) {
+  const channelData: TChannelData = {
     id: params.id,
     name: "슈카월드",
     subscribers: "320만",
@@ -178,7 +225,7 @@ export default function ChannelPage({ params }: { params: { id: string } }) {
     })
   }
 
-  const getSortedVideos = (topic: (typeof channelData.topics)[0]) => {
+  const getSortedVideos = (topic: TTopic) => {
     const { type, direction } = sortState[topic.id] || { type: "date", direction: "desc" }
     return [...topic.videos].sort((a, b) => {
       let comparison = 0

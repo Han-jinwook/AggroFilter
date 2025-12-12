@@ -58,7 +58,7 @@ const mockVideos = [
   },
 ]
 
-interface AnalysisVideo {
+interface TAnalysisVideo {
   id: string
   date: string
   title: string
@@ -69,7 +69,7 @@ interface AnalysisVideo {
   totalRank: number
 }
 
-interface SubscribedChannel {
+interface TSubscribedChannel {
   id: string
   date: string
   channelName: string
@@ -78,7 +78,7 @@ interface SubscribedChannel {
   rankScore: number
 }
 
-const mockChannels: SubscribedChannel[] = [
+const mockChannels: TSubscribedChannel[] = [
   {
     id: "1",
     date: "25.02.18",
@@ -137,7 +137,7 @@ const mockChannels: SubscribedChannel[] = [
   },
 ]
 
-const channelVideos: { [key: string]: AnalysisVideo[] } = {
+const channelVideos: { [key: string]: TAnalysisVideo[] } = {
   "1": [
     {
       id: "v1",
@@ -177,13 +177,13 @@ const channelVideos: { [key: string]: AnalysisVideo[] } = {
 const greenTopics = ["경제", "과학", "역사", "다큐", "교육", "자기계발", "테크"]
 const redTopics = ["코인", "가짜뉴스", "음모론", "사이버렉카", "정치선동", "루머"]
 
-type SortOption = "date" | "trust"
+type TSortOption = "date" | "trust"
 
 export default function DesignV1Page() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"analysis" | "channels">("analysis")
   const [activeTopicTab, setActiveTopicTab] = useState<"trust" | "caution">("trust")
-  const [sortBy, setSortBy] = useState<SortOption>("date")
+  const [sortBy, setSortBy] = useState<TSortOption>("date")
 
   const [channels, setChannels] = useState(mockChannels)
   const [sortKey, setSortKey] = useState<"date" | "name" | "topic" | "videoCount" | "rankScore">("date")
