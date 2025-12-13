@@ -16,6 +16,7 @@ export default function MainPage() {
   const [url, setUrl] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
@@ -27,13 +28,13 @@ export default function MainPage() {
   }, [])
 
   useEffect(() => {
-    if (isCompleted) {
+    if (isCompleted && analysisId) {
       const timer = setTimeout(() => {
-        router.push("/p-result")
+        router.push(`/p-result?id=${analysisId}`)
       }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [isCompleted, router])
+  }, [isCompleted, analysisId, router])
 
   useEffect(() => {
     const handleOpenLoginModal = () => {
@@ -45,6 +46,34 @@ export default function MainPage() {
     }
   }, [])
 
+  const startAnalysis = async (analysisUrl: string) => {
+    setIsAnalyzing(true)
+    console.log("분석 요청:", analysisUrl)
+
+    try {
+      const response = await fetch('/api/analysis/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: analysisUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error('분석 요청에 실패했습니다.');
+      }
+
+      const result = await response.json();
+      setAnalysisId(result.analysisId);
+      setIsCompleted(true);
+    } catch (error) {
+      console.error(error);
+      // TODO: Add error handling for the user
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+
   const handleAnalyze = async () => {
     if (!url.trim()) return
 
@@ -52,14 +81,8 @@ export default function MainPage() {
       setShowLoginModal(true)
       return
     }
-
-    setIsAnalyzing(true)
-    console.log("분석 요청:", url)
-
-    setTimeout(() => {
-      setIsAnalyzing(false)
-      setIsCompleted(true)
-    }, 5000)
+    
+    await startAnalysis(url);
   }
 
   const handleLoginSuccess = (email: string) => {
@@ -73,12 +96,7 @@ export default function MainPage() {
     window.dispatchEvent(new CustomEvent("profileUpdated"))
 
     if (url.trim()) {
-      setIsAnalyzing(true)
-      console.log("분석 요청:", url)
-      setTimeout(() => {
-        setIsAnalyzing(false)
-        setIsCompleted(true)
-      }, 5000)
+      startAnalysis(url);
     }
   }
 

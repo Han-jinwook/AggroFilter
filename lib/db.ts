@@ -21,4 +21,4 @@ if (process.env.NODE_ENV === 'production') {
   pool = global.__db_pool;
 }
 
-export const db = pool;
+export { pool };

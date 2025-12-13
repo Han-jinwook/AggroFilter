@@ -7,6 +7,8 @@ export interface VideoInfo {
   channelId: string;
   thumbnailUrl: string;
   channelThumbnailUrl: string;
+  channelHandle: string;
+  subscriberCount: number;
   description: string;
 }
 
@@ -17,9 +19,14 @@ export interface TranscriptItem {
 }
 
 export function extractVideoId(url: string): string | null {
+  if (!url) return null;
+
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /youtube\.com\/shorts\/([^&\n?#]+)/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
   ];
 
   for (const pattern of patterns) {
@@ -28,9 +35,9 @@ export function extractVideoId(url: string): string | null {
       return match[1];
     }
   }
+
   return null;
 }
-
 export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   
@@ -57,21 +64,27 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   const snippet = videoData.items[0].snippet;
   const channelId = snippet.channelId;
 
-  // 2. 채널 정보 가져오기 (프로필 이미지용)
+  // 2. 채널 정보 가져오기 (프로필 이미지, 핸들, 구독자 수)
   let channelThumbnailUrl = '';
+  let channelHandle = '';
+  let subscriberCount = 0;
+
   try {
-    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${apiKey}`;
+    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${apiKey}`;
     console.log('YouTube API 호출 (Channel):', channelUrl.replace(apiKey, 'API_KEY_HIDDEN'));
     
     const channelResponse = await fetch(channelUrl);
     const channelData = await channelResponse.json();
 
     if (channelResponse.ok && channelData.items && channelData.items.length > 0) {
-      channelThumbnailUrl = channelData.items[0].snippet.thumbnails?.default?.url || '';
+      const channelItem = channelData.items[0];
+      channelThumbnailUrl = channelItem.snippet.thumbnails?.default?.url || '';
+      channelHandle = channelItem.snippet.customUrl || ''; // @handle
+      subscriberCount = parseInt(channelItem.statistics.subscriberCount || '0', 10);
     }
   } catch (error) {
     console.error('채널 정보 가져오기 실패:', error);
-    // 채널 이미지 실패해도 비디오 정보는 반환
+    // 채널 정보 실패해도 비디오 정보는 반환
   }
   
   return {
@@ -81,6 +94,8 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     channelId: channelId,
     thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url,
     channelThumbnailUrl,
+    channelHandle,
+    subscriberCount,
     description: snippet.description,
   };
 }

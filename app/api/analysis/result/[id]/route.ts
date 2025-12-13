@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const client = await pool.connect();
     try {
       const analysisRes = await client.query(`
-        SELECT a.*, c.f_profile_image_url 
+        SELECT a.*, c.f_name, c.f_profile_image_url, c.f_handle, c.f_subscriber_count
         FROM t_analyses a 
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_id 
         WHERE a.f_id = $1
@@ -31,8 +31,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
         analysisData: {
           title: analysis.f_title,
           videoTitle: analysis.f_title,
-          channelName: analysis.f_channel_name,
+          channelName: analysis.f_name,
           channelImage: analysis.f_profile_image_url || "/images/channel-logo.png",
+          channelHandle: analysis.f_handle,
+          subscriberCount: analysis.f_subscriber_count,
           videoThumbnail: analysis.f_thumbnail_url || "/images/video-thumbnail.jpg",
           date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
           url: analysis.f_video_url,

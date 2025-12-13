@@ -74,28 +74,38 @@ export async function POST(request: Request) {
 
       // 5-1. 채널 정보 저장 (Upsert)
       await client.query(`
-        INSERT INTO t_channels (f_id, f_name, f_profile_image_url, f_updated_at)
-        VALUES ($1, $2, $3, NOW())
+        INSERT INTO t_channels (f_id, f_name, f_handle, f_profile_image_url, f_subscriber_count, f_updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
         ON CONFLICT (f_id) 
-        DO UPDATE SET f_name = EXCLUDED.f_name, f_profile_image_url = EXCLUDED.f_profile_image_url, f_updated_at = NOW()
-      `, [videoInfo.channelId, videoInfo.channelName, videoInfo.channelThumbnailUrl]);
+        DO UPDATE SET 
+          f_name = EXCLUDED.f_name, 
+          f_handle = EXCLUDED.f_handle,
+          f_profile_image_url = EXCLUDED.f_profile_image_url, 
+          f_subscriber_count = EXCLUDED.f_subscriber_count,
+          f_updated_at = NOW()
+      `, [
+        videoInfo.channelId, 
+        videoInfo.channelName, 
+        videoInfo.channelHandle, 
+        videoInfo.channelThumbnailUrl, 
+        videoInfo.subscriberCount
+      ]);
 
       // 5-2. 분석 결과 저장
       await client.query(`
         INSERT INTO t_analyses (
-          f_id, f_video_url, f_video_id, f_title, f_channel_name, f_channel_id,
+          f_id, f_video_url, f_video_id, f_title, f_channel_id,
           f_thumbnail_url, f_transcript, f_topic, f_accuracy_score, f_clickbait_score,
           f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
           f_ai_title_recommendation, f_created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
         )
       `, [
         analysisId,
         url,
         videoId,
         videoInfo.title,
-        videoInfo.channelName,
         videoInfo.channelId,
         videoInfo.thumbnailUrl,
         transcript.substring(0, 50000),

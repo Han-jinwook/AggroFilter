@@ -96,6 +96,37 @@ export default function ResultPage() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
 
+  const [analysisData, setAnalysisData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const id = searchParams.get("id")
+    if (!id) {
+      setError("분석 ID가 없습니다.")
+      setLoading(false)
+      return
+    }
+
+    const fetchAnalysisData = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/analysis/result/${id}`)
+        if (!response.ok) {
+          throw new Error("분석 결과를 불러오는데 실패했습니다.")
+        }
+        const data = await response.json()
+        setAnalysisData(data.analysisData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalysisData()
+  }, [searchParams])
+
   useEffect(() => {
     const handleOpenLoginModal = () => {
       setShowLoginModal(true)
@@ -150,30 +181,9 @@ export default function ResultPage() {
     requireLogin("comment", () => setIsCommentFocused(true))
   }
 
-  const analysisData = {
-    videoTitle: "데이타솔루션, 딥시크 쇼크 대응 산업별 AI기술 융합해 경쟁력 강화",
-    channelName: "서울경제TV - 대한민국 경제 뉴스 전문 채널",
-    channelImage: "/images/channel-logo.png",
-    videoThumbnail: "/images/video-thumbnail.jpg",
-    date: "25-01-15 . 06시 02분",
-    url: "https://youtube.example=1",
-    scores: {
-      accuracy: 100,
-      clickbait: 40,
-      trust: 75,
-    },
-    summary:
-      "내용이 세부적이고 논리적인 주장으로 구성되어 있지만 다수의 주장이 주관적 해석에 기반을 다지고 설명에는 약간의 보완이 필요함..",
-    aiRecommendedTitle: "미중 기술 패권 전쟁! 차세대 통신 주도권 쟁탈전? 차지할까?",
-    fullSubtitle:
-      "데이타솔루션, 딥시크 쇼크 대응 산업별 데이타솔루션, 딥시크 쇼크 대응 산업별 내용이 관한 이야기입니다.\n\n***자막 요약***\n크게 약 3가지 솔루션과 딥시크 쇼크에 대응하여 산업별로 분류되어있습니다.\n\n주요산업별 Pick 호황이 종목\n저희가 파우드 롯할 분석 성장 - 2025 생성성AI, 자율주행, 빅데이터 분석 등 고수 연산이 필요한 산업을 본격적으로 상용화 예상하는 대략 5,200원 ~ 5,100원이며 목표가는 6,200원입니다",
-    summarySubtitle:
-      "크게 약 3가지 솔루션과 딥시크 쇼크에 대응하여 산업별로 분류되어있습니다.\n\n주요산업별 Pick 호황이 종목\n저희가 파우드 롯할 분석 성장 - 2025 생성성AI, 자율주행, 빅데이터 분석 등 고수 연산이 필요한 산업을 본격적으로 상용화 예상하는 대략 5,200원 ~ 5,100원이며 목표가는 6,200원입니다",
-  }
-
   const getTrafficLightImage = (score: number) => {
     if (score >= 70) return "/images/traffic-light-green.png"
-    if (score >= 40) return "/images/traffic-light-yellow.png"
+    if (score >= 51) return "/images/traffic-light-yellow.png"
     return "/images/traffic-light-red.png"
   }
 
@@ -209,6 +219,7 @@ export default function ResultPage() {
             replyTo: parentAuthor,
             likes: 0,
             dislikes: 0,
+            replies: [],
           }
           return {
             ...comment,
@@ -229,6 +240,8 @@ export default function ResultPage() {
   }
 
   const handleShare = async () => {
+    if (!analysisData) return
+
     const shareData = {
       title: "어그로필터 - AI가 검증하는 신뢰도 분석",
       text: `AI가 검증하는 어그로필터!\n유튜브 어그로 영상과 기사뉴스, 이에 나이에 맞게!\n\n📊 분석 결과:\n• 신뢰도 점수: ${analysisData.scores.trust}\n• 정확성: ${analysisData.scores.accuracy}%\n• 어그로성: ${analysisData.scores.clickbait}%\n\n제공 서비스:\n- 자막 전문/요약\n- 분석보고 (정확성과 어그로성 신뢰도 점수 및 평가)\n- 채널 순위\n\n우리가족 슬기로운 유튜브 생활 🚦\n\n${window.location.href}`,
@@ -265,6 +278,32 @@ export default function ResultPage() {
     } else {
       router.back()
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-500">분석 결과를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !analysisData) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+        <div className="flex flex-1 items-center justify-center p-4">
+          <div className="text-center">
+            <p className="text-red-500 font-medium mb-2">⚠️ 오류 발생</p>
+            <p className="text-gray-600 mb-4">{error || "데이터를 찾을 수 없습니다."}</p>
+            <Button onClick={() => router.push("/")}>홈으로 돌아가기</Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -325,15 +364,15 @@ export default function ResultPage() {
 
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
-              <p className="text-sm leading-relaxed">
-                {analysisData.summary}
-                {showMore && <span className="ml-1">추가 분석 내용이 여기에 표시됩니다...</span>}
+              <p className={`text-sm leading-relaxed ${!showMore ? 'line-clamp-4' : ''}`}>
+                {analysisData.evaluationReason}
+                {showMore && <span className="ml-1"> {analysisData.overallAssessment}</span>}
               </p>
               <button
                 onClick={() => setShowMore(!showMore)}
                 className="mt-2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               >
-                더 보기 ▼
+                {showMore ? '접기 ▲' : '더 보기 ▼'}
               </button>
             </div>
           </div>
