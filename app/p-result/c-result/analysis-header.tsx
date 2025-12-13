@@ -7,12 +7,14 @@ import { ChevronLeft } from "lucide-react"
 interface TAnalysisHeaderProps {
   channelImage: string
   channelName: string
+  title: string
+  videoUrl: string
   date: string
   onBack: () => void
   onChannelClick: () => void
 }
 
-export function AnalysisHeader({ channelImage, channelName, date, onBack, onChannelClick }: TAnalysisHeaderProps) {
+export function AnalysisHeader({ channelImage, channelName, title, videoUrl, date, onBack, onChannelClick }: TAnalysisHeaderProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3">
@@ -21,7 +23,7 @@ export function AnalysisHeader({ channelImage, channelName, date, onBack, onChan
           <span className="sr-only">뒤로 가기</span>
         </Button>
 
-        <div className="flex items-center gap-3 rounded-3xl border-4 border-black bg-white px-3 py-2 flex-1 max-w-md h-[4.5rem] overflow-hidden">
+        <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-3xl border-4 border-black bg-white px-3 py-2 flex-1 max-w-md h-[4.5rem] overflow-hidden no-underline text-black">
           <Image
             src={channelImage || "/placeholder.svg"}
             alt={channelName}
@@ -29,8 +31,11 @@ export function AnalysisHeader({ channelImage, channelName, date, onBack, onChan
             height={50}
             className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
           />
-          <p className="text-sm font-bold leading-tight line-clamp-2">{channelName}</p>
-        </div>
+          <div className="flex flex-col justify-center">
+            <p className="text-sm font-bold leading-tight line-clamp-2">{title}</p>
+            <p className="text-xs text-gray-500 truncate">- {channelName}</p>
+          </div>
+        </a>
         <div className="flex flex-col gap-2">
           <Button
             onClick={onChannelClick}
