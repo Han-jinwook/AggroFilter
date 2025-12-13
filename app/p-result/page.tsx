@@ -279,6 +279,8 @@ export default function ResultPage() {
             <AnalysisHeader
               channelImage={analysisData.channelImage}
               channelName={analysisData.channelName}
+              title={analysisData.videoTitle}
+              videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
               onChannelClick={() => router.push("/p-ranking")}
