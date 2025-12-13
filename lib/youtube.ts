@@ -6,6 +6,7 @@ export interface VideoInfo {
   channelName: string;
   channelId: string;
   thumbnailUrl: string;
+  channelThumbnailUrl: string;
   description: string;
 }
 
@@ -37,29 +38,49 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     throw new Error('YouTube API 키가 설정되지 않았습니다.');
   }
 
-  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
-  console.log('YouTube API 호출 URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
+  // 1. 비디오 정보 가져오기
+  const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+  console.log('YouTube API 호출 (Video):', videoUrl.replace(apiKey, 'API_KEY_HIDDEN'));
   
-  const response = await fetch(url);
-  const data = await response.json();
+  const videoResponse = await fetch(videoUrl);
+  const videoData = await videoResponse.json();
 
-  if (!response.ok) {
-    console.error('YouTube API 오류:', JSON.stringify(data, null, 2));
-    throw new Error(`YouTube API 오류: ${data.error?.message || response.statusText}`);
+  if (!videoResponse.ok) {
+    console.error('YouTube API 오류 (Video):', JSON.stringify(videoData, null, 2));
+    throw new Error(`YouTube API 오류: ${videoData.error?.message || videoResponse.statusText}`);
   }
   
-  if (!data.items || data.items.length === 0) {
+  if (!videoData.items || videoData.items.length === 0) {
     throw new Error('영상 정보를 찾을 수 없습니다.');
   }
 
-  const snippet = data.items[0].snippet;
+  const snippet = videoData.items[0].snippet;
+  const channelId = snippet.channelId;
+
+  // 2. 채널 정보 가져오기 (프로필 이미지용)
+  let channelThumbnailUrl = '';
+  try {
+    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${apiKey}`;
+    console.log('YouTube API 호출 (Channel):', channelUrl.replace(apiKey, 'API_KEY_HIDDEN'));
+    
+    const channelResponse = await fetch(channelUrl);
+    const channelData = await channelResponse.json();
+
+    if (channelResponse.ok && channelData.items && channelData.items.length > 0) {
+      channelThumbnailUrl = channelData.items[0].snippet.thumbnails?.default?.url || '';
+    }
+  } catch (error) {
+    console.error('채널 정보 가져오기 실패:', error);
+    // 채널 이미지 실패해도 비디오 정보는 반환
+  }
   
   return {
     videoId,
     title: snippet.title,
     channelName: snippet.channelTitle,
-    channelId: snippet.channelId,
+    channelId: channelId,
     thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url,
+    channelThumbnailUrl,
     description: snippet.description,
   };
 }

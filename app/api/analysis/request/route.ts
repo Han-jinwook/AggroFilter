@@ -73,11 +73,11 @@ export async function POST(request: Request) {
       await client.query(`
         INSERT INTO t_analyses (
           f_id, f_video_url, f_video_id, f_title, f_channel_name, f_channel_id,
-          f_thumbnail_url, f_transcript, f_topic, f_accuracy_score, f_clickbait_score,
+          f_thumbnail_url, f_channel_thumbnail_url, f_transcript, f_topic, f_accuracy_score, f_clickbait_score,
           f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
           f_ai_title_recommendation, f_created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW()
         )
       `, [
         analysisId,
@@ -87,6 +87,7 @@ export async function POST(request: Request) {
         videoInfo.channelName,
         videoInfo.channelId,
         videoInfo.thumbnailUrl,
+        videoInfo.channelThumbnailUrl,
         transcript.substring(0, 50000),
         analysisResult.topic,
         analysisResult.accuracy,

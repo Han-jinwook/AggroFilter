@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           title: analysis.f_title,
           videoTitle: analysis.f_title,
           channelName: analysis.f_channel_name,
-          channelImage: "/images/channel-logo.png",
+          channelImage: analysis.f_channel_thumbnail_url || "/images/channel-logo.png",
           videoThumbnail: analysis.f_thumbnail_url || "/images/video-thumbnail.jpg",
           date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
           url: analysis.f_video_url,
