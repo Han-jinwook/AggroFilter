@@ -14,7 +14,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const client = await pool.connect();
     try {
-      const analysisRes = await client.query('SELECT * FROM t_analyses WHERE f_id = $1', [id]);
+      const analysisRes = await client.query(`
+        SELECT a.*, c.f_profile_image_url 
+        FROM t_analyses a 
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_id 
+        WHERE a.f_id = $1
+      `, [id]);
 
       if (analysisRes.rows.length === 0) {
         return NextResponse.json({ error: '분석 결과를 찾을 수 없습니다.' }, { status: 404 });
@@ -27,7 +32,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           title: analysis.f_title,
           videoTitle: analysis.f_title,
           channelName: analysis.f_channel_name,
-          channelImage: analysis.f_channel_thumbnail_url || "/images/channel-logo.png",
+          channelImage: analysis.f_profile_image_url || "/images/channel-logo.png",
           videoThumbnail: analysis.f_thumbnail_url || "/images/video-thumbnail.jpg",
           date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
           url: analysis.f_video_url,
