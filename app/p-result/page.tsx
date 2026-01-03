@@ -20,78 +20,16 @@ export default function ResultPage() {
   const [youthAge, setYouthAge] = useState("")
   const [newComment, setNewComment] = useState("")
   const [isCommentFocused, setIsCommentFocused] = useState(false)
-  const [comments, setComments] = useState([
-    {
-      id: "comment1",
-      author: "@분석은정해",
-      date: "2025.03.01",
-      time: "12:30",
-      text: "이 분석이 가장 정확하네요!",
-      likes: 5,
-      dislikes: 0,
-      replies: [],
-    },
-    {
-      id: "comment2",
-      author: "@분석조아",
-      date: "2025.02.30",
-      time: "11:07",
-      text: "참 봤습니다",
-      likes: 8,
-      dislikes: 1,
-      replies: [
-        {
-          id: "reply1",
-          author: "@정보왕",
-          date: "2025.02.30",
-          time: "14:22",
-          text: "저도 유익했어요!",
-          replyTo: "@분석조아",
-          likes: 2,
-          dislikes: 0,
-        },
-        {
-          id: "reply2",
-          author: "@분석은정해",
-          date: "2025.03.01",
-          time: "09:15",
-          text: "동감합니다 👍",
-          replyTo: "@분석조아",
-          likes: 3,
-          dislikes: 0,
-        },
-      ],
-    },
-    {
-      id: "comment3",
-      author: "@귀여운영희씨",
-      date: "2025.02.27",
-      time: "10:15",
-      text: "신뢰방송만 분석잘\n쓰실 장합",
-      likes: 0,
-      dislikes: 0,
-      replies: [],
-    },
-    {
-      id: "comment4",
-      author: "@clickbait00",
-      date: "2025.02.27",
-      time: "10:15",
-      text: "좋은 정보 감사합니다",
-      likes: 1,
-      dislikes: 0,
-      replies: [],
-    },
-  ])
+  const [comments, setComments] = useState<any[]>([])
   const [liked, setLiked] = useState(false)
   const [disliked, setDisliked] = useState(false)
-  const [likeCount, setLikeCount] = useState(9)
+  const [likeCount, setLikeCount] = useState(0)
   const [dislikeCount, setDislikeCount] = useState(0)
   const [showReplies, setShowReplies] = useState<{ [key: string]: boolean }>({})
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState("")
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
-  const currentUser = "@chiu3"
+  const [currentUser, setCurrentUser] = useState("")
   const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
@@ -111,12 +49,29 @@ export default function ResultPage() {
     const fetchAnalysisData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/analysis/result/${id}`)
+        const email = localStorage.getItem("userEmail")
+        const url = email ? `/api/analysis/result/${id}?email=${email}` : `/api/analysis/result/${id}`
+        
+        const response = await fetch(url)
         if (!response.ok) {
           throw new Error("분석 결과를 불러오는데 실패했습니다.")
         }
         const data = await response.json()
         setAnalysisData(data.analysisData)
+        setComments(data.comments || [])
+        setLikeCount(data.interaction?.likeCount || 0)
+        setDislikeCount(data.interaction?.dislikeCount || 0)
+        
+        if (data.interaction?.userInteraction === 'like') {
+            setLiked(true)
+            setDisliked(false)
+        } else if (data.interaction?.userInteraction === 'dislike') {
+            setLiked(false)
+            setDisliked(true)
+        } else {
+            setLiked(false)
+            setDisliked(false)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.")
       } finally {
@@ -126,6 +81,20 @@ export default function ResultPage() {
 
     fetchAnalysisData()
   }, [searchParams])
+
+  useEffect(() => {
+    const nickname = localStorage.getItem("userNickname")
+    if (nickname) setCurrentUser(nickname)
+
+    const handleProfileUpdate = () => {
+      const updatedNickname = localStorage.getItem("userNickname")
+      if (updatedNickname) setCurrentUser(updatedNickname)
+    }
+    window.addEventListener("profileUpdated", handleProfileUpdate)
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate)
+    }
+  }, [])
 
   useEffect(() => {
     const handleOpenLoginModal = () => {
@@ -163,18 +132,94 @@ export default function ResultPage() {
     setLoginTrigger(null)
   }
 
-  const handleLikeClick = () => {
+  const handleLikeClick = async () => {
+    if (!analysisData) return
+    const email = localStorage.getItem("userEmail")
+    if (!email) return
+
+    // Optimistic UI update
+    const previousLiked = liked
+    const previousDisliked = disliked
+    const previousLikeCount = likeCount
+    const previousDislikeCount = dislikeCount
+
     if (disliked) setDislikeCount(dislikeCount - 1)
     setLiked(!liked)
     setDisliked(false)
     setLikeCount(liked ? likeCount - 1 : likeCount + 1)
+
+    try {
+        const response = await fetch('/api/interaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                analysisId: analysisData.id,
+                type: 'like',
+                email
+            })
+        })
+        const data = await response.json()
+        if (data.success) {
+            setLikeCount(data.likeCount)
+            setDislikeCount(data.dislikeCount)
+        } else {
+             setLiked(previousLiked)
+             setDisliked(previousDisliked)
+             setLikeCount(previousLikeCount)
+             setDislikeCount(previousDislikeCount)
+        }
+    } catch (e) {
+        console.error(e)
+        setLiked(previousLiked)
+        setDisliked(previousDisliked)
+        setLikeCount(previousLikeCount)
+        setDislikeCount(previousDislikeCount)
+    }
   }
 
-  const handleDislikeClick = () => {
+  const handleDislikeClick = async () => {
+    if (!analysisData) return
+    const email = localStorage.getItem("userEmail")
+    if (!email) return
+
+    // Optimistic UI update
+    const previousLiked = liked
+    const previousDisliked = disliked
+    const previousLikeCount = likeCount
+    const previousDislikeCount = dislikeCount
+
     if (liked) setLikeCount(likeCount - 1)
     setDisliked(!disliked)
     setLiked(false)
     setDislikeCount(disliked ? dislikeCount - 1 : dislikeCount + 1)
+
+    try {
+        const response = await fetch('/api/interaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                analysisId: analysisData.id,
+                type: 'dislike',
+                email
+            })
+        })
+        const data = await response.json()
+        if (data.success) {
+            setLikeCount(data.likeCount)
+            setDislikeCount(data.dislikeCount)
+        } else {
+             setLiked(previousLiked)
+             setDisliked(previousDisliked)
+             setLikeCount(previousLikeCount)
+             setDislikeCount(previousDislikeCount)
+        }
+    } catch (e) {
+        console.error(e)
+        setLiked(previousLiked)
+        setDisliked(previousDisliked)
+        setLikeCount(previousLikeCount)
+        setDislikeCount(previousDislikeCount)
+    }
   }
 
   const handleCommentFocus = () => {
@@ -187,51 +232,94 @@ export default function ResultPage() {
     return "/images/traffic-light-red.png"
   }
 
-  const handleCommentSubmit = () => {
-    if (newComment.trim()) {
-      const newCommentObj = {
-        id: `comment${comments.length + 1}`,
-        author: currentUser,
-        date: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
-        time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
-        text: newComment,
-        likes: 0,
-        dislikes: 0,
-        replies: [],
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) return
+    
+    if (!analysisData) return
+
+    const email = localStorage.getItem("userEmail")
+    const nickname = localStorage.getItem("userNickname")
+    
+    if (!email) {
+      requireLogin("comment", () => {})
+      return
+    }
+
+    try {
+      const response = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: analysisData.videoId,
+          text: newComment,
+          email,
+          nickname
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to post comment');
+      
+      const data = await response.json();
+      if (data.success && data.comment) {
+        setComments([data.comment, ...comments]);
+        setNewComment("");
+        setIsCommentFocused(false);
       }
-      setComments([newCommentObj, ...comments])
-      setNewComment("")
-      setIsCommentFocused(false)
+    } catch (error) {
+      console.error(error);
+      alert('댓글 등록에 실패했습니다.');
     }
   }
 
-  const handleReplySubmit = (commentId: string) => {
-    if (replyText.trim()) {
-      const updatedComments = comments.map((comment) => {
-        if (comment.id === commentId) {
-          const parentAuthor = comment.author
-          const newReply = {
-            id: `reply${comment.replies.length + 1}`,
-            author: currentUser,
-            date: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
-            time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
-            text: replyText,
-            replyTo: parentAuthor,
-            likes: 0,
-            dislikes: 0,
-            replies: [],
+  const handleReplySubmit = async (commentId: string) => {
+    if (!replyText.trim()) return
+    
+    if (!analysisData) return
+
+    const email = localStorage.getItem("userEmail")
+    const nickname = localStorage.getItem("userNickname")
+    
+    if (!email) {
+      requireLogin("comment", () => {})
+      return
+    }
+
+    try {
+      const response = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: analysisData.videoId,
+          text: replyText,
+          email,
+          nickname,
+          parentId: commentId
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to post reply');
+      
+      const data = await response.json();
+      if (data.success && data.comment) {
+        const newReply = data.comment;
+        // Optimization: locally update state
+        const updatedComments = comments.map((comment) => {
+          if (comment.id === commentId) {
+             return {
+               ...comment,
+               replies: [...(comment.replies || []), { ...newReply, replyTo: comment.author }]
+             }
           }
-          return {
-            ...comment,
-            replies: [...comment.replies, newReply],
-          }
-        }
-        return comment
-      })
-      setComments(updatedComments)
-      setReplyText("")
-      setReplyingTo(null)
-      setShowReplies({ ...showReplies, [commentId]: true })
+          return comment
+        })
+        setComments(updatedComments)
+        setReplyText("")
+        setReplyingTo(null)
+        setShowReplies({ ...showReplies, [commentId]: true })
+      }
+    } catch (error) {
+      console.error(error);
+      alert('답글 등록에 실패했습니다.');
     }
   }
 
@@ -280,6 +368,36 @@ export default function ResultPage() {
     }
   }
 
+  const handleYouthService = () => {
+    const age = Number.parseInt(youthAge)
+    if (isNaN(age) || age < 6 || age > 19) {
+      alert("6세에서 19세 사이의 나이를 입력해주세요.")
+      return
+    }
+
+    if (!analysisData) return
+
+    const prompt = `[어그로필터 AI 교육 도우미]
+- 영상 제목: ${analysisData.videoTitle}
+- 채널명: ${analysisData.channelName}
+- 신뢰도 점수: ${analysisData.scores.trust}점 (100점 만점)
+- 핵심 요약: ${analysisData.summary}
+
+위 정보를 바탕으로, 이 영상을 본 ${age}세 학생에게:
+1. 영상의 내용을 아이의 눈높이에 맞춰 쉽게 설명해주세요.
+2. 미디어 리터러시 관점에서 이 영상을 비판적으로 바라볼 수 있도록 돕는 OX 퀴즈 3문제를 내주세요.
+3. 정답과 해설도 함께 알려주세요.`
+
+    navigator.clipboard.writeText(prompt).then(() => {
+      if (confirm("ChatGPT에게 물어볼 질문이 복사되었습니다!\n\nChatGPT를 열어 붙여넣기(Ctrl+V) 하시겠습니까?")) {
+        window.open("https://chatgpt.com", "_blank")
+      }
+    }).catch(err => {
+      console.error("클립보드 복사 실패:", err)
+      window.open("https://chatgpt.com", "_blank")
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -314,7 +432,7 @@ export default function ResultPage() {
 
       <main className="container px-4 py-6 pt-6">
         <div className="mx-auto max-w-2xl space-y-4">
-          <div className="space-y-2">
+          <div className="sticky top-0 z-50 bg-background pb-2 pt-2">
             <AnalysisHeader
               channelImage={analysisData.channelImage}
               channelName={analysisData.channelName}
@@ -326,7 +444,7 @@ export default function ResultPage() {
             />
           </div>
 
-          <div className={`${activeSubtitle ? "sticky top-20 z-40" : ""} bg-background pb-3 pt-0`}>
+          <div className="bg-background pb-3 pt-0">
             <SubtitleButtons 
               activeSubtitle={activeSubtitle} 
               onToggle={(type) => setActiveSubtitle(activeSubtitle === type ? null : type)} 
@@ -353,6 +471,7 @@ export default function ResultPage() {
               accuracy={analysisData.scores.accuracy} 
               clickbait={analysisData.scores.clickbait} 
               trust={analysisData.scores.trust} 
+              topic={analysisData.topic}
               trafficLightImage={getTrafficLightImage(analysisData.scores.trust)}
             />
 
@@ -423,24 +542,27 @@ export default function ResultPage() {
               <div className="flex items-center justify-around leading-none">
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-bold text-gray-800">정확성</span>
-                  <span className="text-lg font-bold text-purple-600">100%</span>
+                  <span className="text-lg font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy || 0}%</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-bold text-gray-800">어그로성</span>
-                  <span className="text-lg font-bold text-pink-500">50%</span>
+                  <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.avgClickbait || 0}%</span>
                 </div>
               </div>
               <div className="flex items-center justify-center gap-1 pt-1 leading-none">
                 <span className="text-sm font-bold text-gray-800">신뢰도 점수</span>
-                <span className="text-lg font-bold text-pink-500">75</span>
-                <span className="text-green-500">●</span>
+                <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.avgReliability || 0}</span>
+                <span className={`text-[10px] ${
+                  (analysisData.channelStats?.avgReliability || 0) >= 70 ? "text-green-500" :
+                  (analysisData.channelStats?.avgReliability || 0) >= 51 ? "text-yellow-500" : "text-red-500"
+                }`}>●</span>
               </div>
               <div className="mt-1 border-t border-gray-200 pt-1 text-center leading-none">
                 <p className="text-sm">
-                  <span className="text-lg font-bold text-pink-500">12</span>
+                  <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.rank || '-'}</span>
                   <span className="text-gray-600"> 위 / </span>
-                  <span className="text-gray-700">33 채널 </span>
-                  <span className="font-semibold text-gray-700">(서울경제TV)</span>
+                  <span className="text-gray-700">{analysisData.channelStats?.totalChannels || '-'} 채널 </span>
+                  <span className="font-semibold text-gray-700">({analysisData.channelName})</span>
                 </p>
               </div>
             </div>
@@ -456,7 +578,7 @@ export default function ResultPage() {
                   onClick={() => toggleTooltip("youth")}
                   className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] text-gray-500 hover:bg-gray-100"
                 >
-                  <MoreVertical className="h-4 w-4 text-gray-600" />
+                  ?
                 </button>
                 {activeTooltip === "youth" && (
                   <div className="absolute left-1/2 top-full z-20 mt-2 w-80 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
@@ -477,11 +599,21 @@ export default function ResultPage() {
                   type="text"
                   value={youthAge}
                   onChange={(e) => setYouthAge(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleYouthService()
+                    }
+                  }}
                   placeholder="6~19"
                   className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm font-semibold focus:border-teal-400 focus:outline-none"
                 />
-                <span>세 맞춤설명과 퀴즈보러가기</span>
-                <span className="ml-1">→</span>
+                <button 
+                  onClick={handleYouthService}
+                  className="flex items-center gap-1 hover:text-teal-600 hover:underline hover:font-bold transition-all"
+                >
+                  <span>세 맞춤설명과 퀴즈보러가기</span>
+                  <span>→</span>
+                </button>
               </div>
             </div>
           </div>

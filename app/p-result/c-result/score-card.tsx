@@ -7,10 +7,11 @@ interface TScoreCardProps {
   accuracy: number
   clickbait: number
   trust: number
+  topic: string
   trafficLightImage: string
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, trafficLightImage }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const toggleTooltip = (type: string) => {
@@ -24,7 +25,7 @@ export function ScoreCard({ accuracy, clickbait, trust, trafficLightImage }: TSc
           <h2 className="text-lg font-bold text-pink-500">분석 보고</h2>
         </div>
         <span className="rounded-full border-2 border-pink-400 bg-white px-3 py-0.5 text-sm font-medium text-pink-600">
-          #세계 경제
+          #{topic}
         </span>
       </div>
 

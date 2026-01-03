@@ -119,6 +119,33 @@ export async function POST(request: Request) {
         analysisResult.recommendedTitle
       ]);
 
+      // 5-3. 채널 통계 갱신 (주제별)
+      if (hasTranscript && analysisResult.topic) {
+        await client.query(`
+          INSERT INTO t_channel_stats (
+            f_channel_id, f_topic, f_video_count, 
+            f_avg_accuracy, f_avg_clickbait, f_avg_reliability, 
+            f_last_updated
+          )
+          SELECT 
+            $1::text, $2::text, 
+            COUNT(*)::integer, 
+            ROUND(AVG(f_accuracy_score), 2), 
+            ROUND(AVG(f_clickbait_score), 2), 
+            ROUND(AVG(f_reliability_score), 2),
+            NOW()
+          FROM t_analyses
+          WHERE f_channel_id = $1 AND f_topic = $2 AND f_reliability_score IS NOT NULL
+          ON CONFLICT (f_channel_id, f_topic) 
+          DO UPDATE SET 
+            f_video_count = EXCLUDED.f_video_count,
+            f_avg_accuracy = EXCLUDED.f_avg_accuracy,
+            f_avg_clickbait = EXCLUDED.f_avg_clickbait,
+            f_avg_reliability = EXCLUDED.f_avg_reliability,
+            f_last_updated = NOW()
+        `, [videoInfo.channelId, analysisResult.topic]);
+      }
+
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
     } catch (error) {
