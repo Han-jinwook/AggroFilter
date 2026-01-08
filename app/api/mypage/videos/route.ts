@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         channelIcon: row.channel_icon,
         score: row.score,
         category: row.topic,
+        fullDate: row.created_at, // 정렬용 정밀 타임스탬프 추가
         date: new Date(row.created_at).toLocaleDateString('ko-KR', {
            year: '2-digit',
            month: '2-digit',

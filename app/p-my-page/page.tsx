@@ -11,6 +11,7 @@ import { LoginModal } from "@/components/c-login-modal"
 interface TAnalysisVideo {
   id: string
   date: string
+  fullDate?: string // 정렬용 정밀 타임스탬프
   title: string
   channel: string
   channelIcon: string
@@ -59,6 +60,21 @@ export default function MyPagePage() {
 
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isLongPressRef = useRef(false)
+
+  // Sorted Videos Logic
+  const sortedVideos = useMemo(() => {
+    return [...analyzedVideos].sort((a, b) => {
+      if (sortBy === "date") {
+        // 정밀 타임스탬프(fullDate)가 있으면 그것을 우선 사용, 없으면 기존 날짜 문자열 사용
+        if (a.fullDate && b.fullDate) {
+            return new Date(b.fullDate).getTime() - new Date(a.fullDate).getTime();
+        }
+        return b.date.localeCompare(a.date) // Fallback
+      } else {
+        return b.score - a.score // 신뢰도순 (높은 점수 우선)
+      }
+    })
+  }, [analyzedVideos, sortBy])
 
   // Derived Statistics & Data
   const { stats, greenTopics, redTopics, channels, groupedVideos } = useMemo(() => {
@@ -485,7 +501,7 @@ export default function MyPagePage() {
                     </Link>
                 </div>
             ) : (
-            analyzedVideos.map((video) => (
+            sortedVideos.map((video) => (
               <Link
                 href={`/p-result?id=${video.id}&from=p-my-page&tab=analysis`}
                 key={video.id}
