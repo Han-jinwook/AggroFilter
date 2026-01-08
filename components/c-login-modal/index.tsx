@@ -24,13 +24,26 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     if (!email) return
 
     setIsLoading(true)
-    // TODO: 백엔드 API - 인증코드 이메일 발송
-    console.log("인증코드 발송:", email)
+    
+    try {
+      const res = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
 
-    setTimeout(() => {
-      setIsLoading(false)
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to send code');
+      }
+
       setStep("code")
-    }, 1000)
+    } catch (error) {
+      console.error(error);
+      alert('인증코드 발송에 실패했습니다. 이메일을 확인해주세요.');
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCodeChange = (index: number, value: string) => {
@@ -62,24 +75,56 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
 
   const handleLogin = async (verificationCode: string) => {
     setIsLoading(true)
-    // TODO: 백엔드 API - 인증코드 확인
-    console.log("인증코드 확인:", verificationCode)
+    
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: verificationCode })
+      });
 
-    setTimeout(() => {
-      setIsLoading(false)
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Verification failed');
+      }
+
+      // Success
       onLoginSuccess(email)
       onOpenChange(false)
-      // 상태 초기화
+      // Reset state
       setStep("email")
       setEmail("")
       setCode(["", "", "", "", "", ""])
-    }, 500)
+      
+    } catch (error) {
+      console.error(error);
+      alert('인증번호가 올바르지 않거나 만료되었습니다.');
+      // Clear code input on failure?
+      // setCode(["", "", "", "", "", ""])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleResendCode = () => {
-    // TODO: 백엔드 API - 인증코드 재발송
-    console.log("인증코드 재발송:", email)
-    alert("인증코드가 재발송되었습니다.")
+  const handleResendCode = async () => {
+    if (!email) return;
+    
+    try {
+      const res = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      if (res.ok) {
+        alert("인증코드가 재발송되었습니다.");
+      } else {
+        throw new Error('Failed to resend');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('인증코드 재발송에 실패했습니다.');
+    }
   }
 
   return (

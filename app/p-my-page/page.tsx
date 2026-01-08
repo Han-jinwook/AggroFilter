@@ -1,64 +1,12 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X } from "lucide-react"
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
-
-// Mock Data
-const mockVideos = [
-  {
-    id: "1",
-    date: "25.01.15",
-    title: "데이타솔루션, 딥시크 쇼크 대응 산업별 AI기술 융합해 경쟁력 강화",
-    channel: "서울경제TV",
-    channelIcon: "/placeholder.svg",
-    score: 75,
-    rank: 1,
-    totalRank: 5,
-    views: "1.2M",
-    category: "경제",
-  },
-  {
-    id: "2",
-    date: "25.02.07",
-    title: "곧 컴백한다는 지드래곤의 솔로곡",
-    channel: "아이돌아카이브",
-    channelIcon: "/placeholder.svg",
-    score: 92,
-    rank: 2,
-    totalRank: 5,
-    views: "850K",
-    category: "연예",
-  },
-  {
-    id: "3",
-    date: "25.02.06",
-    title: "비트코인은 몇 송 모두에게 자비가 없다",
-    channel: "비트코인 차트두우",
-    channelIcon: "/placeholder.svg",
-    score: 55,
-    rank: 3,
-    totalRank: 5,
-    views: "420K",
-    category: "코인",
-  },
-  {
-    id: "4",
-    date: "25.01.25",
-    title: "혹백요리사 에기잘 갈데 꺼더리면 안 된다",
-    channel: "백종원 PAIK JONG WON",
-    channelIcon: "/placeholder.svg",
-    score: 48,
-    rank: 4,
-    totalRank: 5,
-    views: "2.1M",
-    category: "요리",
-  },
-]
 
 interface TAnalysisVideo {
   id: string
@@ -67,8 +15,10 @@ interface TAnalysisVideo {
   channel: string
   channelIcon: string
   score: number
-  rank: number
-  totalRank: number
+  rank: number | string
+  totalRank: number | string
+  category: string
+  views?: string
 }
 
 interface TSubscribedChannel {
@@ -80,104 +30,6 @@ interface TSubscribedChannel {
   rankScore: number
 }
 
-const mockChannels: TSubscribedChannel[] = [
-  {
-    id: "1",
-    date: "25.02.18",
-    channelName: "백종원 PAIK JONG WON",
-    topic: "요리",
-    videoCount: 3,
-    rankScore: 85,
-  },
-  {
-    id: "2",
-    date: "25.02.18",
-    channelName: "Soothing Ghibli Piano",
-    topic: "일본 애니",
-    videoCount: 6,
-    rankScore: 92,
-  },
-  {
-    id: "3",
-    date: "25.02.18",
-    channelName: "The Everyday Recipe",
-    topic: "코리 블로그",
-    videoCount: 5,
-    rankScore: 78,
-  },
-  {
-    id: "4",
-    date: "25.02.15",
-    channelName: "또마미마 Yummy Yammy",
-    topic: "맛집 콘스트",
-    videoCount: 7,
-    rankScore: 88,
-  },
-  {
-    id: "5",
-    date: "25.02.14",
-    channelName: "FOOD★STAR フードスター",
-    topic: "맛집 콘스트",
-    videoCount: 3,
-    rankScore: 81,
-  },
-  {
-    id: "6",
-    date: "25.02.13",
-    channelName: "甘党スイーツ amaito sweets",
-    topic: "디저트 제작",
-    videoCount: 4,
-    rankScore: 90,
-  },
-  {
-    id: "7",
-    date: "25.02.12",
-    channelName: "EBS 세계테마기행-메코マ마? 괴만절!",
-    topic: "먹여둘 일상",
-    videoCount: 10,
-    rankScore: 95,
-  },
-]
-
-const channelVideos: { [key: string]: TAnalysisVideo[] } = {
-  "1": [
-    {
-      id: "v1",
-      date: "25.02.05",
-      title: "영상을 만든 어떤 아쿠타아아?",
-      channel: "백종원 PAIK JONG WON",
-      channelIcon: "/placeholder.svg",
-      score: 85,
-      rank: 1,
-      totalRank: 3,
-    },
-    {
-      id: "v2",
-      date: "25.02.01",
-      title: "[티티뉴스] 백종원 대변 맛있다빔띠다",
-      channel: "백종원 PAIK JONG WON",
-      channelIcon: "/placeholder.svg",
-      score: 88,
-      rank: 2,
-      totalRank: 3,
-    },
-  ],
-  "2": [
-    {
-      id: "v4",
-      date: "25.02.10",
-      title: "Relaxing Piano Music for Study",
-      channel: "Soothing Ghibli Piano",
-      channelIcon: "/placeholder.svg",
-      score: 92,
-      rank: 1,
-      totalRank: 6,
-    },
-  ],
-}
-
-const greenTopics = ["경제", "과학", "역사", "다큐", "교육", "자기계발", "테크"]
-const redTopics = ["코인", "가짜뉴스", "음모론", "사이버렉카", "정치선동", "루머"]
 
 type TSortOption = "date" | "trust"
 
@@ -191,7 +43,10 @@ export default function MyPagePage() {
   const [activeTopicTab, setActiveTopicTab] = useState<"trust" | "caution">("trust")
   const [sortBy, setSortBy] = useState<TSortOption>("date")
 
-  const [channels, setChannels] = useState(mockChannels)
+  // Real Data State
+  const [analyzedVideos, setAnalyzedVideos] = useState<TAnalysisVideo[]>([])
+  const [isLoadingVideos, setIsLoadingVideos] = useState(true)
+
   const [sortKey, setSortKey] = useState<"date" | "name" | "topic" | "videoCount" | "rankScore">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
@@ -204,6 +59,131 @@ export default function MyPagePage() {
 
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isLongPressRef = useRef(false)
+
+  // Derived Statistics & Data
+  const { stats, greenTopics, redTopics, channels, groupedVideos } = useMemo(() => {
+    if (analyzedVideos.length === 0) {
+      return {
+        stats: { totalChannels: 0, totalVideos: 0 },
+        greenTopics: [],
+        redTopics: [],
+        channels: [],
+        groupedVideos: {}
+      }
+    }
+
+    const uniqueChannels = new Set(analyzedVideos.map(v => v.channel));
+    const videoMap: { [key: string]: TAnalysisVideo[] } = {};
+    const channelMap = new Map<string, TSubscribedChannel>();
+
+    // 2. Topic Analysis
+    const topicMap = new Map<string, { totalScore: number; count: number }>();
+
+    analyzedVideos.forEach(v => {
+      // Group videos
+      if (!videoMap[v.channel]) videoMap[v.channel] = [];
+      videoMap[v.channel].push(v);
+
+      // Topic stats
+      const topic = v.category || "기타";
+      const currentTopic = topicMap.get(topic) || { totalScore: 0, count: 0 };
+      topicMap.set(topic, {
+        totalScore: currentTopic.totalScore + v.score,
+        count: currentTopic.count + 1
+      });
+
+      // Channel stats
+      const existing = channelMap.get(v.channel);
+      if (!existing) {
+        channelMap.set(v.channel, {
+          id: v.channel,
+          date: v.date,
+          channelName: v.channel,
+          topic: v.category || "기타",
+          videoCount: 1,
+          rankScore: v.score
+        });
+      } else {
+        if (v.date > existing.date) existing.date = v.date;
+        existing.videoCount += 1;
+        existing.rankScore += v.score;
+        channelMap.set(v.channel, existing);
+      }
+    });
+
+    // Process Topics
+    const topics = Array.from(topicMap.entries()).map(([topic, data]) => ({
+      topic,
+      avgScore: Math.round(data.totalScore / data.count)
+    }));
+
+    const green = topics
+      .filter(t => t.avgScore >= 70)
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .map(t => t.topic);
+
+    const red = topics
+      .filter(t => t.avgScore < 70)
+      .sort((a, b) => a.avgScore - b.avgScore)
+      .map(t => t.topic);
+
+    // Process Channels
+    const processedChannels = Array.from(channelMap.values()).map(c => ({
+      ...c,
+      rankScore: Math.round(c.rankScore / c.videoCount)
+    }));
+
+    return {
+      stats: {
+        totalChannels: uniqueChannels.size,
+        totalVideos: analyzedVideos.length
+      },
+      greenTopics: green,
+      redTopics: red,
+      channels: processedChannels,
+      groupedVideos: videoMap
+    };
+  }, [analyzedVideos]);
+
+  // Fetch Analyzed Videos
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setIsLoadingVideos(true)
+      const history = JSON.parse(localStorage.getItem('my_analysis_history') || '[]');
+      const email = localStorage.getItem('userEmail');
+
+      if (history.length === 0 && !email) {
+        setAnalyzedVideos([]);
+        setIsLoadingVideos(false);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/mypage/videos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            ids: history,
+            email: email 
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setAnalyzedVideos(data.videos || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch videos", e);
+      } finally {
+        setIsLoadingVideos(false);
+      }
+    }
+
+    // Always fetch on mount or when tab changes to analysis
+    if (activeTab === 'analysis') {
+      fetchVideos();
+    }
+  }, [activeTab]);
 
   // Effects
   useEffect(() => {
@@ -317,11 +297,11 @@ export default function MyPagePage() {
             <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
               <span className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
-                분석 채널 <strong className="text-slate-900">12</strong>
+                분석 채널 <strong className="text-slate-900">{stats.totalChannels}</strong>
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
-                분석 영상 <strong className="text-slate-900">142</strong>
+                분석 영상 <strong className="text-slate-900">{stats.totalVideos}</strong>
               </span>
             </div>
           </div>
@@ -352,55 +332,49 @@ export default function MyPagePage() {
             </div>
 
             {/* Content Area */}
-            <div className="p-6 h-40 flex flex-col justify-between relative transition-colors duration-300">
+            <div className="p-6 relative transition-colors duration-300">
               {activeTopicTab === "trust" ? (
                 <>
-                  <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                    <div className="p-2 rounded-full bg-emerald-100 text-emerald-600">
-                      <Star className="h-5 w-5" fill="currentColor" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-emerald-900">신뢰도 높은 주제</h3>
-                      <p className="text-xs text-emerald-600">최근 시청한 영상 중 신뢰도가 높은 카테고리</p>
-                    </div>
-                  </div>
-                  <div className="relative w-full group mt-4 animate-in slide-in-from-right-4 duration-300">
+                  <div className="relative w-full group animate-in slide-in-from-right-4 duration-300">
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
                     <div className="flex gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                      {greenTopics.map((topic) => (
-                        <span
-                          key={topic}
-                          className="flex-shrink-0 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-bold shadow-sm border border-emerald-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
-                        >
-                          #{topic}
-                        </span>
-                      ))}
+                      {greenTopics.length > 0 ? (
+                        greenTopics.map((topic) => (
+                          <span
+                            key={topic}
+                            className="flex-shrink-0 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-bold shadow-sm border border-emerald-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                          >
+                            #{topic}
+                          </span>
+                        ))
+                      ) : (
+                         <div className="w-full text-center py-2 text-sm text-slate-400">
+                            아직 신뢰도 높은 주제가 없습니다.
+                         </div>
+                      )}
                       <div className="w-4 flex-shrink-0" />
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                    <div className="p-2 rounded-full bg-rose-100 text-rose-600">
-                      <AlertTriangle className="h-5 w-5" fill="currentColor" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-rose-900">주의가 필요한 주제</h3>
-                      <p className="text-xs text-rose-600">어그로성/낚시성 콘텐츠가 많이 발견된 카테고리</p>
-                    </div>
-                  </div>
-                  <div className="relative w-full group mt-4 animate-in slide-in-from-right-4 duration-300">
+                  <div className="relative w-full group animate-in slide-in-from-right-4 duration-300">
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
                     <div className="flex gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                      {redTopics.map((topic) => (
-                        <span
-                          key={topic}
-                          className="flex-shrink-0 px-4 py-2 rounded-xl bg-rose-50 text-rose-700 text-sm font-bold shadow-sm border border-rose-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
-                        >
-                          #{topic}
-                        </span>
-                      ))}
+                      {redTopics.length > 0 ? (
+                        redTopics.map((topic) => (
+                          <span
+                            key={topic}
+                            className="flex-shrink-0 px-4 py-2 rounded-xl bg-rose-50 text-rose-700 text-sm font-bold shadow-sm border border-rose-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                          >
+                            #{topic}
+                          </span>
+                        ))
+                      ) : (
+                        <div className="w-full text-center py-2 text-sm text-slate-400">
+                            주의가 필요한 주제가 없습니다.
+                        </div>
+                      )}
                       <div className="w-4 flex-shrink-0" />
                     </div>
                   </div>
@@ -498,7 +472,20 @@ export default function MyPagePage() {
         {/* Content Grid */}
         <div className={activeTab === "analysis" ? "grid gap-6 sm:grid-cols-2 lg:grid-cols-2" : "block"}>
           {activeTab === "analysis" ? (
-            mockVideos.map((video) => (
+            isLoadingVideos ? (
+                <div className="col-span-full py-20 text-center text-slate-400">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-500 mb-4"></div>
+                    <p>분석 기록을 불러오는 중...</p>
+                </div>
+            ) : analyzedVideos.length === 0 ? (
+                <div className="col-span-full py-20 text-center text-slate-400">
+                    <p>아직 분석한 영상이 없습니다.</p>
+                    <Link href="/" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+                        첫 영상 분석하러 가기
+                    </Link>
+                </div>
+            ) : (
+            analyzedVideos.map((video) => (
               <Link
                 href={`/p-result?id=${video.id}&from=p-my-page&tab=analysis`}
                 key={video.id}
@@ -507,7 +494,7 @@ export default function MyPagePage() {
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-medium text-slate-400">{video.date}</span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                    {video.category}
+                    {video.category || "기타"}
                   </span>
                 </div>
                 <h3 className="mb-4 text-lg font-bold leading-snug text-slate-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
@@ -515,28 +502,42 @@ export default function MyPagePage() {
                 </h3>
                 <div className="flex items-end justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="relative h-6 w-6 overflow-hidden rounded-full">
-                      <Image
-                        src={video.channelIcon || "/placeholder.svg"}
-                        alt={video.channel}
-                        fill
-                        className="object-cover"
-                      />
+                    <div className="relative h-6 w-6 overflow-hidden rounded-full bg-slate-100">
+                      {video.channelIcon && video.channelIcon !== '/placeholder.svg' ? (
+                        <Image
+                            src={video.channelIcon}
+                            alt={video.channel}
+                            fill
+                            className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-slate-200 text-[10px] font-bold text-slate-500">
+                            {(video.channel || '?').substring(0, 1)}
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm text-slate-500 font-medium">{video.channel}</span>
+                    <span className="text-sm text-slate-500 font-medium truncate max-w-[100px]">{video.channel}</span>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-sm font-bold text-slate-900 flex items-center gap-1">
                       <span className="text-xs font-medium text-slate-400">신뢰도 점수</span>
-                      <span className="text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md">{video.score}</span>
+                      <span className={`px-2 py-0.5 rounded-md font-bold ${
+                        video.score >= 70 ? 'text-emerald-500 bg-emerald-50' : 
+                        video.score >= 51 ? 'text-amber-500 bg-amber-50' : 
+                        'text-rose-500 bg-rose-50'
+                      }`}>{video.score}</span>
                     </span>
-                    <span className="text-[10px] text-slate-400 mt-1">
-                      {video.rank}위 / {video.totalRank}
-                    </span>
+                    {/* Rank is optional in real data for now */}
+                    {video.rank !== '-' && (
+                        <span className="text-[10px] text-slate-400 mt-1">
+                        {video.rank}위 / {video.totalRank}
+                        </span>
+                    )}
                   </div>
                 </div>
               </Link>
             ))
+            )
           ) : (
             /* Channel List Table */
             <div className="rounded-3xl bg-white p-4 shadow-lg border border-slate-100 relative">
@@ -653,9 +654,9 @@ export default function MyPagePage() {
                       </button>
 
                       {/* Expanded Video List */}
-                      {expandedChannelId === channel.id && channelVideos[channel.id] && (
+                      {expandedChannelId === channel.id && groupedVideos[channel.id] && (
                         <div className="mt-2 space-y-1 rounded-xl bg-slate-50 p-2 animate-in slide-in-from-top-2 duration-200 border border-slate-100">
-                          {channelVideos[channel.id].map((video) => (
+                          {groupedVideos[channel.id].map((video) => (
                             <Link
                               key={video.id}
                               href={`/p-result?id=${video.id}&from=p-my-page&tab=channels`}

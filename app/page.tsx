@@ -51,12 +51,18 @@ export default function MainPage() {
     console.log("분석 요청:", analysisUrl)
 
     try {
+      // Get current user email if available
+      const currentEmail = userEmail || localStorage.getItem("userEmail");
+      
       const response = await fetch('/api/analysis/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: analysisUrl }),
+        body: JSON.stringify({ 
+            url: analysisUrl,
+            userId: currentEmail // Send email as userId
+        }),
       });
 
       if (!response.ok) {
@@ -64,6 +70,14 @@ export default function MainPage() {
       }
 
       const result = await response.json();
+      
+      // Save to local history
+      const history = JSON.parse(localStorage.getItem('my_analysis_history') || '[]');
+      if (!history.includes(result.analysisId)) {
+        history.unshift(result.analysisId);
+        localStorage.setItem('my_analysis_history', JSON.stringify(history));
+      }
+
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
     } catch (error) {

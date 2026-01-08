@@ -370,32 +370,82 @@ export default function ResultPage() {
 
   const handleYouthService = () => {
     const age = Number.parseInt(youthAge)
-    if (isNaN(age) || age < 6 || age > 19) {
-      alert("6세에서 19세 사이의 나이를 입력해주세요.")
+    if (isNaN(age) || age < 8 || age > 18) {
+      alert("8세에서 18세 사이의 나이를 입력해주세요.")
       return
     }
 
     if (!analysisData) return
 
-    const prompt = `[어그로필터 AI 교육 도우미]
-- 영상 제목: ${analysisData.videoTitle}
+    const title = analysisData.videoTitle || ""
+    // [수정] 자막 전문이 있는 경우 우선 사용, 없으면 요약본 사용
+    // 단, URL 길이 제한을 고려하여 클립보드 복사 시에는 전체를 사용하고, URL 방식일 땐 적절히 자름
+    const content = analysisData.fullSubtitle || analysisData.summarySubtitle || analysisData.summary || ""
+
+    const prompt = `[청소년 프롬프트: ${age}세 맞춤형 분석 및 인터랙티브 튜터]
+
+1. 역할: 당신은 청소년을 위한 친절한 디지털 리터러시 선생님입니다.
+2. 미션: 아래 분석 결과를 바탕으로 ${age}세 학생에게 알기 쉽게 설명하고, 비판적 사고를 기르는 퀴즈를 진행해주세요.
+
+[입력 데이터]
 - 채널명: ${analysisData.channelName}
-- 신뢰도 점수: ${analysisData.scores.trust}점 (100점 만점)
-- 핵심 요약: ${analysisData.summary}
+- 제목: ${title}
+- 주제: ${analysisData.topic}
+- 정확성: ${analysisData.scores.accuracy}점
+- 어그로성: ${analysisData.scores.clickbait}점
+- 신뢰도: ${analysisData.scores.trust}점
+- 평가이유(성인용): ${analysisData.evaluationReason}
 
-위 정보를 바탕으로, 이 영상을 본 ${age}세 학생에게:
-1. 영상의 내용을 아이의 눈높이에 맞춰 쉽게 설명해주세요.
-2. 미디어 리터러시 관점에서 이 영상을 비판적으로 바라볼 수 있도록 돕는 OX 퀴즈 3문제를 내주세요.
-3. 정답과 해설도 함께 알려주세요.`
+[자막 전문]
+${content}
 
-    navigator.clipboard.writeText(prompt).then(() => {
-      if (confirm("ChatGPT에게 물어볼 질문이 복사되었습니다!\n\nChatGPT를 열어 붙여넣기(Ctrl+V) 하시겠습니까?")) {
+[지침 1. 나이에 맞는 설명]
+성인용 '평가이유'를 ${age}세 수준에 맞게 아주 쉽게 풀어서 설명해주세요.
+교과서, 친구, 만화 영화 등의 비유를 사용하여 구체적으로 이야기해주세요.
+예: "정보는 확실한데 제목은 만화 예고편처럼 과장됐어."
+
+[지침 2. 신호등 총평]
+신뢰도 점수(${analysisData.scores.trust}점)에 따라 신호등 색상으로 친구에게 추천할지 조언해주세요.
+- 🟢초록(70~100): 안전/추천 (믿을 수 있어요)
+- 🟡노랑(50~69): 주의 (비교가 필요해요)
+- 🔴빨강(0~49): 경고 (비판적으로 봐야 해요)
+
+[지침 3. 상호작용 퀴즈 (중요)]
+설명이 끝난 후, 아이가 스스로 생각할 수 있는 퀴즈를 **한 번에 1개씩만** 출제합니다. (총 3문제)
+1. 먼저 1번 퀴즈만 출제하고 멈춥니다. (정답을 미리 말하지 마세요)
+2. 사용자가 답을 입력하면, 정답 여부와 해설을 해주고 2번 퀴즈를 냅니다.
+3. 3번까지 마치면 칭찬과 함께 마무리합니다.
+
+[출력 포맷]
+1. [채널명/제목/주제] 요약
+2. [점수] 정확성/어그로성/신뢰도
+3. [평가 이유] (${age}세 맞춤 설명)
+4. [신호등 총평]
+5. [오늘의 퀴즈 1번]
+
+위 포맷으로 1번 퀴즈까지만 지금 작성해주세요.`
+
+    // Smart Delivery Logic (Hybrid)
+    const encodedPrompt = encodeURIComponent(prompt)
+    
+    // Server URL Header Limit is usually 4KB - 8KB.
+    // We use 3500 as a safe threshold for the encoded string.
+    if (encodedPrompt.length < 3500) {
+      // [Plan A] Auto-fill (Preferred)
+      // If text is short enough, pass it via URL for "Enter-only" experience.
+      window.open(`https://chatgpt.com/?q=${encodedPrompt}`, "_blank")
+    } else {
+      // [Plan B] Clipboard Fallback (Reliable)
+      // If text is too long for URL, copy to clipboard to prevent HTTP 431 Error.
+      // This mimics the "Extension" capability but requires 1 manual paste step.
+      navigator.clipboard.writeText(prompt).then(() => {
+        alert("내용이 길어서 URL 전송 한도를 초과했습니다.\n\n클립보드에 복사되었습니다! 📋\nChatGPT가 열리면 '붙여넣기(Ctrl+V)' 해주세요.")
         window.open("https://chatgpt.com", "_blank")
-      }
-    }).catch(err => {
-      console.error("클립보드 복사 실패:", err)
-      window.open("https://chatgpt.com", "_blank")
-    })
+      }).catch(err => {
+        console.error("Clipboard failed:", err)
+        window.open("https://chatgpt.com", "_blank")
+      })
+    }
   }
 
   if (loading) {
@@ -584,7 +634,7 @@ export default function ResultPage() {
                   <div className="absolute left-1/2 top-full z-20 mt-2 w-80 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                     <p className="text-xs leading-relaxed text-gray-700">
                       &lt;청소년의 미디어 리터러시 교육용 서비스&gt;
-                      <br />( )속에 6 ~ 19의 나이를 넣고 '클릭' 하면 chatGPT나 재미나이 앱이 별도로 열리면서, 나의
+                      <br />( )속에 8 ~ 18의 나이를 넣고 '클릭' 하면 ChatGPT가 선생님이 되어, 나의
                       나이에 맞는 설명과 간단한 퀴즈를 보여줘요.
                     </p>
                     <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
@@ -604,7 +654,7 @@ export default function ResultPage() {
                       handleYouthService()
                     }
                   }}
-                  placeholder="6~19"
+                  placeholder="8~18"
                   className="w-16 rounded border border-gray-300 px-2 py-0.5 text-center text-sm font-semibold focus:border-teal-400 focus:outline-none"
                 />
                 <button 

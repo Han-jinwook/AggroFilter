@@ -5,11 +5,12 @@ import { analyzeContent } from '@/lib/gemini';
 import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url } = body;
+    const { url, userId } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -24,6 +25,35 @@ export async function POST(request: Request) {
     }
 
     console.log('영상 ID:', videoId);
+
+    // [중복 분석 방지] DB에서 이미 분석된 내역이 있는지 확인
+    const checkClient = await pool.connect();
+    try {
+      const existingAnalysis = await checkClient.query(`
+        SELECT f_id, f_reliability_score 
+        FROM t_analyses 
+        WHERE f_video_id = $1 
+        ORDER BY f_created_at DESC 
+        LIMIT 1
+      `, [videoId]);
+
+      if (existingAnalysis.rows.length > 0) {
+        const row = existingAnalysis.rows[0];
+        // 신뢰도 점수가 존재하고 0점보다 크면(정상 분석된 케이스) 기존 ID 반환
+        // 0점이거나 null이면 실패로 간주하고 재분석 진행
+        if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
+          console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
+          return NextResponse.json({ 
+            message: '이미 분석된 영상입니다.',
+            analysisId: row.f_id
+          });
+        }
+        // 만약 점수가 없거나 0점이라면(이전 분석 실패), 아래 로직을 타고 재분석 시도
+        console.log('이전 분석 기록이 있으나 실패(0점/Null)한 건입니다. 재분석을 진행합니다.');
+      }
+    } finally {
+      checkClient.release();
+    }
 
     // 2. YouTube API로 영상 정보 가져오기
     const videoInfo = await getVideoInfo(videoId);
@@ -97,9 +127,9 @@ export async function POST(request: Request) {
           f_id, f_video_url, f_video_id, f_title, f_channel_id,
           f_thumbnail_url, f_transcript, f_topic, f_accuracy_score, f_clickbait_score,
           f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
-          f_ai_title_recommendation, f_created_at
+          f_ai_title_recommendation, f_user_id, f_created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
         )
       `, [
         analysisId,
@@ -116,7 +146,8 @@ export async function POST(request: Request) {
         analysisResult.subtitleSummary,
         analysisResult.evaluationReason,
         analysisResult.overallAssessment,
-        analysisResult.recommendedTitle
+        analysisResult.recommendedTitle,
+        userId || null // Insert userId (email) or null
       ]);
 
       // 5-3. 채널 통계 갱신 (주제별)
