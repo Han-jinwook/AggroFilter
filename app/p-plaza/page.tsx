@@ -221,7 +221,7 @@ export default function PlazaPage() {
             onClick={() => setActiveTab("video")}
             className={`flex-1 rounded-full text-base font-bold transition-all border shadow-sm ${
               activeTab === "video"
-                ? "bg-slate-900 text-white border-transparent shadow-md transform scale-[1.02]"
+                ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-md shadow-orange-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
             } ${isSearchExpanded ? "px-3 py-3 opacity-50 md:px-6 md:py-3.5" : "px-4 py-3.5 md:px-6 md:py-4"}`}
           >
@@ -270,7 +270,7 @@ export default function PlazaPage() {
             onClick={() => setActiveTab("channel")}
             className={`flex-1 rounded-full text-base font-bold transition-all border shadow-sm ${
               activeTab === "channel"
-                ? "bg-slate-900 text-white border-transparent shadow-md transform scale-[1.02]"
+                ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
             } ${isSearchExpanded ? "px-3 py-3 opacity-50 md:px-6 md:py-3.5" : "px-4 py-3.5 md:px-6 md:py-4"}`}
           >
