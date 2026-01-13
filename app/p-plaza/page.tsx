@@ -58,12 +58,47 @@ export default function PlazaPage() {
     direction: "asc" | "desc"
   }>({ key: "date", direction: "desc" })
 
+  // Hot Issues State
+  const [hotIssues, setHotIssues] = useState<any[]>([])
+  const [isLoadingHotIssues, setIsLoadingHotIssues] = useState(true)
+
   const handleVideoSort = (key: "date" | "views" | "score") => {
     setVideoSortConfig((current) => ({
       key,
       direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
     }))
   }
+
+  // Fetch Hot Issues
+  useEffect(() => {
+    const fetchHotIssues = async () => {
+      setIsLoadingHotIssues(true)
+      try {
+        let sort = 'views'
+        let direction = 'desc'
+        
+        if (hotFilter === 'trust') {
+          sort = 'trust'
+          direction = sortDirection === 'best' ? 'desc' : 'asc'
+        } else if (hotFilter === 'aggro') {
+          sort = 'aggro'
+          direction = sortDirection === 'best' ? 'desc' : 'asc'
+        }
+
+        const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}`)
+        if (res.ok) {
+          const data = await res.json()
+          setHotIssues(data.hotIssues || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch hot issues:', error)
+      } finally {
+        setIsLoadingHotIssues(false)
+      }
+    }
+
+    fetchHotIssues()
+  }, [hotFilter, sortDirection])
 
   const allAnalyzedVideos: TVideoData[] = useMemo(
     () => [
@@ -337,199 +372,30 @@ export default function PlazaPage() {
               </div>
 
               <div className="space-y-2">
-                {hotFilter === "views" && (
+                {isLoadingHotIssues ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
+                  </div>
+                ) : hotIssues.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm">
+                    최근 24시간 내 분석된 영상이 없습니다
+                  </div>
+                ) : (
                   <>
-                    {[
-                      {
-                        id: 1,
-                        rank: 1,
-                        score: 92,
-                        views: "1200",
-                        title: "충격! 이 영상의 진실은...",
-                        channel: "이슈왕",
-                        topic: "이슈 분석",
-                        color: "green",
-                        url: "https://www.youtube.com/watch?v=example1",
-                      },
-                      {
-                        id: 2,
-                        rank: 2,
-                        score: 35,
-                        views: "800",
-                        title: "🚨긴급🚨 지금 당장 보세요!!!",
-                        channel: "사이버렉카",
-                        topic: "긴급 속보",
-                        color: "red",
-                        url: "https://www.youtube.com/watch?v=example2",
-                      },
-                      {
-                        id: 3,
-                        rank: 3,
-                        score: 78,
-                        views: "500",
-                        title: "전문가가 분석한 최신 트렌드",
-                        channel: "경제연구소",
-                        topic: "경제 전망",
-                        color: "green",
-                        url: "https://www.youtube.com/watch?v=example3",
-                      },
-                    ].map((item) => (
-                      <HotIssueCard key={item.rank} item={item} type="views" />
-                    ))}
+                    {hotIssues.map((item) => {
+                      const color = item.score >= 70 ? "green" : "red"
+                      return (
+                        <HotIssueCard 
+                          key={item.id} 
+                          item={{ ...item, color }} 
+                          type={hotFilter === 'views' ? 'views' : hotFilter === 'trust' ? 'trust' : 'aggro'}
+                          label={hotFilter === 'aggro' ? '어그로' : undefined}
+                        />
+                      )
+                    })}
                   </>
                 )}
 
-                {hotFilter === "trust" && (
-                  <>
-                    {sortDirection === "best"
-                      ? [
-                          {
-                            id: 4,
-                            rank: 1,
-                            score: 98,
-                            views: "1200",
-                            title: "과학적 사실로 증명된...",
-                            channel: "과학쿠키",
-                            topic: "과학 탐구",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example4",
-                          },
-                          {
-                            id: 5,
-                            rank: 2,
-                            score: 95,
-                            views: "3400",
-                            title: "논문 기반 완벽 분석",
-                            channel: "지식인사이드",
-                            topic: "교육 정보",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example5",
-                          },
-                          {
-                            id: 6,
-                            rank: 3,
-                            score: 92,
-                            views: "2100",
-                            title: "팩트체크 완료",
-                            channel: "뉴스공장",
-                            topic: "사회 이슈",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example6",
-                          },
-                        ].map((item) => <HotIssueCard key={item.rank} item={item} type="trust" />)
-                      : [
-                          {
-                            id: 7,
-                            rank: 1,
-                            score: 12,
-                            views: "5600",
-                            title: "절대 믿지 마세요",
-                            channel: "가짜뉴스판독기",
-                            topic: "정치 비평",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example7",
-                          },
-                          {
-                            id: 8,
-                            rank: 2,
-                            score: 15,
-                            views: "8900",
-                            title: "가짜뉴스의 실체",
-                            channel: "음모론타파",
-                            topic: "사회 이슈",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example8",
-                          },
-                          {
-                            id: 9,
-                            rank: 3,
-                            score: 22,
-                            views: "4200",
-                            title: "조작된 증거들",
-                            channel: "팩트사냥꾼",
-                            topic: "화제 이슈",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example9",
-                          },
-                        ].map((item) => <HotIssueCard key={item.rank} item={item} type="trust" />)}
-                  </>
-                )}
-
-                {hotFilter === "aggro" && (
-                  <>
-                    {sortDirection === "best"
-                      ? [
-                          {
-                            id: 10,
-                            rank: 1,
-                            score: 90,
-                            views: "4500",
-                            title: "썸네일 낚시 레전드",
-                            channel: "어그로대장",
-                            topic: "예능 분석",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example10",
-                          },
-                          {
-                            id: 11,
-                            rank: 2,
-                            score: 85,
-                            views: "3200",
-                            title: "제목이랑 내용 다름",
-                            channel: "낚시꾼",
-                            topic: "화제 이슈",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example11",
-                          },
-                          {
-                            id: 12,
-                            rank: 3,
-                            score: 80,
-                            views: "2800",
-                            title: "충격적인 진실??",
-                            channel: "미스터리",
-                            topic: "미스터리 썰",
-                            color: "red",
-                            url: "https://www.youtube.com/watch?v=example12",
-                          },
-                        ].map((item) => <HotIssueCard key={item.rank} item={item} type="aggro" label="어그로" />)
-                      : [
-                          {
-                            id: 13,
-                            rank: 1,
-                            score: 12,
-                            views: "1200",
-                            title: "정직한 제목 정직한 내용",
-                            channel: "클린유튜버",
-                            topic: "제품 리뷰",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example13",
-                          },
-                          {
-                            id: 14,
-                            rank: 2,
-                            score: 15,
-                            views: "2500",
-                            title: "담백한 분석",
-                            channel: "정보통",
-                            topic: "생활 정보",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example14",
-                          },
-                          {
-                            id: 15,
-                            rank: 3,
-                            score: 18,
-                            views: "1800",
-                            title: "과장 없는 팩트",
-                            channel: "팩트체크",
-                            topic: "뉴스 해설",
-                            color: "green",
-                            url: "https://www.youtube.com/watch?v=example15",
-                          },
-                        ].map((item) => <HotIssueCard key={item.rank} item={item} type="aggro" label="어그로" />)}
-                  </>
-                )}
               </div>
             </div>
 
