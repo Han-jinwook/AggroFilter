@@ -4,6 +4,7 @@ import type React from "react"
 
 import { AppHeader } from "@/components/c-app-header"
 import { HotIssueCard } from "@/app/p-plaza/c-plaza/hot-issue-card"
+import { HotChannelCard } from "@/app/p-plaza/c-plaza/hot-channel-card"
 // import { FilterTabs } from "@/app/p-plaza/c-plaza/filter-tabs"
 // import { TabHeader } from "@/app/p-plaza/c-plaza/tab-header"
 import {
