@@ -389,7 +389,7 @@ export default function PlazaPage() {
                 </div>
                 <div className="ml-2 flex-1">제목 / 채널</div>
                 <div
-                  className="w-16 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
+                  className="w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
                   onClick={() => handleVideoSort("views")}
                 >
                   <span className="whitespace-nowrap">조회수</span>
@@ -400,7 +400,7 @@ export default function PlazaPage() {
                   />
                 </div>
                 <div
-                  className="w-16 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
+                  className="w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-1"
                   onClick={() => handleVideoSort("score")}
                 >
                   <span className="whitespace-nowrap">신뢰도</span>
@@ -431,24 +431,26 @@ export default function PlazaPage() {
                     return (
                       <div
                         key={item.id || idx}
-                        className="flex items-center rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-all hover:shadow-md"
+                        className="flex items-center gap-4"
                       >
-                        <div className="flex flex-col text-center text-xs text-slate-600 w-12">
-                          <div className="font-mono font-bold tracking-tighter text-slate-400">
+                        <div className="w-12 flex-shrink-0 text-center">
+                          <span className="text-[11px] font-bold text-slate-400 tabular-nums leading-none">
                             {formattedDate}
-                          </div>
+                          </span>
                         </div>
 
-                        <div className="flex-1 min-w-0 ml-2">
+                        <div className="flex-1 min-w-0">
                           <Link
                             href={`/p-result?id=${item.id}`}
-                            className="text-sm font-semibold text-slate-800 line-clamp-1 mb-0.5 hover:text-purple-600 hover:underline decoration-purple-400 decoration-2 underline-offset-2 tracking-tight"
+                            className="group/title block"
                           >
-                            {item.title}
+                            <h3 className="line-clamp-1 text-[13px] font-bold text-slate-800 transition-colors group-hover/title:text-blue-600">
+                              {item.title}
+                            </h3>
                           </Link>
                           <Link
-                            href={`/p-result?id=${item.id}`}
-                            className="text-xs text-slate-500 hover:text-purple-600 hover:underline decoration-purple-400 decoration-1 underline-offset-2 flex items-center gap-1"
+                            href={`/p-ranking?topic=${encodeURIComponent(item.topic || "")}`}
+                            className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
                           >
                             <Image
                               src={item.channelIcon || "/placeholder.svg?height=12&width=12"}
@@ -461,11 +463,15 @@ export default function PlazaPage() {
                           </Link>
                         </div>
 
-                        <div className="flex flex-col items-center w-12 bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
-                          <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">{item.views}</span>
+                        <div className="w-14 flex-shrink-0 flex justify-center">
+                          <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
+                            <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
+                              {item.views}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="flex flex-col items-center w-10 ml-1">
+                        <div className="w-12 flex-shrink-0 flex justify-center">
                           <div
                             className={`text-xl font-black tracking-tighter tabular-nums leading-none ${
                               item.color === "green" ? "text-green-500" : "text-red-500"
@@ -829,7 +835,7 @@ export default function PlazaPage() {
                         <item.icon className="h-5 w-5" />
                       </div>
                       <div className="text-sm font-bold text-slate-800 line-clamp-1 w-full mb-0.5">{item.name}</div>
-                      <div className="text-[10px] text-slate-400 mb-1">({item.topic})</div>
+                      <div className="text-xs text-slate-500">{item.topic}</div>
                       <div className="flex items-baseline justify-center gap-1 mt-1">
                         <span
                           className={`text-lg font-black ${
@@ -906,7 +912,7 @@ export default function PlazaPage() {
                 </div>
 
                 {/* Table Header */}
-                <div className="mb-3 flex items-center gap-2 rounded-lg bg-slate-100 p-3 text-xs font-semibold text-slate-500">
+                <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-3 text-xs font-semibold text-slate-500">
                   <button className="flex w-12 justify-center items-center gap-1 hover:text-slate-800 transition-colors">
                     순위
                     <ChevronDown className="h-3 w-3" />
