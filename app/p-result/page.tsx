@@ -46,40 +46,66 @@ export default function ResultPage() {
       return
     }
 
+    let isCancelled = false;
+
     const fetchAnalysisData = async () => {
       try {
         setLoading(true)
         const email = localStorage.getItem("userEmail")
         const url = email ? `/api/analysis/result/${id}?email=${email}` : `/api/analysis/result/${id}`
         
-        const response = await fetch(url)
+        const response = await fetch(url, {
+          cache: 'no-store'
+        })
+        
         if (!response.ok) {
           throw new Error("분석 결과를 불러오는데 실패했습니다.")
         }
         const data = await response.json()
-        setAnalysisData(data.analysisData)
-        setComments(data.comments || [])
-        setLikeCount(data.interaction?.likeCount || 0)
-        setDislikeCount(data.interaction?.dislikeCount || 0)
         
-        if (data.interaction?.userInteraction === 'like') {
-            setLiked(true)
-            setDisliked(false)
-        } else if (data.interaction?.userInteraction === 'dislike') {
-            setLiked(false)
-            setDisliked(true)
-        } else {
-            setLiked(false)
-            setDisliked(false)
+        if (!isCancelled) {
+          setAnalysisData(data.analysisData)
+          setComments(data.comments || [])
+          setLikeCount(data.interaction?.likeCount || 0)
+          setDislikeCount(data.interaction?.dislikeCount || 0)
+          
+          if (data.interaction?.userInteraction === 'like') {
+              setLiked(true)
+              setDisliked(false)
+          } else if (data.interaction?.userInteraction === 'dislike') {
+              setLiked(false)
+              setDisliked(true)
+          } else {
+              setLiked(false)
+              setDisliked(false)
+          }
+
+          // [Important] Count view once per session/entry
+          if (!hasCountedView.current) {
+            hasCountedView.current = true;
+            fetch('/api/analysis/view', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ analysisId: id })
+            }).catch(err => console.error('View counting failed:', err));
+          }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.")
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.")
+        }
       } finally {
-        setLoading(false)
+        if (!isCancelled) {
+          setLoading(false)
+        }
       }
     }
 
     fetchAnalysisData()
+
+    return () => {
+      isCancelled = true;
+    };
   }, [searchParams])
 
   useEffect(() => {

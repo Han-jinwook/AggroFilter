@@ -14,14 +14,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const client = await pool.connect();
     try {
-      // [Count Update] 조회 시 조회수(view_count) 증가 및 최근 활동 시간(last_action_at) 갱신
-      await client.query(`
-        UPDATE t_analyses 
-        SET f_view_count = COALESCE(f_view_count, 0) + 1,
-            f_last_action_at = NOW()
-        WHERE f_id = $1
-      `, [id]);
-
       const analysisRes = await client.query(`
         SELECT a.*, c.f_name, c.f_profile_image_url, c.f_handle, c.f_subscriber_count
         FROM t_analyses a 

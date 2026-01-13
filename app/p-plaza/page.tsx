@@ -49,7 +49,9 @@ export default function PlazaPage() {
   const [dateFilter, setDateFilter] = useState<"1일" | "1주일" | "1개월">("1주일")
 
   // 영상 리스트 상태 관리
-  const [displayedVideos, setDisplayedVideos] = useState(5)
+  const [allAnalyzedVideos, setAllAnalyzedVideos] = useState<TVideoData[]>([])
+  const [displayedVideos, setDisplayedVideos] = useState(10)
+  const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isInfiniteScrollEnabled, setIsInfiniteScrollEnabled] = useState(false)
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -69,6 +71,26 @@ export default function PlazaPage() {
       direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
     }))
   }
+
+  // Fetch Analyzed Videos (Real Data)
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setIsLoadingVideos(true)
+      try {
+        const res = await fetch(`/api/plaza/videos?period=${selectedPeriod}&sort=${videoSortConfig.key}&direction=${videoSortConfig.direction}`)
+        if (res.ok) {
+          const data = await res.json()
+          setAllAnalyzedVideos(data.videos || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch videos:', error)
+      } finally {
+        setIsLoadingVideos(false)
+      }
+    }
+
+    fetchVideos()
+  }, [selectedPeriod, videoSortConfig])
 
   // Fetch Hot Issues
   useEffect(() => {
@@ -101,79 +123,7 @@ export default function PlazaPage() {
     fetchHotIssues()
   }, [hotFilter, sortDirection])
 
-  const allAnalyzedVideos: TVideoData[] = useMemo(
-    () => [
-      {
-        date: "25.02.07",
-        title: "곧 컴백한다는 지드래곤의 솔로곡",
-        channel: "아이돌아카이브",
-        views: "1,500",
-        score: 85,
-        color: "green",
-      },
-      {
-        date: "25.02.07",
-        title: "🚨긴급🚨 비트코인 지금 당장 사세요!!!",
-        channel: "코인왕",
-        views: "890",
-        score: 35,
-        color: "red",
-      },
-      {
-        date: "25.02.06",
-        title: "흑백요리사 에기잘 갈데 꺼더리면 안 된다",
-        channel: "백종원",
-        views: "2,100",
-        score: 80,
-        color: "green",
-      },
-      {
-        date: "25.02.06",
-        title: "충격! 이 영상 보면 인생 바뀝니다",
-        channel: "클릭베이트TV",
-        views: "3,400",
-        score: 25,
-        color: "red",
-      },
-      {
-        date: "25.02.05",
-        title: "전문가가 알려주는 투자 비법",
-        channel: "경제뉴스",
-        views: "560",
-        score: 72,
-        color: "green",
-      },
-      ...Array.from({ length: 20 }, (_, i) => ({
-        date: `25.02.0${(i % 5) + 1}`,
-        title: `추가 영상 제목 ${i + 6}`,
-        channel: `채널${i + 6}`,
-        views: `${(i + 1) * 150}`,
-        score: 50 + (i % 50),
-        color: (i % 2 === 0 ? "green" : "red") as "green" | "red",
-      })),
-    ],
-    [],
-  )
-
-  const sortedVideos = useMemo(() => {
-    const videos = [...allAnalyzedVideos]
-    return videos.sort((a, b) => {
-      const direction = videoSortConfig.direction === "asc" ? 1 : -1
-
-      switch (videoSortConfig.key) {
-        case "date":
-          return direction * (new Date(a.date).getTime() - new Date(b.date).getTime())
-        case "views":
-          const viewsA = Number.parseInt(a.views.replace(/,/g, ""))
-          const viewsB = Number.parseInt(b.views.replace(/,/g, ""))
-          return direction * (viewsA - viewsB)
-        case "score":
-          return direction * (a.score - b.score)
-        default:
-          return 0
-      }
-    })
-  }, [allAnalyzedVideos, videoSortConfig])
+  const sortedVideos = allAnalyzedVideos // API에서 이미 소팅되어 옴
 
   useEffect(() => {
     if (!isInfiniteScrollEnabled) return
@@ -391,6 +341,7 @@ export default function PlazaPage() {
                           item={{ ...item, color }} 
                           type={hotFilter === 'views' ? 'views' : hotFilter === 'trust' ? 'trust' : 'aggro'}
                           label={hotFilter === 'aggro' ? '어그로' : undefined}
+                          onClick={() => router.push(`/p-result?id=${item.id}`)}
                         />
                       )
                     })}
@@ -438,23 +389,23 @@ export default function PlazaPage() {
                 </div>
                 <div className="ml-2 flex-1">제목 / 채널</div>
                 <div
-                  className="w-16 text-center cursor-pointer flex items-center justify-center gap-1 hover:text-slate-800"
+                  className="w-16 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
                   onClick={() => handleVideoSort("views")}
                 >
-                  조회수
+                  <span className="whitespace-nowrap">조회수</span>
                   <ChevronDown
-                    className={`h-3 w-3 transition-transform ${
+                    className={`h-3 w-3 flex-shrink-0 transition-transform ${
                       videoSortConfig.key === "views" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
                     }`}
                   />
                 </div>
                 <div
-                  className="w-12 text-center cursor-pointer flex items-center justify-center gap-1 hover:text-slate-800"
+                  className="w-16 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
                   onClick={() => handleVideoSort("score")}
                 >
-                  신뢰도
+                  <span className="whitespace-nowrap">신뢰도</span>
                   <ChevronDown
-                    className={`h-3 w-3 transition-transform ${
+                    className={`h-3 w-3 flex-shrink-0 transition-transform ${
                       videoSortConfig.key === "score" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
                     }`}
                   />
@@ -462,50 +413,76 @@ export default function PlazaPage() {
               </div>
 
               <div className="space-y-3">
-                {sortedVideos.slice(0, displayedVideos).map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-all hover:shadow-md"
-                  >
-                    <div className="flex flex-col text-center text-xs text-slate-600 w-12">
-                      <div className="font-mono font-bold tracking-tighter text-slate-500">
-                        {item.date.split(".")[1]}.{item.date.split(".")[2]}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0 ml-2">
-                      <Link
-                        href={`/result?id=${idx + 1}`} // Using idx for now as placeholder ID
-                        className="text-sm font-semibold text-slate-800 line-clamp-1 mb-0.5 hover:text-purple-600 hover:underline decoration-purple-400 decoration-2 underline-offset-2 tracking-tight"
-                      >
-                        {item.title}
-                      </Link>
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <Image
-                          src="/placeholder.svg?height=12&width=12"
-                          alt=""
-                          width={12}
-                          height={12}
-                          className="rounded-full"
-                        />
-                        <span className="truncate">{item.channel}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center w-16 bg-blue-100 rounded-lg p-1 border border-blue-300">
-                      <Users className="h-3 w-3 text-blue-600 mb-0.5" />
-                      <span className="text-sm font-bold text-blue-700 tabular-nums tracking-tight">{item.views}</span>
-                    </div>
-
-                    <div
-                      className={`text-2xl font-black tracking-tighter tabular-nums w-12 text-center ${
-                        item.color === "green" ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {item.score}
-                    </div>
+                {isLoadingVideos ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-purple-500"></div>
+                    <p className="text-sm text-slate-400 font-medium">영상을 불러오는 중입니다...</p>
                   </div>
-                ))}
+                ) : sortedVideos.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    선택한 기간 내 분석된 영상이 없습니다
+                  </div>
+                ) : (
+                  sortedVideos.slice(0, displayedVideos).map((item, idx) => {
+                    // "2026-01-13T13:52:00.000Z" -> "01.13"
+                    const dateObj = new Date(item.date);
+                    const formattedDate = `${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
+                    
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className="flex items-center rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-all hover:shadow-md"
+                      >
+                        <div className="flex flex-col text-center text-xs text-slate-600 w-12">
+                          <div className="font-mono font-bold tracking-tighter text-slate-400">
+                            {formattedDate}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0 ml-2">
+                          <Link
+                            href={`/p-result?id=${item.id}`}
+                            className="text-sm font-semibold text-slate-800 line-clamp-1 mb-0.5 hover:text-purple-600 hover:underline decoration-purple-400 decoration-2 underline-offset-2 tracking-tight"
+                          >
+                            {item.title}
+                          </Link>
+                          <Link
+                            href={`/p-result?id=${item.id}`}
+                            className="text-xs text-slate-500 hover:text-purple-600 hover:underline decoration-purple-400 decoration-1 underline-offset-2 flex items-center gap-1"
+                          >
+                            <Image
+                              src={item.channelIcon || "/placeholder.svg?height=12&width=12"}
+                              alt=""
+                              width={12}
+                              height={12}
+                              className="rounded-full flex-shrink-0"
+                            />
+                            <span className="truncate">{item.channel}</span>
+                          </Link>
+                        </div>
+
+                        <div className="flex flex-col items-center w-16 bg-blue-50/50 rounded-lg py-1 border border-blue-100/30">
+                          <div className="flex flex-col items-center gap-0 mb-1">
+                            <span className="text-[9px] font-bold text-blue-400/80 leading-none">조회 {item.view_count}</span>
+                            <span className="text-[9px] font-bold text-slate-400/80 leading-none mt-0.5">분석 {item.analysis_count}</span>
+                          </div>
+                          <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">{item.views}</span>
+                        </div>
+
+                        <div className="flex flex-col items-center w-12 ml-2">
+                          <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">신뢰도</span>
+                          <div
+                            className={`text-xl font-black tracking-tighter tabular-nums leading-none ${
+                              item.color === "green" ? "text-green-500" : "text-red-500"
+                            }`}
+                          >
+                            {item.score}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {!isInfiniteScrollEnabled && displayedVideos < allAnalyzedVideos.length && (

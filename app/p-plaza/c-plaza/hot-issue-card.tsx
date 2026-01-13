@@ -81,14 +81,14 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
         <div className="text-right">
           {type === "views" && (
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-slate-400">분석수</span>
-              <span className="text-base font-black text-slate-800">{item.views}</span>
+              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">전체조회</span>
+              <span className="text-base font-black text-slate-800 leading-none">{item.views}</span>
             </div>
           )}
           {(type === "trust" || type === "aggro") && (
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-slate-400">{type === "trust" ? "신뢰도" : "어그로"}</span>
-              <span className={`text-base font-black ${getScoreColor()}`}>{item.score}</span>
+              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">{type === "trust" ? "신뢰도" : "어그로"}</span>
+              <span className={`text-base font-black leading-none ${getScoreColor()}`}>{item.score}</span>
             </div>
           )}
         </div>

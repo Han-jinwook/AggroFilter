@@ -44,10 +44,11 @@ export async function POST(request: Request) {
         if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
           console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
           
-          // [Count Update] 중복 요청 시 요청 횟수(request_count) 증가 및 최근 활동 시간(last_action_at) 갱신
+          // [Count Update] 중복 요청 시 요청 횟수(request_count) 및 조회수(view_count) 동시 증가
           await checkClient.query(`
             UPDATE t_analyses 
             SET f_request_count = COALESCE(f_request_count, 0) + 1,
+                f_view_count = COALESCE(f_view_count, 0) + 1,
                 f_last_action_at = NOW()
             WHERE f_id = $1
           `, [row.f_id]);
@@ -136,9 +137,9 @@ export async function POST(request: Request) {
           f_id, f_video_url, f_video_id, f_title, f_channel_id,
           f_thumbnail_url, f_transcript, f_topic, f_accuracy_score, f_clickbait_score,
           f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
-          f_ai_title_recommendation, f_user_id, f_created_at
+          f_ai_title_recommendation, f_user_id, f_request_count, f_view_count, f_created_at, f_last_action_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 1, 1, NOW(), NOW()
         )
       `, [
         analysisId,
