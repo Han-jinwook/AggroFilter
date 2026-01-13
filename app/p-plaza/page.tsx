@@ -461,13 +461,11 @@ export default function PlazaPage() {
                           </Link>
                         </div>
 
-                        <div className="flex flex-col items-center w-16 bg-blue-50/50 rounded-lg py-1 border border-blue-100/30">
-                          <span className="text-[10px] font-bold text-blue-400/80 leading-none mb-1">조회수</span>
+                        <div className="flex flex-col items-center w-12 bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
                           <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">{item.views}</span>
                         </div>
 
-                        <div className="flex flex-col items-center w-12 ml-2">
-                          <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">신뢰도</span>
+                        <div className="flex flex-col items-center w-10 ml-1">
                           <div
                             className={`text-xl font-black tracking-tighter tabular-nums leading-none ${
                               item.color === "green" ? "text-green-500" : "text-red-500"
