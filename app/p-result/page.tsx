@@ -480,7 +480,7 @@ ${content}
 
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
 
-      <main className="container px-4 py-6 pt-6">
+      <main className="container px-4 pt-6 pb-24">
         <div className="mx-auto max-w-2xl space-y-4">
           <div className="sticky top-0 z-50 bg-background pb-2 pt-2">
             <AnalysisHeader
@@ -490,7 +490,7 @@ ${content}
               videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
-              onChannelClick={() => router.push("/p-ranking")}
+              onChannelClick={() => router.push(`/p-ranking?topic=${encodeURIComponent(analysisData?.topic || "")}`)}
             />
           </div>
 
@@ -525,11 +525,6 @@ ${content}
               trafficLightImage={getTrafficLightImage(analysisData.scores.trust)}
             />
 
-          <div className="w-full py-4">
-            <div className="flex h-[100px] w-full items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50">
-              <span className="text-sm font-medium text-gray-400">Middle Banner Ad (320x100)</span>
-            </div>
-          </div>
 
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
@@ -559,7 +554,7 @@ ${content}
           )}
 
           <div
-            onClick={() => router.push("/p-ranking")}
+            onClick={() => router.push(`/p-ranking?topic=${encodeURIComponent(analysisData?.topic || "")}`)}
             className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-2 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
           >
             <div className="mb-1 flex items-center justify-between">

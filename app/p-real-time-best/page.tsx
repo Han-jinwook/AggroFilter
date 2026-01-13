@@ -569,7 +569,7 @@ export default function RealtimeBestPage() {
                       {channelVideos[channel.id].map((video) => (
                         <Link
                           key={video.id}
-                          href={`/p-result?from=p-real-time-best&tab=channels`}
+                          href={`/p-result?id=${video.id}&from=p-real-time-best&tab=channels`}
                           className="flex items-center gap-2 rounded-lg bg-white p-2 hover:bg-slate-100 transition-colors"
                         >
                           <div className="flex items-center gap-1 text-xs text-slate-600">

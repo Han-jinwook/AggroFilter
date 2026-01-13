@@ -43,6 +43,15 @@ export async function POST(request: Request) {
         // 0점이거나 null이면 실패로 간주하고 재분석 진행
         if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
           console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
+          
+          // [Count Update] 중복 요청 시 요청 횟수(request_count) 증가 및 최근 활동 시간(last_action_at) 갱신
+          await checkClient.query(`
+            UPDATE t_analyses 
+            SET f_request_count = COALESCE(f_request_count, 0) + 1,
+                f_last_action_at = NOW()
+            WHERE f_id = $1
+          `, [row.f_id]);
+
           return NextResponse.json({ 
             message: '이미 분석된 영상입니다.',
             analysisId: row.f_id

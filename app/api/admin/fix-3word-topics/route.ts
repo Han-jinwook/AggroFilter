@@ -7,7 +7,8 @@ export const maxDuration = 300; // 5 minutes
 
 const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Updated to gemini-2.0-flash-lite
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
 async function getEmbedding(text: string) {

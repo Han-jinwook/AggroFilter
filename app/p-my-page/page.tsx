@@ -61,9 +61,19 @@ export default function MyPagePage() {
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isLongPressRef = useRef(false)
 
-  // Sorted Videos Logic
+  // Sorted & Filtered Videos Logic
   const sortedVideos = useMemo(() => {
-    return [...analyzedVideos].sort((a, b) => {
+    let filtered = analyzedVideos
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(v => 
+        v.title.toLowerCase().includes(query) || 
+        v.channel.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered.sort((a, b) => {
       if (sortBy === "date") {
         // 정밀 타임스탬프(fullDate)가 있으면 그것을 우선 사용, 없으면 기존 날짜 문자열 사용
         if (a.fullDate && b.fullDate) {
@@ -74,7 +84,7 @@ export default function MyPagePage() {
         return b.score - a.score // 신뢰도순 (높은 점수 우선)
       }
     })
-  }, [analyzedVideos, sortBy])
+  }, [analyzedVideos, sortBy, searchQuery])
 
   // Derived Statistics & Data
   const { stats, greenTopics, redTopics, channels, groupedVideos } = useMemo(() => {
@@ -133,6 +143,9 @@ export default function MyPagePage() {
       avgScore: Math.round(data.totalScore / data.count)
     }));
 
+    // [Logic Update] 사용자 요청 반영: 70점 기준으로 원복
+    // 70점 이상: 신뢰도 높음 (Green)
+    // 70점 미만: 주의 필요 (Yellow + Red)
     const green = topics
       .filter(t => t.avgScore >= 70)
       .sort((a, b) => b.avgScore - a.avgScore)
@@ -284,30 +297,42 @@ export default function MyPagePage() {
     }
   }
 
-  const sortedChannels = [...channels].sort((a, b) => {
-    let aValue: any = a[sortKey === "name" ? "channelName" : sortKey]
-    let bValue: any = b[sortKey === "name" ? "channelName" : sortKey]
+  const sortedChannels = useMemo(() => {
+    let filtered = [...channels]
 
-    if (sortKey === "videoCount" || sortKey === "rankScore") {
-      aValue = Number(aValue)
-      bValue = Number(bValue)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(c => 
+        c.channelName.toLowerCase().includes(query) ||
+        c.topic.toLowerCase().includes(query)
+      )
     }
 
-    if (aValue < bValue) return sortOrder === "asc" ? -1 : 1
-    if (aValue > bValue) return sortOrder === "asc" ? 1 : -1
-    return 0
-  })
+    return filtered.sort((a, b) => {
+      let aValue: any = a[sortKey === "name" ? "channelName" : sortKey]
+      let bValue: any = b[sortKey === "name" ? "channelName" : sortKey]
+
+      if (sortKey === "videoCount" || sortKey === "rankScore") {
+        aValue = Number(aValue)
+        bValue = Number(bValue)
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1
+      return 0
+    })
+  }, [channels, sortKey, sortOrder, searchQuery])
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+      <main className="mx-auto max-w-5xl px-2 sm:px-4 py-4 sm:py-8 md:px-6">
         {/* My Trend Insights Section */}
-        <section className="mb-5">
-          <div className="flex items-end justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <TrendingUp className="h-6 w-6 text-indigo-600" />
+        <section className="mb-3">
+          <div className="flex items-end justify-between mb-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
               나의 트렌드 인사이트
             </h2>
             <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
@@ -322,12 +347,12 @@ export default function MyPagePage() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
             {/* Tab Headers */}
             <div className="flex border-b border-slate-100">
               <button
                 onClick={() => setActiveTopicTab("trust")}
-                className={`flex-1 py-4 text-center text-sm font-bold transition-colors ${
+                className={`flex-1 py-2.5 text-center text-xs sm:text-sm font-bold transition-colors ${
                   activeTopicTab === "trust"
                     ? "text-emerald-600 bg-emerald-50/50 border-b-2 border-emerald-500"
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
@@ -337,7 +362,7 @@ export default function MyPagePage() {
               </button>
               <button
                 onClick={() => setActiveTopicTab("caution")}
-                className={`flex-1 py-4 text-center text-sm font-bold transition-colors ${
+                className={`flex-1 py-2.5 text-center text-xs sm:text-sm font-bold transition-colors ${
                   activeTopicTab === "caution"
                     ? "text-rose-600 bg-rose-50/50 border-b-2 border-rose-500"
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
@@ -348,17 +373,17 @@ export default function MyPagePage() {
             </div>
 
             {/* Content Area */}
-            <div className="p-6 relative transition-colors duration-300">
+            <div className="p-3 relative transition-colors duration-300">
               {activeTopicTab === "trust" ? (
                 <>
                   <div className="relative w-full group animate-in slide-in-from-right-4 duration-300">
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {greenTopics.length > 0 ? (
                         greenTopics.map((topic) => (
                           <span
                             key={topic}
-                            className="flex-shrink-0 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-bold shadow-sm border border-emerald-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                            className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs sm:text-sm font-bold shadow-sm border border-emerald-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
                           >
                             #{topic}
                           </span>
@@ -368,7 +393,7 @@ export default function MyPagePage() {
                             아직 신뢰도 높은 주제가 없습니다.
                          </div>
                       )}
-                      <div className="w-4 flex-shrink-0" />
+                      <div className="w-12 flex-shrink-0" />
                     </div>
                   </div>
                 </>
@@ -376,12 +401,12 @@ export default function MyPagePage() {
                 <>
                   <div className="relative w-full group animate-in slide-in-from-right-4 duration-300">
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-                    <div className="flex gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {redTopics.length > 0 ? (
                         redTopics.map((topic) => (
                           <span
                             key={topic}
-                            className="flex-shrink-0 px-4 py-2 rounded-xl bg-rose-50 text-rose-700 text-sm font-bold shadow-sm border border-rose-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                            className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs sm:text-sm font-bold shadow-sm border border-rose-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
                           >
                             #{topic}
                           </span>
@@ -391,7 +416,7 @@ export default function MyPagePage() {
                             주의가 필요한 주제가 없습니다.
                         </div>
                       )}
-                      <div className="w-4 flex-shrink-0" />
+                      <div className="w-12 flex-shrink-0" />
                     </div>
                   </div>
                 </>
@@ -402,34 +427,40 @@ export default function MyPagePage() {
 
         {/* Navigation Tabs */}
         <div className="z-40 mb-2 flex flex-col lg:flex-row items-center justify-between gap-2 bg-transparent transition-all py-0.5">
-          <div className="flex items-center gap-2 w-full lg:w-auto flex-1 max-w-2xl transition-all duration-300 ease-in-out mb-2 lg:mb-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full lg:w-auto flex-1 max-w-2xl transition-all duration-300 ease-in-out mb-2 lg:mb-0">
             <button
               onClick={() => setActiveTab("analysis")}
-              className={`flex-1 rounded-full px-6 py-3 text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
+              className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
                 activeTab === "analysis"
-                  ? "bg-slate-900 text-white border-transparent shadow-md"
+                  ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-md shadow-orange-200"
                   : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-              } ${isSearchExpanded ? "px-4 text-xs" : ""}`}
+              } ${isSearchExpanded ? "px-3 sm:px-4" : ""}`}
             >
-              {isSearchExpanded ? "영상" : "분석 영상"}
+              {isSearchExpanded ? "영상" : <><span className="sm:hidden">영상</span><span className="hidden sm:inline">분석 영상</span></>}
             </button>
 
             {!isSearchExpanded ? (
               <button
                 onClick={() => setIsSearchExpanded(true)}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
               >
-                <Search className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 group-hover:text-slate-600" />
               </button>
             ) : (
               <div className="flex flex-[2] items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 shadow-md animate-in fade-in zoom-in-95 duration-200 transition-all">
-                <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="제목 / 채널명 검색"
-                  className="flex-1 min-w-0 bg-transparent text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.currentTarget.blur() // 키보드 닫기 (검색창은 유지)
+                    }
+                  }}
+                  enterKeyHint="search"
+                  placeholder="검색"
+                  className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
                   autoFocus
                   onBlur={() => {
                     if (!searchQuery) setIsSearchExpanded(false)
@@ -442,20 +473,20 @@ export default function MyPagePage() {
                   }}
                   className="flex-shrink-0 rounded-full p-1 hover:bg-slate-100"
                 >
-                  <X className="h-4 w-4 text-slate-400" />
+                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
                 </button>
               </div>
             )}
 
             <button
               onClick={() => setActiveTab("channels")}
-              className={`flex-1 rounded-full px-6 py-3 text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
+              className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
                 activeTab === "channels"
-                  ? "bg-slate-900 text-white border-transparent shadow-md"
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200"
                   : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-              } ${isSearchExpanded ? "px-4 text-xs" : ""}`}
+              } ${isSearchExpanded ? "px-3 sm:px-4" : ""}`}
             >
-              {isSearchExpanded ? "채널" : "나의 채널"}
+               {isSearchExpanded ? "채널" : <><span className="sm:hidden">채널</span><span className="hidden sm:inline">나의 채널</span></>}
             </button>
           </div>
 
@@ -464,16 +495,16 @@ export default function MyPagePage() {
               <div className="flex items-center p-1 bg-white rounded-full border border-slate-200 shadow-sm">
                 <button
                   onClick={() => setSortBy("date")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
-                    sortBy === "date" ? "bg-slate-900 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-200 ${
+                    sortBy === "date" ? "bg-orange-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                   }`}
                 >
                   최신순
                 </button>
                 <button
                   onClick={() => setSortBy("trust")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
-                    sortBy === "trust" ? "bg-slate-900 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-200 ${
+                    sortBy === "trust" ? "bg-orange-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
                   }`}
                 >
                   신뢰도순
@@ -525,7 +556,7 @@ export default function MyPagePage() {
                             alt={video.channel}
                             fill
                             className="object-cover"
-                        />
+                          />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-slate-200 text-[10px] font-bold text-slate-500">
                             {(video.channel || '?').substring(0, 1)}
@@ -556,7 +587,7 @@ export default function MyPagePage() {
             )
           ) : (
             /* Channel List Table */
-            <div className="rounded-3xl bg-white p-4 shadow-lg border border-slate-100 relative">
+            <div className="rounded-3xl bg-white p-2 sm:p-4 shadow-lg border border-slate-100 relative">
               {/* Tooltip UI restored */}
               {showGuide && (
                 <div className="absolute -top-24 left-1/2 transform -translate-x-1/2 z-50 w-64 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -578,58 +609,58 @@ export default function MyPagePage() {
               )}
 
               {/* Table Header */}
-              <div className="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-medium text-slate-400 px-1">
+              <div className="mb-2 flex items-center gap-1 sm:gap-2 border-b border-slate-100 pb-2 text-[10px] sm:text-xs font-medium text-slate-400 px-1">
                 <button
                   onClick={() => handleSort("date")}
-                  className="flex items-center gap-1 hover:text-slate-600 w-9 pl-1"
+                  className="flex items-center gap-1 hover:text-slate-600 w-8 sm:w-9 pl-1"
                 >
                   날짜
                   <ChevronDown
-                    className={`h-3 w-3 transition-colors ${sortKey === "date" ? "text-slate-800" : "text-slate-300"}`}
+                    className={`h-3 w-3 transition-all ${sortKey === "date" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                   />
                 </button>
                 <button
                   onClick={() => handleSort("name")}
-                  className="flex items-center gap-1 hover:text-slate-600 flex-1 pl-4"
+                  className="flex items-center gap-1 hover:text-slate-600 flex-1 pl-2 sm:pl-4"
                 >
                   채널명
                   <ChevronDown
-                    className={`h-3 w-3 transition-colors ${sortKey === "name" ? "text-slate-800" : "text-slate-300"}`}
+                    className={`h-3 w-3 transition-all ${sortKey === "name" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                   />
                 </button>
-                <div className="ml-auto flex gap-2 pr-1">
+                <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
                     onClick={() => handleSort("topic")}
-                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-16"
+                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-16 sm:w-20"
                   >
                     주제
                     <ChevronDown
-                      className={`h-3 w-3 transition-colors ${sortKey === "topic" ? "text-slate-800" : "text-slate-300"}`}
+                      className={`h-3 w-3 transition-all ${sortKey === "topic" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                     />
                   </button>
                   <button
                     onClick={() => handleSort("videoCount")}
-                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-10"
+                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-11 sm:w-12 whitespace-nowrap"
                   >
-                    영상수
+                    <span className="sm:hidden">영상</span><span className="hidden sm:inline">영상수</span>
                     <ChevronDown
-                      className={`h-3 w-3 transition-colors ${sortKey === "videoCount" ? "text-slate-800" : "text-slate-300"}`}
+                      className={`h-3 w-3 transition-all ${sortKey === "videoCount" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                     />
                   </button>
                   <button
                     onClick={() => handleSort("rankScore")}
-                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-10"
+                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-11 sm:w-12 whitespace-nowrap"
                   >
-                    신뢰도
+                    <span className="sm:hidden">점수</span><span className="hidden sm:inline">신뢰도</span>
                     <ChevronDown
-                      className={`h-3 w-3 transition-colors ${sortKey === "rankScore" ? "text-slate-800" : "text-slate-300"}`}
+                      className={`h-3 w-3 transition-all ${sortKey === "rankScore" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                     />
                   </button>
                 </div>
               </div>
 
               {/* Channel List */}
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 {sortedChannels.map((channel) => {
                   return (
                     <div key={channel.id} className="relative group">
@@ -641,11 +672,11 @@ export default function MyPagePage() {
                         onTouchStart={handleChannelPressStart}
                         onTouchEnd={() => handleChannelPressEnd(channel.id)}
                         onTouchCancel={handleChannelPressCancel}
-                        className="w-full rounded-xl bg-slate-800 p-4 text-white hover:bg-slate-700 transition-all shadow-sm hover:shadow-md active:scale-[0.99]"
+                        className="w-full rounded-xl bg-slate-800 p-3 sm:p-4 text-white hover:bg-slate-700 transition-all shadow-sm hover:shadow-md active:scale-[0.99]"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           {/* Date */}
-                          <div className="flex flex-col text-left text-[9px] w-9 text-slate-500 leading-tight">
+                          <div className="flex flex-col text-left text-[8px] sm:text-[9px] w-8 sm:w-9 text-slate-500 leading-tight">
                             <div>{channel.date.split(".")[0]}.</div>
                             <div className="font-medium text-slate-400">
                               {channel.date.split(".")[1]}.{channel.date.split(".")[2]}
@@ -653,18 +684,18 @@ export default function MyPagePage() {
                           </div>
 
                           {/* Channel Name */}
-                          <div className="flex-1 text-left text-sm font-bold truncate pr-2">{channel.channelName}</div>
+                          <div className="flex-1 text-left text-xs sm:text-sm font-bold truncate pr-1 sm:pr-2">{channel.channelName}</div>
 
                           {/* Right Side Columns */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2">
                             {/* Topic */}
-                            <div className="text-sm text-right w-16 truncate text-slate-300">{channel.topic}</div>
+                            <div className="text-xs sm:text-sm text-right w-16 sm:w-20 truncate text-slate-300">{channel.topic}</div>
 
                             {/* Video Count */}
-                            <div className="w-10 text-right text-sm font-medium">{channel.videoCount}</div>
+                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-medium">{channel.videoCount}</div>
 
                             {/* Rank Score */}
-                            <div className="w-10 text-right text-sm font-bold text-amber-400">{channel.rankScore}</div>
+                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-bold text-amber-400">{channel.rankScore}</div>
                           </div>
                         </div>
                       </button>
@@ -679,15 +710,15 @@ export default function MyPagePage() {
                               className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 hover:bg-slate-50 transition-colors border border-slate-100 shadow-sm group/video"
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                                <div className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
                                   {video.date.split(".")[1]}.{video.date.split(".")[2]}
                                 </div>
-                                <div className="truncate text-sm font-medium text-slate-700 group-hover/video:text-blue-600 transition-colors">
+                                <div className="truncate text-xs sm:text-sm font-medium text-slate-700 group-hover/video:text-blue-600 transition-colors">
                                   {video.title}
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-md">
+                                <span className="text-[10px] sm:text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded-md">
                                   {video.score}점
                                 </span>
                               </div>

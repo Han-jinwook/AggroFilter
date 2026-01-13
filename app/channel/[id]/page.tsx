@@ -452,7 +452,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                   <div className="divide-y divide-slate-100">
                     {getSortedVideos(topic).map((video) => (
                       <Link
-                        href={`/result?url=example&id=${video.id}`}
+                        href={`/p-result?url=example&id=${video.id}`}
                         key={video.id}
                         className="flex gap-3 p-4 hover:bg-slate-50 transition-colors group"
                       >

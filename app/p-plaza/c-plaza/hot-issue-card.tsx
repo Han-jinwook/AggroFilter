@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Share2 } from "lucide-react"
 
 interface THotIssueItem {
-  id: number
+  id: string | number
   rank: number
   title: string
   channel: string
@@ -39,17 +39,17 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
       navigator.share({
         title: item.title,
         text: `${item.channel}의 "${item.title}" - 신뢰도 ${item.score}점`,
-        url: `${window.location.origin}/result?id=${item.id}`,
+        url: `${window.location.origin}/p-result?id=${item.id}`,
       })
     } else {
-      navigator.clipboard.writeText(`${window.location.origin}/result?id=${item.id}`)
+      navigator.clipboard.writeText(`${window.location.origin}/p-result?id=${item.id}`)
       alert("링크가 복사되었습니다!")
     }
   }
 
   return (
     <Link
-      href={`/result?id=${item.id}`}
+      href={`/p-result?id=${item.id}`}
       className="group flex items-center gap-2.5 rounded-2xl border-2 border-slate-100 bg-white p-2.5 transition-all hover:-translate-y-1 hover:border-slate-200 hover:shadow-lg active:scale-[0.99]"
     >
       <div
@@ -92,13 +92,14 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
             </div>
           )}
         </div>
-        <button
+        <div
+          role="button"
           onClick={handleShare}
-          className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+          className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
           title="공유하기"
         >
           <Share2 className="h-4 w-4" />
-        </button>
+        </div>
       </div>
     </Link>
   )

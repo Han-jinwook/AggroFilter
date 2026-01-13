@@ -1,14 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
 
 interface TChannel {
-  id: number
+  id: string
   rank: number
   name: string
   avatar: string
@@ -21,190 +21,74 @@ export default function ChannelRankingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const fromTab = searchParams.get("tab")
-  const [originalSearchQuery] = useState("세계 경제")
-  const [searchQuery, setSearchQuery] = useState("세계 경제")
+  
+  // URL params로부터 주제어 획득 (검색 기능 제거로 인해 고정값 사용)
+  const currentTopic = searchParams.get("topic") || ""
+  
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [hasBeenFocused, setHasBeenFocused] = useState(false)
+  const [availableTopics, setAvailableTopics] = useState<string[]>([])
+  
+  // Real Data State
+  const [channels, setChannels] = useState<TChannel[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const channels: TChannel[] = [
-    { id: 1, rank: 1, name: "경제", avatar: "/placeholder.svg?height=40&width=40", score: 90, color: "text-green-500" },
-    {
-      id: 2,
-      rank: 2,
-      name: "세계 경제 분석",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 88,
-      color: "text-green-500",
-    },
-    {
-      id: 3,
-      rank: 3,
-      name: "서울경제TV",
-      avatar: "/images/channel-logo.png",
-      score: 75,
-      color: "text-green-500",
-      highlight: true,
-    },
-    {
-      id: 4,
-      rank: 4,
-      name: "경제 트렌드 라이브",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 70,
-      color: "text-green-500",
-    },
-    {
-      id: 5,
-      rank: 5,
-      name: "경제 예측 전문가",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 65,
-      color: "text-orange-500",
-    },
-    {
-      id: 6,
-      rank: 6,
-      name: "경제 이슈 포커스",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 55,
-      color: "text-orange-500",
-    },
-    {
-      id: 7,
-      rank: 7,
-      name: "신 경제 전망",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 50,
-      color: "text-red-500",
-    },
-    {
-      id: 8,
-      rank: 8,
-      name: "지구촌 경제",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 48,
-      color: "text-red-500",
-    },
-    {
-      id: 9,
-      rank: 9,
-      name: "경제 이슈 리더존",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 45,
-      color: "text-red-500",
-    },
-    {
-      id: 10,
-      rank: 10,
-      name: "경제숏TV",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 41,
-      color: "text-red-500",
-    },
-    {
-      id: 11,
-      rank: 11,
-      name: "알뜰살뜰 경제",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 38,
-      color: "text-red-500",
-    },
-    {
-      id: 12,
-      rank: 12,
-      name: "경제 지식 한 페이지",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 35,
-      color: "text-red-500",
-    },
-    {
-      id: 13,
-      rank: 13,
-      name: "신세계 경제",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 33,
-      color: "text-red-500",
-    },
-    {
-      id: 14,
-      rank: 14,
-      name: "세상 모든 경제",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 29,
-      color: "text-red-500",
-    },
-    {
-      id: 15,
-      rank: 15,
-      name: "나만 알고싶은 경제학",
-      avatar: "/placeholder.svg?height=40&width=40",
-      score: 25,
-      color: "text-red-500",
-    },
-  ]
+  // Fetch Topics on mount
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const res = await fetch('/api/topics')
+        if (res.ok) {
+          const data = await res.json()
+          setAvailableTopics(data.topics || [])
+        }
+      } catch (error) {
+        console.error("Failed to fetch topics:", error)
+      }
+    }
+    fetchTopics()
+  }, [])
 
-  const topics = ["#주식", "#K팝 아이돌", "#세계 요리", "#스포츠"]
+  // Fetch Channels on mount
+  useEffect(() => {
+    const fetchChannels = async () => {
+      setIsLoading(true)
+      try {
+        const res = await fetch(`/api/ranking?query=${encodeURIComponent(currentTopic)}`)
+        if (res.ok) {
+          const data = await res.json()
+          const formatted = data.channels.map((c: any) => ({
+            id: c.id,
+            rank: c.rank,
+            name: c.name,
+            avatar: c.avatar,
+            score: c.score,
+            color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
+            highlight: false
+          }))
+          setChannels(formatted)
+        }
+      } catch (error) {
+        console.error("Failed to fetch ranking:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const allTopics = [
-    "세계 경제",
-    "세계 요리",
-    "세계 여행",
-    "주식",
-    "한국 주식",
-    "미국 주식",
-    "중국 주식",
-    "K팝 아이돌",
-    "K팝 댄스",
-    "스포츠",
-    "스포츠 분석",
-    "경제",
-    "경제 뉴스",
-  ]
-
-  const filteredTopics = searchQuery.trim()
-    ? allTopics.filter((topic) => topic.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5)
-    : []
+    fetchChannels()
+  }, [currentTopic])
 
   const toggleTooltip = (tooltipId: string) => {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
   }
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchQuery(value)
-    setShowSuggestions(value.trim().length > 0)
-    setIsTopicDropdownOpen(false)
-  }
-
-  const handleSearchFocus = () => {
-    if (!hasBeenFocused) {
-      setSearchQuery("")
-      setHasBeenFocused(true)
-    }
-    setShowSuggestions(true)
-    setIsTopicDropdownOpen(false)
-  }
-
-  const handleSuggestionClick = (topic: string) => {
-    setSearchQuery(topic)
-    setShowSuggestions(false)
-  }
-
   const handleTopicDropdownToggle = () => {
     setIsTopicDropdownOpen(!isTopicDropdownOpen)
-    setShowSuggestions(false)
   }
 
-  const handleSearchBlur = () => {
-    setTimeout(() => {
-      setShowSuggestions(false)
-      if (searchQuery.trim() === "") {
-        setSearchQuery(originalSearchQuery)
-        setHasBeenFocused(false)
-      }
-    }, 200)
+  const handleTopicClick = (topic: string) => {
+    router.push(`/p-ranking?topic=${encodeURIComponent(topic)}`)
+    setIsTopicDropdownOpen(false)
   }
 
   return (
@@ -250,55 +134,36 @@ export default function ChannelRankingPage() {
                   {activeTooltip === "ranking" && (
                     <div className="absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                       <p className="text-xs leading-relaxed text-gray-700">
-                        검색한 주제에 대한 채널들의 신뢰도 점수를 기준으로 순위를 매깁니다.
+                        현재 주제에 대한 채널들의 신뢰도 점수를 기준으로 순위를 매깁니다.
                       </p>
                       <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="relative flex min-w-0 flex-1 items-center gap-1 rounded-full border-2 border-pink-400 bg-white px-3 py-1">
-                <span className="text-base font-medium text-gray-400">#</span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onFocus={handleSearchFocus}
-                  onBlur={handleSearchBlur}
-                  placeholder="주제 검색..."
-                  className="min-w-0 flex-1 bg-transparent px-1 text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none"
-                />
+              <div className="relative flex min-w-0 flex-1 items-center gap-2 rounded-full border-2 border-pink-400 bg-white px-4 py-1.5">
+                <span className="text-base font-bold text-pink-500">#</span>
+                <span className="flex-1 text-base font-bold text-gray-800 truncate">
+                  {currentTopic || "전체"}
+                </span>
                 <div className="relative -mt-2">
                   <button
-                    onMouseEnter={() => setActiveTooltip("search")}
+                    onMouseEnter={() => setActiveTooltip("topic")}
                     onMouseLeave={() => setActiveTooltip(null)}
-                    onClick={() => toggleTooltip("search")}
+                    onClick={() => toggleTooltip("topic")}
                     className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-500 text-[11px] font-bold text-white hover:bg-slate-600"
                   >
                     ?
                   </button>
-                  {activeTooltip === "search" && (
+                  {activeTooltip === "topic" && (
                     <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                       <p className="text-xs leading-relaxed text-gray-700">
-                        관심 있는 주제를 검색하여 해당 분야의 채널 랭킹을 확인할 수 있습니다.
+                        분석된 영상의 주제입니다. 이 주제에 대해 높은 신뢰도를 가진 채널 순위를 보여줍니다.
                       </p>
                       <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
                     </div>
                   )}
                 </div>
-                {showSuggestions && filteredTopics.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-48 overflow-y-auto rounded-2xl border-2 border-pink-300 bg-white shadow-lg">
-                    {filteredTopics.map((topic, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(topic)}
-                        className="block w-full border-b border-gray-100 px-4 py-2.5 text-left text-sm font-medium text-gray-800 transition-colors last:border-0 hover:bg-pink-50"
-                      >
-                        <span className="text-pink-500">#</span> {topic}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
               <div className="relative flex-shrink-0">
                 <button
@@ -310,27 +175,29 @@ export default function ChannelRankingPage() {
                   </svg>
                 </button>
                 {isTopicDropdownOpen && (
-                  <div className="absolute right-0 top-full z-30 mt-2 w-56 rounded-2xl bg-slate-600 p-4 shadow-xl">
+                  <div className="absolute right-0 top-full z-30 mt-2 w-56 max-h-80 overflow-y-auto rounded-2xl bg-slate-600 p-4 shadow-xl custom-scrollbar">
                     <div className="mb-3 flex items-center justify-between border-b border-slate-500 pb-2">
                       <h3 className="text-sm font-bold text-white">나의 관심 주제</h3>
-                      <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                      </svg>
+                      <button onClick={() => setIsTopicDropdownOpen(false)}>
+                        <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
                     </div>
                     <div className="space-y-2">
-                      {topics.map((topic, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setSearchQuery(topic.replace("#", ""))
-                            setIsTopicDropdownOpen(false)
-                            setHasBeenFocused(true)
-                          }}
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-slate-700"
-                        >
-                          {topic}
-                        </button>
-                      ))}
+                      {availableTopics.length > 0 ? (
+                        availableTopics.map((topic, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleTopicClick(topic)}
+                            className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-slate-700"
+                          >
+                            #{topic}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-300 text-center py-4">등록된 주제가 없습니다.</p>
+                      )}
                     </div>
                     <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 bg-slate-600"></div>
                   </div>
@@ -344,9 +211,19 @@ export default function ChannelRankingPage() {
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
               </div>
             </div>
-            <div className="overflow-hidden rounded-b-3xl border-x-4 border-b-4 border-blue-400 bg-white">
-              <div>
-                {channels.map((channel) => (
+            <div className="overflow-hidden rounded-b-3xl border-x-4 border-b-4 border-blue-400 bg-white min-h-[300px]">
+              {isLoading ? (
+                <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
+                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500"></div>
+                   <p className="text-sm font-medium">채널 데이터를 분석하고 있습니다...</p>
+                </div>
+              ) : channels.length === 0 ? (
+                <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
+                    <p className="text-sm font-medium">검색 결과가 없습니다.</p>
+                </div>
+              ) : (
+                <div>
+                  {channels.map((channel) => (
                   <Link key={channel.rank} href={`/channel/${channel.id}`} className="block">
                     <div
                       className={`grid grid-cols-[60px_1fr_100px] items-center gap-2 border-b border-gray-100 px-4 py-2.5 last:border-0 cursor-pointer transition-colors ${
@@ -379,7 +256,8 @@ export default function ChannelRankingPage() {
                     </div>
                   </Link>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
