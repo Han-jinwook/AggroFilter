@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/c-button"
@@ -15,6 +15,7 @@ import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft
 export default function ResultPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const hasCountedView = useRef(false)
   const [showMore, setShowMore] = useState(false)
   const [activeSubtitle, setActiveSubtitle] = useState<"full" | "summary" | null>(null)
   const [youthAge, setYouthAge] = useState("")

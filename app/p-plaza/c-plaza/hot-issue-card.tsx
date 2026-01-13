@@ -12,6 +12,7 @@ interface THotIssueItem {
   channel: string
   topic?: string
   views?: string
+  analysis_count?: number
   score: number
 }
 
@@ -81,8 +82,8 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
         <div className="text-right">
           {type === "views" && (
             <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">전체조회</span>
-              <span className="text-base font-black text-slate-800 leading-none">{item.views}</span>
+              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">분석</span>
+              <span className="text-base font-black text-slate-800 leading-none">{item.analysis_count || 0}</span>
             </div>
           )}
           {(type === "trust" || type === "aggro") && (
