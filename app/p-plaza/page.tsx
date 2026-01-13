@@ -462,10 +462,7 @@ export default function PlazaPage() {
                         </div>
 
                         <div className="flex flex-col items-center w-16 bg-blue-50/50 rounded-lg py-1 border border-blue-100/30">
-                          <div className="flex flex-col items-center gap-0 mb-1">
-                            <span className="text-[9px] font-bold text-blue-400/80 leading-none">조회 {item.view_count}</span>
-                            <span className="text-[9px] font-bold text-slate-400/80 leading-none mt-0.5">분석 {item.analysis_count}</span>
-                          </div>
+                          <span className="text-[10px] font-bold text-blue-400/80 leading-none mb-1">조회수</span>
                           <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">{item.views}</span>
                         </div>
 
