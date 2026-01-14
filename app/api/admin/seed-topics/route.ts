@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import topics from '@/data/topics.json';
 import { getEmbedding, translateText } from '@/lib/gemini';
 
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {

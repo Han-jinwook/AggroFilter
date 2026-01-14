@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/c-app-header'
 import { Search, X, ChevronDown, Filter } from 'lucide-react'
@@ -176,7 +176,7 @@ const channelVideos: { [key: string]: TRealtimeVideo[] } = {
   ],
 }
 
-export default function RealtimeBestPage() {
+function RealtimeBestContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const tabParam = searchParams.get('tab') as 'videos' | 'channels' | null

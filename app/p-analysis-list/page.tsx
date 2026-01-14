@@ -138,7 +138,7 @@ const mockChannels: TSubscribedChannel[] = [
   },
 ]
 
-export default function AnalysisListPage() {
+function AnalysisListContent() {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab') as 'analysis' | 'subscribed' | null
   const [activeTab, setActiveTab] = useState<'analysis' | 'subscribed'>(tabParam || 'analysis')
