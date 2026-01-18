@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { width: 300px; padding: 15px; font-family: sans-serif; }
+    .status { margin-bottom: 10px; font-weight: bold; }
+    .btn { 
+      background: #ff0000; color: white; border: none; 
+      padding: 10px; width: 100%; border-radius: 5px; cursor: pointer;
+    }
+    .btn:disabled { background: #ccc; }
+  </style>
+</head>
+<body>
+  <h3>AggroFilter</h3>
+  <div id="status" class="status">유튜브 영상을 열어주세요.</div>
+  <button id="analyzeBtn" class="btn" disabled>분석하기 (PWA로 이동)</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>
