@@ -10,7 +10,8 @@ import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2 } from "lucide-react"
+import { getCategoryName } from "@/lib/constants"
+import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
 
 export default function ResultClient() {
   const router = useRouter()
@@ -34,6 +35,8 @@ export default function ResultClient() {
   const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
+  const [playerTime, setPlayerTime] = useState(0)
+  const [showPlayer, setShowPlayer] = useState(false)
 
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -373,6 +376,59 @@ export default function ResultClient() {
     }
   }
 
+  const parseTimestamp = (text: string) => {
+    const parts = text.split(":").map(Number);
+    let seconds = 0;
+    if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+    if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return seconds;
+  };
+
+  const handleTimestampClick = (timestamp: string) => {
+    const seconds = parseTimestamp(timestamp);
+    setPlayerTime(seconds);
+    setShowPlayer(true);
+    // 플레이어가 나타나면 해당 위치로 스크롤 (필요 시)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderTextWithTimestamps = (text: string) => {
+    if (!text) return null;
+    const timestampRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
+    
+    // 줄바꿈 단위로 먼저 나눈 후 빈 줄 제거
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    return lines.map((line, lineIdx) => {
+      const segments = line.split(timestampRegex);
+      return (
+        <div key={lineIdx} className="mb-2 last:mb-0 flex items-start gap-1">
+          <div className="flex-1 flex flex-wrap items-center">
+            {segments.map((segment, i) => {
+              if (segment.match(timestampRegex)) {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleTimestampClick(segment)}
+                    className="inline-flex items-center gap-0.5 font-bold text-blue-600 hover:text-blue-800 hover:underline decoration-2 underline-offset-2 transition-colors mr-1"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    {segment}
+                  </button>
+                );
+              }
+              // 타임스탬프 뒤의 대시(-)나 공백이 중복되지 않도록 처리
+              const cleanSegment = segment.replace(/^(\s*-\s*)+/, '- ').trim();
+              if (!cleanSegment && i > 0) return null; // 타임스탬프 바로 뒤의 빈 세그먼트 무시
+
+              return <span key={i} className="text-gray-700 leading-relaxed">{segment}</span>;
+            })}
+          </div>
+        </div>
+      );
+    });
+  };
+
   const handleYouthService = () => {
     const age = Number.parseInt(youthAge)
     if (isNaN(age) || age < 8 || age > 18) {
@@ -452,7 +508,7 @@ ${content}
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
       <main className="container px-4 pt-6 pb-24">
         <div className="mx-auto max-w-2xl space-y-4">
-          <div className="sticky top-0 z-50 bg-background pb-2 pt-2">
+          <div className="bg-background pb-2 pt-2">
             <AnalysisHeader
               channelImage={analysisData.channelImage}
               channelName={analysisData.channelName}
@@ -460,8 +516,30 @@ ${content}
               videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
-              onChannelClick={() => router.push(`/p-ranking?topic=${encodeURIComponent(analysisData?.topic || "")}`)}
+              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}`)}
             />
+            {/* YouTube Embed Player - Conditional and Non-Sticky */}
+            {showPlayer && (
+              <div className="mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl border-4 border-white/20">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${analysisData.videoId}?start=${playerTime}&autoplay=1`}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  ></iframe>
+                  <button 
+                    onClick={() => setShowPlayer(false)}
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="bg-background pb-3 pt-0">
             <SubtitleButtons 
@@ -472,14 +550,18 @@ ${content}
           {activeSubtitle === "full" && (
             <div className="overflow-hidden rounded-3xl border-4 border-gray-300 bg-blue-50">
               <div className="max-h-[60vh] overflow-y-auto p-5">
-                <p className="whitespace-pre-line text-sm leading-relaxed">{analysisData.fullSubtitle}</p>
+                <p className="whitespace-pre-line text-sm leading-relaxed">
+                  {renderTextWithTimestamps(analysisData.fullSubtitle)}
+                </p>
               </div>
             </div>
           )}
           {activeSubtitle === "summary" && (
             <div className="overflow-hidden rounded-3xl border-4 border-blue-300 bg-blue-50">
               <div className="max-h-[60vh] overflow-y-auto p-5">
-                <p className="whitespace-pre-line text-sm leading-relaxed">{analysisData.summarySubtitle}</p>
+                <p className="whitespace-pre-line text-sm leading-relaxed">
+                  {renderTextWithTimestamps(analysisData.summarySubtitle)}
+                </p>
               </div>
             </div>
           )}
@@ -487,7 +569,7 @@ ${content}
               accuracy={analysisData.scores.accuracy} 
               clickbait={analysisData.scores.clickbait} 
               trust={analysisData.scores.trust} 
-              topic={analysisData.topic}
+              topic={getCategoryName(analysisData.officialCategoryId)}
               trafficLightImage={getTrafficLightImage(analysisData.scores.trust)}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
@@ -516,60 +598,79 @@ ${content}
             </div>
           )}
           <div
-            onClick={() => router.push(`/p-ranking?topic=${encodeURIComponent(analysisData?.topic || "")}`)}
-            className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-2 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
+            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}`)}
+            className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
           >
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <h3 className="text-base font-bold text-gray-800">채널 평가</h3>
+                <h3 className="text-base font-bold text-gray-800">카테고리 랭킹</h3>
                 <div className="relative">
                   <button
-                    onMouseEnter={() => setActiveTooltip("channel")}
+                    onMouseEnter={() => setActiveTooltip("ranking")}
                     onMouseLeave={() => setActiveTooltip(null)}
                     onClick={(e) => {
                       e.stopPropagation()
-                      toggleTooltip("channel")
+                      toggleTooltip("ranking")
                     }}
                     className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] text-gray-500 hover:bg-gray-100"
                   >
                     ?
                   </button>
-                  {activeTooltip === "channel" && (
-                    <div className="absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
-                      <p className="text-xs leading-relaxed text-gray-700">해당 주제 분석 영상들의 평균값</p>
-                      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
+                  {activeTooltip === "ranking" && (
+                    <div className="absolute left-1/2 bottom-full z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
+                      <p className="text-xs leading-relaxed text-gray-700">공식 카테고리 내에서 채널의 신뢰도 순위입니다.</p>
+                      <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-gray-300 bg-white"></div>
                     </div>
                   )}
                 </div>
               </div>
-              <span className="text-xs text-gray-600">(해당주제 한정)</span>
+              <div className="text-right">
+                <div className="text-xs font-bold text-indigo-600">
+                  상위 {analysisData.channelStats?.topPercentile || 0}%
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  ({analysisData.channelStats?.rank || '-'}위 / {analysisData.channelStats?.totalChannels || '-'}개)
+                </div>
+              </div>
             </div>
+            
+            {/* Percentile Progress Bar */}
+            <div className="mb-3 h-3 w-full overflow-hidden rounded-full bg-indigo-100 border border-indigo-200">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-1000"
+                style={{ width: `${100 - (analysisData.channelStats?.topPercentile || 100)}%` }}
+              />
+            </div>
+
             <div className="rounded-2xl border-2 border-indigo-200 bg-white px-3 py-2">
-              <div className="flex items-center justify-around leading-none">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-bold text-gray-800">정확성</span>
-                  <span className="text-lg font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy || 0}%</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 overflow-hidden rounded-full border border-gray-200">
+                    <Image 
+                      src={analysisData.channelImage} 
+                      alt={analysisData.channelName} 
+                      width={32} 
+                      height={32} 
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-gray-800 truncate max-w-[120px]">
+                    {analysisData.channelName}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-bold text-gray-800">어그로성</span>
-                  <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.avgClickbait || 0}%</span>
+                <div className="flex gap-3">
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-500">정확성</div>
+                    <div className="text-sm font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy || 0}%</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-500">어그로</div>
+                    <div className="text-sm font-bold text-pink-500">{analysisData.channelStats?.avgClickbait || 0}%</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[10px] text-gray-500">신뢰도</div>
+                    <div className="text-sm font-bold text-indigo-600">{analysisData.channelStats?.avgReliability || 0}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-center gap-1 pt-1 leading-none">
-                <span className="text-sm font-bold text-gray-800">신뢰도 점수</span>
-                <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.avgReliability || 0}</span>
-                <span className={`text-[10px] ${
-                  (analysisData.channelStats?.avgReliability || 0) >= 70 ? "text-green-500" :
-                  (analysisData.channelStats?.avgReliability || 0) >= 51 ? "text-yellow-500" : "text-red-500"
-                }`}>●</span>
-              </div>
-              <div className="mt-1 border-t border-gray-200 pt-1 text-center leading-none">
-                <p className="text-sm">
-                  <span className="text-lg font-bold text-pink-500">{analysisData.channelStats?.rank || '-'}</span>
-                  <span className="text-gray-600"> 위 / </span>
-                  <span className="text-gray-700">{analysisData.channelStats?.totalChannels || '-'} 채널 </span>
-                  <span className="font-semibold text-gray-700">({analysisData.channelName})</span>
-                </p>
               </div>
             </div>
           </div>

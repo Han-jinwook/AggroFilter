@@ -36,37 +36,36 @@ export async function GET(request: Request, { params }: { params: { id: string }
         totalChannels: 0
       };
 
-      if (analysis.f_channel_id && analysis.f_topic) {
+      if (analysis.f_channel_id) {
+        // [v2.0] t_rankings_cache 테이블에서 등수 및 백분위 데이터 조회
+        const rankingRes = await client.query(`
+          SELECT f_rank, f_total_count, f_top_percentile
+          FROM t_rankings_cache
+          WHERE f_channel_id = $1 AND f_category_id = $2
+        `, [analysis.f_channel_id, analysis.f_official_category_id]);
+
+        if (rankingRes.rows.length > 0) {
+          const rankData = rankingRes.rows[0];
+          channelStats.rank = Number(rankData.f_rank);
+          channelStats.totalChannels = Number(rankData.f_total_count);
+          channelStats.topPercentile = Number(rankData.f_top_percentile);
+        }
+
         // Get stats
         const statsRes = await client.query(`
           SELECT * FROM t_channel_stats 
-          WHERE f_channel_id = $1 AND f_topic = $2
-        `, [analysis.f_channel_id, analysis.f_topic]);
+          WHERE f_channel_id = $1 AND f_official_category_id = $2
+        `, [analysis.f_channel_id, analysis.f_official_category_id]);
 
         if (statsRes.rows.length > 0) {
           const stats = statsRes.rows[0];
           channelStats.avgAccuracy = Number(stats.f_avg_accuracy);
           channelStats.avgClickbait = Number(stats.f_avg_clickbait);
           channelStats.avgReliability = Number(stats.f_avg_reliability);
-
-          // Get rank and total
-          const rankRes = await client.query(`
-            SELECT 
-              (SELECT COUNT(*) + 1 FROM t_channel_stats WHERE f_topic = $1 AND f_avg_reliability > $2) as rank,
-              (SELECT COUNT(*) FROM t_channel_stats WHERE f_topic = $1) as total
-          `, [analysis.f_topic, stats.f_avg_reliability]);
-          
-          if (rankRes.rows.length > 0) {
-            channelStats.rank = Number(rankRes.rows[0].rank);
-            channelStats.totalChannels = Number(rankRes.rows[0].total);
-          }
         } else {
-            // If no stats yet (shouldn't happen if analyzed), insert default/current values just in case or treat as 1/1
             channelStats.avgAccuracy = analysis.f_accuracy_score || 0;
             channelStats.avgClickbait = analysis.f_clickbait_score || 0;
             channelStats.avgReliability = analysis.f_reliability_score || 0;
-            channelStats.rank = 1;
-            channelStats.totalChannels = 1;
         }
       }
       
@@ -167,6 +166,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             clickbait: analysis.f_clickbait_score,
             trust: analysis.f_reliability_score,
           },
+          officialCategoryId: analysis.f_official_category_id,
           channelStats: channelStats,
           summary: analysis.f_summary,
           evaluationReason: analysis.f_evaluation_reason,

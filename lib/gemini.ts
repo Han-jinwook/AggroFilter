@@ -88,103 +88,7 @@ export async function getEmbedding(text: string, apiKey: string, titleOverride?:
   });
 }
 
-// Helper: Find closest topic in DB
-export async function findClosestTopic(embedding: number[]): Promise<{ name: string, score: number } | null> {
-  try {
-    // Cosine similarity search using pgvector (<=> is distance, so 1 - distance is similarity)
-    
-    const client = await pool.connect();
-    try {
-        const vectorStr = `[${embedding.join(',')}]`;
-        
-        const res = await client.query(`
-            SELECT name_ko, (embedding <=> $1) as distance
-            FROM t_topics_master
-            ORDER BY embedding <=> $1
-            LIMIT 1
-        `, [vectorStr]);
-
-        if (res.rows.length > 0) {
-            const bestMatch = res.rows[0];
-            const similarity = 1 - bestMatch.distance; // Convert distance to similarity
-            console.log(`Topic Match: "${bestMatch.name_ko}" (Similarity: ${(similarity * 100).toFixed(1)}%)`);
-            
-            if (similarity >= 0.65) {
-                return { name: bestMatch.name_ko, score: similarity };
-            }
-        }
-        return null; // No match found
-    } finally {
-        client.release();
-    }
-  } catch (error) {
-    console.error("Vector Search Error:", error);
-    return null;
-  }
-}
-
-export async function standardizeTopic(topic: string, apiKey: string, topicEn?: string): Promise<{ finalTopic: string, isNew: boolean, log: string }> {
-    let finalTopic = topic;
-    let log = "";
-    let isNew = false;
-
-    // [Safety Guard] 강제 2단어 트리밍
-    const words = finalTopic.trim().split(/\s+/);
-    if (words.length > 2) {
-        const original = finalTopic;
-        finalTopic = words.slice(0, 2).join(' '); // 앞 2단어만 사용
-        log += `[Truncated] "${original}" -> "${finalTopic}". `;
-        console.warn(`⚠️ Topic Violation Fix: "${original}" -> "${finalTopic}"`);
-    }
-
-    console.log(`Processing Topic: "${finalTopic}"`);
-    
-    // Ensure we have an English title for embedding
-    let englishTitle = topicEn;
-    if (!englishTitle) {
-        console.log(`Translating topic "${finalTopic}" for embedding...`);
-        englishTitle = await translateText(finalTopic, apiKey);
-    }
-
-    const aiTopicEmbedding = await getEmbedding(finalTopic, apiKey, englishTitle);
-    
-    if (aiTopicEmbedding) {
-        const existingTopicMatch = await findClosestTopic(aiTopicEmbedding);
-        if (existingTopicMatch) {
-            log += `[Standardized] "${finalTopic}" -> "${existingTopicMatch.name}" (Score: ${(existingTopicMatch.score * 100).toFixed(1)}%).`;
-            console.log(`Topic Standardized: "${finalTopic}" -> "${existingTopicMatch.name}"`);
-            finalTopic = existingTopicMatch.name; 
-        } else {
-            log += `[New Topic] "${finalTopic}" registered (No match >= 65%).`;
-            console.log(`New Topic Detected: "${finalTopic}" (No match >= 65%)`);
-            isNew = true;
-            
-            // Auto-register new topic as Master Topic
-            try {
-                const client = await pool.connect();
-                try {
-                    const vectorStr = `[${aiTopicEmbedding.join(',')}]`;
-                    await client.query(`
-                        INSERT INTO t_topics_master (name_ko, embedding)
-                        VALUES ($1, $2)
-                        ON CONFLICT (name_ko) DO NOTHING
-                    `, [finalTopic, vectorStr]);
-                    
-                    console.log(`✅ New Master Topic Registered: "${finalTopic}"`);
-                } finally {
-                    client.release();
-                }
-            } catch (dbError) {
-                console.error("Failed to auto-register new master topic:", dbError);
-                log += " (DB Error during registration).";
-            }
-        }
-    } else {
-        log += " (Embedding generation failed).";
-    }
-
-    return { finalTopic, isNew, log };
-}
+// StandardizeTopic 함수 및 관련 헬퍼 함수 제거 (v2.0 Native ID 체제 전환)
 
 // Helper: Retry logic wrapper with exponential backoff
 async function generateContentWithRetry(model: any, prompt: string | Array<string | any>, maxRetries = 3, baseDelay = 1000) {
@@ -258,89 +162,50 @@ export async function analyzeContent(
   }
 
   const systemPrompt = `
-    # 어그로필터 분석 AI용 프롬프트 (영상 및 썸네일 멀티모달 분석)
+    # 어그로필터 분석 AI용 프롬프트 (유튜브 생태계 분석가 모드)
     
     ## 역할
-    너는 유튜브 영상의 **제목, 썸네일(이미지), 본문 내용**을 종합적으로 분석하여, 정확성, 어그로성, 신뢰도 점수를 산출하고 평가하는 시스템이다. 
-    특히 **썸네일의 시각적 과장**과 **제목의 워딩**이 **본문의 실제 팩트**와 얼마나 괴리감이 있는지를 냉정하게 판단해야 한다.
+    너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
+    유튜브 특유의 표현 방식을 이해하되, 시청자가 실제로 **"속았다"**고 느끼는지 여부를 핵심 기준으로 점수를 매겨라.
     
-    ## 분석 기준
-    1. 주제 선정 기준 (매우 중요 - 소재가 아닌 '관점'으로 분류할 것)
-    - 콘텐츠가 다루는 핵심 소재(Keyword)가 아니라, 그 소재를 **다루는 방식과 목적(Perspective)**을 보고 분야를 결정하시오.
-    - **[핵심 구분 가이드 (오분류 주의)]**:
-      - **소재: 지진/쓰나미/화산/태풍**
-        - (Prioritize) **"재난 이슈"**: 지질학적 분석이 포함되어 있더라도, 결론이 **"위험성 경고", "피해 예측", "대피 필요성", "사회적 파장"**으로 귀결된다면 반드시 이쪽으로 분류.
-        - (Limit) **"지구 과학"**: 순수하게 판 구조론, 단층의 원리 등 **교과서적인 이론 설명**에만 집중하고, 현실적인 공포나 위험을 강조하지 않는 교육용 콘텐츠일 때만 선택.
-        - (Forbidden) **"환경 문제"**: 지진은 지각 변동(Tectonics)이지, 환경 오염이나 기후 변화(Climate Change)가 아님. **절대 혼동 금지.**
-      - **소재: 환경/기후**
-        - (O) **"환경 문제"**: 쓰레기, 수질 오염, 미세먼지, 지구 온난화, 이상 기후 등 **인위적이거나 장기적인 환경 변화**를 다룰 때만 사용.
-        - (X) 급작스러운 자연 재해(지진/화산) -> "재난 이슈"
-      - **소재: 질병/건강**
-        - (X) "이것 먹으면 암 걸린다", 공포 마케팅 -> **"건강 정보"**
-        - (O) 의학적 기전, 임상 실험 결과 분석 -> **"의학"**
-    - **반드시 한글 2단어 (명사 + 명사, 혹은 형용사 + 명사)** 형태로 작성할 것.
-    - **절대 금지**: 구체적인 고유명사(국가명, 브랜드명, 인물명 등)나 미시적인 소재를 주제로 삼지 말 것.
-      - (X) "베네수엘라 사태", "아이폰 리뷰", "이재명 발언", "일본 지진"
-      - (O) "국제 정세", "IT 기기", "국내 정치", "재난 이슈"
-    - **참고 표준 주제어 목록** (가능하면 아래 목록이나 이와 유사한 수준의 단어를 선택하시오):
-      - [정치/사회]: 국제 정세, 국내 정치, 시사 이슈, 사회 문제, 재난 이슈, 법률 상식
-      - [경제/금융]: 세계 경제, 경제 분석, 주식 투자, 부동산, 생활 경제, 재테크
-      - [비즈니스]: 자영업, 창업 정보, 기업 경영, 마케팅, 성공 마인드
-      - [기술/과학]: IT 기술, 과학 기술, 미래 산업, AI 트렌드, 토목 공학, 지구 과학
-      - [라이프]: 건강 정보, 자기 개발, 인간 관계, 심리 분석
-    - **[중요] 선정된 한글 주제의 영문 번역(topic_en)도 반드시 함께 반환할 것.** (예: "국제 정세" -> "International Politics")
+    ## 분석 및 채점 기준 (Scoring Rubric)
+    0점(Clean)에서 100점(Aggro) 사이로 어그로 점수를 매길 때, 아래 기준을 엄격히 따라라.
     
-    2. 정확성 평가 기준
-    - 제목과 본문 내용 일치도
-    - 광고성 여부 판단 및 진실성
-    - 감정적 프레임, 편향적 해석, 왜곡 여부
-    - 출처 및 인용 데이터의 공신력
-    - 정확성: 1~100점 (근거 필수 기재)
+    1. 정확성 점수 (Accuracy Score) - **[선행 평가]**
+    - 영상 본문 내용이 팩트에 얼마나 충실한지, 정보로서의 가치가 있는지 0~100점으로 먼저 평가하라.
+
+    2. 어그로 지수 (Clickbait Score) - **[Fact-Based Gap Analysis]** 🎯
+    - **핵심 원칙**: 어그로 점수는 단순한 '표현의 자극성'이 아니라, '제목/썸네일이 약속한 내용'과 '실제 영상 내용' 사이의 **불일치(Gap)** 정도를 기준으로 산산정한다.
+
+    - **상세 점수 기준 (The Gap Scale)**:
+        - **0~20점 (일치/Marketing)**: [Gap 없음 - 피해 없음] 제목이 자극적이어도 내용이 이를 충분히 뒷받침함. (유튜브 문법상 허용되는 마케팅)
+        - **21~40점 (과장/Exaggerated)**: [시간적 피해 (Time Loss)] 작은 사실을 침소봉대하여 시청자의 시간을 낭비하게 함. 핵심 팩트는 있으나 부풀려짐.
+        - **41~60점 (왜곡/Distorted)**: [정신적 피해 (Mental Fatigue)] 문맥을 비틀거나 엉뚱한 결론을 내어 시청자에게 혼란과 짜증 유발. 정보 가치 낮음.
+        - **61~100점 (허위/Fabricated)**: [실질적 피해 (Loss)] 없는 사실 날조, 사기성 정보. 심각한 오해나 실질적 손실 초래 가능.
+
+    ### 최종 매핑 로직 (Accuracy Cap)
+    정확도(Accuracy) 점수가 확보되지 않으면 어그로 점수는 낮아질 수 없다.
+    - **🟢 Green (Clean)**: 정확도 70점 이상 → 어그로 점수 **0~30점** 강제 (내용이 좋으면 포장은 용서함)
+    - **🟡 Yellow (Caution)**: 정확도 40~69점 → 어그로 점수 **0~60점** (과장 정도에 따라 유동적)
+    - **🔴 Red (Warning)**: 정확도 0~39점 → 어그로 점수 **0~100점** (거짓말은 구제 불능)
+
+    **[논리 일치성 절대 준수]**
+    - "충격, 경악" 등의 단어를 썼더라도, 내용이 사실에 부합하면 0점에 가깝게 책정하라.
+    - 점잖은 표현을 썼더라도, 내용이 거짓이면 100점에 가깝게 책정하라.
+    - 텍스트 평가와 수치(점수)의 논리적 일관성을 반드시 유지하라.
     
-    3. 어그로성 평가 기준 (썸네일 포함 Gap 분석 - 신중한 채점)
-    - **핵심 원칙**: "실제 팩트의 무게"와 "표현(제목+썸네일)의 무게" 사이의 **괴리감(Gap)**을 측정하라.
-    - **점수 인플레이션 주의**: 단순히 제목이 자극적이라고 해서 무조건 90점을 주지 말 것. 내용이 그 자극적인 제목을 어느 정도 뒷받침한다면 점수를 낮춰야 한다.
-    - **평가 가이드**:
-      - **0~20점 (정상)**: 제목이 내용을 정직하게 요약함.
-      - **21~40점 (약간의 MSG)**: 흥미 유발을 위한 가벼운 과장이나 호기심 자극. (용인 가능한 수준)
-      - **41~70점 (심한 과장)**: "충격", "긴급", "경악" 등의 단어를 썼으나, 내용은 그 정도까지는 아님. (비판적 시청 필요)
-      - **71~100점 (허위/낚시/혐오)**: 
-        - 썸네일/제목 내용이 본문에 아예 없거나 거짓임.
-        - 재난/사망 등 심각한 소재로 거짓 공포를 조장함 ("일본 침몰 시작", "한국 곧 멸망").
-        - 합성된 가짜 이미지를 사용하여 시청자를 기만함.
-    
-    4. 신뢰도 점수 환산
-    - 계산식: 신뢰도 = (정확성 + (100 - 어그로성)) ÷ 2
-    - 해석: 팩트가 정확해도(100점), 사소한 걸로 호들갑을 떨면(어그로 60점) 신뢰도는 70점으로 떨어진다.
-    
-    5. 평가이유 작성 기준
-    - 정확성, 어그로성(썸네일/제목 분석 포함), 신뢰도 점수를 부여한 근거를 구체적으로 작성
-    - 숨은 의도(상업적, 정치적, 여론조작 등)가 있다면 자연스럽게 포함해 설명
-    - 친근하고 자연스러운 어투로 작성
-    - **평가이유 총평에 신뢰도 점수에 따른 신호등 색상과 의미(안심, 주의, 경고)를 반드시 포함**
-    - 신뢰도 70점 이상: 녹색불 (안심)
-    - 신뢰도 50~69점: 노란불 (주의)
-    - 신뢰도 50점 미만: 빨간불 (경고)
-    
-    6. 추천 제목 생성 기준
-    - 어그로성이 30% 이상일 경우, 감정적/과장적 요소 제거 후 내용을 정확히 반영한 재미도 가미된 착하고 합리적인 제목 추천
-    
-    ## 입력 데이터
-    - 채널명: ${channelName}
-    - 제목: ${title}
-    - 내용(자막): ${transcript.substring(0, 50000)} (길 경우 앞부분 사용)
-    - [이미지 첨부됨]: 썸네일 이미지
+    2. 신뢰도 및 상대적 평가 (Reliability & Relative Ranking)
+    - **신뢰도 계산식**: (정확성 + (100 - 어그로 지수)) / 2
+    - **상대적 평가 관점**: 이 영상이 해당 주제 내에서 상위 몇 % 수준의 신뢰도를 가질지 예측하여 총평에 반영하라. (예: "이 정도 정확도와 정직함이라면 해당 분야 상위 5% 이내의 청정 영상으로 분류될 수 있습니다.")
     
     ## 출력 형식 (JSON Only)
-    반드시 아래 JSON 형식으로만 응답하라. 마크다운 포맷팅(\`\`\`json)을 포함하지 말 것.
+    반드시 아래 JSON 형식으로만 응답하라. 마크다운 포맷팅을 포함하지 말 것.
     
     {
-      "topic": "한글 주제 (2단어 이내)",
-      "topic_en": "English Translation of topic (Essential for vector search)",
       "accuracy": 0-100 (정수),
       "clickbait": 0-100 (정수),
       "reliability": 0-100 (정수),
-      "subtitleSummary": "시간순 챕터별 주요 내용 요약 (상세하게)",
+      "subtitleSummary": "반드시 '0:00 - 요약내용' 형식의 타임스탬프를 포함하여 시간순 챕터별로 상세하게 요약하라.",
       "evaluationReason": "점수 부여 근거(썸네일/제목 분석 포함) 및 숨은 의도 상세 서술. 총평(신호등 등급 포함) 필수.",
       "overallAssessment": "전반적인 평가 및 시청자 유의사항",
       "recommendedTitle": "어그로성 30% 이상일 때만 추천 제목 (아니면 빈 문자열)"
@@ -377,7 +242,9 @@ export async function analyzeContent(
     const result = await generateContentWithRetry(model, inputs);
     
     // Validate response immediately to trigger fallback if blocked/empty
-    const text = result.response.text();
+    const response = await result.response;
+    const text = response.text();
+    console.log("Raw AI Response:", text);
     if (!text) throw new Error("Empty response from AI (Likely Safety Block)");
     
     return result;
@@ -385,16 +252,30 @@ export async function analyzeContent(
 
   try {
     let result;
-    try {
-        // 1. Primary Model Attempt (High Quality Logic)
-        // User requested higher quality for better nuance in clickbait/topic classification.
-        // Updated to gemini-2.5-flash (Latest stable)
-        result = await tryModel("gemini-2.5-flash"); 
-    } catch (primaryError: any) {
-        console.warn(`⚠️ Primary model (gemini-2.5-flash) failed: ${primaryError.message}. Switching to fallback...`);
-        // 2. Fallback Model Attempt (Speed/Stability)
-        // Fallback to gemini-2.0-flash-lite which is verified available
-        result = await tryModel("gemini-2.0-flash-lite");
+    // Updated models based on current availability (Jan 2026)
+    // Strategy: Try 2.0 Flash -> 2.0 Flash Lite -> Flash Latest
+    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"];
+    
+    let lastError;
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`Attempting analysis with model: ${modelName}`);
+        result = await tryModel(modelName);
+        if (result) break; // Success
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
+        
+        // If it's a quota error (429), we might want to wait a bit before trying the next model
+        if (error.message?.includes('429') || error.message?.includes('quota')) {
+          console.log('Quota exceeded, trying next model or retrying...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+
+    if (!result && lastError) {
+      throw lastError;
     }
 
     const response = await result.response;
@@ -419,55 +300,8 @@ export async function analyzeContent(
       throw new Error("Failed to parse AI response");
     }
 
-    // --- Topic Standardization Logic (Fail-safe) ---
-    // [Post-Processing] 강제 보정 로직: 지진/재난 키워드가 있는데 '환경 문제'나 '지구 과학'으로 오분류된 경우 수정
-    // 사용자의 강력한 피드백 반영: "학문 탐구가 아니라 재난 고발이다"
-    if (analysisData.topic === '환경 문제' || analysisData.topic === '지구 과학') {
-        const disasterKeywords = ['지진', '쓰나미', '해일', '화산', '대피', '경보', '규모', '여진', '전진', '단층', '판 구조'];
-        const contentToCheck = (title + ' ' + (analysisData.summarySubtitle || '')).toLowerCase();
-        
-        const isDisaster = disasterKeywords.some(keyword => contentToCheck.includes(keyword));
-        
-        if (isDisaster) {
-            console.warn(`⚠️ Topic Correction: "${analysisData.topic}" -> "재난 이슈" (Disaster keywords detected)`);
-            analysisData.topic = '재난 이슈';
-            analysisData.topic_en = 'Disaster Issue'; // 영문 토픽도 함께 수정
-        }
-    }
-
-    // 주제 표준화가 실패하더라도 분석 결과 자체는 반환되어야 함.
-    if (analysisData.topic) {
-        try {
-            // Pass the topic_en provided by AI to avoid extra translation step
-            // Add timeout race to prevent hanging
-            const standardizePromise = standardizeTopic(analysisData.topic, apiKey, analysisData.topic_en);
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Standardization Timeout")), 5000));
-            
-            const { finalTopic } = await Promise.race([standardizePromise, timeoutPromise]) as any;
-            analysisData.topic = finalTopic;
-        } catch (topicError) {
-            console.warn(`⚠️ Topic standardization failed (using original topic):`, topicError);
-            // 에러 발생 시 원래 토픽 유지 (무시)
-        }
-    }
-
-    // [Final Safety Check] 표준화 후에도 '환경 문제' 등으로 잘못 분류되었다면 다시 한번 강제 보정
-    // standardizeTopic이 유사도 기반으로 엉뚱한 기존 토픽('환경 문제')을 가져왔을 경우를 대비
-    if (analysisData.topic === '환경 문제' || analysisData.topic === '지구 과학') {
-        const disasterKeywords = ['지진', '쓰나미', '해일', '화산', '대피', '경보', '규모', '여진', '전진', '단층', '판 구조'];
-        
-        // [Fix] Check both possible keys for summary content (AI sometimes hallucinates key names)
-        const summaryText = analysisData.subtitleSummary || analysisData.summarySubtitle || '';
-        const contentToCheck = (title + ' ' + summaryText).toLowerCase();
-        
-        const isDisaster = disasterKeywords.some(keyword => contentToCheck.includes(keyword));
-        
-        if (isDisaster) {
-            console.warn(`⚠️ Final Topic Correction: "${analysisData.topic}" -> "재난 이슈" (After standardization)`);
-            analysisData.topic = '재난 이슈';
-            analysisData.topic_en = 'Disaster Issue';
-        }
-    }
+    // [Final Safety Check] 삭제
+    // standardizeTopic 호출 및 관련 로직 제거
     // -----------------------------------
 
     return analysisData;

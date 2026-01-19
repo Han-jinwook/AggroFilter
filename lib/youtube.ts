@@ -10,6 +10,7 @@ export interface VideoInfo {
   channelHandle: string;
   subscriberCount: number;
   description: string;
+  officialCategoryId: number; // 추가: 유튜브 공식 카테고리 ID
 }
 
 export interface TranscriptItem {
@@ -63,6 +64,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
 
   const snippet = videoData.items[0].snippet;
   const channelId = snippet.channelId;
+  const officialCategoryId = parseInt(snippet.categoryId || '0', 10);
 
   // 2. 채널 정보 가져오기 (프로필 이미지, 핸들, 구독자 수)
   let channelThumbnailUrl = '';
@@ -97,6 +99,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     channelHandle,
     subscriberCount,
     description: snippet.description,
+    officialCategoryId,
   };
 }
 
