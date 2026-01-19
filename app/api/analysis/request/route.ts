@@ -98,11 +98,15 @@ export async function POST(request: Request) {
     console.log('AI 분석 시작 (모델: gemini-2.0-flash)...');
     let analysisResult;
     try {
+      const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
+      console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
+      
       analysisResult = await analyzeContent(
         videoInfo.channelName,
         videoInfo.title,
-        hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`,
-        videoInfo.thumbnailUrl
+        promptTranscript,
+        videoInfo.thumbnailUrl,
+        videoInfo.duration
       );
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {

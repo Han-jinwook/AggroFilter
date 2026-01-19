@@ -396,33 +396,33 @@ export default function ResultClient() {
     if (!text) return null;
     const timestampRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     
-    // 줄바꿈 단위로 먼저 나눈 후 빈 줄 제거
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
     return lines.map((line, lineIdx) => {
-      const segments = line.split(timestampRegex);
-      return (
-        <div key={lineIdx} className="mb-2 last:mb-0 flex items-start gap-1">
-          <div className="flex-1 flex flex-wrap items-center">
-            {segments.map((segment, i) => {
-              if (segment.match(timestampRegex)) {
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleTimestampClick(segment)}
-                    className="inline-flex items-center gap-0.5 font-bold text-blue-600 hover:text-blue-800 hover:underline decoration-2 underline-offset-2 transition-colors mr-1"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    {segment}
-                  </button>
-                );
-              }
-              // 타임스탬프 뒤의 대시(-)나 공백이 중복되지 않도록 처리
-              const cleanSegment = segment.replace(/^(\s*-\s*)+/, '- ').trim();
-              if (!cleanSegment && i > 0) return null; // 타임스탬프 바로 뒤의 빈 세그먼트 무시
+      // Find all timestamps in the line
+      const lineTimestamps = line.match(timestampRegex);
+      let contentToRender = line;
+      let firstTimestamp: string | null = null;
 
-              return <span key={i} className="text-gray-700 leading-relaxed">{segment}</span>;
-            })}
+      if (lineTimestamps && lineTimestamps.length > 0) {
+        firstTimestamp = lineTimestamps[0];
+        // Remove all timestamps from the content to render it separately
+        contentToRender = line.replace(timestampRegex, '').replace(/^(\s*[:\-\s]\s*)+/, '').trim();
+      }
+
+      return (
+        <div key={lineIdx} className="mb-3 last:mb-0 flex items-start gap-3 group">
+          <div className="flex-1 text-left">
+            {firstTimestamp && (
+              <button
+                onClick={() => handleTimestampClick(firstTimestamp!)}
+                className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline decoration-2 underline-offset-2 transition-colors mr-2 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 group-hover:bg-blue-100"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                {firstTimestamp}
+              </button>
+            )}
+            <span className="text-gray-700 leading-relaxed break-keep">{contentToRender}</span>
           </div>
         </div>
       );
@@ -574,8 +574,8 @@ ${content}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
-              <p className={`text-sm leading-relaxed ${!showMore ? 'line-clamp-4' : ''}`}>
-                {analysisData.evaluationReason}
+              <p className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
+                {analysisData.evaluationReason.split('<br />').join('\n')}
                 {showMore && <span className="ml-1"> {analysisData.overallAssessment}</span>}
               </p>
               <button

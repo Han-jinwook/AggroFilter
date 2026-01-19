@@ -138,7 +138,8 @@ export async function analyzeContent(
   channelName: string,
   title: string,
   transcript: string,
-  thumbnailUrl: string
+  thumbnailUrl: string,
+  duration?: string
 ) {
   // .env 파일의 GOOGLE_API_KEY를 우선적으로 사용
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
@@ -183,30 +184,28 @@ export async function analyzeContent(
         - **41~60점 (왜곡/Distorted)**: [정신적 피해 (Mental Fatigue)] 문맥을 비틀거나 엉뚱한 결론을 내어 시청자에게 혼란과 짜증 유발. 정보 가치 낮음.
         - **61~100점 (허위/Fabricated)**: [실질적 피해 (Loss)] 없는 사실 날조, 사기성 정보. 심각한 오해나 실질적 손실 초래 가능.
 
-    ### 최종 매핑 로직 (Accuracy Cap)
-    정확도(Accuracy) 점수가 확보되지 않으면 어그로 점수는 낮아질 수 없다.
-    - **🟢 Green (Clean)**: 정확도 70점 이상 → 어그로 점수 **0~30점** 강제 (내용이 좋으면 포장은 용서함)
-    - **🟡 Yellow (Caution)**: 정확도 40~69점 → 어그로 점수 **0~60점** (과장 정도에 따라 유동적)
-    - **🔴 Red (Warning)**: 정확도 0~39점 → 어그로 점수 **0~100점** (거짓말은 구제 불능)
-
     **[논리 일치성 절대 준수]**
-    - "충격, 경악" 등의 단어를 썼더라도, 내용이 사실에 부합하면 0점에 가깝게 책정하라.
-    - 점잖은 표현을 썼더라도, 내용이 거짓이면 100점에 가깝게 책정하라.
+    - 자극적인 표현('미쳤다', '방금 터졌다' 등)이 있더라도 내용이 사실이면 어그로 점수를 낮게 책정하라.
     - 텍스트 평가와 수치(점수)의 논리적 일관성을 반드시 유지하라.
     
     2. 신뢰도 및 상대적 평가 (Reliability & Relative Ranking)
     - **신뢰도 계산식**: (정확성 + (100 - 어그로 지수)) / 2
-    - **상대적 평가 관점**: 이 영상이 해당 주제 내에서 상위 몇 % 수준의 신뢰도를 가질지 예측하여 총평에 반영하라. (예: "이 정도 정확도와 정직함이라면 해당 분야 상위 5% 이내의 청정 영상으로 분류될 수 있습니다.")
+    
+    ## 분석 지침 (Critical Instructions)
+    1. **수치 데이터 분석 정확도**: 억, 만 등 단위가 포함된 숫자를 철저히 계산하라. 예: 282억 원은 '수백억'대이지 '수십억'대가 아니다. 단위 혼동으로 인한 오판을 절대 하지 마라.
+    2. **내부 로직 보안**: 분석 사유 작성 시 "정확도 점수가 70점 이상이므로 어그로 점수를 낮게 책정한다"와 같은 **시스템 내부 채점 규칙이나 로직을 시청자에게 직접 언급하지 마라.** 시청자에게는 오직 영상의 내용과 제목 간의 관계를 바탕으로 한 결과론적 사유만 설명하라.
     
     ## 출력 형식 (JSON Only)
-    반드시 아래 JSON 형식으로만 응답하라. 마크다운 포맷팅을 포함하지 말 것.
+    반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
+    - **중요**: subtitleSummary에는 절대 <br /> 등 어떤 HTML 태그도 사용하지 마라. 오직 '0:00 - 내용' 형식의 순수 텍스트만 사용하라. 줄바꿈은 \n 문자만 사용하라.
+    - **중요**: evaluationReason 내에서만 문단을 구분할 때 <br /><br /> 태그를 사용하여 강제로 줄바꿈을 표현하라.
     
     {
       "accuracy": 0-100 (정수),
       "clickbait": 0-100 (정수),
       "reliability": 0-100 (정수),
-      "subtitleSummary": "반드시 '0:00 - 요약내용' 형식의 타임스탬프를 포함하여 시간순 챕터별로 상세하게 요약하라.",
-      "evaluationReason": "점수 부여 근거(썸네일/제목 분석 포함) 및 숨은 의도 상세 서술. 총평(신호등 등급 포함) 필수.",
+      "subtitleSummary": "반드시 '0:00 - 요약내용' 형식의 타임스탬프를 포함하여 전체 영상의 흐름을 5~10개 내외의 핵심 챕터로 요약하라. 각 챕터는 최소 2~3분 이상의 의미 있는 문맥 단위로 묶어야 하며, 너무 잘게 쪼개지 마라. 특히 영상의 시작부터 마지막 결론(마무리)까지 전체 내용을 빠짐없이 포괄해야 한다. 각 챕터 요약 사이에는 반드시 줄바꿈 문자(\\n)를 넣어라. HTML 태그는 절대 사용 금지.",
+      "evaluationReason": "분석 사유를 반드시 다음의 3개 문단으로 엄격히 구분하여 작성하라. 각 문단 사이에는 반드시 <br /><br /> 태그를 넣어라. 각 항목의 제목 줄과 설명 본문 사이에도 반드시 <br /> 태그를 넣어 줄을 분리하라.\n\n1. 내용 정확성 검증 (XX점):<br />영상 본문이 담고 있는 정보의 사실 관계와 객관적 가치를 상세히 분석하라.\n\n2. 어그로성 평가 (XX점):<br />앞서 검증한 실제 내용에 비추어, 제목과 썸네일이 시청자를 얼마나 기만하거나 과장했는지(Gap)를 평가하라.\n\n3. 최종 총평 (🟢Green / 🟡Yellow / 🔴Red):<br />반드시 항목 제목 옆에 해당하는 신호등 이모지(🟢, 🟡, 🔴) 중 하나를 표시하라. 영상의 신뢰도를 종합적으로 판단하여 시청 권장 여부를 서술하라. 시스템 내부 로직은 발설하지 마라.",
       "overallAssessment": "전반적인 평가 및 시청자 유의사항",
       "recommendedTitle": "어그로성 30% 이상일 때만 추천 제목 (아니면 빈 문자열)"
     }
@@ -230,11 +229,22 @@ export async function analyzeContent(
       generationConfig: {
         temperature: 0.2,
         topP: 0.85,
+        responseMimeType: "application/json",
       }
     });
     
     // Construct inputs: text prompt + thumbnail image (if available)
-    const inputs: (string | any)[] = [systemPrompt];
+    const finalPrompt = `
+      ${systemPrompt}
+      
+      [분석 대상 데이터]
+      채널명: ${channelName}
+      제목: ${title}
+      자막 내용:
+      ${transcript}
+    `;
+
+    const inputs: (string | any)[] = [finalPrompt];
     if (thumbnailPart) {
         inputs.push(thumbnailPart);
     }
@@ -252,9 +262,8 @@ export async function analyzeContent(
 
   try {
     let result;
-    // Updated models based on current availability (Jan 2026)
-    // Strategy: Try 2.0 Flash -> 2.0 Flash Lite -> Flash Latest
-    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"];
+    // Strategy: Fix to Gemini 2.5 Flash for consistent testing and production
+    const modelsToTry = ["gemini-2.5-flash"];
     
     let lastError;
     for (const modelName of modelsToTry) {
