@@ -18,7 +18,7 @@ export default function ResultClient() {
   const searchParams = useSearchParams()
   const hasCountedView = useRef(false)
   const [showMore, setShowMore] = useState(false)
-  const [activeSubtitle, setActiveSubtitle] = useState<"full" | "summary" | null>(null)
+  const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>(null)
   const [youthAge, setYouthAge] = useState("")
   const [newComment, setNewComment] = useState("")
   const [isCommentFocused, setIsCommentFocused] = useState(false)
@@ -410,20 +410,34 @@ export default function ResultClient() {
         contentToRender = line.replace(timestampRegex, '').replace(/^(\s*[:\-\s]\s*)+/, '').trim();
       }
 
+      // Parse subtopic and summary (format: "소주제  요약문장")
+      let subtopic: string | null = null;
+      let summaryText = contentToRender;
+      const parts = contentToRender.split(/\s{2,}/);
+      if (parts.length >= 2) {
+        subtopic = parts[0].trim();
+        summaryText = parts.slice(1).join(' ').trim();
+      }
+
       return (
-        <div key={lineIdx} className="mb-3 last:mb-0 flex items-start gap-3 group">
-          <div className="flex-1 text-left">
-            {firstTimestamp && (
-              <button
-                onClick={() => handleTimestampClick(firstTimestamp!)}
-                className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline decoration-2 underline-offset-2 transition-colors mr-2 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 group-hover:bg-blue-100"
-              >
-                <Play className="w-3 h-3 fill-current" />
-                {firstTimestamp}
-              </button>
-            )}
-            <span className="text-gray-700 leading-relaxed break-keep">{contentToRender}</span>
-          </div>
+        <div key={lineIdx} className="mb-3 last:mb-0">
+          {firstTimestamp && (
+            <button
+              onClick={() => handleTimestampClick(firstTimestamp!)}
+              className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mr-2"
+            >
+              <Play className="w-3 h-3 fill-current" />
+              {firstTimestamp}
+            </button>
+          )}
+          {subtopic ? (
+            <>
+              <span className="font-bold text-gray-900">{subtopic}</span>
+              <span className="text-gray-700 ml-2">{summaryText}</span>
+            </>
+          ) : (
+            <span className="text-gray-700">{contentToRender}</span>
+          )}
         </div>
       );
     });
@@ -444,7 +458,7 @@ export default function ResultClient() {
 [입력 데이터]
 - 채널명: ${analysisData.channelName}
 - 제목: ${title}
-- 주제: ${analysisData.topic}
+- 카테고리: ${analysisData.topic}
 - 정확성: ${analysisData.scores.accuracy}점
 - 어그로성: ${analysisData.scores.clickbait}점
 - 신뢰도: ${analysisData.scores.trust}점
@@ -458,7 +472,7 @@ ${content}
 [지침 3. 상호작용 퀴즈 (중요)]
 설명이 끝난 후, 아이가 스스로 생각할 수 있는 퀴즈를 **한 번에 1개씩만** 출제합니다. (총 3문제)
 [출력 포맷]
-1. [채널명/제목/주제] 요약
+1. [채널명/제목/카테고리] 요약
 2. [점수] 정확성/어그로성/신뢰도
 3. [평가 이유] (${age}세 맞춤 설명)
 4. [신호등 총평]
@@ -502,6 +516,17 @@ ${content}
     )
   }
 
+  const topPercentile = analysisData.channelStats?.topPercentile
+  const hasTopPercentile = typeof topPercentile === "number" && !Number.isNaN(topPercentile)
+  const channelRank = analysisData.channelStats?.rank
+  const totalChannels = analysisData.channelStats?.totalChannels
+  const channelRankText = typeof channelRank === "number" && !Number.isNaN(channelRank) ? `${channelRank}위` : "-"
+  const totalChannelsText = typeof totalChannels === "number" && !Number.isNaN(totalChannels) ? `${totalChannels}개` : "-"
+  const topPercentileText = hasTopPercentile ? `${Math.round(topPercentile)}%` : "-"
+  const topPercentileFillWidth = hasTopPercentile && channelRank && totalChannels
+    ? `${Math.max(0, Math.min(100, 100 - ((channelRank - 1) / totalChannels) * 100))}%`
+    : "0%"
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
@@ -517,6 +542,7 @@ ${content}
               date={analysisData.date}
               onBack={handleBack}
               onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}`)}
+              onHeaderClick={() => setShowPlayer(!showPlayer)}
             />
             {/* YouTube Embed Player - Conditional and Non-Sticky */}
             {showPlayer && (
@@ -544,18 +570,10 @@ ${content}
           <div className="bg-background pb-3 pt-0">
             <SubtitleButtons 
               activeSubtitle={activeSubtitle} 
-              onToggle={(type) => setActiveSubtitle(activeSubtitle === type ? null : type)} 
+              onToggle={() => setActiveSubtitle(activeSubtitle === "summary" ? null : "summary")}
+              chapterCount={analysisData.summarySubtitle ? analysisData.summarySubtitle.split('\n').filter(line => line.trim().length > 0 && line.match(/\d{1,2}:\d{2}/)).length : 0}
             />
           </div>
-          {activeSubtitle === "full" && (
-            <div className="overflow-hidden rounded-3xl border-4 border-gray-300 bg-blue-50">
-              <div className="max-h-[60vh] overflow-y-auto p-5">
-                <p className="whitespace-pre-line text-sm leading-relaxed">
-                  {renderTextWithTimestamps(analysisData.fullSubtitle)}
-                </p>
-              </div>
-            </div>
-          )}
           {activeSubtitle === "summary" && (
             <div className="overflow-hidden rounded-3xl border-4 border-blue-300 bg-blue-50">
               <div className="max-h-[60vh] overflow-y-auto p-5">
@@ -624,21 +642,16 @@ ${content}
                   )}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-indigo-600">
-                  상위 {analysisData.channelStats?.topPercentile || 0}%
-                </div>
-                <div className="text-[10px] text-gray-500">
-                  ({analysisData.channelStats?.rank || '-'}위 / {analysisData.channelStats?.totalChannels || '-'}개)
-                </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-base font-bold text-indigo-600">상위 {topPercentileText}</span>
+                <span className="text-sm font-medium text-gray-500">({channelRankText} / {totalChannelsText})</span>
               </div>
             </div>
-            
-            {/* Percentile Progress Bar */}
+
             <div className="mb-3 h-3 w-full overflow-hidden rounded-full bg-indigo-100 border border-indigo-200">
               <div 
-                className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-1000"
-                style={{ width: `${100 - (analysisData.channelStats?.topPercentile || 100)}%` }}
+                className={hasTopPercentile ? "h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-1000" : "h-full bg-slate-200"}
+                style={{ width: topPercentileFillWidth }}
               />
             </div>
 
@@ -653,22 +666,24 @@ ${content}
                       height={32} 
                     />
                   </div>
-                  <span className="text-sm font-bold text-gray-800 truncate max-w-[120px]">
+                  <span className="text-sm font-bold text-gray-800 flex-1 min-w-0">
                     {analysisData.channelName}
                   </span>
                 </div>
                 <div className="flex gap-3">
                   <div className="text-center">
                     <div className="text-[10px] text-gray-500">정확성</div>
-                    <div className="text-sm font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy || 0}%</div>
+                    <div className="text-sm font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy !== null ? `${Math.round(analysisData.channelStats?.avgAccuracy)}%` : "-"}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-[10px] text-gray-500">어그로</div>
-                    <div className="text-sm font-bold text-pink-500">{analysisData.channelStats?.avgClickbait || 0}%</div>
+                    <div className="text-sm font-bold text-pink-500">{analysisData.channelStats?.avgClickbait !== null ? `${Math.round(analysisData.channelStats?.avgClickbait)}%` : "-"}</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-[10px] text-gray-500">신뢰도</div>
-                    <div className="text-sm font-bold text-indigo-600">{analysisData.channelStats?.avgReliability || 0}</div>
+                  <div className="text-center bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 scale-110 origin-right ml-1">
+                    <div className="text-[10px] font-bold text-indigo-400">신뢰도</div>
+                    <div className="text-base font-black text-indigo-700 leading-tight">
+                      {analysisData.channelStats?.avgReliability !== null ? `${Math.round(analysisData.channelStats?.avgReliability)}점` : "-"}
+                    </div>
                   </div>
                 </div>
               </div>

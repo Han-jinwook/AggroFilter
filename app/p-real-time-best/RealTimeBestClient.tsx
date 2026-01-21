@@ -501,7 +501,7 @@ export default function RealTimeBestClient() {
                   onClick={() => handleSort('topic')}
                   className="flex items-center gap-1 hover:text-slate-800 w-24 justify-start pl-8"
                 >
-                  주제
+                  카테고리
                   <ChevronDown className={`h-4 w-4 transition-colors ${sortBy === 'topic' ? 'text-slate-800 stroke-[3px]' : 'text-slate-300'}`} />
                 </button>
                 <button

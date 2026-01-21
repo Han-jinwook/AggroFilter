@@ -352,7 +352,7 @@ export default function AnalysisListClient() {
                 )}
               </button>
               <div className="ml-auto flex gap-8">
-                <span>주제</span>
+                <span>카테고리</span>
                 <span>영상 수</span>
                 <span>순위도 점수</span>
               </div>

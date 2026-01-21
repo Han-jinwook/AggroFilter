@@ -130,7 +130,7 @@ export default function RankingClient() {
                   {activeTooltip === "ranking" && (
                     <div className="absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                       <p className="text-xs leading-relaxed text-gray-700">
-                        현재 주제에 대한 채널들의 신뢰도 점수를 기준으로 순위를 매깁니다.
+                        현재 카테고리에 대한 채널들의 신뢰도 점수를 기준으로 순위를 매깁니다.
                       </p>
                       <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
                     </div>
@@ -154,7 +154,7 @@ export default function RankingClient() {
                   {activeTooltip === "topic" && (
                     <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                       <p className="text-xs leading-relaxed text-gray-700">
-                        분석된 영상의 주제입니다. 이 주제에 대해 높은 신뢰도를 가진 채널 순위를 보여줍니다.
+                        분석된 영상의 카테고리입니다. 이 카테고리에 대해 높은 신뢰도를 가진 채널 순위를 보여줍니다.
                       </p>
                       <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
                     </div>
@@ -173,7 +173,7 @@ export default function RankingClient() {
                 {isTopicDropdownOpen && (
                   <div className="absolute right-0 top-full z-30 mt-2 w-56 max-h-80 overflow-y-auto rounded-2xl bg-slate-600 p-4 shadow-xl custom-scrollbar">
                     <div className="mb-3 flex items-center justify-between border-b border-slate-500 pb-2">
-                      <h3 className="text-sm font-bold text-white">나의 관심 주제</h3>
+                      <h3 className="text-sm font-bold text-white">나의 관심 카테고리</h3>
                       <button onClick={() => setIsTopicDropdownOpen(false)}>
                         <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -192,7 +192,7 @@ export default function RankingClient() {
                           </button>
                         ))
                       ) : (
-                        <p className="text-sm text-gray-300 text-center py-4">등록된 주제가 없습니다.</p>
+                        <p className="text-sm text-gray-300 text-center py-4">등록된 카테고리가 없습니다.</p>
                       )}
                     </div>
                     <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 bg-slate-600"></div>

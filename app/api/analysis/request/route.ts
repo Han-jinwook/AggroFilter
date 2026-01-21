@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-import { extractVideoId, getVideoInfo, getTranscript } from '@/lib/youtube';
+import { extractVideoId, getVideoInfo, getTranscript, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
@@ -27,44 +27,43 @@ export async function POST(request: Request) {
 
     console.log('영상 ID:', videoId);
 
-    // [중복 분석 방지] DB에서 이미 분석된 내역이 있는지 확인
-    const checkClient = await pool.connect();
-    try {
-      const existingAnalysis = await checkClient.query(`
-        SELECT f_id, f_reliability_score 
-        FROM t_analyses 
-        WHERE f_video_id = $1 
-        ORDER BY f_created_at DESC 
-        LIMIT 1
-      `, [videoId]);
+      try {
+        const checkClient = await pool.connect();
+        try {
+          const existingAnalysis = await checkClient.query(`
+            SELECT f_id, f_reliability_score 
+            FROM t_analyses 
+            WHERE f_video_id = $1 
+            ORDER BY f_created_at DESC 
+            LIMIT 1
+          `, [videoId]);
 
-      if (existingAnalysis.rows.length > 0) {
-        const row = existingAnalysis.rows[0];
-        // 신뢰도 점수가 존재하고 0점보다 크면(정상 분석된 케이스) 기존 ID 반환
-        // 0점이거나 null이면 실패로 간주하고 재분석 진행
-        if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
-          console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
-          
-          // [Count Update] 중복 요청 시 요청 횟수(request_count) 및 조회수(view_count) 동시 증가
-          await checkClient.query(`
-            UPDATE t_analyses 
-            SET f_request_count = COALESCE(f_request_count, 0) + 1,
-                f_view_count = COALESCE(f_view_count, 0) + 1,
-                f_last_action_at = NOW()
-            WHERE f_id = $1
-          `, [row.f_id]);
+          if (existingAnalysis.rows.length > 0) {
+            const row = existingAnalysis.rows[0];
+            if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
+              console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
+              
+              await checkClient.query(`
+                UPDATE t_analyses 
+                SET f_request_count = COALESCE(f_request_count, 0) + 1,
+                    f_view_count = COALESCE(f_view_count, 0) + 1,
+                    f_last_action_at = NOW()
+                WHERE f_id = $1
+              `, [row.f_id]);
 
-          return NextResponse.json({ 
-            message: '이미 분석된 영상입니다.',
-            analysisId: row.f_id
-          });
+              return NextResponse.json({ 
+                message: '이미 분석된 영상입니다.',
+                analysisId: row.f_id
+              });
+            }
+          }
+        } finally {
+          checkClient.release();
         }
-        // 만약 점수가 없거나 0점이라면(이전 분석 실패), 아래 로직을 타고 재분석 시도
-        console.log('이전 분석 기록이 있으나 실패(0점/Null)한 건입니다. 재분석을 진행합니다.');
+      } catch (dbError) {
+        console.error('Database connection error during check:', dbError);
+        // Continue to fresh analysis if check fails
       }
-    } finally {
-      checkClient.release();
-    }
 
     // 2. YouTube API로 영상 정보 가져오기
     const videoInfo = await getVideoInfo(videoId);
@@ -72,11 +71,19 @@ export async function POST(request: Request) {
 
     // 3. 자막 추출
     let transcript = '';
+    let transcriptItems: { text: string; start: number; duration: number }[] = [];
     let hasTranscript = false;
     try {
-      transcript = await getTranscript(videoId);
+      const items = await getTranscriptItems(videoId);
+      if (items.length > 0) {
+        transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
+        transcript = items.map((it) => it.text).join(' ');
+      } else {
+        transcript = await getTranscript(videoId);
+      }
+
       hasTranscript = transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다');
-      console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자)` : '실패');
+      console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '실패');
     } catch (e) {
       console.error('자막 추출 중 치명적 에러:', e);
       hasTranscript = false;
@@ -106,7 +113,8 @@ export async function POST(request: Request) {
         videoInfo.title,
         promptTranscript,
         videoInfo.thumbnailUrl,
-        videoInfo.duration
+        videoInfo.duration,
+        transcriptItems
       );
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
@@ -131,29 +139,43 @@ export async function POST(request: Request) {
     try {
       await client.query('BEGIN');
 
-      console.log('5-1. 채널 정보 저장 (Upsert)...');
-      // 5-1. 채널 정보 저장 (Upsert) - f_official_category_id 추가
+      // 5-0. User lookup/creation (if userId/email provided)
+      // Note: f_user_id stores email directly (not UUID) to match existing data pattern
+      let actualUserId = null;
+      if (userId) {
+        console.log('5-0. User 확인 중...', userId);
+        const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
+        
+        if (userRes.rows.length === 0) {
+          // Create user if doesn't exist
+          const newUserId = uuidv4();
+          await client.query(`
+            INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+          `, [newUserId, userId, userId.split('@')[0]]);
+          console.log('새 유저 생성:', newUserId);
+        }
+        // Store email directly in f_user_id
+        actualUserId = userId;
+      }
+
+      console.log('5-1. 채널 정보 저장 (t_channels)...');
+      // 5-1. 채널 정보 저장 (v2.0 필드 반영)
       await client.query(`
         INSERT INTO t_channels (
-          f_id, f_name, f_handle, f_profile_image_url, 
-          f_subscriber_count, f_official_category_id, f_updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        ON CONFLICT (f_id) 
-        DO UPDATE SET 
-          f_name = EXCLUDED.f_name, 
-          f_handle = EXCLUDED.f_handle,
-          f_profile_image_url = EXCLUDED.f_profile_image_url, 
-          f_subscriber_count = EXCLUDED.f_subscriber_count,
+          f_id, f_name, f_profile_image_url, f_official_category_id, f_subscriber_count
+        ) VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (f_id) DO UPDATE SET
+          f_name = EXCLUDED.f_name,
+          f_profile_image_url = EXCLUDED.f_profile_image_url,
           f_official_category_id = EXCLUDED.f_official_category_id,
-          f_updated_at = NOW()
+          f_subscriber_count = EXCLUDED.f_subscriber_count
       `, [
         videoInfo.channelId, 
         videoInfo.channelName, 
-        videoInfo.channelHandle, 
         videoInfo.channelThumbnailUrl, 
-        videoInfo.subscriberCount,
-        videoInfo.officialCategoryId
+        videoInfo.officialCategoryId,
+        videoInfo.subscriberCount
       ]);
 
       console.log('5-2. 분석 결과 저장 (t_analyses)...');
@@ -183,12 +205,11 @@ export async function POST(request: Request) {
         analysisResult.evaluationReason,
         analysisResult.overallAssessment,
         analysisResult.recommendedTitle,
-        userId || null,
+        actualUserId,
         videoInfo.officialCategoryId
       ]);
 
       console.log('5-3. 비디오 인덱스 저장 (t_videos)...');
-      // [v2.0] t_videos 테이블에도 저장
       await client.query(`
         INSERT INTO t_videos (
           f_id, f_channel_id, f_title, f_official_category_id,
@@ -204,8 +225,7 @@ export async function POST(request: Request) {
           f_trust_score = EXCLUDED.f_trust_score,
           f_ai_recommended_title = EXCLUDED.f_ai_recommended_title,
           f_summary = EXCLUDED.f_summary,
-          f_evaluation_reason = EXCLUDED.f_evaluation_reason,
-          f_updated_at = NOW()
+          f_evaluation_reason = EXCLUDED.f_evaluation_reason
       `, [
         videoId,
         videoInfo.channelId,

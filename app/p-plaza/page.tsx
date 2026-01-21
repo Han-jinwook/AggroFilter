@@ -869,20 +869,20 @@ export default function PlazaPage() {
                   </button>
                   <button
                     onClick={() => setSearchType("topic")}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-all ${
+                    className={`rounded-full px-4 py-1 text-xs font-bold transition-all ${
                       searchType === "topic"
-                        ? "bg-blue-500 text-white shadow-sm"
+                        ? "bg-slate-600 text-white shadow-md"
                         : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
-                    주제
+                    카테고리
                   </button>
                 </div>
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder={searchType === "title" ? "채널명으로 검색..." : "주제로 검색 (예: 경제, 정치, 엔터)"}
+                    placeholder={searchType === "title" ? "채널명으로 검색..." : "카테고리로 검색 (예: 경제, 정치, 엔터)"}
                     className="w-full rounded-xl border-2 border-blue-100 bg-slate-50 py-2 pl-9 pr-4 text-sm outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
@@ -917,7 +917,7 @@ export default function PlazaPage() {
                     순위
                     <ChevronDown className="h-3 w-3" />
                   </button>
-                  <div className="flex-1 ml-2 pl-1">채널명 / 주제</div>
+                  <div className="flex-1 ml-2 pl-1">채널명 / 카테고리</div>
                   <button className="flex items-center justify-center gap-1 w-16 hover:text-slate-800 transition-colors">
                     분석수
                     <ChevronDown className="h-3 w-3" />

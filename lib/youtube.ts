@@ -20,6 +20,49 @@ export interface TranscriptItem {
   duration: number;
 }
 
+export async function getTranscriptItems(videoId: string): Promise<TranscriptItem[]> {
+  console.log('자막 가져오기 시작 (items):', videoId);
+
+  // 방법 1: 한국어 자막 시도
+  try {
+    console.log('방법1: youtube-transcript-plus (ko)');
+    const transcript = await fetchTranscript(videoId, { lang: 'ko' });
+    if (transcript && transcript.length > 0) {
+      console.log('자막 items 성공 (ko):', transcript.length, '줄');
+      return transcript as TranscriptItem[];
+    }
+  } catch (e: any) {
+    console.log('방법1 실패:', e.message?.substring(0, 100));
+  }
+
+  // 방법 2: 언어 지정 없이
+  try {
+    console.log('방법2: youtube-transcript-plus (자동)');
+    const transcript = await fetchTranscript(videoId);
+    if (transcript && transcript.length > 0) {
+      console.log('자막 items 성공 (자동):', transcript.length, '줄');
+      return transcript as TranscriptItem[];
+    }
+  } catch (e: any) {
+    console.log('방법2 실패:', e.message?.substring(0, 100));
+  }
+
+  // 방법 3: 영어 자막 시도
+  try {
+    console.log('방법3: youtube-transcript-plus (en)');
+    const transcript = await fetchTranscript(videoId, { lang: 'en' });
+    if (transcript && transcript.length > 0) {
+      console.log('자막 items 성공 (en):', transcript.length, '줄');
+      return transcript as TranscriptItem[];
+    }
+  } catch (e: any) {
+    console.log('방법3 실패:', e.message?.substring(0, 100));
+  }
+
+  console.log('모든 자막 방법 실패');
+  return [];
+}
+
 export function extractVideoId(url: string): string | null {
   if (!url) return null;
 
@@ -29,6 +72,7 @@ export function extractVideoId(url: string): string | null {
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
   ];
 
   for (const pattern of patterns) {
@@ -110,46 +154,13 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
 
 export async function getTranscript(videoId: string): Promise<string> {
   console.log('자막 가져오기 시작:', videoId);
-  
-  // 방법 1: 한국어 자막 시도
-  try {
-    console.log('방법1: youtube-transcript-plus (ko)');
-    const transcript = await fetchTranscript(videoId, { lang: 'ko' });
-    if (transcript && transcript.length > 0) {
-      const text = transcript.map(item => item.text).join(' ');
-      console.log('자막 성공 (ko):', text.length, '자');
-      return text;
-    }
-  } catch (e: any) {
-    console.log('방법1 실패:', e.message?.substring(0, 100));
+
+  const items = await getTranscriptItems(videoId);
+  if (items.length > 0) {
+    const text = items.map(item => item.text).join(' ');
+    console.log('자막 성공:', text.length, '자');
+    return text;
   }
-  
-  // 방법 2: 언어 지정 없이
-  try {
-    console.log('방법2: youtube-transcript-plus (자동)');
-    const transcript = await fetchTranscript(videoId);
-    if (transcript && transcript.length > 0) {
-      const text = transcript.map(item => item.text).join(' ');
-      console.log('자막 성공 (자동):', text.length, '자');
-      return text;
-    }
-  } catch (e: any) {
-    console.log('방법2 실패:', e.message?.substring(0, 100));
-  }
-  
-  // 방법 3: 영어 자막 시도
-  try {
-    console.log('방법3: youtube-transcript-plus (en)');
-    const transcript = await fetchTranscript(videoId, { lang: 'en' });
-    if (transcript && transcript.length > 0) {
-      const text = transcript.map(item => item.text).join(' ');
-      console.log('자막 성공 (en):', text.length, '자');
-      return text;
-    }
-  } catch (e: any) {
-    console.log('방법3 실패:', e.message?.substring(0, 100));
-  }
-  
-  console.log('모든 자막 방법 실패');
+
   return '자막을 가져올 수 없습니다.';
 }

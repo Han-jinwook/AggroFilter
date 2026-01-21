@@ -4,15 +4,19 @@ import Image from "next/image"
 import { useState } from "react"
 
 interface TScoreCardProps {
-  accuracy: number
-  clickbait: number
-  trust: number
+  accuracy: number | null | undefined
+  clickbait: number | null | undefined
+  trust: number | null | undefined
   topic: string
   trafficLightImage: string
 }
 
 export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+
+  const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
+  const clickbaitText = typeof clickbait === "number" ? `${clickbait}%` : "-"
+  const trustText = typeof trust === "number" ? String(trust) : "-"
 
   const toggleTooltip = (type: string) => {
     setActiveTooltip(activeTooltip === type ? null : type)
@@ -44,7 +48,7 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
           <div className="mb-1 flex items-center justify-start gap-8">
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-gray-800">정확성</span>
-              <span className="text-lg font-bold text-purple-600">{accuracy}%</span>
+              <span className="text-lg font-bold text-purple-600">{accuracyText}</span>
               <TooltipButton
                 active={activeTooltip === "accuracy"}
                 onToggle={() => toggleTooltip("accuracy")}
@@ -53,7 +57,7 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             </div>
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-gray-800">어그로성</span>
-              <span className="text-lg font-bold text-pink-500">{clickbait}%</span>
+              <span className="text-lg font-bold text-pink-500">{clickbaitText}</span>
               <TooltipButton
                 active={activeTooltip === "clickbait"}
                 onToggle={() => toggleTooltip("clickbait")}
@@ -63,7 +67,7 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
           </div>
           <div className="flex items-center justify-center gap-1">
             <span className="text-sm font-bold text-gray-800">신뢰도 점수</span>
-            <span className="text-lg font-bold text-pink-500">{trust}</span>
+            <span className="text-lg font-bold text-pink-500">{trustText}</span>
             <TooltipButton
               active={activeTooltip === "trust"}
               onToggle={() => toggleTooltip("trust")}

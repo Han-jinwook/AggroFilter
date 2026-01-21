@@ -71,13 +71,7 @@ export default function MainPage() {
 
       const result = await response.json();
       
-      // Save to local history
-      const history = JSON.parse(localStorage.getItem('my_analysis_history') || '[]');
-      if (!history.includes(result.analysisId)) {
-        history.unshift(result.analysisId);
-        localStorage.setItem('my_analysis_history', JSON.stringify(history));
-      }
-
+      // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
     } catch (error) {

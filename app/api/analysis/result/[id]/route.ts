@@ -29,15 +29,15 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
       // Fetch channel stats and ranking
       let channelStats = {
-        avgAccuracy: 0,
-        avgClickbait: 0,
-        avgReliability: 0,
-        rank: 0,
-        totalChannels: 0
+        avgAccuracy: null as number | null,
+        avgClickbait: null as number | null,
+        avgReliability: null as number | null,
+        rank: null as number | null,
+        totalChannels: null as number | null,
+        topPercentile: null as number | null
       };
 
-      if (analysis.f_channel_id) {
-        // [v2.0] t_rankings_cache 테이블에서 등수 및 백분위 데이터 조회
+      try {
         const rankingRes = await client.query(`
           SELECT f_rank, f_total_count, f_top_percentile
           FROM t_rankings_cache
@@ -51,22 +51,25 @@ export async function GET(request: Request, { params }: { params: { id: string }
           channelStats.topPercentile = Number(rankData.f_top_percentile);
         }
 
-        // Get stats
         const statsRes = await client.query(`
-          SELECT * FROM t_channel_stats 
+          SELECT f_avg_accuracy, f_avg_clickbait, f_avg_reliability 
+          FROM t_channel_stats
           WHERE f_channel_id = $1 AND f_official_category_id = $2
         `, [analysis.f_channel_id, analysis.f_official_category_id]);
 
         if (statsRes.rows.length > 0) {
           const stats = statsRes.rows[0];
-          channelStats.avgAccuracy = Number(stats.f_avg_accuracy);
-          channelStats.avgClickbait = Number(stats.f_avg_clickbait);
-          channelStats.avgReliability = Number(stats.f_avg_reliability);
+          channelStats.avgAccuracy = stats.f_avg_accuracy !== null ? Math.round(Number(stats.f_avg_accuracy) * 10) / 10 : null;
+          channelStats.avgClickbait = stats.f_avg_clickbait !== null ? Math.round(Number(stats.f_avg_clickbait) * 10) / 10 : null;
+          channelStats.avgReliability = stats.f_avg_reliability !== null ? Math.round(Number(stats.f_avg_reliability) * 10) / 10 : null;
         } else {
-            channelStats.avgAccuracy = analysis.f_accuracy_score || 0;
-            channelStats.avgClickbait = analysis.f_clickbait_score || 0;
-            channelStats.avgReliability = analysis.f_reliability_score || 0;
+          // Fallback to current analysis scores if no aggregate stats yet
+          channelStats.avgAccuracy = analysis.f_accuracy_score ? Math.round(analysis.f_accuracy_score * 10) / 10 : null;
+          channelStats.avgClickbait = analysis.f_clickbait_score ? Math.round(analysis.f_clickbait_score * 10) / 10 : null;
+          channelStats.avgReliability = analysis.f_reliability_score ? Math.round(analysis.f_reliability_score * 10) / 10 : null;
         }
+      } catch (statsError) {
+        console.error('Error fetching channel stats:', statsError);
       }
       
       // Fetch comments
@@ -153,8 +156,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
           videoTitle: analysis.f_title,
           videoId: analysis.f_video_id,
           id: analysis.f_id, // Ensure ID is passed
-          channelName: analysis.f_name,
-          channelImage: analysis.f_profile_image_url || "/images/channel-logo.png",
+          channelName: analysis.f_name, 
+          channelImage: analysis.f_profile_image_url || "/images/channel-logo.png", 
           channelHandle: analysis.f_handle,
           subscriberCount: analysis.f_subscriber_count,
           videoThumbnail: analysis.f_thumbnail_url || "/images/video-thumbnail.jpg",

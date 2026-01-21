@@ -167,40 +167,42 @@ export default function MyPageClient() {
     };
   }, [analyzedVideos]);
 
-  // Fetch Analyzed Videos
-  useEffect(() => {
-    const fetchVideos = async () => {
-      setIsLoadingVideos(true)
-      const history = JSON.parse(localStorage.getItem('my_analysis_history') || '[]');
+  const fetchVideos = async () => {
+    try {
       const email = localStorage.getItem('userEmail');
 
-      if (history.length === 0 && !email) {
+      console.log("MyPage - Fetching videos for email:", email);
+
+      if (!email) {
+        console.log("No email found - user not logged in");
         setAnalyzedVideos([]);
         setIsLoadingVideos(false);
         return;
       }
 
-      try {
-        const res = await fetch('/api/mypage/videos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            ids: history,
-            email: email 
-          })
-        });
+      setIsLoadingVideos(true);
+      const res = await fetch('/api/mypage/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          setAnalyzedVideos(data.videos || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch videos", e);
-      } finally {
-        setIsLoadingVideos(false);
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Fetched analyzed videos from DB:", data.videos);
+        setAnalyzedVideos(data.videos || []);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Failed to fetch videos from API", res.status, errorData);
       }
+    } catch (e) {
+      console.error("Failed to fetch videos (Exception)", e);
+    } finally {
+      setIsLoadingVideos(false);
     }
+  };
 
+  useEffect(() => {
     if (activeTab === 'analysis') {
       fetchVideos();
     }
@@ -350,7 +352,7 @@ export default function MyPageClient() {
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                신뢰도 높은 주제
+                신뢰도 높은 카테고리
               </button>
               <button
                 onClick={() => setActiveTopicTab("caution")}
@@ -360,7 +362,7 @@ export default function MyPageClient() {
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                주의가 필요한 주제
+                주의가 필요한 카테고리
               </button>
             </div>
 
@@ -382,7 +384,7 @@ export default function MyPageClient() {
                         ))
                       ) : (
                          <div className="w-full text-center py-2 text-sm text-slate-400">
-                            아직 신뢰도 높은 주제가 없습니다.
+                            아직 신뢰도 높은 카테고리가 없습니다.
                          </div>
                       )}
                       <div className="w-12 flex-shrink-0" />
@@ -405,7 +407,7 @@ export default function MyPageClient() {
                         ))
                       ) : (
                         <div className="w-full text-center py-2 text-sm text-slate-400">
-                            주의가 필요한 주제가 없습니다.
+                            주의가 필요한 카테고리가 없습니다.
                         </div>
                       )}
                       <div className="w-12 flex-shrink-0" />
@@ -620,10 +622,9 @@ export default function MyPageClient() {
                 </button>
                 <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
-                    onClick={() => handleSort("topic")}
                     className="flex items-center justify-end gap-1 hover:text-slate-600 w-16 sm:w-20"
                   >
-                    주제
+                    카테고리
                     <ChevronDown
                       className={`h-3 w-3 transition-all ${sortKey === "topic" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                     />

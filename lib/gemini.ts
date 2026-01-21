@@ -134,12 +134,147 @@ async function urlToGenerativePart(url: string) {
     }
 }
 
+function chunkTranscript(transcript: string, maxChunkLength = 5000): { startTime: string, text: string }[] {
+  const lines = transcript.split('\n');
+  const chunks: { startTime: string, text: string }[] = [];
+  let currentChunkText = '';
+  let currentChunkStartTime = '0:00';
+
+  for (const line of lines) {
+    const timestampMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)/);
+    const timestamp = timestampMatch ? timestampMatch[1] : null;
+
+    if (timestamp && currentChunkText.length >= maxChunkLength) {
+      chunks.push({ startTime: currentChunkStartTime, text: currentChunkText.trim() });
+      currentChunkStartTime = timestamp;
+      currentChunkText = '';
+    }
+    currentChunkText += line + '\n';
+  }
+
+  if (currentChunkText.trim()) {
+    chunks.push({ startTime: currentChunkStartTime, text: currentChunkText.trim() });
+  }
+
+  return chunks;
+}
+
+function coalesceChunks(
+  chunks: { startTime: string; text: string }[],
+  maxChunks: number
+): { startTime: string; text: string }[] {
+  if (chunks.length <= maxChunks) return chunks;
+  if (maxChunks <= 0) return [];
+
+  const groupSize = Math.ceil(chunks.length / maxChunks);
+  const merged: { startTime: string; text: string }[] = [];
+
+  for (let i = 0; i < chunks.length; i += groupSize) {
+    const group = chunks.slice(i, i + groupSize);
+    if (group.length === 0) continue;
+    merged.push({
+      startTime: group[0].startTime,
+      text: group.map((c) => c.text).join(' ').trim(),
+    });
+  }
+
+  return merged;
+}
+
+function formatSecondsToTimestamp(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function chunkTranscriptItems(
+  items: { text: string; start: number; duration: number }[],
+  options?: { silenceGapSeconds?: number; minChunkSeconds?: number; maxChunkSeconds?: number }
+): { startTime: string; text: string }[] {
+  const silenceGapSeconds = options?.silenceGapSeconds ?? 1.5;
+  const forceSplitGapSeconds = 5;
+  const minChunkSeconds = options?.minChunkSeconds ?? 90;
+  const maxChunkSeconds = options?.maxChunkSeconds ?? 5 * 60;
+
+  if (!items || items.length === 0) return [];
+
+  const chunks: { startTime: string; text: string }[] = [];
+
+  let currentStart = items[0].start;
+  let currentEnd = items[0].start + items[0].duration;
+  let currentTextParts: string[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const itStart = it.start;
+    const itEnd = it.start + it.duration;
+    const next = i + 1 < items.length ? items[i + 1] : null;
+
+    currentTextParts.push(it.text);
+    currentEnd = Math.max(currentEnd, itEnd);
+
+    const chunkDuration = currentEnd - currentStart;
+    const gapToNext = next ? next.start - itEnd : 0;
+
+    const shouldSplitBySilence = next ? gapToNext >= silenceGapSeconds : true;
+    const shouldForceSplit = next ? gapToNext >= forceSplitGapSeconds : false;
+    const shouldSplitByMax = chunkDuration >= maxChunkSeconds;
+    const canSplitNow = chunkDuration >= minChunkSeconds;
+
+    if (next && (shouldSplitByMax || shouldForceSplit || (shouldSplitBySilence && canSplitNow))) {
+      chunks.push({
+        startTime: formatSecondsToTimestamp(currentStart),
+        text: currentTextParts.join(' ').trim(),
+      });
+      currentStart = next.start;
+      currentEnd = next.start + next.duration;
+      currentTextParts = [];
+    }
+
+    if (!next) {
+      const finalText = currentTextParts.join(' ').trim();
+      if (finalText) {
+        chunks.push({ startTime: formatSecondsToTimestamp(currentStart), text: finalText });
+      }
+    }
+  }
+
+  return chunks;
+}
+
+async function summarizeChunk(chunk: { startTime: string, text: string }, apiKey: string): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  
+  const prompt = `Below is a part of a YouTube video transcript.
+Create a very short subtopic in Korean (1-4 words) that captures the main theme, then summarize the core content in exactly ONE concise Korean sentence.
+Output format: 소주제  요약문장
+Example: 주택 공급 확대  정부는 수도권 135만 채 공급 계획을 발표하고 있습니다.
+Do NOT use brackets or labels. Output natural Korean text only.
+
+Transcript:
+${chunk.text}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    // Always prepend the correct timestamp from chunk
+    return `${chunk.startTime} - ${text}`;
+  } catch (e) {
+    console.error(`Chunk summary failed for ${chunk.startTime}:`, e);
+    return `${chunk.startTime} - [요약 실패]`;
+  }
+}
+
 export async function analyzeContent(
+
   channelName: string,
   title: string,
   transcript: string,
   thumbnailUrl: string,
-  duration?: string
+  duration?: string,
+  transcriptItems?: { text: string; start: number; duration: number }[]
 ) {
   // .env 파일의 GOOGLE_API_KEY를 우선적으로 사용
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
@@ -162,6 +297,25 @@ export async function analyzeContent(
       thumbnailPart = await urlToGenerativePart(thumbnailUrl);
   }
 
+  let subtitleSummaryOverride: string | null = null;
+  try {
+    const rawChunks = (transcriptItems && transcriptItems.length > 0)
+      ? chunkTranscriptItems(transcriptItems)
+      : (transcript && transcript.trim() ? chunkTranscript(transcript) : []);
+
+    const chunks = coalesceChunks(rawChunks, 10);
+
+    if (chunks.length > 0) {
+      const summaries = await Promise.all(
+        chunks.map(chunk => summarizeChunk(chunk, apiKey))
+      );
+      subtitleSummaryOverride = summaries.join("\n");
+    }
+  } catch (e) {
+    console.error("Smart chunk subtitle summary failed:", e);
+    subtitleSummaryOverride = null;
+  }
+
   const systemPrompt = `
     # 어그로필터 분석 AI용 프롬프트 (유튜브 생태계 분석가 모드)
     
@@ -176,7 +330,7 @@ export async function analyzeContent(
     - 영상 본문 내용이 팩트에 얼마나 충실한지, 정보로서의 가치가 있는지 0~100점으로 먼저 평가하라.
 
     2. 어그로 지수 (Clickbait Score) - **[Fact-Based Gap Analysis]** 🎯
-    - **핵심 원칙**: 어그로 점수는 단순한 '표현의 자극성'이 아니라, '제목/썸네일이 약속한 내용'과 '실제 영상 내용' 사이의 **불일치(Gap)** 정도를 기준으로 산산정한다.
+    - **핵심 원칙**: 어그로 점수는 단순한 '표현의 자극성'이 아니라, '제목/썸네일이 약속한 내용'과 '실제 영상 내용' 사이의 **불일치(Gap)** 정도를 기준으로 산정한다.
 
     - **상세 점수 기준 (The Gap Scale)**:
         - **0~20점 (일치/Marketing)**: [Gap 없음 - 피해 없음] 제목이 자극적이어도 내용이 이를 충분히 뒷받침함. (유튜브 문법상 허용되는 마케팅)
@@ -188,27 +342,37 @@ export async function analyzeContent(
     - 자극적인 표현('미쳤다', '방금 터졌다' 등)이 있더라도 내용이 사실이면 어그로 점수를 낮게 책정하라.
     - 텍스트 평가와 수치(점수)의 논리적 일관성을 반드시 유지하라.
     
-    2. 신뢰도 및 상대적 평가 (Reliability & Relative Ranking)
-    - **신뢰도 계산식**: (정확성 + (100 - 어그로 지수)) / 2
-    
     ## 분석 지침 (Critical Instructions)
     1. **수치 데이터 분석 정확도**: 억, 만 등 단위가 포함된 숫자를 철저히 계산하라. 예: 282억 원은 '수백억'대이지 '수십억'대가 아니다. 단위 혼동으로 인한 오판을 절대 하지 마라.
     2. **내부 로직 보안**: 분석 사유 작성 시 "정확도 점수가 70점 이상이므로 어그로 점수를 낮게 책정한다"와 같은 **시스템 내부 채점 규칙이나 로직을 시청자에게 직접 언급하지 마라.** 시청자에게는 오직 영상의 내용과 제목 간의 관계를 바탕으로 한 결과론적 사유만 설명하라.
+    3. **타임스탬프 요약 가이드 (절대 규칙)**:
+        - **자막 전수 분석**: 입력된 자막 데이터의 처음부터 끝까지 단 한 줄도 빠짐없이 읽고 분석하라.
+        - **종료 시점 일치**: 요약의 마지막 타임스탬프는 반드시 제공된 영상의 전체 길이(duration) 또는 자막의 마지막 시점과 일치해야 한다. (예: 2분 16초 영상이면 마지막 요약은 반드시 2:10~2:16 사이여야 함).
+        - **중간 생략 금지**: 영상 중간에서 요약을 멈추는 행위는 심각한 오류로 간주한다. 전체 내용을 균등하게 배분하여 요약하라.
+        - **형식**: '0:00 - 소주제: 요약내용' (특수문자/마크다운 금지).
+        - **가변 분할**: 영상 길이에 따라 요약 개수를 조절하되, 영상 전체 맥락을 촘촘히 연결하라.
     
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
-    - **중요**: subtitleSummary에는 절대 <br /> 등 어떤 HTML 태그도 사용하지 마라. 오직 '0:00 - 내용' 형식의 순수 텍스트만 사용하라. 줄바꿈은 \n 문자만 사용하라.
-    - **중요**: evaluationReason 내에서만 문단을 구분할 때 <br /><br /> 태그를 사용하여 강제로 줄바꿈을 표현하라.
+    - **중요**: evaluationReason 내의 각 항목 제목(1, 2, 3번) 뒤에는 반드시 한 번의 줄바꿈(<br />)을 넣어 제목과 본문을 분리하라.
+    - **중요**: 각 항목의 본문 내부에서는 소문단 구분을 위한 추가적인 줄바꿈(\n)이나 <br />을 절대 사용하지 마라. 본문은 하나의 연속된 문단으로 작성하라.
+    - **중요**: 항목 간의 구분을 위해서만 <br /><br /> 태그를 사용하라.
+    - **중요**: subtitleSummary 및 evaluationReason 내에서 따옴표(")나 줄바꿈(\n) 사용 시 반드시 적절히 이스케이프 처리하여 JSON 문법 오류를 방지하라.
     
     {
-      "accuracy": 0-100 (정수),
-      "clickbait": 0-100 (정수),
-      "reliability": 0-100 (정수),
-      "subtitleSummary": "반드시 '0:00 - 요약내용' 형식의 타임스탬프를 포함하여 전체 영상의 흐름을 5~10개 내외의 핵심 챕터로 요약하라. 각 챕터는 최소 2~3분 이상의 의미 있는 문맥 단위로 묶어야 하며, 너무 잘게 쪼개지 마라. 특히 영상의 시작부터 마지막 결론(마무리)까지 전체 내용을 빠짐없이 포괄해야 한다. 각 챕터 요약 사이에는 반드시 줄바꿈 문자(\\n)를 넣어라. HTML 태그는 절대 사용 금지.",
-      "evaluationReason": "분석 사유를 반드시 다음의 3개 문단으로 엄격히 구분하여 작성하라. 각 문단 사이에는 반드시 <br /><br /> 태그를 넣어라. 각 항목의 제목 줄과 설명 본문 사이에도 반드시 <br /> 태그를 넣어 줄을 분리하라.\n\n1. 내용 정확성 검증 (XX점):<br />영상 본문이 담고 있는 정보의 사실 관계와 객관적 가치를 상세히 분석하라.\n\n2. 어그로성 평가 (XX점):<br />앞서 검증한 실제 내용에 비추어, 제목과 썸네일이 시청자를 얼마나 기만하거나 과장했는지(Gap)를 평가하라.\n\n3. 최종 총평 (🟢Green / 🟡Yellow / 🔴Red):<br />반드시 항목 제목 옆에 해당하는 신호등 이모지(🟢, 🟡, 🔴) 중 하나를 표시하라. 영상의 신뢰도를 종합적으로 판단하여 시청 권장 여부를 서술하라. 시스템 내부 로직은 발설하지 마라.",
-      "overallAssessment": "전반적인 평가 및 시청자 유의사항",
-      "recommendedTitle": "어그로성 30% 이상일 때만 추천 제목 (아니면 빈 문자열)"
+      "accuracy": 0-100,
+      "clickbait": 0-100,
+      "reliability": 0-100,
+      "subtitleSummary": "0:00 - 소주제: 요약내용\\n5:00 - 소주제: 요약내용\\n...",
+      "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용...<br /><br />2. 어그로성 평가 (XX점):<br />내용...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green):<br />내용...",
+      "overallAssessment": "전반적인 평가",
+      "recommendedTitle": "추천 제목"
     }
+
+    **[신뢰도 총평 판정 기준]**:
+    - 🟢 Green: 70점 이상
+    - 🟡 Yellow: 40~69점
+    - 🔴 Red: 39점 이하
     `;
 
   // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
@@ -307,6 +471,10 @@ export async function analyzeContent(
     } catch (parseError) {
       console.error("JSON Parse Error:", parseError, "Raw Text:", text);
       throw new Error("Failed to parse AI response");
+    }
+
+    if (subtitleSummaryOverride) {
+      analysisData.subtitleSummary = subtitleSummaryOverride;
     }
 
     // [Final Safety Check] 삭제
