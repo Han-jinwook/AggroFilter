@@ -259,8 +259,9 @@ ${chunk.text}`;
   try {
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
+    const processedText = text.replace(/\n/g, '|||'); // Use a unique separator
     // Always prepend the correct timestamp from chunk
-    return `${chunk.startTime} - ${text}`;
+    return `${chunk.startTime} - ${processedText}`;
   } catch (e) {
     console.error(`Chunk summary failed for ${chunk.startTime}:`, e);
     return `${chunk.startTime} - [요약 실패]`;

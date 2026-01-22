@@ -413,27 +413,28 @@ export default function ResultClient() {
       // Parse subtopic and summary (format: "소주제  요약문장")
       let subtopic: string | null = null;
       let summaryText = contentToRender;
-      const parts = contentToRender.split(/\s{2,}/);
+      const parts = contentToRender.split('|||');
       if (parts.length >= 2) {
         subtopic = parts[0].trim();
-        summaryText = parts.slice(1).join(' ').trim();
+        summaryText = parts[1].trim();
+      } else {
+        subtopic = null;
+        summaryText = contentToRender;
       }
 
       return (
-        <div key={lineIdx} className="mb-3 last:mb-0">
-          {firstTimestamp && (
-            <button
-              onClick={() => handleTimestampClick(firstTimestamp!)}
-              className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mr-2"
-            >
-              <Play className="w-3 h-3 fill-current" />
-              {firstTimestamp}
-            </button>
-          )}
+        <div key={lineIdx} className="mb-3 last:mb-0 text-left">
+          <button
+            onClick={() => handleTimestampClick(firstTimestamp!)}
+            className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mr-2"
+          >
+            <Play className="w-3 h-3 fill-current" />
+            {firstTimestamp}
+          </button>
           {subtopic ? (
             <>
-              <span className="font-bold text-gray-900">{subtopic}</span>
-              <span className="text-gray-700 ml-2">{summaryText}</span>
+              <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{subtopic}</span>
+              <span className="text-gray-700">{summaryText}</span>
             </>
           ) : (
             <span className="text-gray-700">{contentToRender}</span>
