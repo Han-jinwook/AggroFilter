@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/c-app-header'
-import { Search, X, ChevronDown, Filter } from 'lucide-react'
+import { Search, X, ChevronDown, Filter, TrendingUp } from 'lucide-react'
 import Image from 'next/image'
 import { LoginModal } from '@/components/c-login-modal'
 import Link from 'next/link'
@@ -194,7 +194,10 @@ export default function RealTimeBestClient() {
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isLongPressRef = useRef(false)
 
+  const [isMounted, setIsMounted] = useState(false)
+
   useEffect(() => {
+    setIsMounted(true)
     const handleOpenLoginModal = () => setShowLoginModal(true)
     window.addEventListener('openLoginModal', handleOpenLoginModal)
     
@@ -202,6 +205,8 @@ export default function RealTimeBestClient() {
       window.removeEventListener('openLoginModal', handleOpenLoginModal)
     }
   }, [])
+
+  if (!isMounted) return null
 
   useEffect(() => {
     if (tabParam) {
@@ -253,13 +258,19 @@ export default function RealTimeBestClient() {
   }
 
   const filteredVideos = videos.filter((video) => {
-    if (filterTrust === 'all') return true
-    return video.trustLevel === filterTrust
+    const matchesFilter = filterTrust === 'all' || video.trustLevel === filterTrust;
+    const matchesSearch = !searchQuery || 
+      video.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      video.channel.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   })
 
   const filteredChannels = channels.filter((channel) => {
-    if (filterTrust === 'all') return true
-    return channel.trustLevel === filterTrust
+    const matchesFilter = filterTrust === 'all' || channel.trustLevel === filterTrust;
+    const matchesSearch = !searchQuery || 
+      channel.channelName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      channel.topic.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   })
 
   const sortedChannels = [...filteredChannels].sort((a, b) => {
@@ -298,76 +309,106 @@ export default function RealTimeBestClient() {
       />
 
       <main className="container mx-auto max-w-2xl px-4 py-3">
-        {/* Tab Header */}
-        <div className="mb-3 flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab('videos')}
-            className={`flex-1 rounded-3xl text-xl font-bold transition-all ${
-              activeTab === 'videos'
-                ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-pink-400 shadow-lg'
-                : 'bg-gradient-to-r from-purple-200 to-blue-200 text-slate-600'
-            } ${
-              isSearchExpanded 
-                ? 'px-3 py-3 opacity-50 md:px-8 md:py-4' 
-                : 'px-4 py-3 md:px-6 md:py-3.5'
-            }`}
-          >
-            <span className={isSearchExpanded ? 'hidden md:inline' : ''}>실시간 </span>
-            영상
-          </button>
+        {/* 원데이 핫이슈 섹션 (마이페이지와 동일하게 최상단 배치) */}
+        <section className="mb-3">
+          <div className="flex items-end justify-between mb-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              원데이 핫이슈 3
+            </h2>
+          </div>
 
-          {!isSearchExpanded ? (
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            {/* Tab Headers */}
+            <div className="flex border-b border-slate-100">
+              <button
+                className="flex-1 py-2.5 text-center text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/50 border-b-2 border-slate-500"
+              >
+                분석수
+              </button>
+              <button
+                className="flex-1 py-2.5 text-center text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              >
+                신뢰도
+              </button>
+              <button
+                className="flex-1 py-2.5 text-center text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              >
+                어그로
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="p-8 text-center">
+              <p className="text-sm text-slate-400">최근 24시간 내 분석된 영상이 없습니다</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Navigation Tabs (마이페이지와 동일한 캡슐형 UI) */}
+        <div className="z-40 mb-2 flex flex-col lg:flex-row items-center justify-between gap-2 bg-transparent transition-all py-0.5">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full lg:w-auto flex-1 max-w-2xl transition-all duration-300 ease-in-out">
             <button
-              onClick={() => setIsSearchExpanded(true)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
+              onClick={() => setActiveTab('videos')}
+              className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
+                activeTab === 'videos'
+                  ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-md shadow-orange-200"
+                  : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              } ${isSearchExpanded ? "px-3 sm:px-4" : ""}`}
             >
-              <Search className="h-6 w-6 text-slate-600" />
+              {isSearchExpanded ? "영상" : <><span className="sm:hidden">영상</span><span className="hidden sm:inline">영상 트렌드</span></>}
             </button>
-          ) : (
-            <div className="flex max-w-xs flex-1 items-center gap-2 rounded-full border-2 border-blue-500 bg-white px-4 py-3 shadow-md">
-              <Search className="h-5 w-5 text-slate-600 flex-shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="제목 / 채널명 검색..."
-                className="flex-1 text-base text-slate-700 placeholder:text-slate-400 outline-none"
-                autoFocus
-                onBlur={() => {
-                  if (!searchQuery) {
-                    setIsSearchExpanded(false)
-                  }
-                }}
-              />
-              {searchQuery && (
+
+            {!isSearchExpanded ? (
+              <button
+                onClick={() => setIsSearchExpanded(true)}
+                className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
+              >
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 group-hover:text-slate-600" />
+              </button>
+            ) : (
+              <div className="flex flex-[2] items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 shadow-md animate-in fade-in zoom-in-95 duration-200 transition-all">
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.currentTarget.blur() 
+                    }
+                  }}
+                  enterKeyHint="search"
+                  placeholder="검색"
+                  className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none"
+                  autoFocus
+                  onBlur={() => {
+                    if (!searchQuery) setIsSearchExpanded(false)
+                  }}
+                />
                 <button
                   onClick={() => {
-                    setSearchQuery('')
+                    setSearchQuery("")
                     setIsSearchExpanded(false)
                   }}
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 rounded-full p-1 hover:bg-slate-100"
                 >
-                  <X className="h-5 w-5 text-slate-400" />
+                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          <button
-            onClick={() => setActiveTab('channels')}
-            className={`flex-1 rounded-3xl text-xl font-bold transition-all ${
-              activeTab === 'channels'
-                ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-pink-400 shadow-lg'
-                : 'bg-gradient-to-r from-purple-200 to-blue-200 text-slate-600'
-            } ${
-              isSearchExpanded 
-                ? 'px-3 py-3 opacity-50 md:px-8 md:py-4' 
-                : 'px-4 py-3 md:px-6 md:py-3.5'
-            }`}
-          >
-            <span className={isSearchExpanded ? 'hidden md:inline' : ''}>실시간 </span>
-            채널
-          </button>
+            <button
+              onClick={() => setActiveTab('channels')}
+              className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
+                activeTab === 'channels'
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200"
+                  : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              } ${isSearchExpanded ? "px-3 sm:px-4" : ""}`}
+            >
+               {isSearchExpanded ? "채널" : <><span className="sm:hidden">채널</span><span className="hidden sm:inline">채널 트렌드</span></>}
+            </button>
+          </div>
         </div>
 
         {/* Filter Section */}

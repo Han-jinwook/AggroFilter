@@ -622,7 +622,7 @@ export default function MyPageClient() {
                 </button>
                 <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
-                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-16 sm:w-20"
+                    className="flex items-center justify-end gap-1 hover:text-slate-600 w-20 sm:w-24"
                   >
                     카테고리
                     <ChevronDown
@@ -677,15 +677,15 @@ export default function MyPageClient() {
                           <div className="flex-1 text-left text-xs sm:text-sm font-bold truncate pr-1 sm:pr-2">{channel.channelName}</div>
 
                           {/* Right Side Columns */}
-                          <div className="flex items-center gap-1 sm:gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                             {/* Topic */}
-                            <div className="text-xs sm:text-sm text-right w-16 sm:w-20 truncate text-slate-300">{channel.topic}</div>
+                            <div className="text-xs sm:text-sm text-right w-20 sm:w-24 flex-shrink-0 text-slate-300">{channel.topic}</div>
 
                             {/* Video Count */}
-                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-medium">{channel.videoCount}</div>
+                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-medium flex-shrink-0">{channel.videoCount}</div>
 
                             {/* Rank Score */}
-                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-bold text-amber-400">{channel.rankScore}</div>
+                            <div className="w-11 sm:w-12 text-right text-xs sm:text-sm font-bold text-amber-400 flex-shrink-0">{channel.rankScore}</div>
                           </div>
                         </div>
                       </button>

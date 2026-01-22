@@ -7,19 +7,23 @@ export async function GET() {
   try {
     const client = await pool.connect();
     try {
-      // 실제 랭킹 데이터가 존재하는 주제들만 가져오기 위해 t_channel_stats 사용
+      // 실제 랭킹 데이터가 존재하는 카테고리별 채널 수 가져오기
       const sql = `
-        SELECT DISTINCT f_topic as topic
+        SELECT 
+          f_official_category_id as category_id,
+          COUNT(*) as channel_count
         FROM t_channel_stats
-        ORDER BY f_topic ASC
-        LIMIT 50
+        GROUP BY f_official_category_id
+        ORDER BY f_official_category_id ASC
       `;
       
       const res = await client.query(sql);
-      // 프론트엔드에서 '#'을 붙여서 보여주므로 여기서는 순수 텍스트만 반환
-      const topics = res.rows.map(row => row.topic);
+      const categories = res.rows.map(row => ({
+        id: row.category_id,
+        count: parseInt(row.channel_count)
+      }));
       
-      return NextResponse.json({ topics });
+      return NextResponse.json({ categories });
     } finally {
       client.release();
     }

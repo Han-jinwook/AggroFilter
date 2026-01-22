@@ -6,6 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
+import { YOUTUBE_CATEGORIES } from "@/lib/constants"
 
 interface TChannel {
   id: string
@@ -22,35 +23,57 @@ export default function RankingClient() {
   const searchParams = useSearchParams()
   const fromTab = searchParams.get("tab")
   
-  const currentTopic = searchParams.get("topic") || ""
+  const currentCategoryId = searchParams.get("category") || ""
+  const currentCategoryName = currentCategoryId ? (YOUTUBE_CATEGORIES[Number.parseInt(currentCategoryId)] || "전체") : "전체"
   
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false)
-  const [availableTopics, setAvailableTopics] = useState<string[]>([])
+  const [availableCategories, setAvailableCategories] = useState<{id: number, count: number}[]>([])
   
   const [channels, setChannels] = useState<TChannel[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchTopics = async () => {
+    const fetchCategories = async () => {
       try {
         const res = await fetch('/api/topics')
         if (res.ok) {
           const data = await res.json()
-          setAvailableTopics(data.topics || [])
+          const dbCategories = data.categories || []
+          
+          // 전체 카테고리 목록 생성 (0개 포함)
+          const allCategories = Object.entries(YOUTUBE_CATEGORIES).map(([idStr, name]) => {
+            const id = Number.parseInt(idStr)
+            const dbCat = dbCategories.find((c: any) => c.id === id)
+            return {
+              id,
+              name,
+              count: dbCat ? dbCat.count : 0
+            }
+          })
+
+          // 정렬 로직: 채널 수 내림차순 -> 이름 오름차순(가나다순)
+          const sortedCategories = allCategories.sort((a, b) => {
+            if (b.count !== a.count) {
+              return b.count - a.count
+            }
+            return a.name.localeCompare(b.name, 'ko')
+          })
+
+          setAvailableCategories(sortedCategories)
         }
       } catch (error) {
-        console.error("Failed to fetch topics:", error)
+        console.error("Failed to fetch categories:", error)
       }
     }
-    fetchTopics()
+    fetchCategories()
   }, [])
 
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true)
       try {
-        const res = await fetch(`/api/ranking?query=${encodeURIComponent(currentTopic)}`)
+        const res = await fetch(`/api/ranking?category=${currentCategoryId}`)
         if (res.ok) {
           const data = await res.json()
           const formatted = data.channels.map((c: any) => ({
@@ -72,7 +95,7 @@ export default function RankingClient() {
     }
 
     fetchChannels()
-  }, [currentTopic])
+  }, [currentCategoryId])
 
   const toggleTooltip = (tooltipId: string) => {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
@@ -82,8 +105,8 @@ export default function RankingClient() {
     setIsTopicDropdownOpen(!isTopicDropdownOpen)
   }
 
-  const handleTopicClick = (topic: string) => {
-    router.push(`/p-ranking?topic=${encodeURIComponent(topic)}`)
+  const handleCategoryClick = (categoryId: string) => {
+    router.push(`/p-ranking?category=${categoryId}`)
     setIsTopicDropdownOpen(false)
   }
 
@@ -140,26 +163,8 @@ export default function RankingClient() {
               <div className="relative flex min-w-0 flex-1 items-center gap-2 rounded-full border-2 border-pink-400 bg-white px-4 py-1.5">
                 <span className="text-base font-bold text-pink-500">#</span>
                 <span className="flex-1 text-base font-bold text-gray-800 truncate">
-                  {currentTopic || "전체"}
+                  {currentCategoryName}
                 </span>
-                <div className="relative -mt-2">
-                  <button
-                    onMouseEnter={() => setActiveTooltip("topic")}
-                    onMouseLeave={() => setActiveTooltip(null)}
-                    onClick={() => toggleTooltip("topic")}
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-500 text-[11px] font-bold text-white hover:bg-slate-600"
-                  >
-                    ?
-                  </button>
-                  {activeTooltip === "topic" && (
-                    <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
-                      <p className="text-xs leading-relaxed text-gray-700">
-                        분석된 영상의 카테고리입니다. 이 카테고리에 대해 높은 신뢰도를 가진 채널 순위를 보여줍니다.
-                      </p>
-                      <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
-                    </div>
-                  )}
-                </div>
               </div>
               <div className="relative flex-shrink-0">
                 <button
@@ -171,29 +176,28 @@ export default function RankingClient() {
                   </svg>
                 </button>
                 {isTopicDropdownOpen && (
-                  <div className="absolute right-0 top-full z-30 mt-2 w-56 max-h-80 overflow-y-auto rounded-2xl bg-slate-600 p-4 shadow-xl custom-scrollbar">
+                  <div className="absolute right-0 top-full z-30 mt-2 w-64 max-h-80 overflow-y-auto rounded-2xl bg-slate-600 p-4 shadow-xl custom-scrollbar">
                     <div className="mb-3 flex items-center justify-between border-b border-slate-500 pb-2">
-                      <h3 className="text-sm font-bold text-white">나의 관심 카테고리</h3>
+                      <h3 className="text-sm font-bold text-white">
+                        유튜브 공식 카테고리 ({availableCategories.length})
+                      </h3>
                       <button onClick={() => setIsTopicDropdownOpen(false)}>
                         <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                         </svg>
                       </button>
                     </div>
-                    <div className="space-y-2">
-                      {availableTopics.length > 0 ? (
-                        availableTopics.map((topic, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handleTopicClick(topic)}
-                            className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-slate-700"
-                          >
-                            #{topic}
-                          </button>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-300 text-center py-4">등록된 카테고리가 없습니다.</p>
-                      )}
+                    <div className="space-y-1">
+                      {availableCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => handleCategoryClick(cat.id.toString())}
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:bg-slate-700"
+                        >
+                          <span className="truncate">#{cat.name}</span>
+                          <span className="ml-2 flex-shrink-0 text-xs text-slate-300">({cat.count})</span>
+                        </button>
+                      ))}
                     </div>
                     <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 bg-slate-600"></div>
                   </div>
