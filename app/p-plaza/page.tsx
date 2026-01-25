@@ -16,7 +16,7 @@ import {
 import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 interface TVideoData {
   id?: string
@@ -30,9 +30,63 @@ interface TVideoData {
   channelIcon?: string
 }
 
+interface TAnalyzedChannelData {
+  id: string
+  rank: number
+  name: string
+  channelIcon?: string
+  topic: string
+  count: number
+  score: number
+  color: "green" | "red"
+}
+
 export default function PlazaPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"video" | "channel">("video")
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const [activeTab, setActiveTab] = useState<"video" | "channel">(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'video' || tab === 'channel') return tab
+    if (typeof window !== 'undefined') {
+      const saved = window.sessionStorage.getItem('plaza_active_tab')
+      if (saved === 'video' || saved === 'channel') return saved
+    }
+    return 'video'
+  })
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'video' || tab === 'channel') {
+      setActiveTab(tab)
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('plaza_active_tab', tab)
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        const saved = window.sessionStorage.getItem('plaza_active_tab')
+        if (saved === 'video' || saved === 'channel') {
+          setActiveTab(saved)
+          return
+        }
+      }
+      setActiveTab('video')
+    }
+  }, [searchParams])
+
+  const updateTabInUrl = (tab: 'video' | 'channel') => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('plaza_active_tab', tab)
+    }
+    const sp = new URLSearchParams(searchParams.toString())
+    if (tab === 'video') sp.delete('tab')
+    else sp.set('tab', tab)
+
+    const qs = sp.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+  }
+
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [hotFilter, setHotFilter] = useState<"views" | "trust" | "aggro">("views")
   const [sortDirection, setSortDirection] = useState<"best" | "worst">("best")
@@ -48,7 +102,6 @@ export default function PlazaPage() {
   const [displayedVideos, setDisplayedVideos] = useState(10)
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [isInfiniteScrollEnabled, setIsInfiniteScrollEnabled] = useState(false)
   const observerTarget = useRef<HTMLDivElement>(null)
 
   const [videoSortConfig, setVideoSortConfig] = useState<{
@@ -64,6 +117,9 @@ export default function PlazaPage() {
 
   const [trendingChannels, setTrendingChannels] = useState<any[]>([])
   const [isLoadingTrendingChannels, setIsLoadingTrendingChannels] = useState(true)
+
+  const [analyzedChannels, setAnalyzedChannels] = useState<TAnalyzedChannelData[]>([])
+  const [isLoadingAnalyzedChannels, setIsLoadingAnalyzedChannels] = useState(true)
 
   const handleVideoSort = (key: "date" | "views" | "score") => {
     setVideoSortConfig((current) => ({
@@ -89,6 +145,24 @@ export default function PlazaPage() {
     }
     fetchVideos()
   }, [selectedPeriod, videoSortConfig])
+
+  useEffect(() => {
+    const fetchAnalyzedChannels = async () => {
+      setIsLoadingAnalyzedChannels(true)
+      try {
+        const res = await fetch(`/api/plaza/channels?period=${selectedPeriod}`)
+        if (res.ok) {
+          const data = await res.json()
+          setAnalyzedChannels(data.channels || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch analyzed channels:', error)
+      } finally {
+        setIsLoadingAnalyzedChannels(false)
+      }
+    }
+    fetchAnalyzedChannels()
+  }, [selectedPeriod])
 
   useEffect(() => {
     if (searchQuery) {
@@ -189,7 +263,6 @@ export default function PlazaPage() {
   }, [])
 
   useEffect(() => {
-    if (!isInfiniteScrollEnabled) return
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !isLoadingMore && displayedVideos < filteredVideos.length) {
@@ -204,12 +277,7 @@ export default function PlazaPage() {
     )
     if (observerTarget.current) observer.observe(observerTarget.current)
     return () => observer.disconnect()
-  }, [isInfiniteScrollEnabled, isLoadingMore, displayedVideos, filteredVideos.length])
-
-  const handleLoadMore = () => {
-    setIsInfiniteScrollEnabled(true)
-    setDisplayedVideos((prev) => Math.min(prev + 10, filteredVideos.length))
-  }
+  }, [isLoadingMore, displayedVideos, filteredVideos.length])
 
   const toggleSort = () => {
     setSortDirection((prev) => (prev === "best" ? "worst" : "best"))
@@ -223,25 +291,25 @@ export default function PlazaPage() {
     <div className="min-h-screen bg-[#F8F9FC]">
       <AppHeader onLoginClick={() => {}} />
 
-      <main className="container mx-auto max-w-2xl px-4 py-6 md:px-6">
+      <main className="container mx-auto max-w-[var(--app-max-width)] px-3 sm:px-4 py-4 sm:py-6 md:px-6">
         {/* 1. 탭에 따라 변경되는 상단 섹션 */}
         {activeTab === 'video' ? (
-          <div className="mb-6 rounded-[2rem] bg-white p-6 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] border border-slate-100 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-orange-400 via-red-500 to-pink-500" />
-            <div className="mb-4 flex items-center gap-2">
-              <div className="p-2 rounded-full bg-orange-50 text-orange-600">
-                <TrendingUp className="h-6 w-6" />
+          <div className="mb-4 sm:mb-6 rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] border border-slate-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 sm:h-1.5 bg-gradient-to-r from-orange-400 via-red-500 to-pink-500" />
+            <div className="mb-3 sm:mb-4 flex items-center gap-2">
+              <div className="p-1.5 sm:p-2 rounded-full bg-orange-50 text-orange-600">
+                <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800">원데이 핫이슈 3</h2>
-              <Clock className="ml-auto h-5 w-5 text-slate-400" />
+              <h2 className="text-base sm:text-xl font-bold text-slate-800">원데이 핫이슈 3</h2>
+              <Clock className="ml-auto h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
             </div>
-            <div className="flex gap-2 mb-4 p-1 bg-slate-50 rounded-2xl">
+            <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
               <button
                 onClick={() => {
                   setHotFilter("views")
                   setSortDirection("best")
                 }}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all ${
                   hotFilter === "views"
                     ? "bg-white text-slate-900 shadow-md ring-1 ring-black/5"
                     : "text-slate-400 hover:text-slate-600"
@@ -258,7 +326,7 @@ export default function PlazaPage() {
                     setSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all flex items-center justify-center gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   hotFilter === "trust"
                     ? sortDirection === "worst"
                       ? "bg-white text-red-600 shadow-md ring-1 ring-black/5"
@@ -274,7 +342,7 @@ export default function PlazaPage() {
                         : "신뢰도 WORST 3"
                       : "신뢰도"}
                   </span>
-                  {hotFilter === "trust" && <ArrowUpDown className="h-3 w-3 opacity-80" />}
+                  {hotFilter === "trust" && <ArrowUpDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-80" />}
                 </span>
               </button>
               <button
@@ -286,7 +354,7 @@ export default function PlazaPage() {
                     setSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all flex items-center justify-center gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   hotFilter === "aggro"
                     ? sortDirection === "worst"
                       ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-200"
@@ -307,7 +375,7 @@ export default function PlazaPage() {
                       "어그로"
                     )}
                   </span>
-                  {hotFilter === "aggro" && <ArrowUpDown className="h-3 w-3 opacity-80" />}
+                  {hotFilter === "aggro" && <ArrowUpDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-80" />}
                 </span>
               </button>
             </div>
@@ -426,14 +494,17 @@ export default function PlazaPage() {
         )}
 
         {/* 2. 네비게이션 탭 */}
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
           <button
-            onClick={() => setActiveTab("video")}
-            className={`flex-1 rounded-full text-base font-bold transition-all border shadow-sm ${
+            onClick={() => {
+              setActiveTab('video')
+              updateTabInUrl('video')
+            }}
+            className={`flex-1 rounded-full text-sm sm:text-base font-bold transition-all border shadow-sm ${
               activeTab === "video"
-                ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-md shadow-orange-200 transform scale-[1.02]"
+                ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white border-transparent shadow-md shadow-purple-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-            } ${isSearchExpanded ? "px-3 py-3 opacity-50 md:px-6 md:py-3.5" : "px-4 py-3.5 md:px-6 md:py-4"}`}
+            } ${isSearchExpanded ? "px-2 py-2.5 opacity-50 sm:px-3 sm:py-3 md:px-6 md:py-3.5" : "px-3 py-3 sm:px-4 sm:py-3.5 md:px-6 md:py-4"}`}
           >
             <span className={isSearchExpanded ? "md:hidden" : ""}>{isSearchExpanded ? "영상" : "영상 트렌드"}</span>
             <span className={isSearchExpanded ? "hidden md:inline" : "hidden"}>영상 트렌드</span>
@@ -442,13 +513,13 @@ export default function PlazaPage() {
           {!isSearchExpanded ? (
             <button
               onClick={() => setIsSearchExpanded(true)}
-              className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
+              className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all group"
             >
-              <Search className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
+              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400 group-hover:text-slate-600" />
             </button>
           ) : (
-            <div className="flex max-w-xs flex-1 items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-3 shadow-md animate-in fade-in zoom-in-95 duration-200">
-              <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <div className="flex max-w-xs flex-1 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 sm:px-4 py-2.5 sm:py-3 shadow-md animate-in fade-in zoom-in-95 duration-200">
+              <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
@@ -460,7 +531,7 @@ export default function PlazaPage() {
                 }}
                 enterKeyHint="search"
                 placeholder="검색"
-                className="flex-1 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none min-w-0 bg-transparent"
+                className="flex-1 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none min-w-0 bg-transparent"
                 autoFocus
                 onBlur={() => {
                   if (!searchQuery) setIsSearchExpanded(false)
@@ -473,18 +544,21 @@ export default function PlazaPage() {
                 }}
                 className="flex-shrink-0 rounded-full p-1 hover:bg-slate-100"
               >
-                <X className="h-4 w-4 text-slate-400" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400" />
               </button>
             </div>
           )}
 
           <button
-            onClick={() => setActiveTab("channel")}
-            className={`flex-1 rounded-full text-base font-bold transition-all border shadow-sm ${
+            onClick={() => {
+              setActiveTab('channel')
+              updateTabInUrl('channel')
+            }}
+            className={`flex-1 rounded-full text-sm sm:text-base font-bold transition-all border shadow-sm ${
               activeTab === "channel"
                 ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-            } ${isSearchExpanded ? "px-3 py-3 opacity-50 md:px-6 md:py-3.5" : "px-4 py-3.5 md:px-6 md:py-4"}`}
+            } ${isSearchExpanded ? "px-2 py-2.5 opacity-50 sm:px-3 sm:py-3 md:px-6 md:py-3.5" : "px-3 py-3 sm:px-4 sm:py-3.5 md:px-6 md:py-4"}`}
           >
             <span className={isSearchExpanded ? "md:hidden" : ""}>{isSearchExpanded ? "채널" : "채널 트렌드"}</span>
             <span className={isSearchExpanded ? "hidden md:inline" : "hidden"}>채널 트렌드</span>
@@ -493,17 +567,17 @@ export default function PlazaPage() {
 
         {/* 3. 탭별 콘텐츠 */}
         {activeTab === "video" ? (
-          <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-800">전체 분석 영상</h2>
+          <div className="rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상</h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">최초 분석일 기준</span>
+                <span className="text-[10px] sm:text-xs text-slate-500">최초 분석일 기준</span>
                 <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
                   {["1일", "1주일", "1개월"].map((period) => (
                     <button
                       key={period}
                       onClick={() => setSelectedPeriod(period as any)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all ${
+                      className={`rounded-md px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold transition-all ${
                         selectedPeriod === period
                           ? "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"
                           : "text-slate-400 hover:text-slate-600"
@@ -516,37 +590,40 @@ export default function PlazaPage() {
               </div>
             </div>
 
-            <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
+            <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
               <div
-                className="w-12 text-center cursor-pointer flex items-center justify-center gap-1 hover:text-slate-800"
+                className="w-10 sm:w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 sm:gap-1 hover:text-slate-800"
                 onClick={() => handleVideoSort("date")}
               >
-                날짜
+                <span className="hidden sm:inline">날짜</span>
+                <span className="sm:hidden">날짜</span>
                 <ChevronDown
-                  className={`h-3 w-3 transition-transform ${
+                  className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${
                     videoSortConfig.key === "date" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
                   }`}
                 />
               </div>
-              <div className="ml-2 flex-1">제목 / 채널</div>
+              <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
               <div
-                className="w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
+                className="w-10 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
                 onClick={() => handleVideoSort("views")}
               >
-                <span className="whitespace-nowrap">조회수</span>
+                <span className="whitespace-nowrap hidden sm:inline">조회수</span>
+                <span className="whitespace-nowrap sm:hidden">조회</span>
                 <ChevronDown
-                  className={`h-3 w-3 flex-shrink-0 transition-transform ${
+                  className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
                     videoSortConfig.key === "views" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
                   }`}
                 />
               </div>
               <div
-                className="w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-1"
+                className="w-10 sm:w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-0.5 sm:ml-1"
                 onClick={() => handleVideoSort("score")}
               >
-                <span className="whitespace-nowrap">신뢰도</span>
+                <span className="whitespace-nowrap hidden sm:inline">신뢰도</span>
+                <span className="whitespace-nowrap sm:hidden">점수</span>
                 <ChevronDown
-                  className={`h-3 w-3 flex-shrink-0 transition-transform ${
+                  className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
                     videoSortConfig.key === "score" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
                   }`}
                 />
@@ -568,38 +645,38 @@ export default function PlazaPage() {
                   const dateObj = new Date(item.date);
                   const formattedDate = `${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
                   return (
-                    <div key={item.id || idx} className="flex items-center gap-4">
-                      <div className="w-12 flex-shrink-0 text-center">
-                        <span className="text-[11px] font-bold text-slate-400 tabular-nums leading-none">
+                    <div key={item.id || idx} className="flex items-center gap-2 sm:gap-4">
+                      <div className="w-10 sm:w-12 flex-shrink-0 text-center">
+                        <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 tabular-nums leading-none">
                           {formattedDate}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <Link href={`/p-result?id=${item.id}`} className="group/title block">
-                          <h3 className="line-clamp-1 text-[13px] font-bold text-slate-800 transition-colors group-hover/title:text-blue-600">
+                          <h3 className="line-clamp-1 text-[11px] sm:text-[13px] font-bold text-slate-800 transition-colors group-hover/title:text-blue-600">
                             {item.title}
                           </h3>
                         </Link>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                        <div className="mt-0.5 sm:mt-1 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500">
                           <Image
                             src={item.channelIcon || "/placeholder.svg?height=12&width=12"}
                             alt=""
-                            width={12}
-                            height={12}
-                            className="rounded-full flex-shrink-0"
+                            width={10}
+                            height={10}
+                            className="rounded-full flex-shrink-0 sm:w-3 sm:h-3"
                           />
                           <span className="truncate">{item.channel}</span>
                         </div>
                       </div>
-                      <div className="w-14 flex-shrink-0 flex justify-center">
-                        <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
-                          <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
+                      <div className="w-10 sm:w-14 flex-shrink-0 flex justify-center">
+                        <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-1 sm:py-2 border border-blue-100/30">
+                          <span className="text-xs sm:text-base font-black text-blue-600 tabular-nums tracking-tight leading-none">
                             {item.views}
                           </span>
                         </div>
                       </div>
-                      <div className="w-12 flex-shrink-0 flex justify-center">
-                        <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === "green" ? "text-green-500" : "text-red-500"}`}>
+                      <div className="w-10 sm:w-12 flex-shrink-0 flex justify-center">
+                        <div className={`text-base sm:text-lg font-black tracking-tighter tabular-nums leading-none ${item.color === "green" ? "text-green-500" : "text-red-500"}`}>
                           {item.score}
                         </div>
                       </div>
@@ -609,18 +686,7 @@ export default function PlazaPage() {
               )}
             </div>
 
-            {!isInfiniteScrollEnabled && displayedVideos < filteredVideos.length && (
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={handleLoadMore}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                >
-                  추가로 보기 ({filteredVideos.length - displayedVideos}개 더 있음)
-                </button>
-              </div>
-            )}
-
-            {isInfiniteScrollEnabled && displayedVideos < filteredVideos.length && (
+            {displayedVideos < filteredVideos.length && (
               <div ref={observerTarget} className="mt-4 flex justify-center py-4">
                 {isLoadingMore ? (
                   <div className="flex items-center gap-2 text-slate-500">
@@ -691,15 +757,19 @@ export default function PlazaPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">최초 분석일 기준</span>
                   <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-                    <button className="bg-white text-slate-900 shadow-sm ring-1 ring-black/5 rounded-md px-2.5 py-1 text-xs font-bold">
-                      1일
-                    </button>
-                    <button className="text-slate-400 hover:text-slate-600 rounded-md px-2.5 py-1 text-xs font-bold">
-                      1주일
-                    </button>
-                    <button className="text-slate-400 hover:text-slate-600 rounded-md px-2.5 py-1 text-xs font-bold">
-                      1개월
-                    </button>
+                    {(["1일", "1주일", "1개월"] as const).map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setSelectedPeriod(period)}
+                        className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all ${
+                          selectedPeriod === period
+                            ? "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"
+                            : "text-slate-400 hover:text-slate-600"
+                        }`}
+                      >
+                        {period}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -712,41 +782,39 @@ export default function PlazaPage() {
               </div>
 
               <div className="space-y-3">
-                {[
-                  { rank: 1, name: '슈카월드', topic: '경제', count: 145, score: 88, color: 'green' },
-                  { rank: 2, name: '김자카 TV', topic: '먹방', count: 120, score: 65, color: 'red' },
-                  { rank: 3, name: '기로세로연구소', topic: '정치', count: 98, score: 32, color: 'red' },
-                  { rank: 4, name: '침착맨', topic: '예능', count: 85, score: 92, color: 'green' },
-                  { rank: 5, name: '파식대학', topic: '게임', count: 72, score: 85, color: 'green' },
-                ].map((item) => (
-                  <div key={item.rank} className="flex items-center gap-4">
-                    <div className="w-8 flex-shrink-0 text-center">
-                      <span className="text-sm font-bold text-slate-400">{item.rank}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
-                      <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
-                    </div>
-                    <div className="w-20 flex-shrink-0 flex justify-center">
-                      <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
-                        <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
-                          {item.count}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-16 flex-shrink-0 flex justify-center">
-                      <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
-                        {item.score}
-                      </div>
-                    </div>
+                {isLoadingAnalyzedChannels ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex justify-center">
-                <button className="px-8 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
-                  추가로 보기 (20개 더 있음)
-                </button>
+                ) : analyzedChannels.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm">
+                    선택한 기간 내 분석된 채널이 없습니다
+                  </div>
+                ) : (
+                  analyzedChannels.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4">
+                      <div className="w-8 flex-shrink-0 text-center">
+                        <span className="text-sm font-bold text-slate-400">{item.rank}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
+                        <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
+                      </div>
+                      <div className="w-20 flex-shrink-0 flex justify-center">
+                        <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
+                          <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
+                            {item.count}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-16 flex-shrink-0 flex justify-center">
+                        <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
+                          {item.score}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </>

@@ -5,7 +5,7 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, TrendingUp, User } from "lucide-react"
+import { Bell, FileText, TrendingUp, User } from "lucide-react"
 import { useState, useEffect } from "react"
 
 export function checkLoginStatus(): boolean {
@@ -26,6 +26,9 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const pathname = usePathname()
   const [nickname, setNickname] = useState("")
   const [profileImage, setProfileImage] = useState("")
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  const isLoggedIn = nickname.length > 0
 
   useEffect(() => {
     const loadProfile = () => {
@@ -47,6 +50,33 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!isLoggedIn) {
+      setUnreadCount(0)
+      return
+    }
+
+    const fetchUnreadCount = async () => {
+      try {
+        const email = localStorage.getItem('userEmail')
+        const url = email ? `/api/notification/unread-count?email=${encodeURIComponent(email)}` : '/api/notification/unread-count'
+        const res = await fetch(url, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const nextCount = Number(data?.unreadCount)
+        if (Number.isFinite(nextCount) && nextCount >= 0) setUnreadCount(nextCount)
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchUnreadCount()
+    const interval = window.setInterval(fetchUnreadCount, 30000)
+
+    return () => window.clearInterval(interval)
+  }, [isLoggedIn])
+
   const isActive = (path: string) => {
     return pathname.startsWith(path)
   }
@@ -55,8 +85,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     if (!text || text.length === 0) return "C"
     return text.charAt(0).toUpperCase()
   }
-
-  const isLoggedIn = nickname.length > 0
 
   const handleLoginClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -125,8 +153,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   }
 
   return (
-    <header className="relative border-b border-slate-200 bg-white/80 px-4 md:px-6 backdrop-blur-xl h-20 flex items-center">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
+    <header className="relative border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center">
+      <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-1 cursor-pointer group no-underline">
           <Image
             src="/images/character-logo.png"
@@ -143,7 +171,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           </div>
         </Link>
 
-        <div className="flex items-center gap-1 sm:gap-6">
+        <div className="flex items-center gap-1 sm:gap-4">
           <MenuItem
             icon={FileText}
             label="My Page"
@@ -155,27 +183,55 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
           {isLoggedIn ? (
-            <Link
-              href="/p-settings"
-              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-            >
-              {profileImage ? (
-                <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
-                  <img
-                    src={profileImage || "/placeholder.svg"}
-                    alt="Profile"
-                    className="h-9 w-9 rounded-lg object-cover shadow-sm"
-                  />
+            <>
+              <Link
+                href="/p-notification"
+                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+              >
+                <div className="relative">
+                  <div
+                    className={
+                      "p-2 rounded-xl transition-colors " +
+                      (isActive('/p-notification')
+                        ? 'bg-slate-900 text-white'
+                        : 'group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white')
+                    }
+                  >
+                    <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-                  <span className="text-sm font-bold w-5 h-5 flex items-center justify-center">
-                    {getFirstChar(nickname)}
-                  </span>
-                </div>
-              )}
-              <span className="text-[10px] font-bold text-slate-900">{nickname}</span>
-            </Link>
+                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors">
+                  알림
+                </span>
+              </Link>
+
+              <Link
+                href="/p-settings"
+                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+              >
+                {profileImage ? (
+                  <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
+                    <img
+                      src={profileImage || "/placeholder.svg"}
+                      alt="Profile"
+                      className="h-9 w-9 rounded-lg object-cover shadow-sm"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                    <span className="text-sm font-bold w-5 h-5 flex items-center justify-center">
+                      {getFirstChar(nickname)}
+                    </span>
+                  </div>
+                )}
+                <span className="text-[10px] font-bold text-slate-900">{nickname}</span>
+              </Link>
+            </>
           ) : (
             <MenuItem icon={User} label="로그인" onClick={handleLoginClick} />
           )}

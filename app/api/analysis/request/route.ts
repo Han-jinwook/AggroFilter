@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { extractVideoId, getVideoInfo, getTranscript, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
+import { subscribeChannelAuto, checkRankingChangesAndNotify } from '@/lib/notification';
 import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
@@ -276,6 +277,18 @@ export async function POST(request: Request) {
       refreshRankingCache(videoInfo.officialCategoryId).catch(err => {
         console.error('랭킹 캐시 갱신 실패:', err);
       });
+
+      // 채널 자동 구독 처리 (비동기)
+      if (actualUserId && hasTranscript) {
+        subscribeChannelAuto(actualUserId, videoInfo.channelId).catch(err => {
+          console.error('채널 자동 구독 실패:', err);
+        });
+
+        // 랭킹 변동 감지 및 알림 발송 (비동기)
+        checkRankingChangesAndNotify(videoInfo.officialCategoryId).catch(err => {
+          console.error('랭킹 변동 감지 실패:', err);
+        });
+      }
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

@@ -23,6 +23,8 @@ interface THotChannelCardProps {
 }
 
 export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
+  const returnTo = encodeURIComponent('/p-plaza?tab=channel')
+
   const getScoreColor = () => {
     if (item.color === "green") return "text-green-500"
     if (item.color === "red") return "text-red-500"
@@ -60,7 +62,7 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
 
   return (
     <Link
-      href={`/channel/${item.id}`}
+      href={`/channel/${item.id}?returnTo=${returnTo}`}
       className="group flex items-center gap-2.5 rounded-2xl border-2 border-slate-100 bg-white p-2.5 transition-all hover:-translate-y-1 hover:border-slate-200 hover:shadow-lg active:scale-[0.99]"
     >
       <div

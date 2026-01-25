@@ -184,7 +184,7 @@ export default function AnalysisListClient() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50">
       <AppHeader />
       
-      <main className="container mx-auto max-w-2xl px-4 py-6">
+      <main className="container mx-auto max-w-[var(--app-max-width)] px-4 py-6">
         {/* Tab Header */}
         <div className="mb-6 flex items-center gap-3">
           <button

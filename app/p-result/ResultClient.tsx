@@ -532,8 +532,8 @@ ${content}
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
-      <main className="container px-4 pt-6 pb-24">
-        <div className="mx-auto max-w-2xl space-y-4">
+      <main className="pt-6 pb-24">
+        <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div className="bg-background pb-2 pt-2">
             <AnalysisHeader
               channelImage={analysisData.channelImage}

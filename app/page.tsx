@@ -112,8 +112,8 @@ export default function MainPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
 
-      <main className="container flex-1 px-4 py-8">
-        <div className="mx-auto max-w-2xl space-y-6">
+      <main className="flex-1 py-8">
+        <div className="mx-auto max-w-[var(--app-max-width)] space-y-6 px-4">
           <HeroSection
             url={url}
             isAnalyzing={isAnalyzing}
@@ -122,7 +122,7 @@ export default function MainPage() {
             onAnalyze={handleAnalyze}
           />
 
-          <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} />
+          {!isAnalyzing ? <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
 
           {!isAnalyzing && !isCompleted && (
             <>
@@ -131,7 +131,7 @@ export default function MainPage() {
             </>
           )}
 
-          <AnalysisCharacter isAnalyzing={isAnalyzing} isCompleted={isCompleted} />
+          {!isAnalyzing ? <AnalysisCharacter isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
 
           <Disclaimer isAnalyzing={isAnalyzing} isCompleted={isCompleted} />
         </div>

@@ -56,6 +56,8 @@ export default function MyPageClient() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [guideCount, setGuideCount] = useState(0)
+  const [isManageMode, setIsManageMode] = useState(false)
+  const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set())
 
   const longPressTimerRef = useRef<NodeJS.Timeout>()
   const isLongPressRef = useRef(false)
@@ -321,7 +323,7 @@ export default function MyPageClient() {
     <div className="min-h-screen bg-[#F8F9FC]">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
 
-      <main className="mx-auto max-w-5xl px-2 sm:px-4 py-4 sm:py-8 md:px-6">
+      <main className="mx-auto max-w-[var(--app-max-width)] px-2 sm:px-4 py-4 sm:py-8 md:px-6">
         {/* My Trend Insights Section */}
         <section className="mb-3">
           <div className="flex items-end justify-between mb-2">
@@ -421,7 +423,7 @@ export default function MyPageClient() {
 
         {/* Navigation Tabs */}
         <div className="z-40 mb-2 flex flex-col lg:flex-row items-center justify-between gap-2 bg-transparent transition-all py-0.5">
-          <div className="flex items-center gap-1.5 sm:gap-2 w-full lg:w-auto flex-1 max-w-2xl transition-all duration-300 ease-in-out mb-2 lg:mb-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 w-full lg:w-auto flex-1 transition-all duration-300 ease-in-out mb-2 lg:mb-0">
             <button
               onClick={() => setActiveTab("analysis")}
               className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
@@ -482,6 +484,22 @@ export default function MyPageClient() {
             >
                {isSearchExpanded ? "채널" : <><span className="sm:hidden">채널</span><span className="hidden sm:inline">나의 채널</span></>}
             </button>
+            
+            {activeTab === "channels" && (
+              <button
+                onClick={() => {
+                  setIsManageMode(!isManageMode)
+                  setSelectedChannels(new Set())
+                }}
+                className={`rounded-full px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
+                  isManageMode
+                    ? "bg-red-500 text-white border-transparent shadow-md shadow-red-200"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {isManageMode ? "취소" : "구독 관리"}
+              </button>
+            )}
           </div>
 
           {activeTab === "analysis" ? (
@@ -602,6 +620,22 @@ export default function MyPageClient() {
 
               {/* Table Header */}
               <div className="mb-2 flex items-center gap-1 sm:gap-2 border-b border-slate-100 pb-2 text-[10px] sm:text-xs font-medium text-slate-400 px-1">
+                {isManageMode && (
+                  <div className="w-6 sm:w-8 flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedChannels.size === channels.length && channels.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedChannels(new Set(channels.map(c => c.id)))
+                        } else {
+                          setSelectedChannels(new Set())
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
                 <button
                   onClick={() => handleSort("date")}
                   className="flex items-center gap-1 hover:text-slate-600 w-8 sm:w-9 pl-1"
@@ -656,15 +690,39 @@ export default function MyPageClient() {
                   return (
                     <div key={channel.id} className="relative group">
                       <button
-                        onMouseDown={handleChannelPressStart}
-                        onMouseUp={() => handleChannelPressEnd(channel.id)}
-                        onMouseLeave={handleChannelPressCancel}
-                        onTouchStart={handleChannelPressStart}
-                        onTouchEnd={() => handleChannelPressEnd(channel.id)}
-                        onTouchCancel={handleChannelPressCancel}
-                        className="w-full rounded-xl bg-slate-800 p-3 sm:p-4 text-white hover:bg-slate-700 transition-all shadow-sm hover:shadow-md active:scale-[0.99]"
+                        onMouseDown={isManageMode ? undefined : handleChannelPressStart}
+                        onMouseUp={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
+                        onMouseLeave={isManageMode ? undefined : handleChannelPressCancel}
+                        onTouchStart={isManageMode ? undefined : handleChannelPressStart}
+                        onTouchEnd={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
+                        onTouchCancel={isManageMode ? undefined : handleChannelPressCancel}
+                        onClick={isManageMode ? () => {
+                          const newSelected = new Set(selectedChannels)
+                          if (newSelected.has(channel.id)) {
+                            newSelected.delete(channel.id)
+                          } else {
+                            newSelected.add(channel.id)
+                          }
+                          setSelectedChannels(newSelected)
+                        } : undefined}
+                        className={`w-full rounded-xl p-3 sm:p-4 text-white transition-all shadow-sm hover:shadow-md active:scale-[0.99] ${
+                          isManageMode && selectedChannels.has(channel.id)
+                            ? 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-slate-800 hover:bg-slate-700'
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 sm:gap-2">
+                          {/* Checkbox */}
+                          {isManageMode && (
+                            <div className="w-6 sm:w-8 flex items-center justify-center flex-shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={selectedChannels.has(channel.id)}
+                                onChange={() => {}}
+                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 pointer-events-none"
+                              />
+                            </div>
+                          )}
                           {/* Date */}
                           <div className="flex flex-col text-left text-[8px] sm:text-[9px] w-8 sm:w-9 text-slate-500 leading-tight">
                             <div>{channel.date.split(".")[0]}.</div>
@@ -720,6 +778,40 @@ export default function MyPageClient() {
                   )
                 })}
               </div>
+              {isManageMode && selectedChannels.size > 0 && (
+                <div className="mt-4 flex justify-end gap-2 px-1">
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`선택한 ${selectedChannels.size}개 채널의 구독을 해제하시겠습니까?`)) return
+                      
+                      try {
+                        const response = await fetch('/api/subscription/unsubscribe', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            channelIds: Array.from(selectedChannels)
+                          })
+                        })
+
+                        if (response.ok) {
+                          alert('구독이 해제되었습니다.')
+                          setSelectedChannels(new Set())
+                          setIsManageMode(false)
+                          window.location.reload()
+                        } else {
+                          alert('구독 해제에 실패했습니다.')
+                        }
+                      } catch (error) {
+                        console.error('구독 해제 오류:', error)
+                        alert('구독 해제 중 오류가 발생했습니다.')
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-500 text-white rounded-full text-sm font-bold hover:bg-red-600 transition-colors shadow-md"
+                  >
+                    선택 삭제 ({selectedChannels.size})
+                  </button>
+                </div>
+              )}
               <div className="mt-4 text-center text-xs font-medium text-slate-400">총 채널 수: {channels.length}</div>
             </div>
           )}

@@ -47,6 +47,9 @@
     --input: hsl(214.3 31.8% 91.4%);
     --ring: hsl(222.2 84% 4.9%);
     --radius: 0.5rem;
+    --app-max-width: 800px;
+    --app-wing-width: 160px;
+    --app-wing-gutter: 6px;
   }
 
   .dark {

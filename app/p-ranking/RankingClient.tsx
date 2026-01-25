@@ -115,7 +115,7 @@ export default function RankingClient() {
       <AppHeader />
 
       <main className="container px-4 py-6 pt-6">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-[var(--app-max-width)]">
           <div className="relative rounded-3xl bg-blue-100 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
               <button

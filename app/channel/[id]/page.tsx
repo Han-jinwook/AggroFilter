@@ -7,9 +7,10 @@ import Image from "next/image"
 import { Button } from "@/components/ui/c-button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/c-accordion"
 import { Card, CardContent } from "@/components/ui/c-card"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { AppHeader } from "@/components/c-app-header" // Import AppHeader
+import { AppHeader } from "@/components/c-app-header"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // Type Definitions based on Naming Convention
 interface TVideo {
@@ -22,10 +23,10 @@ interface TVideo {
 }
 
 interface TTopic {
-  id: string;
+  categoryId: number;
   name: string;
-  rankPercent: number;
-  rank: number;
+  rankPercent: number | null;
+  rank: number | null;
   totalChannels: number;
   count: number;
   score: number;
@@ -55,7 +56,7 @@ interface TTrendChartProps {
 }
 
 interface TChannelPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 const TrendChart = ({ data, color }: TTrendChartProps) => {
@@ -96,122 +97,98 @@ const TrendChart = ({ data, color }: TTrendChartProps) => {
 }
 
 export default function ChannelPage({ params }: TChannelPageProps) {
-  const channelData: TChannelData = {
-    id: params.id,
-    name: "슈카월드",
-    subscribers: "320만",
-    totalAnalysis: 145,
-    profileImage: "/channel-profile.jpg", // Updated channel profile image
-    trustScore: 88,
-    trustGrade: "High", // High, Medium, Low
-    stats: {
-      accuracy: 94,
-      aggro: "Low",
-      trend: "Rising", // Rising, Stable, Falling
-      trendData: [82, 84, 83, 85, 86, 88, 88], // Mock data for chart
-    },
-    topics: [
-      {
-        id: "economy",
-        name: "국제 경제",
-        rankPercent: 1, // Top 1%
-        rank: 3, // Added rank
-        totalChannels: 21, // Added total channels
-        count: 85,
-        score: 92,
-        videos: [
-          {
-            id: 1,
-            title: "미국 금리 인하, 한국 경제에 미칠 영향은?",
-            date: "25.02.15",
-            score: 95,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "120만",
-          },
-          {
-            id: 2,
-            title: "엔비디아 주가 폭락의 진실",
-            date: "25.02.10",
-            score: 90,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "85만",
-          },
-          {
-            id: 3,
-            title: "중국 경제 위기설 팩트체크",
-            date: "25.02.01",
-            score: 88,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "50만",
-          },
-          {
-            id: 4,
-            title: "비트코인 반감기 분석",
-            date: "25.01.28",
-            score: 91,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "200만",
-          },
-        ],
-      },
-      {
-        id: "society",
-        name: "사회 이슈",
-        rankPercent: 5,
-        rank: 8, // Added rank
-        totalChannels: 142, // Added total channels
-        count: 42,
-        score: 85,
-        videos: [
-          {
-            id: 5,
-            title: "저출산 문제, 해법은 없는가",
-            date: "25.02.12",
-            score: 89,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "90만",
-          },
-          {
-            id: 6,
-            title: "청년 실업률의 충격적 실태",
-            date: "25.01.15",
-            score: 82,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "75만",
-          },
-        ],
-      },
-      {
-        id: "history",
-        name: "역사",
-        rankPercent: 12,
-        rank: 15, // Added rank
-        totalChannels: 110, // Added total channels
-        count: 18,
-        score: 78,
-        videos: [
-          {
-            id: 7,
-            title: "로마 제국의 멸망 원인 3가지",
-            date: "24.12.20",
-            score: 80,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "40만",
-          },
-          {
-            id: 8,
-            title: "세계사 속의 한국 전쟁",
-            date: "24.11.11",
-            score: 75,
-            thumbnail: "/placeholder.svg?height=60&width=106",
-            views: "30만",
-          },
-        ],
-      },
-    ],
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnToParam = searchParams.get('returnTo')
+  const returnTo = returnToParam && returnToParam.startsWith('/') ? returnToParam : null
+
+  const [channelData, setChannelData] = useState<TChannelData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [channelId, setChannelId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params
+      setChannelId(resolvedParams.id)
+    }
+    resolveParams()
+  }, [params])
+
+  useEffect(() => {
+    if (!channelId) return
+
+    const fetchChannelData = async () => {
+      try {
+        const response = await fetch(`/api/channel/${channelId}`)
+        if (!response.ok) throw new Error('Failed to fetch channel data')
+        
+        const data = await response.json()
+        
+        setChannelData({
+          ...data,
+          trustGrade: data.trustScore >= 70 ? 'High' : data.trustScore >= 40 ? 'Medium' : 'Low'
+        })
+      } catch (error) {
+        console.error('Error fetching channel data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchChannelData()
+  }, [channelId])
+
+  const handleBack = () => {
+    if (returnTo) {
+      router.push(returnTo)
+      return
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/p-plaza?tab=channel')
   }
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleBack()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [returnTo])
+
   const [sortState, setSortState] = useState<Record<string, { type: "date" | "score"; direction: "asc" | "desc" }>>({})
+
+  const getTrustColor = (score: number) => {
+    if (score >= 70) return 'green'
+    if (score >= 40) return 'yellow'
+    return 'red'
+  }
+
+  const getTrustScoreClasses = (score: number) => {
+    const color = getTrustColor(score)
+    if (color === 'green') {
+      return {
+        icon: 'text-green-500',
+        text: 'text-green-600',
+        circle: 'border-green-100 text-green-600 bg-green-50',
+      }
+    }
+    if (color === 'yellow') {
+      return {
+        icon: 'text-yellow-500',
+        text: 'text-yellow-600',
+        circle: 'border-yellow-100 text-yellow-600 bg-yellow-50',
+      }
+    }
+    return {
+      icon: 'text-red-500',
+      text: 'text-red-600',
+      circle: 'border-red-100 text-red-600 bg-red-50',
+    }
+  }
 
   const handleSort = (topicId: string, type: "date" | "score") => {
     setSortState((prev) => {
@@ -226,7 +203,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   }
 
   const getSortedVideos = (topic: TTopic) => {
-    const { type, direction } = sortState[topic.id] || { type: "date", direction: "desc" }
+    const { type, direction } = sortState[topic.categoryId] || { type: "date", direction: "desc" }
     return [...topic.videos].sort((a, b) => {
       let comparison = 0
       if (type === "date") {
@@ -244,15 +221,44 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     return current.direction === "desc" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-20">
+        <AppHeader />
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-slate-500 mb-4"></div>
+            <p className="text-slate-500">채널 정보를 불러오는 중...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!channelData) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-20">
+        <AppHeader />
+        <div className="flex items-center justify-center h-96">
+          <p className="text-slate-500">채널 정보를 찾을 수 없습니다.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <AppHeader />
 
       <div className="border-b border-slate-100 sticky top-20 z-40 bg-white/95 backdrop-blur-md shadow-sm">
         <div className="flex items-center h-14 px-4 max-w-3xl mx-auto">
-          <Link href="/ranking" className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+          >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <h1 className="flex-1 text-center font-bold text-lg text-slate-800">채널 종합 리포트</h1>
           <button
             onClick={() => {
@@ -281,7 +287,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
           <CardContent className="p-2.5">
             <div className="flex items-center justify-between mb-2">
               <a
-                href="https://www.youtube.com/@shukaworld" // Mock URL
+                href={channelData.handle ? `https://www.youtube.com/${channelData.handle}` : `https://www.youtube.com/channel/${channelData.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex gap-2.5 group items-center"
@@ -314,7 +320,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
 
               <div className="flex items-center">
                 <div className="text-center mr-1.5">
-                  <div className="text-2xl font-black text-green-600 tracking-tight">{channelData.trustScore}</div>
+                  <div className={`text-2xl font-black tracking-tight ${getTrustScoreClasses(channelData.trustScore).text}`}>{channelData.trustScore}</div>
                   <div className="text-[9px] font-medium text-slate-500 mt-0.5">종합 신뢰도</div>
                 </div>
                 <div className="relative w-8 h-8 -mr-1">
@@ -362,8 +368,8 @@ export default function ChannelPage({ params }: TChannelPageProps) {
           <Accordion type="single" collapsible className="space-y-3">
             {channelData.topics.map((topic) => (
               <AccordionItem
-                key={topic.id}
-                value={topic.id}
+                key={topic.categoryId}
+                value={topic.categoryId.toString()}
                 className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm data-[state=open]:ring-1 data-[state=open]:ring-indigo-500 data-[state=open]:border-indigo-500 transition-all duration-200"
               >
                 <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-slate-50 transition-colors">
@@ -371,46 +377,44 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                     <div className="flex flex-col items-start gap-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-900 text-lg">{topic.name}</span>
-                        <Link
-                          href={`/ranking?topic=${topic.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="hover:opacity-80 active:scale-95 transition-all"
-                        >
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 h-5 font-medium bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100"
+                        {topic.rankPercent && (
+                          <Link
+                            href={`/p-ranking?category=${topic.categoryId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:opacity-80 active:scale-95 transition-all"
                           >
-                            상위 {topic.rankPercent}%
-                          </Badge>
-                        </Link>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] px-1.5 h-5 font-medium bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100"
+                            >
+                              상위 {topic.rankPercent}%
+                            </Badge>
+                          </Link>
+                        )}
                       </div>
                       <span className="text-xs text-slate-500">분석 영상 {topic.count}개</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-right mr-1">
-                        <Link
-                          href={`/ranking?topic=${topic.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="group/rank hover:opacity-80 active:scale-95 transition-all"
-                        >
-                          <div className="text-sm font-bold text-slate-600 leading-none group-hover/rank:text-indigo-600 transition-colors">
-                            {topic.rank}위{" "}
-                            <span className="text-slate-400 font-normal text-xs group-hover/rank:text-indigo-400 transition-colors">
-                              / {topic.totalChannels}
-                            </span>
-                          </div>
-                        </Link>
-                      </div>
+                      {topic.rank && (
+                        <div className="text-right mr-1">
+                          <Link
+                            href={`/p-ranking?category=${topic.categoryId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="group/rank hover:opacity-80 active:scale-95 transition-all"
+                          >
+                            <div className="text-sm font-bold text-slate-600 leading-none group-hover/rank:text-indigo-600 transition-colors">
+                              {topic.rank}위{" "}
+                              <span className="text-slate-400 font-normal text-xs group-hover/rank:text-indigo-400 transition-colors">
+                                / {topic.totalChannels}
+                              </span>
+                            </div>
+                          </Link>
+                        </div>
+                      )}
 
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg border-4
-                        ${
-                          topic.score >= 90
-                            ? "border-green-100 text-green-600 bg-green-50"
-                            : topic.score >= 70
-                              ? "border-yellow-100 text-yellow-600 bg-yellow-50"
-                              : "border-red-100 text-red-600 bg-red-50"
-                        }`}
+                        ${getTrustScoreClasses(topic.score).circle}`}
                       >
                         {topic.score}
                       </div>
@@ -422,29 +426,29 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                   {/* Sort Controls */}
                   <div className="flex items-center justify-between px-5 py-3 bg-slate-50/50 border-b border-slate-100">
                     <button
-                      onClick={() => handleSort(topic.id, "date")}
+                      onClick={() => handleSort(topic.categoryId.toString(), "date")}
                       className={cn(
                         "text-xs font-medium flex items-center gap-1 transition-colors",
-                        (sortState[topic.id]?.type || "date") === "date"
+                        (sortState[topic.categoryId]?.type || "date") === "date"
                           ? "text-slate-900"
                           : "text-slate-400 hover:text-slate-600",
                       )}
                     >
                       최근 분석된 영상
-                      {getSortIcon(topic.id, "date")}
+                      {getSortIcon(topic.categoryId.toString(), "date")}
                     </button>
 
                     <button
-                      onClick={() => handleSort(topic.id, "score")}
+                      onClick={() => handleSort(topic.categoryId.toString(), "score")}
                       className={cn(
                         "text-xs font-medium flex items-center gap-1 transition-colors",
-                        sortState[topic.id]?.type === "score"
+                        sortState[topic.categoryId]?.type === "score"
                           ? "text-indigo-600"
                           : "text-slate-400 hover:text-slate-600",
                       )}
                     >
                       신뢰도순 정렬
-                      {getSortIcon(topic.id, "score")}
+                      {getSortIcon(topic.categoryId.toString(), "score")}
                     </button>
                   </div>
 
@@ -475,10 +479,10 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                             <span className="text-[11px] text-slate-400">{video.date}</span>
                             <div className="flex items-center gap-1">
                               <CheckCircle2
-                                className={`w-3 h-3 ${video.score >= 80 ? "text-green-500" : "text-yellow-500"}`}
+                                className={`w-3 h-3 ${getTrustScoreClasses(video.score).icon}`}
                               />
                               <span
-                                className={`text-xs font-bold ${video.score >= 80 ? "text-green-600" : "text-yellow-600"}`}
+                                className={`text-xs font-bold ${getTrustScoreClasses(video.score).text}`}
                               >
                                 {video.score}점
                               </span>
