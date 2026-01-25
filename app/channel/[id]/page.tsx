@@ -251,7 +251,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
       <AppHeader />
 
       <div className="border-b border-slate-100 sticky top-20 z-40 bg-white/95 backdrop-blur-md shadow-sm">
-        <div className="flex items-center h-14 px-4 max-w-3xl mx-auto">
+        <div className="flex items-center h-14 px-4 max-w-[var(--app-max-width)] mx-auto">
           <button
             type="button"
             onClick={handleBack}
@@ -281,7 +281,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
         </div>
       </div>
 
-      <main className="max-w-3xl mx-auto p-4 space-y-4">
+      <main className="max-w-[var(--app-max-width)] mx-auto p-4 space-y-4">
         {/* Channel Identity Card */}
         <Card className="border-none shadow-sm bg-white overflow-hidden">
           <CardContent className="p-2.5">

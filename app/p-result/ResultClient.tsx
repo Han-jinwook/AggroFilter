@@ -11,6 +11,7 @@ import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { getCategoryName } from "@/lib/constants"
+import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
 
 export default function ResultClient() {
@@ -41,6 +42,7 @@ export default function ResultClient() {
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [predictionData, setPredictionData] = useState<any>(null)
 
   useEffect(() => {
     const id = searchParams.get("id")
@@ -48,6 +50,15 @@ export default function ResultClient() {
       setError("분석 ID가 없습니다.")
       setLoading(false)
       return
+    }
+
+    try {
+      const storedPrediction = sessionStorage.getItem('prediction_quiz_v1')
+      if (storedPrediction) {
+        setPredictionData(JSON.parse(storedPrediction))
+      }
+    } catch (e) {
+      console.error('Failed to load prediction data:', e)
     }
 
     let isCancelled = false;
@@ -590,6 +601,19 @@ ${content}
               trust={analysisData.scores.trust} 
               topic={getCategoryName(analysisData.officialCategoryId)}
               trafficLightImage={getTrafficLightImage(analysisData.scores.trust)}
+              prediction={predictionData && analysisData.scores.trust ? (() => {
+                const gap = calculateGap(predictionData.predictedReliability, analysisData.scores.trust)
+                const tierInfo = calculateTier(gap)
+                return {
+                  predictedReliability: predictionData.predictedReliability,
+                  gap,
+                  tier: tierInfo.tier,
+                  tierLabel: tierInfo.label,
+                  tierEmoji: tierInfo.emoji,
+                  totalPredictions: 1,
+                  avgGap: gap
+                }
+              })() : undefined}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">

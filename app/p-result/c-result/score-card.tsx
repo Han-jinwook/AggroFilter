@@ -9,9 +9,18 @@ interface TScoreCardProps {
   trust: number | null | undefined
   topic: string
   trafficLightImage: string
+  prediction?: {
+    predictedReliability: number
+    gap: number
+    tier: string
+    tierLabel: string
+    tierEmoji: string
+    totalPredictions: number
+    avgGap: number
+  }
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, prediction }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
@@ -74,6 +83,30 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
               content="신뢰도 계산: (정확성 + (100 - 어그로성))/2"
             />
           </div>
+
+          {prediction && (
+            <div className="mt-3 space-y-1.5 border-t border-gray-200 pt-3">
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="font-medium text-gray-600">나의 촉은?</span>
+                <span className="text-lg font-bold text-purple-600">{prediction.predictedReliability}</span>
+                <span className="text-gray-400">vs</span>
+                <span className="font-medium text-gray-600">AI 신뢰도</span>
+                <span className="text-lg font-bold text-pink-500">{trustText}</span>
+                <span className="font-medium text-gray-600">오차</span>
+                <span className="text-lg font-bold text-orange-600">{prediction.gap}</span>
+              </div>
+              <div className="text-center text-xs text-gray-500">
+                ({prediction.totalPredictions}개 영상) 총 누적 '디지털 eye' 레벨 - 평균 오차 <span className="font-semibold text-blue-600">{prediction.avgGap.toFixed(1)}</span>로
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-0.5">
+                <span className="text-2xl">{prediction.tierEmoji}</span>
+                <span className="text-base font-bold text-yellow-600">{prediction.tier}등급</span>
+                <span className="text-gray-400">-</span>
+                <span className="text-base font-bold text-gray-800">{prediction.tierLabel}</span>
+                <span className="text-sm text-gray-600">입니다.</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

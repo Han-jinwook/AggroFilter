@@ -107,6 +107,7 @@ export function GamifiedLoadingQuiz({ url }: TGamifiedLoadingQuizProps) {
   const [accuracy, setAccuracy] = useState(60)
   const [clickbait, setClickbait] = useState(35)
   const [submitted, setSubmitted] = useState(false)
+  const [touchedSliders, setTouchedSliders] = useState({ accuracy: false, clickbait: false })
 
   const score = useMemo(() => calculateReliability(accuracy, clickbait), [accuracy, clickbait])
   const tier = useMemo(() => getTier(score), [score])
@@ -116,6 +117,34 @@ export function GamifiedLoadingQuiz({ url }: TGamifiedLoadingQuizProps) {
   const thumbSrc = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null
 
   const Icon = visual.icon
+
+  const handleSubmit = async () => {
+    const payload = {
+      url,
+      accuracy,
+      clickbait,
+      predictedReliability: score,
+      submittedAt: Date.now(),
+    }
+
+    try {
+      window.sessionStorage.setItem("prediction_quiz_v1", JSON.stringify(payload))
+    } catch {
+      // ignore
+    }
+
+    setSubmitted(true)
+    vibrateTick()
+  }
+
+  const handleSliderRelease = (type: 'accuracy' | 'clickbait') => {
+    const newTouched = { ...touchedSliders, [type]: true }
+    setTouchedSliders(newTouched)
+
+    if (newTouched.accuracy && newTouched.clickbait && !submitted) {
+      setTimeout(() => handleSubmit(), 300)
+    }
+  }
 
   return (
     <motion.div
@@ -191,7 +220,10 @@ export function GamifiedLoadingQuiz({ url }: TGamifiedLoadingQuizProps) {
                 setSubmitted(false)
                 setAccuracy(Number(e.target.value))
               }}
-              onPointerUp={() => vibrateTick()}
+              onPointerUp={() => {
+                vibrateTick()
+                handleSliderRelease('accuracy')
+              }}
               className="mt-2 w-full appearance-none h-3 rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-300 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-transform active:[&::-webkit-slider-thumb]:scale-95 [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-300 [&::-moz-range-thumb]:shadow-md"
               style={getTrackStyle("accuracy", accuracy)}
             />
@@ -223,7 +255,10 @@ export function GamifiedLoadingQuiz({ url }: TGamifiedLoadingQuizProps) {
                 setSubmitted(false)
                 setClickbait(Number(e.target.value))
               }}
-              onPointerUp={() => vibrateTick()}
+              onPointerUp={() => {
+                vibrateTick()
+                handleSliderRelease('clickbait')
+              }}
               className="mt-2 w-full appearance-none h-3 rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-300 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-transform active:[&::-webkit-slider-thumb]:scale-95 [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-300 [&::-moz-range-thumb]:shadow-md"
               style={getTrackStyle("clickbait", clickbait)}
             />
@@ -257,24 +292,7 @@ export function GamifiedLoadingQuiz({ url }: TGamifiedLoadingQuizProps) {
         <motion.button
           type="button"
           whileTap={{ scale: 0.98 }}
-          onClick={() => {
-            const payload = {
-              url,
-              accuracy,
-              clickbait,
-              predictedReliability: score,
-              submittedAt: Date.now(),
-            }
-
-            try {
-              window.sessionStorage.setItem("prediction_quiz_v1", JSON.stringify(payload))
-            } catch {
-              // ignore
-            }
-
-            setSubmitted(true)
-            vibrateTick()
-          }}
+          onClick={handleSubmit}
           className={
             "w-full rounded-2xl px-4 py-3 text-sm font-black shadow-sm transition-all " +
             (submitted ? "bg-slate-900/10 text-slate-700" : "bg-slate-900 text-white hover:bg-slate-900/95")

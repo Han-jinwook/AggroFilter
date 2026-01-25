@@ -57,6 +57,15 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Resend Error:', error);
+      
+      // 개발 환경에서는 콘솔에 코드 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('\n========================================');
+        console.log(`🔐 인증 코드 (${email}): ${code}`);
+        console.log('========================================\n');
+        return NextResponse.json({ success: true, message: 'Code sent (dev mode - check console)' });
+      }
+      
       return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
     }
 

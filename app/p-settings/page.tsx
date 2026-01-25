@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
+import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -84,7 +85,15 @@ export default function SettingsPage() {
       <main className="container mx-auto px-4 py-8 max-w-[var(--app-max-width)]">
         <h1 className="text-3xl font-bold mb-8">설정</h1>
 
-        <div className="bg-card border rounded-xl p-6 mb-6 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 왼쪽: 등급 로드맵 */}
+          <div className="order-2 lg:order-1">
+            <TierRoadmap currentTier="B" currentGap={0} />
+          </div>
+
+          {/* 오른쪽: 프로필 정보 */}
+          <div className="order-1 lg:order-2 space-y-6">
+            <div className="bg-card border rounded-xl p-6 shadow-sm">
           <div className="flex items-start justify-between mb-6">
             <h2 className="text-xl font-semibold">프로필 정보</h2>
             {!isEditing && (
@@ -192,18 +201,20 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-3">계정</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            로그아웃하면 메인 페이지로 이동합니다.
-          </p>
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-          >
-            <LogOut className="h-4 w-4" />
-            로그아웃
-          </button>
+            <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-3">계정</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                로그아웃하면 메인 페이지로 이동합니다.
+              </p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+              >
+                <LogOut className="h-4 w-4" />
+                로그아웃
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>
