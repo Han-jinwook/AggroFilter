@@ -8,6 +8,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const state = searchParams.get('state')
+    const oauthError = searchParams.get('error')
+    const oauthErrorDescription = searchParams.get('error_description')
+    const oauthErrorUri = searchParams.get('error_uri')
+
+    if (oauthError) {
+      const mallId = getCafe24MallId()
+      const redirectUri = process.env.CAFE24_REDIRECT_URI
+
+      return NextResponse.json(
+        {
+          error: oauthError,
+          error_description: oauthErrorDescription,
+          error_uri: oauthErrorUri,
+          mallId,
+          redirectUri,
+          hint:
+            'Check Cafe24 Developer Center OAuth Redirect URI exactly matches redirectUri above (https, path, trailing slash). Also ensure app is installed for this mallId.',
+        },
+        { status: 400 }
+      )
+    }
 
     if (!code) {
       return NextResponse.json({ error: 'code is required' }, { status: 400 })
