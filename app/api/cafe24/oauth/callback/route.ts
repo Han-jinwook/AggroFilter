@@ -49,15 +49,17 @@ export async function GET(request: Request) {
     }
 
     const base = getCafe24ApiBaseUrl().replace(/\/$/, '')
+    const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
     const res = await fetch(`${base}/oauth/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basic}`,
+      },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
       }),
       cache: 'no-store',
     })
