@@ -1,10 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppHeader } from '@/components/c-app-header'
 
 export default function MockPaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+      <MockPaymentContent />
+    </Suspense>
+  )
+}
+
+function MockPaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
