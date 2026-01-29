@@ -11,9 +11,13 @@ export async function GET(request: Request) {
   const mallId = getCafe24MallId()
   const clientId = process.env.CAFE24_CLIENT_ID
   const redirectUri = process.env.CAFE24_REDIRECT_URI
+  const scope = process.env.CAFE24_OAUTH_SCOPE
 
-  if (!clientId || !redirectUri) {
-    return NextResponse.json({ error: 'CAFE24_CLIENT_ID and CAFE24_REDIRECT_URI are required' }, { status: 500 })
+  if (!clientId || !redirectUri || !scope) {
+    return NextResponse.json(
+      { error: 'CAFE24_CLIENT_ID, CAFE24_REDIRECT_URI, CAFE24_OAUTH_SCOPE are required' },
+      { status: 500 }
+    )
   }
 
   const state = Buffer.from(JSON.stringify({ redirect, t: Date.now() })).toString('base64url')
@@ -22,6 +26,7 @@ export async function GET(request: Request) {
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('client_id', clientId)
   authUrl.searchParams.set('redirect_uri', redirectUri)
+  authUrl.searchParams.set('scope', scope)
   authUrl.searchParams.set('state', state)
 
   return NextResponse.redirect(authUrl)
