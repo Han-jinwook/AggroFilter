@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     if (oauthError) {
       const mallId = getCafe24MallId()
       const redirectUri = process.env.CAFE24_REDIRECT_URI
+      const scope = process.env.CAFE24_OAUTH_SCOPE
 
       return NextResponse.json(
         {
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
           error_uri: oauthErrorUri,
           mallId,
           redirectUri,
+          scope,
           hint:
             'Check Cafe24 Developer Center OAuth Redirect URI exactly matches redirectUri above (https, path, trailing slash). Also ensure app is installed for this mallId.',
         },
