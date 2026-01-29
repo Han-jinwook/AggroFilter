@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           `UPDATE t_users 
            SET current_tier = $1, current_tier_label = $2, tier_emoji = $3, 
                total_predictions = $4, avg_gap = $5
-           WHERE email = $6`,
+           WHERE f_email = $6`,
           [
             bestTierInfo.tier,
             bestTierInfo.label,

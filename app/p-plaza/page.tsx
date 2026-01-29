@@ -792,27 +792,34 @@ export default function PlazaPage() {
                   </div>
                 ) : (
                   analyzedChannels.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4">
-                      <div className="w-8 flex-shrink-0 text-center">
-                        <span className="text-sm font-bold text-slate-400">{item.rank}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
-                        <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
-                      </div>
-                      <div className="w-20 flex-shrink-0 flex justify-center">
-                        <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
-                          <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
-                            {item.count}
-                          </span>
+                    <Link
+                      key={item.id}
+                      href={`/channel/${item.id}`}
+                      className="block rounded-xl px-2 py-2 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                      aria-label={`${item.name} 채널 리포트로 이동`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 flex-shrink-0 text-center">
+                          <span className="text-sm font-bold text-slate-400">{item.rank}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
+                          <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
+                        </div>
+                        <div className="w-20 flex-shrink-0 flex justify-center">
+                          <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
+                            <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
+                              {item.count}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-16 flex-shrink-0 flex justify-center">
+                          <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
+                            {item.score}
+                          </div>
                         </div>
                       </div>
-                      <div className="w-16 flex-shrink-0 flex justify-center">
-                        <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
-                          {item.score}
-                        </div>
-                      </div>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>

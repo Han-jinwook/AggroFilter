@@ -378,9 +378,13 @@ export default function ResultClient() {
   }
 
   const handleBack = () => {
+    const returnToParam = searchParams.get("returnTo")
+    const returnTo = returnToParam && returnToParam.startsWith("/") ? returnToParam : null
     const from = searchParams.get("from")
     const tab = searchParams.get("tab")
-    if (from && tab) {
+    if (returnTo) {
+      router.push(returnTo)
+    } else if (from && tab) {
       router.push(`/${from}?tab=${tab}`)
     } else {
       router.back()
@@ -601,6 +605,14 @@ ${content}
               trust={analysisData.scores.trust} 
               topic={getCategoryName(analysisData.officialCategoryId)}
               trafficLightImage={getTrafficLightImage(analysisData.scores.trust)}
+              recheckDelta={analysisData.isRecheck && analysisData.recheckParentScores ? {
+                before: analysisData.recheckParentScores,
+                after: {
+                  accuracy: analysisData.scores.accuracy ?? null,
+                  clickbait: analysisData.scores.clickbait ?? null,
+                  trust: analysisData.scores.trust ?? null,
+                },
+              } : undefined}
               prediction={predictionData && analysisData.scores.trust ? (() => {
                 const gap = calculateGap(predictionData.predictedReliability, analysisData.scores.trust)
                 const tierInfo = calculateTier(gap)

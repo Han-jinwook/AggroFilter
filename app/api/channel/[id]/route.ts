@@ -94,6 +94,8 @@ export async function GET(
           json_agg(
             json_build_object(
               'id', a.f_id,
+              'videoId', a.f_video_id,
+              'url', a.f_video_url,
               'title', a.f_title,
               'date', TO_CHAR(a.f_created_at, 'YY.MM.DD'),
               'score', a.f_reliability_score,

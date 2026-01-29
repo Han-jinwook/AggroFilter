@@ -27,6 +27,32 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
       const analysis = analysisRes.rows[0];
 
+      let recheckParentScores: { accuracy: number | null; clickbait: number | null; trust: number | null } | null = null;
+      const isRecheck = Boolean((analysis as any).f_is_recheck);
+      const parentAnalysisId = (analysis as any).f_recheck_parent_analysis_id as string | null;
+
+      if (isRecheck && parentAnalysisId) {
+        try {
+          const parentRes = await client.query(
+            `SELECT f_accuracy_score, f_clickbait_score, f_reliability_score
+             FROM t_analyses
+             WHERE f_id = $1
+             LIMIT 1`,
+            [parentAnalysisId]
+          );
+          if (parentRes.rows.length > 0) {
+            const p = parentRes.rows[0];
+            recheckParentScores = {
+              accuracy: p.f_accuracy_score !== null ? Number(p.f_accuracy_score) : null,
+              clickbait: p.f_clickbait_score !== null ? Number(p.f_clickbait_score) : null,
+              trust: p.f_reliability_score !== null ? Number(p.f_reliability_score) : null,
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching recheck parent scores:', e);
+        }
+      }
+
       // Fetch channel stats and ranking
       let channelStats = {
         avgAccuracy: null as number | null,
@@ -169,6 +195,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
             clickbait: analysis.f_clickbait_score,
             trust: analysis.f_reliability_score,
           },
+          isRecheck,
+          parentAnalysisId: parentAnalysisId,
+          recheckParentScores,
           officialCategoryId: analysis.f_official_category_id,
           channelStats: channelStats,
           summary: analysis.f_summary,

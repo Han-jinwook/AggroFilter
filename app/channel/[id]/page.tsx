@@ -14,7 +14,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 // Type Definitions based on Naming Convention
 interface TVideo {
-  id: number;
+  id: string;
+  videoId?: string;
+  url?: string;
   title: string;
   date: string;
   score: number;
@@ -105,6 +107,9 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   const [channelData, setChannelData] = useState<TChannelData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [channelId, setChannelId] = useState<string | null>(null)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [isRecheckingVideoId, setIsRecheckingVideoId] = useState<string | null>(null)
+  const [modalStep, setModalStep] = useState<null | 'intro' | 'mobile' | 'charge'>(null)
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -137,6 +142,271 @@ export default function ChannelPage({ params }: TChannelPageProps) {
 
     fetchChannelData()
   }, [channelId])
+
+  useEffect(() => {
+    if (!channelId) return
+    try {
+      const email = localStorage.getItem('userEmail')
+      if (!email) {
+        setCredits(null)
+        return
+      }
+      fetch(`/api/credits?email=${encodeURIComponent(email)}`, { cache: 'no-store' })
+        .then(async (res) => {
+          if (!res.ok) return
+          const data = await res.json()
+          const nextCredits = Number(data?.credits)
+          if (Number.isFinite(nextCredits)) setCredits(nextCredits)
+        })
+        .catch(() => {
+          // ignore
+        })
+    } catch {
+      // ignore
+    }
+  }, [channelId])
+
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') return false
+    const ua = navigator.userAgent || ''
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+  }
+
+  const getUserEmail = () => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem('userEmail')
+  }
+
+  const openReanalysisEntry = () => {
+    if (isMobileDevice()) {
+      setModalStep('mobile')
+      return
+    }
+    setModalStep('intro')
+  }
+
+  const goToMockPayment = () => {
+    const email = getUserEmail()
+    if (!email) {
+      alert('로그인이 필요합니다.')
+      return
+    }
+    if (!channelId) {
+      alert('채널 정보를 찾을 수 없습니다.')
+      return
+    }
+    const redirectUrl = `/channel/${channelId}`
+    router.push(`/payment/mock?userId=${encodeURIComponent(email)}&redirectUrl=${encodeURIComponent(redirectUrl)}`)
+  }
+
+  const closeModal = () => setModalStep(null)
+
+  const renderModal = () => {
+    if (!modalStep) return null
+
+    const title =
+      modalStep === 'intro'
+        ? '영상 재분석 요청 안내'
+        : modalStep === 'mobile'
+          ? 'PC 환경 이용 안내'
+          : '크레딧 차감 및 충전 안내'
+
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
+          <h2 className="text-lg font-black text-slate-900">{title}</h2>
+          {modalStep === 'intro' && (
+            <div className="mt-3 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+              {`재분석은 영상의 제목, 썸네일, 본문 내용을 수정한 후 최신 상태로 다시 평가받는 기능입니다.
+
+- 주의: 수정 사항이 없는 경우 점수 변동이 없을 수 있습니다.
+- 대상: 해당 영상의 제작자 또는 채널 관계자만 신청 가능합니다.
+
+귀하는 이 채널의 관계자가 맞습니까?`}
+            </div>
+          )}
+
+          {modalStep === 'mobile' && (
+            <div className="mt-3 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+              {`재분석 서비스 결제 및 신청은 PC 웹사이트에서만 가능합니다.
+PC에서 접속하여 진행해 주시기 바랍니다.`}
+            </div>
+          )}
+
+          {modalStep === 'charge' && (
+            <div className="mt-3 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+              {typeof credits === 'number' && credits > 0
+                ? `재분석 1회 요청 시 1 크레딧이 차감됩니다.
+
+- 현재 보유 크레딧: ${credits}
+- 추가 결제를 원하시면 충전 페이지로 이동할 수 있습니다.`
+                : `재분석 1회 요청 시 1 크레딧이 차감됩니다.
+보유 크레딧이 부족하여 충전 페이지로 이동합니다.
+
+- 1 크레딧 = 약 1,000원 (VAT 별도)
+- 결제 완료 시 자동으로 크레딧이 충전되며 재분석이 시작됩니다.`}
+            </div>
+          )}
+
+          <div className="mt-6 flex gap-2">
+            {modalStep === 'intro' && (
+              <>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  아니오 (닫기)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalStep('charge')
+                  }}
+                  className="flex-1 rounded-xl border border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700"
+                >
+                  네, 관계자입니다
+                </button>
+              </>
+            )}
+
+            {modalStep === 'mobile' && (
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                닫기
+              </button>
+            )}
+
+            {modalStep === 'charge' && (
+              <>
+                {typeof credits === 'number' && credits > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      재분석 진행
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeModal()
+                        goToMockPayment()
+                      }}
+                      className="flex-1 rounded-xl border border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700"
+                    >
+                      크레딧 추가 충전
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeModal()
+                        goToMockPayment()
+                      }}
+                      className="flex-1 rounded-xl border border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700"
+                    >
+                      충전하러 가기
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const handleRecheck = async (video: TVideo) => {
+    if (isMobileDevice()) {
+      alert('재검수는 PC 웹에서만 가능합니다.')
+      return
+    }
+
+    const email = localStorage.getItem('userEmail')
+    if (!email) {
+      alert('로그인이 필요합니다.')
+      return
+    }
+    if (!video?.url) {
+      alert('재검수에 필요한 영상 URL을 찾을 수 없습니다.')
+      return
+    }
+
+    const c = typeof credits === 'number' ? credits : 0
+    if (c <= 0) {
+      setModalStep('charge')
+      return
+    }
+
+    if (!confirm('재분석 1회 요청 시 1 크레딧이 차감됩니다. 재검을 진행할까요?')) return
+
+    try {
+      setIsRecheckingVideoId(video.id)
+      const res = await fetch('/api/analysis/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: video.url,
+          userId: email,
+          forceRecheck: true,
+          isRecheck: true,
+        }),
+      })
+
+      if (res.status === 402) {
+        alert('크레딧이 부족합니다.')
+        return
+      }
+
+      if (res.status === 422) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.error || '재검수에 실패했습니다.')
+        return
+      }
+
+      if (res.status === 409) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.error || '재검수 조건을 충족하지 못했습니다.')
+        return
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err?.error || '재검수 요청에 실패했습니다.')
+        return
+      }
+
+      const data = await res.json()
+      if (typeof data?.analysisId === 'string' && data.analysisId.length > 0) {
+        if (data?.creditDeducted === true) {
+          setCredits((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev))
+        }
+        router.push(`/p-result?id=${encodeURIComponent(data.analysisId)}&returnTo=${encodeURIComponent(`/channel/${channelId}`)}`)
+      } else {
+        alert('재검수 결과 ID를 받지 못했습니다.')
+      }
+    } catch (e) {
+      console.error('Recheck Error:', e)
+      alert('재검수 중 오류가 발생했습니다.')
+    } finally {
+      setIsRecheckingVideoId(null)
+    }
+  }
 
   const handleBack = () => {
     if (returnTo) {
@@ -249,6 +519,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <AppHeader />
+      {renderModal()}
 
       <div className="border-b border-slate-100 sticky top-20 z-40 bg-white/95 backdrop-blur-md shadow-sm">
         <div className="flex items-center h-14 px-4 max-w-[var(--app-max-width)] mx-auto">
@@ -361,8 +632,23 @@ export default function ChannelPage({ params }: TChannelPageProps) {
 
         {/* Topic Spectrum Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex items-center justify-between px-1 gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-slate-800">주제별 신뢰도 분석</h3>
+            <div id="reanalysis-entry-actions" className="flex items-center gap-2 min-w-max">
+              <button
+                type="button"
+                id="reanalysis-entry-button"
+                onClick={openReanalysisEntry}
+                className="flex-shrink-0 whitespace-nowrap rounded-full bg-slate-900 text-white px-3 py-1.5 text-xs font-black hover:bg-slate-800 transition-colors"
+              >
+                영상 재분석 요청
+              </button>
+              {typeof credits === 'number' && credits > 0 && (
+                <div className="flex-shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 border border-slate-200">
+                  크레딧 {credits}
+                </div>
+              )}
+            </div>
           </div>
 
           <Accordion type="single" collapsible className="space-y-3">
@@ -456,7 +742,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                   <div className="divide-y divide-slate-100">
                     {getSortedVideos(topic).map((video) => (
                       <Link
-                        href={`/p-result?url=example&id=${video.id}`}
+                        href={`/p-result?url=${encodeURIComponent(video.url || '')}&id=${video.id}`}
                         key={video.id}
                         className="flex gap-3 p-4 hover:bg-slate-50 transition-colors group"
                       >
@@ -489,6 +775,28 @@ export default function ChannelPage({ params }: TChannelPageProps) {
                             </div>
                           </div>
                         </div>
+
+                        {typeof credits === 'number' && credits > 0 && (
+                          <div className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleRecheck(video)
+                              }}
+                              disabled={isRecheckingVideoId === video.id}
+                              className={cn(
+                                "ml-2 rounded-full px-3 py-1 text-[11px] font-bold border transition-colors whitespace-nowrap",
+                                isRecheckingVideoId === video.id
+                                  ? "bg-slate-100 text-slate-400 border-slate-200"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                              )}
+                            >
+                              {isRecheckingVideoId === video.id ? '재검중' : '재검실시'}
+                            </button>
+                          </div>
+                        )}
                       </Link>
                     ))}
                   </div>

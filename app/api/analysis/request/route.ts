@@ -12,7 +12,7 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url, userId } = body;
+    const { url, userId, forceRecheck, isRecheck } = body;
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -28,6 +28,38 @@ export async function POST(request: Request) {
 
     console.log('영상 ID:', videoId);
 
+    if (isRecheck) {
+      if (!userId) {
+        return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+      }
+
+      const creditClient = await pool.connect();
+      try {
+        await creditClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
+
+        const userRes = await creditClient.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
+        if (userRes.rows.length === 0) {
+          const newUserId = uuidv4();
+          await creditClient.query(
+            `INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
+             VALUES ($1, $2, $3, NOW(), NOW())`,
+            [newUserId, userId, userId.split('@')[0]]
+          );
+        }
+
+        const creditRes = await creditClient.query(
+          'SELECT COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_email = $1',
+          [userId]
+        );
+        const credits = creditRes.rows.length > 0 ? Number(creditRes.rows[0].credits) : 0;
+        if (!Number.isFinite(credits) || credits <= 0) {
+          return NextResponse.json({ error: '크레딧이 부족합니다.' }, { status: 402 });
+        }
+      } finally {
+        creditClient.release();
+      }
+    }
+
       try {
         const checkClient = await pool.connect();
         try {
@@ -41,7 +73,7 @@ export async function POST(request: Request) {
 
           if (existingAnalysis.rows.length > 0) {
             const row = existingAnalysis.rows[0];
-            if (row.f_reliability_score !== null && row.f_reliability_score > 0) {
+            if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
               console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
               
               await checkClient.query(`
@@ -69,6 +101,44 @@ export async function POST(request: Request) {
     // 2. YouTube API로 영상 정보 가져오기
     const videoInfo = await getVideoInfo(videoId);
     console.log('영상 정보:', videoInfo.title);
+
+    let recheckParentAnalysisId: string | null = null;
+    let recheckParentTrust: number | null = null;
+    if (isRecheck) {
+      const gateClient = await pool.connect();
+      try {
+        const latestRes = await gateClient.query(
+          `SELECT f_id, f_title, f_thumbnail_url, f_reliability_score
+           FROM t_analyses
+           WHERE f_video_id = $1
+           ORDER BY f_created_at DESC
+           LIMIT 1`,
+          [videoId]
+        );
+
+        if (latestRes.rows.length > 0) {
+          const latest = latestRes.rows[0];
+          recheckParentAnalysisId = latest.f_id;
+          recheckParentTrust = typeof latest.f_reliability_score === 'number' ? latest.f_reliability_score : null;
+
+          const prevTitle = (latest.f_title || '').trim();
+          const prevThumb = (latest.f_thumbnail_url || '').trim();
+          const curTitle = (videoInfo.title || '').trim();
+          const curThumb = (videoInfo.thumbnailUrl || '').trim();
+
+          const isSameTitle = prevTitle.length > 0 && curTitle.length > 0 && prevTitle === curTitle;
+          const isSameThumb = prevThumb.length > 0 && curThumb.length > 0 && prevThumb === curThumb;
+          if (isSameTitle && isSameThumb) {
+            return NextResponse.json(
+              { error: '썸네일/제목 수정이 없어 재심을 할 수 없습니다.' },
+              { status: 409 }
+            );
+          }
+        }
+      } finally {
+        gateClient.release();
+      }
+    }
 
     // 3. 자막 추출
     let transcript = '';
@@ -102,6 +172,12 @@ export async function POST(request: Request) {
     }
     console.log('자막 사용 여부:', hasTranscript);
 
+    if (isRecheck && !hasTranscript) {
+      const err: any = new Error('자막을 가져오지 못해 재검수가 불가능합니다.');
+      err.statusCode = 422;
+      throw err;
+    }
+
     // 4. Gemini AI 분석
     console.log('AI 분석 시작 (모델: gemini-2.0-flash)...');
     let analysisResult;
@@ -130,15 +206,37 @@ export async function POST(request: Request) {
       analysisResult.reliability = null as any;
       analysisResult.subtitleSummary = '자막 가져오기에 실패하여 분석이 불가능합니다.';
     }
+
+    const accuracyNum = typeof analysisResult?.accuracy === 'number' ? analysisResult.accuracy : null;
+    const clickbaitNum = typeof analysisResult?.clickbait === 'number' ? analysisResult.clickbait : null;
+    if (accuracyNum !== null && clickbaitNum !== null) {
+      const computed = Math.round((accuracyNum + (100 - clickbaitNum)) / 2);
+      analysisResult.reliability = Math.max(0, Math.min(100, computed));
+    }
     console.log('AI 분석 완료:', hasTranscript ? analysisResult.reliability : '자막없음');
+
+    const shouldKeepParentOnDecrease =
+      Boolean(isRecheck) &&
+      Boolean(recheckParentAnalysisId) &&
+      typeof analysisResult?.reliability === 'number' &&
+      typeof recheckParentTrust === 'number' &&
+      analysisResult.reliability < recheckParentTrust;
 
     // 5. DB에 저장
     const analysisId = uuidv4();
     console.log('DB 저장 시작 (ID:', analysisId, ')');
     const client = await pool.connect();
     
+    let creditDeducted = false;
+
     try {
       await client.query('BEGIN');
+
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
+
+      await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_is_recheck BOOLEAN DEFAULT FALSE`);
+      await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
+      await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
 
       // 5-0. User lookup/creation (if userId/email provided)
       // Note: f_user_id stores email directly (not UUID) to match existing data pattern
@@ -179,66 +277,74 @@ export async function POST(request: Request) {
         videoInfo.subscriberCount
       ]);
 
-      console.log('5-2. 분석 결과 저장 (t_analyses)...');
-      // 5-2. 분석 결과 저장 (v2.0 필드 반영) - f_topic 제거
-      await client.query(`
-        INSERT INTO t_analyses (
-          f_id, f_video_url, f_video_id, f_title, f_channel_id,
-          f_thumbnail_url, f_transcript, f_accuracy_score, f_clickbait_score,
-          f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
-          f_ai_title_recommendation, f_user_id, f_official_category_id,
-          f_request_count, f_view_count, f_created_at, f_last_action_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 1, 1, NOW(), NOW()
-        )
-      `, [
-        analysisId,
-        url,
-        videoId,
-        videoInfo.title,
-        videoInfo.channelId,
-        videoInfo.thumbnailUrl,
-        transcript.substring(0, 50000),
-        analysisResult.accuracy,
-        analysisResult.clickbait,
-        analysisResult.reliability,
-        analysisResult.subtitleSummary,
-        analysisResult.evaluationReason,
-        analysisResult.overallAssessment,
-        analysisResult.recommendedTitle,
-        actualUserId,
-        videoInfo.officialCategoryId
-      ]);
+      if (!shouldKeepParentOnDecrease) {
+        console.log('5-2. 분석 결과 저장 (t_analyses)...');
+        // 5-2. 분석 결과 저장 (v2.0 필드 반영) - f_topic 제거
+        await client.query(`
+          INSERT INTO t_analyses (
+            f_id, f_video_url, f_video_id, f_title, f_channel_id,
+            f_thumbnail_url, f_transcript, f_accuracy_score, f_clickbait_score,
+            f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
+            f_ai_title_recommendation, f_user_id, f_official_category_id,
+            f_request_count, f_view_count, f_created_at, f_last_action_at,
+            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            1, 1, NOW(), NOW(),
+            $17, $18, $19
+          )
+        `, [
+          analysisId,
+          url,
+          videoId,
+          videoInfo.title,
+          videoInfo.channelId,
+          videoInfo.thumbnailUrl,
+          transcript.substring(0, 50000),
+          analysisResult.accuracy,
+          analysisResult.clickbait,
+          analysisResult.reliability,
+          analysisResult.subtitleSummary,
+          analysisResult.evaluationReason,
+          analysisResult.overallAssessment,
+          analysisResult.recommendedTitle,
+          actualUserId,
+          videoInfo.officialCategoryId,
+          Boolean(isRecheck),
+          isRecheck ? recheckParentAnalysisId : null,
+          isRecheck ? new Date() : null
+        ]);
 
-      console.log('5-3. 비디오 인덱스 저장 (t_videos)...');
-      await client.query(`
-        INSERT INTO t_videos (
-          f_id, f_channel_id, f_title, f_official_category_id,
-          f_accuracy_score, f_clickbait_score, f_trust_score, f_ai_recommended_title,
-          f_summary, f_evaluation_reason, f_created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-        ON CONFLICT (f_id) DO UPDATE SET
-          f_channel_id = EXCLUDED.f_channel_id,
-          f_title = EXCLUDED.f_title,
-          f_official_category_id = EXCLUDED.f_official_category_id,
-          f_accuracy_score = EXCLUDED.f_accuracy_score,
-          f_clickbait_score = EXCLUDED.f_clickbait_score,
-          f_trust_score = EXCLUDED.f_trust_score,
-          f_ai_recommended_title = EXCLUDED.f_ai_recommended_title,
-          f_summary = EXCLUDED.f_summary,
-          f_evaluation_reason = EXCLUDED.f_evaluation_reason
-      `, [
-        videoId,
-        videoInfo.channelId,
-        videoInfo.title,
-        f_official_category_id,
-        analysisResult.accuracy,
-        analysisResult.clickbait,
-        analysisResult.reliability,
-        analysisResult.recommendedTitle,
-        analysisResult.subtitleSummary,
-        analysisResult.evaluationReason
-      ]);
+        console.log('5-3. 비디오 인덱스 저장 (t_videos)...');
+        await client.query(`
+          INSERT INTO t_videos (
+            f_id, f_channel_id, f_title, f_official_category_id,
+            f_accuracy_score, f_clickbait_score, f_trust_score, f_ai_recommended_title,
+            f_summary, f_evaluation_reason, f_created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+          ON CONFLICT (f_id) DO UPDATE SET
+            f_channel_id = EXCLUDED.f_channel_id,
+            f_title = EXCLUDED.f_title,
+            f_official_category_id = EXCLUDED.f_official_category_id,
+            f_accuracy_score = EXCLUDED.f_accuracy_score,
+            f_clickbait_score = EXCLUDED.f_clickbait_score,
+            f_trust_score = EXCLUDED.f_trust_score,
+            f_ai_recommended_title = EXCLUDED.f_ai_recommended_title,
+            f_summary = EXCLUDED.f_summary,
+            f_evaluation_reason = EXCLUDED.f_evaluation_reason
+        `, [
+          videoId,
+          videoInfo.channelId,
+          videoInfo.title,
+          f_official_category_id,
+          analysisResult.accuracy,
+          analysisResult.clickbait,
+          analysisResult.reliability,
+          analysisResult.recommendedTitle,
+          analysisResult.subtitleSummary,
+          analysisResult.evaluationReason
+        ]);
+      }
 
       // 5-4. 채널 통계 갱신 (카테고리별)
       console.log('5-4. 채널 통계 갱신 시작...');
@@ -269,6 +375,28 @@ export async function POST(request: Request) {
         `, [videoInfo.channelId, videoInfo.officialCategoryId]);
       }
 
+      if (isRecheck) {
+        if (!actualUserId) {
+          throw new Error('로그인이 필요합니다.');
+        }
+        const creditRes = await client.query(
+          `UPDATE t_users
+           SET f_recheck_credits = COALESCE(f_recheck_credits, 0) - 1,
+               f_updated_at = NOW()
+           WHERE f_email = $1 AND COALESCE(f_recheck_credits, 0) > 0
+           RETURNING f_recheck_credits`,
+          [actualUserId]
+        );
+
+        if (creditRes.rows.length === 0) {
+          const err: any = new Error('크레딧이 부족합니다.');
+          err.statusCode = 402;
+          throw err;
+        }
+
+        creditDeducted = true;
+      }
+
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
 
@@ -296,15 +424,21 @@ export async function POST(request: Request) {
       client.release();
     }
 
+    const finalAnalysisId = shouldKeepParentOnDecrease && recheckParentAnalysisId ? recheckParentAnalysisId : analysisId;
+
     return NextResponse.json({ 
-      message: '분석이 완료되었습니다.',
-      analysisId: analysisId
+      message: shouldKeepParentOnDecrease
+        ? '재검 결과 신뢰도 점수가 하락하여 기존 분석 결과를 유지합니다.'
+        : '분석이 완료되었습니다.',
+      analysisId: finalAnalysisId,
+      creditDeducted,
     });
 
   } catch (error) {
     console.error('분석 요청 오류:', error);
+    const statusCode = typeof (error as any)?.statusCode === 'number' ? (error as any).statusCode : 500;
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : '분석 중 오류가 발생했습니다.' 
-    }, { status: 500 });
+    }, { status: statusCode });
   }
 }
