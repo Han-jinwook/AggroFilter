@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const redirectAfter = searchParams.get('redirect')
   const redirect = redirectAfter && redirectAfter.startsWith('/') ? redirectAfter : '/'
+  const debug = searchParams.get('debug')
 
   const mallId = getCafe24MallId()
   const clientId = process.env.CAFE24_CLIENT_ID
@@ -28,6 +29,10 @@ export async function GET(request: Request) {
   authUrl.searchParams.set('redirect_uri', redirectUri)
   authUrl.searchParams.set('scope', scope)
   authUrl.searchParams.set('state', state)
+
+  if (debug === '1') {
+    return NextResponse.json({ mallId, redirectUri, scope, authUrl: authUrl.toString() })
+  }
 
   return NextResponse.redirect(authUrl)
 }
