@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       // Query user's analyses directly from DB using email
       // No localStorage dependency - pure DB-based approach
       
+      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const refinedQuery = `
       WITH RankStats AS (
           SELECT 
@@ -25,12 +26,6 @@ export async function POST(request: Request) {
               RANK() OVER (PARTITION BY f_official_category_id ORDER BY f_trust_score DESC) as channel_rank,
               COUNT(*) OVER (PARTITION BY f_official_category_id) as total_channels
           FROM t_channels
-      ),
-      LatestUserAnalyses AS (
-          SELECT *,
-                 ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-          FROM t_analyses
-          WHERE f_user_id = $1
       )
       SELECT 
         a.f_id as id,
@@ -42,11 +37,12 @@ export async function POST(request: Request) {
         COALESCE(rs.channel_rank, 0) as rank,
         COALESCE(rs.total_channels, 0) as total_rank,
         cat.f_name_ko as topic
-      FROM LatestUserAnalyses a
+      FROM t_analyses a
       LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
       LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
       LEFT JOIN RankStats rs ON a.f_channel_id = rs.f_channel_id AND a.f_official_category_id = rs.f_official_category_id
-      WHERE a.rn = 1
+      WHERE a.f_user_id = $1
+        AND a.f_is_latest = TRUE
       ORDER BY a.f_created_at DESC
     `;
 

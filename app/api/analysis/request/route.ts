@@ -279,6 +279,14 @@ export async function POST(request: Request) {
 
       if (!shouldKeepParentOnDecrease) {
         console.log('5-2. 분석 결과 저장 (t_analyses)...');
+        
+        // [v2.2 Optimization] Mark previous records as not latest
+        await client.query(`
+          UPDATE t_analyses 
+          SET f_is_latest = FALSE 
+          WHERE f_video_id = $1
+        `, [videoId]);
+
         // 5-2. 분석 결과 저장 (v2.0 필드 반영) - f_topic 제거
         await client.query(`
           INSERT INTO t_analyses (
@@ -287,11 +295,13 @@ export async function POST(request: Request) {
             f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
             f_ai_title_recommendation, f_user_id, f_official_category_id,
             f_request_count, f_view_count, f_created_at, f_last_action_at,
-            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at
+            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
+            f_is_latest
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, 1, NOW(), NOW(),
-            $17, $18, $19
+            $17, $18, $19,
+            TRUE
           )
         `, [
           analysisId,
@@ -349,21 +359,8 @@ export async function POST(request: Request) {
       // 5-4. 채널 통계 갱신 (카테고리별)
       console.log('5-4. 채널 통계 갱신 시작...');
       if (hasTranscript) {
-        // [v2.1 Fix] Use CTE to calculate stats based ONLY on the latest analysis per video
+        // [v2.2 Optimization] Use f_is_latest = true instead of complex CTE
         await client.query(`
-          WITH LatestAnalyses AS (
-            SELECT 
-              f_channel_id,
-              f_official_category_id,
-              f_accuracy_score,
-              f_clickbait_score,
-              f_reliability_score,
-              ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-            FROM t_analyses
-            WHERE f_channel_id = $1 
-              AND f_official_category_id = $2 
-              AND f_reliability_score IS NOT NULL
-          )
           INSERT INTO t_channel_stats (
             f_channel_id, f_official_category_id, f_video_count, 
             f_avg_accuracy, f_avg_clickbait, f_avg_reliability, 
@@ -376,8 +373,11 @@ export async function POST(request: Request) {
             ROUND(AVG(f_clickbait_score), 2), 
             ROUND(AVG(f_reliability_score), 2),
             NOW()
-          FROM LatestAnalyses
-          WHERE rn = 1
+          FROM t_analyses
+          WHERE f_channel_id = $1 
+            AND f_official_category_id = $2 
+            AND f_reliability_score IS NOT NULL
+            AND f_is_latest = TRUE
           GROUP BY f_channel_id, f_official_category_id
           ON CONFLICT (f_channel_id, f_official_category_id) 
           DO UPDATE SET 

@@ -19,14 +19,8 @@ export async function GET(request: Request) {
 
     const client = await pool.connect()
     try {
-      // [v2.1 Fix] Use CTE to deduplicate videos (latest only)
+      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const query = `
-        WITH LatestAnalyses AS (
-          SELECT *,
-                 ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-          FROM t_analyses
-          WHERE f_reliability_score IS NOT NULL
-        )
         SELECT
           c.f_id as id,
           c.f_name as name,
@@ -35,8 +29,8 @@ export async function GET(request: Request) {
           COUNT(a.f_id)::int as analysis_count,
           ROUND(AVG(a.f_reliability_score))::int as avg_reliability
         FROM t_channels c
-        JOIN LatestAnalyses a ON c.f_id = a.f_channel_id
-        WHERE a.rn = 1
+        JOIN t_analyses a ON c.f_id = a.f_channel_id
+        WHERE a.f_is_latest = TRUE
           AND ${timeCondition}
         GROUP BY c.f_id, c.f_name, c.f_profile_image_url, c.f_official_category_id
         ORDER BY analysis_count DESC, avg_reliability DESC
@@ -47,12 +41,6 @@ export async function GET(request: Request) {
 
       if (period === '1일' && result.rows.length === 0) {
         const fallbackQuery = `
-          WITH LatestAnalyses AS (
-            SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-            FROM t_analyses
-            WHERE f_reliability_score IS NOT NULL
-          )
           SELECT
             c.f_id as id,
             c.f_name as name,
@@ -61,8 +49,8 @@ export async function GET(request: Request) {
             COUNT(a.f_id)::int as analysis_count,
             ROUND(AVG(a.f_reliability_score))::int as avg_reliability
           FROM t_channels c
-          JOIN LatestAnalyses a ON c.f_id = a.f_channel_id
-          WHERE a.rn = 1
+          JOIN t_analyses a ON c.f_id = a.f_channel_id
+          WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
           GROUP BY c.f_id, c.f_name, c.f_profile_image_url, c.f_official_category_id
           ORDER BY analysis_count DESC, avg_reliability DESC

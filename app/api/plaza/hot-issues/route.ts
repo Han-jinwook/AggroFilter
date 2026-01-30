@@ -25,13 +25,8 @@ export async function GET(request: Request) {
           : 'ORDER BY a.f_clickbait_score DESC';
       }
 
+      // [v2.2 Optimization] Use f_is_latest = true
       const query = `
-        WITH LatestAnalyses AS (
-          SELECT *,
-                 ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-          FROM t_analyses
-          WHERE f_reliability_score IS NOT NULL
-        )
         SELECT 
           a.f_id as id,
           a.f_title as title,
@@ -42,10 +37,11 @@ export async function GET(request: Request) {
           a.f_clickbait_score as clickbait_score,
           a.f_request_count as analysis_count,
           a.f_view_count as view_count
-        FROM LatestAnalyses a
+        FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
-        WHERE a.rn = 1
+        WHERE a.f_is_latest = TRUE
           AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
+          AND a.f_reliability_score IS NOT NULL
         ${orderByClause}
         LIMIT 3
       `;
@@ -55,12 +51,6 @@ export async function GET(request: Request) {
       // Fail-safe: If no results found in last 24 hours, fallback to last 7 days
       if (result.rows.length === 0) {
         const fallbackQuery = `
-          WITH LatestAnalyses AS (
-            SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-            FROM t_analyses
-            WHERE f_reliability_score IS NOT NULL
-          )
           SELECT 
             a.f_id as id,
             a.f_title as title,
@@ -71,10 +61,11 @@ export async function GET(request: Request) {
             a.f_clickbait_score as clickbait_score,
             a.f_request_count as analysis_count,
             a.f_view_count as view_count
-          FROM LatestAnalyses a
+          FROM t_analyses a
           LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
-          WHERE a.rn = 1
+          WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
+            AND a.f_reliability_score IS NOT NULL
           ${orderByClause}
           LIMIT 3
         `;

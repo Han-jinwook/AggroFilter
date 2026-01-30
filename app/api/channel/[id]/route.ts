@@ -41,6 +41,7 @@ export async function GET(
       console.log(`Channel found: ${channel.f_name} (${channelId})`);
 
       // 2. 채널의 전체 분석 수 및 평균 신뢰도 조회
+      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const statsResult = await client.query(`
         SELECT 
           COUNT(*) as total_analysis,
@@ -49,6 +50,7 @@ export async function GET(
           ROUND(AVG(f_clickbait_score)) as avg_clickbait
         FROM t_analyses
         WHERE f_channel_id = $1
+          AND f_is_latest = TRUE
       `, [channelId]);
 
       const stats = statsResult.rows[0];
@@ -75,10 +77,12 @@ export async function GET(
       }
 
       // 3. 신뢰도 트렌드 데이터 (최근 7개 분석)
+      // [v2.2 Optimization] Use f_is_latest = true
       const trendResult = await client.query(`
         SELECT f_reliability_score
         FROM t_analyses
         WHERE f_channel_id = $1
+          AND f_is_latest = TRUE
         ORDER BY f_created_at DESC
         LIMIT 7
       `, [channelId]);
@@ -86,6 +90,7 @@ export async function GET(
       const trendData = trendResult.rows.map(r => r.f_reliability_score).reverse();
 
       // 4. 카테고리별 분석 데이터
+      // [v2.2 Optimization] Use f_is_latest = true
       const topicsResult = await client.query(`
         SELECT 
           a.f_official_category_id,
@@ -105,6 +110,7 @@ export async function GET(
           ) as videos
         FROM t_analyses a
         WHERE a.f_channel_id = $1
+          AND a.f_is_latest = TRUE
         GROUP BY a.f_official_category_id
         ORDER BY video_count DESC
       `, [channelId]);
@@ -113,6 +119,7 @@ export async function GET(
       const topicsWithRank = await Promise.all(
         topicsResult.rows.map(async (topic) => {
           // 해당 카테고리의 모든 채널 평균 신뢰도 계산하여 랭킹 산출
+          // [v2.2 Optimization] Use f_is_latest = true
           const rankResult = await client.query(`
             WITH channel_avg AS (
               SELECT 
@@ -120,6 +127,7 @@ export async function GET(
                 AVG(f_reliability_score) as avg_reliability
               FROM t_analyses
               WHERE f_official_category_id = $1
+                AND f_is_latest = TRUE
               GROUP BY f_channel_id
             ),
             ranked_channels AS (

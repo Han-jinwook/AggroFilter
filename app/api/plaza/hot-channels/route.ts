@@ -23,13 +23,8 @@ export async function GET(request: Request) {
           : 'ORDER BY avg_clickbait DESC';
       }
 
+      // [v2.2 Optimization] Use f_is_latest = true
       const query = `
-        WITH LatestAnalyses AS (
-          SELECT *,
-                 ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-          FROM t_analyses
-          WHERE f_reliability_score IS NOT NULL
-        )
         SELECT 
           c.f_id as id,
           c.f_name as name,
@@ -39,8 +34,8 @@ export async function GET(request: Request) {
           AVG(a.f_reliability_score) as avg_reliability,
           AVG(a.f_clickbait_score) as avg_clickbait
         FROM t_channels c
-        JOIN LatestAnalyses a ON c.f_id = a.f_channel_id
-        WHERE a.rn = 1
+        JOIN t_analyses a ON c.f_id = a.f_channel_id
+        WHERE a.f_is_latest = TRUE
           AND a.f_created_at >= NOW() - INTERVAL '7 days'
         GROUP BY c.f_id, c.f_name, c.f_profile_image_url
         HAVING COUNT(a.f_id) > 0

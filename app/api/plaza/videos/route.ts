@@ -30,15 +30,8 @@ export async function GET(request: Request) {
         }
 
       // First, try with the strict time condition
-      // Use CTE to deduplicate videos (get only the latest analysis per video)
+      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       let query = `
-        WITH LatestAnalyses AS (
-          SELECT 
-            *,
-            ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-          FROM t_analyses
-          WHERE f_reliability_score IS NOT NULL
-        )
         SELECT 
           a.f_id as id,
           a.f_created_at as date,
@@ -48,10 +41,11 @@ export async function GET(request: Request) {
           a.f_request_count as views,
           a.f_view_count as f_view_count,
           a.f_reliability_score as score
-        FROM LatestAnalyses a
+        FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
-        WHERE rn = 1
+        WHERE a.f_is_latest = TRUE
           AND ${timeCondition}
+          AND a.f_reliability_score IS NOT NULL
         ORDER BY ${orderBy}
         LIMIT 50
       `;
@@ -61,13 +55,6 @@ export async function GET(request: Request) {
       // Fail-safe: If '1일' is selected and no results found, fallback to '7 days' but keep the '1일' label
       if (period === '1일' && result.rows.length === 0) {
         query = `
-          WITH LatestAnalyses AS (
-            SELECT 
-              *,
-              ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
-            FROM t_analyses
-            WHERE f_reliability_score IS NOT NULL
-          )
           SELECT 
             a.f_id as id,
             a.f_created_at as date,
@@ -77,10 +64,11 @@ export async function GET(request: Request) {
             a.f_request_count as views,
             a.f_view_count as f_view_count,
             a.f_reliability_score as score
-          FROM LatestAnalyses a
+          FROM t_analyses a
           LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
-          WHERE rn = 1
+          WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
+            AND a.f_reliability_score IS NOT NULL
           ORDER BY ${orderBy}
           LIMIT 50
         `;
