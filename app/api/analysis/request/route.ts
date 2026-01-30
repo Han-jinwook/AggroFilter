@@ -349,21 +349,35 @@ export async function POST(request: Request) {
       // 5-4. 채널 통계 갱신 (카테고리별)
       console.log('5-4. 채널 통계 갱신 시작...');
       if (hasTranscript) {
+        // [v2.1 Fix] Use CTE to calculate stats based ONLY on the latest analysis per video
         await client.query(`
+          WITH LatestAnalyses AS (
+            SELECT 
+              f_channel_id,
+              f_official_category_id,
+              f_accuracy_score,
+              f_clickbait_score,
+              f_reliability_score,
+              ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
+            FROM t_analyses
+            WHERE f_channel_id = $1 
+              AND f_official_category_id = $2 
+              AND f_reliability_score IS NOT NULL
+          )
           INSERT INTO t_channel_stats (
             f_channel_id, f_official_category_id, f_video_count, 
             f_avg_accuracy, f_avg_clickbait, f_avg_reliability, 
             f_last_updated
           )
           SELECT 
-            $1::text, $2::integer, 
+            f_channel_id, f_official_category_id,
             COUNT(*)::integer, 
             ROUND(AVG(f_accuracy_score), 2), 
             ROUND(AVG(f_clickbait_score), 2), 
             ROUND(AVG(f_reliability_score), 2),
             NOW()
-          FROM t_analyses
-          WHERE f_channel_id = $1 AND f_official_category_id = $2 AND f_reliability_score IS NOT NULL
+          FROM LatestAnalyses
+          WHERE rn = 1
           GROUP BY f_channel_id, f_official_category_id
           ON CONFLICT (f_channel_id, f_official_category_id) 
           DO UPDATE SET 

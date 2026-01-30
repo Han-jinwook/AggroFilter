@@ -25,8 +25,14 @@ export async function POST(request: Request) {
               RANK() OVER (PARTITION BY f_official_category_id ORDER BY f_trust_score DESC) as channel_rank,
               COUNT(*) OVER (PARTITION BY f_official_category_id) as total_channels
           FROM t_channels
+      ),
+      LatestUserAnalyses AS (
+          SELECT *,
+                 ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
+          FROM t_analyses
+          WHERE f_user_id = $1
       )
-      SELECT DISTINCT ON (a.f_id)
+      SELECT 
         a.f_id as id,
         a.f_title as title,
         a.f_reliability_score as score,
@@ -36,12 +42,12 @@ export async function POST(request: Request) {
         COALESCE(rs.channel_rank, 0) as rank,
         COALESCE(rs.total_channels, 0) as total_rank,
         cat.f_name_ko as topic
-      FROM t_analyses a
+      FROM LatestUserAnalyses a
       LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
       LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
       LEFT JOIN RankStats rs ON a.f_channel_id = rs.f_channel_id AND a.f_official_category_id = rs.f_official_category_id
-      WHERE a.f_user_id = $1
-      ORDER BY a.f_id, a.f_created_at DESC
+      WHERE a.rn = 1
+      ORDER BY a.f_created_at DESC
     `;
 
     const res = await client.query(refinedQuery, [email]);
