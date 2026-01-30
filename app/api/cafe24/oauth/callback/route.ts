@@ -37,9 +37,9 @@ export async function GET(request: Request) {
     }
 
     const mallId = getCafe24MallId()
-    const clientId = process.env.CAFE24_CLIENT_ID
-    const clientSecret = process.env.CAFE24_CLIENT_SECRET
-    const redirectUri = process.env.CAFE24_REDIRECT_URI
+    const clientId = process.env.CAFE24_CLIENT_ID?.trim()
+    const clientSecret = process.env.CAFE24_CLIENT_SECRET?.trim()
+    const redirectUri = process.env.CAFE24_REDIRECT_URI?.trim()
 
     if (!clientId || !clientSecret || !redirectUri) {
       return NextResponse.json(
@@ -49,28 +49,33 @@ export async function GET(request: Request) {
     }
 
     const base = getCafe24ApiBaseUrl().replace(/\/$/, '')
-    // const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
+    const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
     
-    // Switch to Body Auth (client_id/client_secret in body) instead of Header Auth
+    // Rollback to Basic Auth Header with trimmed credentials
     const res = await fetch(`${base}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        // Authorization: `Basic ${basic}`, // Removing Basic Auth Header
+        Authorization: `Basic ${basic}`, 
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
       }),
       cache: 'no-store',
     })
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      return NextResponse.json({ error: `token exchange failed: ${res.status} ${text}` }, { status: 500 })
+      return NextResponse.json({ 
+        error: `token exchange failed: ${res.status}`, 
+        details: text,
+        debug: {
+          usedRedirectUri: redirectUri,
+          clientIdPrefix: clientId.substring(0, 5) + '...'
+        }
+      }, { status: 500 })
     }
 
     const data: any = await res.json()
