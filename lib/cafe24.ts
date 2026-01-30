@@ -123,17 +123,20 @@ async function refreshCafe24AccessToken(params: {
   const base = getCafe24ApiBaseUrl().replace(/\/$/, '')
   const clientId = getRequiredEnv('CAFE24_CLIENT_ID')
   const clientSecret = getRequiredEnv('CAFE24_CLIENT_SECRET')
-  const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
+  // const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
 
+  // Switch to Body Auth for Refresh Token as well
   const res = await fetch(`${base}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${basic}`,
+      // Authorization: `Basic ${basic}`,
     },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: params.refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
     }),
     cache: 'no-store',
   })
