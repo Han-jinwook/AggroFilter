@@ -60,31 +60,25 @@ Cafe24 스토어에서 크레딧 상품 구매 시, Webhook 이벤트 기반으�
 - scope 표기 문제 해결:
   - `mall_read_order` → `mall.read_order` 로 전환
   - 개발자센터 앱 권한에서도 주문 Read 추가
-- 토큰 교환 401 대응 시도:
+- 토큰 교환 401 대응 완료:
   - (1차) Header Basic Auth: 401 실패
-  - (2차) Body Parameters (client_id/secret): 401 invalid_request 실패 (Screenshot 확인됨)
-  - (3차 - 현재) Header Basic Auth로 롤백하되 `.trim()` 적용 및 디버깅 정보(`usedRedirectUri` 등) 응답에 포함
+  - (2차) Body Parameters (client_id/secret): 401 invalid_request 실패
+  - (3차 - 성공 추정) Header Basic Auth로 롤백 + `.trim()` 적용
+    - 결과: 에러 JSON 없이 메인 페이지(`/?code=...`)로 리다이렉트됨 -> **성공 유력**
 
 ---
 
 ## 남은 의심 포인트(다음 세션에서 집중)
-1) **환경변수 공백 문제**
-   - `CAFE24_CLIENT_SECRET` 등에 공백이 포함되어 Base64 인코딩이 틀어졌을 가능성 -> `.trim()`으로 대응.
-
-2) **Redirect URI 불일치**
-   - 디버깅 응답(`usedRedirectUri`)을 통해 코드와 실제 전송값이 일치하는지 확인 예정.
-
-3) **Cafe24 개발자센터 설정 미반영**
-   - 권한/Scope 설정이 즉시 반영되지 않았을 수도 있음.
+- 현재 성공한 것으로 보이므로, 실제 토큰이 DB에 잘 저장되었는지 확인만 남음.
 
 ---
 
 ## 다음 세션 체크리스트(순서대로)
-1) 프로덕션 배포 완료 대기
-2) **반드시 `/api/cafe24/oauth/start` 부터 새로 시작** (기존 콜백 URL 새로고침 금지 - code 재사용 불가)
-3) 실패 시 반환되는 JSON의 `debug` 필드 확인
-   - `usedRedirectUri`가 개발자센터 설정과 정확히 일치하는지.
-   - `clientIdPrefix`가 맞는지.
+1) **최종 성공 확인**
+   - `https://aggrofilter.netlify.app/api/cafe24/oauth/status` 접속
+   - `configured: true`가 뜨는지 확인.
+
+2) 만약 `true`라면, 다음 단계인 **Webhook 연동 테스트**로 넘어갈 준비 완료.
 
 ---
 
