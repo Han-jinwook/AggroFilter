@@ -800,16 +800,6 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                       </Link>
                     ))}
                   </div>
-
-                  <div className="p-3 text-center border-t border-slate-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-slate-500 w-full h-8 hover:text-indigo-600"
-                    >
-                      영상 더보기
-                    </Button>
-                  </div>
                 </AccordionContent>
               </AccordionItem>
             ))}
