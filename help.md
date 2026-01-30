@@ -1,132 +1,96 @@
-# 채널 종합 리포트 페이지 실제 데이터 연동 작업 현황
+@@
+# Cafe24 OAuth 설치/토큰발급 무한반복 이슈 정리 (AggroFilter 크레딧 충전)
 
-## ✅ 해결 완료 (2026-01-24 02:30)
+## 목표
+Cafe24 스토어에서 크레딧 상품 구매 시, Webhook 이벤트 기반으로 AggroFilter DB의 사용자 크레딧을 자동 충전.
 
-### 문제 원인
-1. **DB 컬럼명 불일치**: API 라우트에서 `f_reliability`, `f_accuracy`, `f_clickbait` 사용했으나 실제 DB는 `f_reliability_score`, `f_accuracy_score`, `f_clickbait_score`
-2. **비디오 제목 컬럼 불일치**: `f_video_title` 대신 `f_title` 사용
-3. **Next.js 15 호환성**: 프론트엔드에서 `params`를 Promise로 처리하지 않음
-
-### 해결 내용
-1. **API 라우트 수정** (`app/api/channel/[id]/route.ts`):
-   - 모든 쿼리의 컬럼명을 실제 DB 스키마와 일치하도록 수정
-   - `f_reliability` → `f_reliability_score`
-   - `f_accuracy` → `f_accuracy_score`
-   - `f_clickbait` → `f_clickbait_score`
-   - `f_video_title` → `f_title`
-
-2. **프론트엔드 수정** (`app/channel/[id]/page.tsx`):
-   - `params` 타입을 `Promise<{ id: string }>`로 변경
-   - `useEffect`에서 params를 await로 처리하도록 수정
-   - channelId를 별도 state로 관리
-
-3. **서버 재시작**:
-   - 3000, 3001 포트 프로세스 종료
-   - 개발 서버 재시작하여 변경사항 적용
-
-### 테스트 결과
-- API 엔드포인트: ✅ 200 OK 응답
-- 채널 데이터 정상 조회 확인
+현재 단계: **Cafe24 OAuth 설치(1회) → access/refresh token을 DB(t_cafe24_tokens)에 저장**하는 단계에서 무한 반복/에러 발생.
 
 ---
 
-## 이전 상황 (2026-01-24 02:14)
+## 현재 증상
+- **`/api/cafe24/oauth/start`로 설치 진행 후**
+  - 동의 화면까지는 뜨기도 함
+  - 동의 후 콜백에서 토큰 교환 실패(401/invalid_request 등) 발생
+  - `/api/cafe24/oauth/status`는 계속 `configured: false` (토큰 미저장)
 
-### 문제 발생
-채널 랭킹 페이지에서 채널을 클릭하면 채널 종합 리포트 페이지(`/channel/[id]`)로 이동하는데, 다음 에러가 발생:
-- **브라우저**: "missing required error components, refreshing..." 메시지 후 빈 화면
-- **서버 포트**: 3000번 포트가 이미 사용 중이어서 3001번 포트로 실행됨
+---
 
-### 작업 내용
+## 구현/엔드포인트 현황
+- OAuth 시작: `app/api/cafe24/oauth/start/route.ts`
+- OAuth 콜백: `app/api/cafe24/oauth/callback/route.ts`
+- OAuth 상태 확인: `app/api/cafe24/oauth/status/route.ts`
+- Webhook 수신: `app/api/cafe24/webhook/route.ts`
+- Cafe24 API/토큰/주문조회 로직: `lib/cafe24.ts`
 
-#### 1. API 엔드포인트 생성 (`app/api/channel/[id]/route.ts`)
-- 채널 기본 정보, 분석 통계, 트렌드 데이터, 카테고리별 분석 및 랭킹 조회
-- Next.js 15 호환을 위해 `params`를 Promise로 처리하도록 수정
-- `getCategoryName` import 추가하여 카테고리 ID를 한글 이름으로 변환
-- 분석 데이터가 0개일 때 기본값 반환 처리
+---
 
-#### 2. 카테고리 매핑 유틸리티 생성 (`lib/categoryMap.ts`)
-- YouTube 공식 카테고리 ID(1~29)를 한글 이름으로 매핑
+## 현재 환경변수(중요)
+- `CAFE24_MALL_ID` = `nwjddus96`
+- `CAFE24_CLIENT_ID` = (Netlify에 설정)
+- `CAFE24_CLIENT_SECRET` = (Netlify에 설정)
+- `CAFE24_REDIRECT_URI` = `https://aggrofilter.netlify.app/api/cafe24/oauth/callback`
+- `CAFE24_OAUTH_SCOPE` = `mall.read_order`
+- `CAFE24_WEBHOOK_SECRET` = (Netlify에 설정)
+- `CAFE24_CREDIT_PRODUCT_MAP` = (상품번호→크레딧 매핑 JSON)
 
-#### 3. 프론트엔드 수정 (`app/channel/[id]/page.tsx`)
-- 하드코딩된 데이터를 API 호출로 변경
-- `useEffect`로 데이터 fetch
-- 로딩 및 에러 상태 처리
-- 중복된 `getCategoryName` 호출 제거 (API에서 이미 제공)
+---
 
-### 주요 수정 사항
+## Cafe24 개발자센터 설정(확인된 것)
+- 앱 Redirect URI(s)에 다음이 등록되어 있음:
+  - `https://aggrofilter.netlify.app/api/cafe24/oauth/callback`
+- 앱 권한(쇼핑몰 운영자)에서 `주문(Order) Read` 권한을 추가함
 
-**API 라우트** (`app/api/channel/[id]/route.ts`):
-```typescript
-// Next.js 15 호환
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: channelId } = await params;
-  // ...
-}
+---
 
-// 카테고리 이름 추가
-return {
-  categoryId: topic.f_official_category_id,
-  name: getCategoryName(topic.f_official_category_id), // 추가됨
-  count: parseInt(topic.video_count),
-  // ...
-}
-```
+## 디버그 확인 결과(확정된 사실)
+`/api/cafe24/oauth/start?debug=1` 응답:
+- `redirectUri`: `https://aggrofilter.netlify.app/api/cafe24/oauth/callback`
+- `scope`: `mall.read_order`
+- `authUrl`에도 동일 값이 포함되어 있음
 
-**프론트엔드** (`app/channel/[id]/page.tsx`):
-```typescript
-// getCategoryName import 제거됨 (API에서 제공)
-// 중복 매핑 로직 제거됨
-setChannelData({
-  ...data,
-  trustGrade: data.trustScore >= 70 ? 'High' : data.trustScore >= 40 ? 'Medium' : 'Low'
-})
-```
+즉, **서버가 Cafe24에 보내는 authorize 요청 파라미터는 정상**임.
 
-### 현재 문제점
+---
 
-1. **컴포넌트 에러**: "missing required error components" 메시지
-   - 프론트엔드 컴포넌트에서 필수 props나 import가 누락되었을 가능성
-   - 또는 API 응답 데이터 구조가 프론트엔드 기대값과 불일치
+## 코드 변경/시도했던 것들
+- Netlify 빌드 실패 해결: `/payment/mock`의 `useSearchParams()`를 `<Suspense>`로 감쌈
+- OAuth callback에서 `error`/`error_description`을 그대로 반환하도록 개선
+- OAuth start에 `scope` 파라미터 추가
+- scope 표기 문제 해결:
+  - `mall_read_order` → `mall.read_order` 로 전환
+  - 개발자센터 앱 권한에서도 주문 Read 추가
+- 토큰 교환 401 대응 시도:
+  - (1차) Header Basic Auth: 401 실패
+  - (2차) Body Parameters (client_id/secret): 401 invalid_request 실패 (Screenshot 확인됨)
+  - (3차 - 현재) Header Basic Auth로 롤백하되 `.trim()` 적용 및 디버깅 정보(`usedRedirectUri` 등) 응답에 포함
 
-2. **포트 충돌**: 
-   - 3000번 포트가 이미 사용 중
-   - 현재 3001번 포트로 실행 중
-   - 이전 서버 프로세스가 종료되지 않았을 가능성
+---
 
-### DB 확인 결과
-- 채널 `UCF4Wxdo3inmxP-Y59wXDsFw` (MBCNEWS) 존재 확인
-- 분석 데이터 1개 존재
-- 신뢰도 93점
+## 남은 의심 포인트(다음 세션에서 집중)
+1) **환경변수 공백 문제**
+   - `CAFE24_CLIENT_SECRET` 등에 공백이 포함되어 Base64 인코딩이 틀어졌을 가능성 -> `.trim()`으로 대응.
 
-### 다음 세션에서 해야 할 작업
+2) **Redirect URI 불일치**
+   - 디버깅 응답(`usedRedirectUri`)을 통해 코드와 실제 전송값이 일치하는지 확인 예정.
 
-1. **포트 충돌 해결**:
-   ```bash
-   # Windows에서 3000번 포트 사용 프로세스 종료
-   netstat -ano | findstr :3000
-   taskkill /PID [프로세스ID] /F
-   ```
+3) **Cafe24 개발자센터 설정 미반영**
+   - 권한/Scope 설정이 즉시 반영되지 않았을 수도 있음.
 
-2. **컴포넌트 에러 원인 파악**:
-   - `app/channel/[id]/page.tsx`의 import 문 확인
-   - 특히 `c-badge`, `c-button`, `c-accordion`, `c-card` 등 커스텀 컴포넌트 경로 확인
-   - API 응답 데이터 구조와 프론트엔드 인터페이스 일치 여부 확인
+---
 
-3. **서버 로그 확인**:
-   - 개발 서버 터미널에서 실제 에러 메시지 확인
-   - 브라우저 콘솔에서 자세한 에러 스택 확인
+## 다음 세션 체크리스트(순서대로)
+1) 프로덕션 배포 완료 대기
+2) **반드시 `/api/cafe24/oauth/start` 부터 새로 시작** (기존 콜백 URL 새로고침 금지 - code 재사용 불가)
+3) 실패 시 반환되는 JSON의 `debug` 필드 확인
+   - `usedRedirectUri`가 개발자센터 설정과 정확히 일치하는지.
+   - `clientIdPrefix`가 맞는지.
 
-4. **단순화 테스트**:
-   - API만 먼저 테스트 (`curl http://localhost:3001/api/channel/UCF4Wxdo3inmxP-Y59wXDsFw`)
-   - API가 정상 응답하면 프론트엔드 컴포넌트 문제
-   - API가 500 에러면 백엔드 로직 문제
+---
 
-### 관련 파일
-- `app/api/channel/[id]/route.ts` - API 엔드포인트
-- `app/channel/[id]/page.tsx` - 프론트엔드 페이지
-- `lib/categoryMap.ts` - 카테고리 매핑 유틸리티
-- `components/ui/c-*` - 커스텀 UI 컴포넌트들
+## 관련 파일
+- `app/api/cafe24/oauth/start/route.ts`
+- `app/api/cafe24/oauth/callback/route.ts`
+- `app/api/cafe24/oauth/status/route.ts`
+- `lib/cafe24.ts`
+- `app/api/cafe24/webhook/route.ts`
