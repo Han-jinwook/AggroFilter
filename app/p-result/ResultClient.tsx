@@ -45,6 +45,7 @@ export default function ResultClient() {
   const [predictionData, setPredictionData] = useState<any>(null)
 
   useEffect(() => {
+    setPredictionData(null); // 이전 예측 데이터 초기화
     const id = searchParams.get("id")
     if (!id) {
       setError("분석 ID가 없습니다.")
