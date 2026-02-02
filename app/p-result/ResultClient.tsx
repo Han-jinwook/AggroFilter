@@ -393,6 +393,7 @@ export default function ResultClient() {
   }
 
   const parseTimestamp = (text: string) => {
+    if (!text || typeof text !== 'string') return 0;
     const parts = text.split(":").map(Number);
     let seconds = 0;
     if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
