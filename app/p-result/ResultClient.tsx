@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import html2canvas from 'html2canvas'
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/c-button"
@@ -38,6 +39,8 @@ export default function ResultClient() {
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
   const [playerTime, setPlayerTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
+  const captureRef = useRef<HTMLDivElement>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -353,6 +356,37 @@ export default function ResultClient() {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
   }
 
+  const handleImageShare = async () => {
+    if (!captureRef.current) return;
+    setIsCapturing(true);
+
+    try {
+      const canvas = await html2canvas(captureRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        logging: true,
+        backgroundColor: '#f0f9ff', // A light blue background similar to the page
+        onclone: (document) => {
+          // Hide elements that shouldn't be in the capture
+          const elementsToHide = document.querySelectorAll('.no-capture');
+          elementsToHide.forEach(el => (el as HTMLElement).style.display = 'none');
+        }
+      });
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `AggroFilter_Analysis_${analysisData?.videoId || 'result'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('이미지 캡처에 실패했습니다:', error);
+      alert('이미지 공유 파일을 생성하는 데 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   const handleShare = async () => {
     if (!analysisData) return
     const shareData = {
@@ -551,6 +585,7 @@ ${content}
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
       <main className="pt-6 pb-24">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
+          <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
           <div className="bg-background pb-2 pt-2">
             <AnalysisHeader
               channelImage={analysisData.channelImage}
@@ -777,8 +812,13 @@ ${content}
               </div>
             </div>
           </div>
-          <div className="flex justify-center">
-            <InteractionBar 
+          </div>
+          <div className="mt-4 flex justify-center items-center gap-4">
+ 
+            <Button onClick={handleImageShare} disabled={isCapturing} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-transform transform hover:scale-105 no-capture">
+              {isCapturing ? '이미지 생성 중...' : '결과 이미지로 공유'}
+            </Button>
+          <InteractionBar 
               liked={liked} 
               disliked={disliked} 
               likeCount={likeCount} 
