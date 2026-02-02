@@ -5,20 +5,30 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { channelIds } = await request.json();
+    const { channelIds, email } = await request.json();
 
     if (!channelIds || !Array.isArray(channelIds) || channelIds.length === 0) {
       return NextResponse.json({ error: 'Invalid channel IDs' }, { status: 400 });
     }
+    if (!email) {
+      return NextResponse.json({ error: 'User email is required' }, { status: 401 });
+    }
 
     const client = await pool.connect();
     try {
-      // 채널 ID 배열을 기반으로 구독 삭제
+      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
+
+      if (userRes.rows.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      const userId = userRes.rows[0].f_id;
+
+      // 채널 ID 배열과 사용자 ID를 기반으로 구독 삭제
       const result = await client.query(`
         DELETE FROM t_channel_subscriptions
-        WHERE f_channel_id = ANY($1::text[])
+        WHERE f_channel_id = ANY($1::text[]) AND f_user_id = $2
         RETURNING f_id
-      `, [channelIds]);
+      `, [channelIds, userId]);
 
       return NextResponse.json({ 
         success: true, 

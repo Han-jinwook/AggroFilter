@@ -783,27 +783,35 @@ export default function MyPageClient() {
                   <button
                     onClick={async () => {
                       if (!confirm(`선택한 ${selectedChannels.size}개 채널의 구독을 해제하시겠습니까?`)) return
-                      
+
                       try {
+                        const email = localStorage.getItem('userEmail');
+                        if (!email) {
+                          alert('로그인이 필요합니다.');
+                          return;
+                        }
+
                         const response = await fetch('/api/subscription/unsubscribe', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            channelIds: Array.from(selectedChannels)
+                          body: JSON.stringify({ 
+                            channelIds: Array.from(selectedChannels),
+                            email: email 
                           })
-                        })
+                        });
 
                         if (response.ok) {
-                          alert('구독이 해제되었습니다.')
-                          setSelectedChannels(new Set())
-                          setIsManageMode(false)
-                          window.location.reload()
+                          alert('구독이 해제되었습니다.');
+                          // Refetch or remove from local state
+                          setAnalyzedVideos(analyzedVideos.filter(v => !selectedChannels.has(v.channel)));
+                          setSelectedChannels(new Set());
+                          setIsManageMode(false);
                         } else {
-                          alert('구독 해제에 실패했습니다.')
+                          alert('구독 해제에 실패했습니다.');
                         }
                       } catch (error) {
-                        console.error('구독 해제 오류:', error)
-                        alert('구독 해제 중 오류가 발생했습니다.')
+                        console.error('구독 해제 오류:', error);
+                        alert('구독 해제 중 오류가 발생했습니다.');
                       }
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded-full text-sm font-bold hover:bg-red-600 transition-colors shadow-md"
