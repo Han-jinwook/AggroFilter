@@ -260,6 +260,8 @@ export async function POST(request: Request) {
 
       console.log('5-1. 채널 정보 저장 (t_channels)...');
       // 5-1. 채널 정보 저장 (v2.0 필드 반영)
+      await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
+
       await client.query(`
         INSERT INTO t_channels (
           f_id, f_name, f_profile_image_url, f_official_category_id, f_subscriber_count
@@ -411,6 +413,28 @@ export async function POST(request: Request) {
         creditDeducted = true;
       }
 
+      // 5-5. 채널 구독 및 소유자 지정
+      if (actualUserId && hasTranscript) {
+        console.log('5-5. 채널 구독 및 소유자 지정 시작...');
+        const analysisExistsRes = await client.query(
+          'SELECT f_id FROM t_analyses WHERE f_channel_id = $1 AND f_id != $2 LIMIT 1',
+          [videoInfo.channelId, analysisId]
+        );
+        const isFirstAnalysisForChannel = analysisExistsRes.rows.length === 0;
+
+        await client.query(`ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_is_owner BOOLEAN DEFAULT FALSE`);
+
+        const subRes = await client.query(
+          `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at, f_is_owner)
+           VALUES ($1, $2, NOW(), $3)
+           ON CONFLICT (f_user_id, f_channel_id) DO UPDATE SET
+             f_is_owner = t_channel_subscriptions.f_is_owner OR EXCLUDED.f_is_owner
+           RETURNING f_is_owner;`,
+          [actualUserId, videoInfo.channelId, isFirstAnalysisForChannel]
+        );
+        console.log(`구독 처리 완료 (소유자: ${subRes.rows[0]?.f_is_owner})`);
+      }
+
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
 
@@ -420,17 +444,13 @@ export async function POST(request: Request) {
         console.error('랭킹 캐시 갱신 실패:', err);
       });
 
-      // 채널 자동 구독 처리 (비동기)
+      // 랭킹 변동 감지 및 알림 발송 (비동기)
       if (actualUserId && hasTranscript) {
-        subscribeChannelAuto(actualUserId, videoInfo.channelId).catch(err => {
-          console.error('채널 자동 구독 실패:', err);
-        });
-
-        // 랭킹 변동 감지 및 알림 발송 (비동기)
         checkRankingChangesAndNotify(videoInfo.officialCategoryId).catch(err => {
           console.error('랭킹 변동 감지 실패:', err);
         });
       }
+
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

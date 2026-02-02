@@ -16,6 +16,9 @@ function getReliabilityGrade(score: number): string {
 export async function subscribeChannelAuto(userId: string, channelId: string) {
   const client = await pool.connect();
   try {
+    // Ensure owner flag column exists
+    await client.query(`ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_is_owner BOOLEAN DEFAULT FALSE`);
+
     await client.query(`
       INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at)
       VALUES ($1, $2, NOW())
@@ -34,6 +37,9 @@ export async function subscribeChannelAuto(userId: string, channelId: string) {
 export async function checkRankingChangesAndNotify(categoryId: number) {
   const client = await pool.connect();
   try {
+    // Ensure contact email column exists for future B2B features
+    await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
+
     // 1. 현재 랭킹 조회 (해당 카테고리)
     const currentRankings = await client.query(`
       SELECT 
