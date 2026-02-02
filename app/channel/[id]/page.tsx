@@ -146,6 +146,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   useEffect(() => {
     if (!channelId) return
     try {
+      localStorage.setItem('focusChannelId', channelId)
       const email = localStorage.getItem('userEmail')
       if (!email) {
         setCredits(null)
@@ -217,7 +218,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
           <h2 className="text-lg font-black text-slate-900">{title}</h2>
           {modalStep === 'intro' && (
             <div className="mt-3 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
-              {`재분석은 영상의 제목, 썸네일, 본문 내용을 수정한 후 최신 상태로 다시 평가받는 기능입니다.
+              {`재분석은 영상의 제목, 썸네일을 수정한 후 최신 상태로 다시 평가받는 기능입니다.
 
 - 주의: 수정 사항이 없는 경우 점수 변동이 없을 수 있습니다.
 - 대상: 해당 영상의 제작자 또는 채널 관계자만 신청 가능합니다.
@@ -286,10 +287,12 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                   <>
                     <button
                       type="button"
-                      onClick={closeModal}
+                      onClick={() => {
+                        closeModal()
+                      }}
                       className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
                     >
-                      재분석 진행
+                      확인 (영상 선택)
                     </button>
                     <button
                       type="button"

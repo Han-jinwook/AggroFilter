@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -18,6 +18,29 @@ interface TChannel {
   highlight?: boolean
 }
 
+interface TRankingApiResponse {
+  channels: Array<{
+    id: string
+    rank: number
+    name: string
+    avatar: string
+    score: number
+    categoryId: number
+  }>
+  totalCount: number
+  nextOffset: number | null
+  myRank: null | {
+    id: string
+    rank: number
+    name: string
+    avatar: string
+    score: number
+    categoryId: number
+    totalCount: number
+    topPercentile: number | null
+  }
+}
+
 export default function RankingClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -32,6 +55,23 @@ export default function RankingClient() {
   
   const [channels, setChannels] = useState<TChannel[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState<number | null>(0)
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const [myRank, setMyRank] = useState<TRankingApiResponse['myRank']>(null)
+  const [showSticky, setShowSticky] = useState(false)
+
+  const myRankRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  const nextOffsetRef = useRef<number | null>(0)
+  const channelsLengthRef = useRef<number>(0)
+
+  const userEmail = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem('userEmail')
+  }, [])
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -72,21 +112,40 @@ export default function RankingClient() {
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true)
+      setLoadError(null)
       try {
-        const res = await fetch(`/api/ranking?category=${currentCategoryId}`)
-        if (res.ok) {
-          const data = await res.json()
-          const formatted = data.channels.map((c: any) => ({
-            id: c.id,
-            rank: c.rank,
-            name: c.name,
-            avatar: c.avatar,
-            score: c.score,
-            color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
-            highlight: false
-          }))
-          setChannels(formatted)
+        const emailQs = userEmail ? `&email=${encodeURIComponent(userEmail)}` : ''
+        const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
+        const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
+        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=0${emailQs}${focusQs}`)
+        if (!res.ok) {
+          const bodyText = await res.text().catch(() => '')
+          console.error('[RankingClient] /api/ranking failed', {
+            status: res.status,
+            statusText: res.statusText,
+            body: bodyText,
+          })
+          setLoadError(`랭킹 데이터를 불러오지 못했습니다. (HTTP ${res.status})`)
+          setChannels([])
+          setNextOffset(null)
+          setTotalCount(0)
+          setMyRank(null)
+          return
         }
+        const data = (await res.json()) as TRankingApiResponse
+        const formatted = (data.channels || []).map((c) => ({
+          id: c.id,
+          rank: c.rank,
+          name: c.name,
+          avatar: c.avatar,
+          score: c.score,
+          color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
+          highlight: false,
+        }))
+        setChannels(formatted)
+        setNextOffset(data.nextOffset)
+        setTotalCount(data.totalCount || 0)
+        setMyRank(data.myRank)
       } catch (error) {
         console.error("Failed to fetch ranking:", error)
       } finally {
@@ -95,7 +154,118 @@ export default function RankingClient() {
     }
 
     fetchChannels()
+  }, [currentCategoryId, userEmail])
+
+  useEffect(() => {
+    nextOffsetRef.current = nextOffset
+  }, [nextOffset])
+
+  useEffect(() => {
+    channelsLengthRef.current = channels.length
+  }, [channels.length])
+
+  const fetchMore = async () => {
+    if (isLoadingMore) return
+    const currentOffset = nextOffsetRef.current
+    if (currentOffset === null) return
+    setIsLoadingMore(true)
+    try {
+      const emailQs = userEmail ? `&email=${encodeURIComponent(userEmail)}` : ''
+      const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
+      const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
+      const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=${currentOffset}${emailQs}${focusQs}`)
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => '')
+        console.error('[RankingClient] /api/ranking (fetchMore) failed', {
+          status: res.status,
+          statusText: res.statusText,
+          body: bodyText,
+        })
+        return
+      }
+      const data = (await res.json()) as TRankingApiResponse
+
+      const formatted = (data.channels || []).map((c) => ({
+        id: c.id,
+        rank: c.rank,
+        name: c.name,
+        avatar: c.avatar,
+        score: c.score,
+        color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
+        highlight: false,
+      }))
+
+      setChannels((prev) => [...prev, ...formatted])
+      setNextOffset(data.nextOffset)
+      setTotalCount(data.totalCount || 0)
+      setMyRank(data.myRank)
+    } catch (error) {
+      console.error("Failed to fetch more ranking:", error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return
+    const target = loadMoreRef.current
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchMore()
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
   }, [currentCategoryId])
+
+  // Sticky My-Rank bar visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!myRank) {
+        setShowSticky(false)
+        return
+      }
+      if (!myRankRef.current) {
+        // Not loaded into DOM yet -> definitely off-screen
+        setShowSticky(true)
+        return
+      }
+      const rect = myRankRef.current.getBoundingClientRect()
+      const isOffScreen = rect.top > window.innerHeight || rect.bottom < 0
+      setShowSticky(isOffScreen)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [myRank, channels])
+
+  const scrollToMyRank = async () => {
+    if (!myRank) return
+
+    // If my rank row exists in current DOM, scroll immediately.
+    if (myRankRef.current) {
+      myRankRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
+    // Otherwise load pages until we include the rank, or until exhausted.
+    // We estimate needed offset by (rank - 1), since we use deterministic ordering.
+    const desiredIndex = Math.max(0, myRank.rank - 1)
+    while (nextOffsetRef.current !== null && channelsLengthRef.current <= desiredIndex) {
+      await fetchMore()
+      // Yield back to allow DOM updates
+      await new Promise((r) => setTimeout(r, 0))
+    }
+
+    if (myRankRef.current) {
+      myRankRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
 
   const toggleTooltip = (tooltipId: string) => {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
@@ -204,6 +374,85 @@ export default function RankingClient() {
                 )}
               </div>
             </div>
+
+            {/* Top 3 Hall of Fame */}
+            {!isLoading && channels.length > 0 && (
+              <div className="mb-6 mt-4 grid grid-cols-3 gap-2 items-end px-2 max-w-sm mx-auto">
+                {/* 2nd Place */}
+                <div 
+                  className="flex flex-col items-center"
+                  ref={myRank && channels.find(c => c.rank === 2)?.id === myRank.id ? myRankRef : undefined}
+                >
+                  {channels.find(c => c.rank === 2) && (
+                    <Link href={`/channel/${channels.find(c => c.rank === 2)!.id}`} className="flex flex-col items-center w-full group">
+                      <div className="relative w-16 h-16 mb-2">
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 shadow-sm ring-2 ring-white whitespace-nowrap">2위</div>
+                        <Image
+                          src={channels.find(c => c.rank === 2)!.avatar || "/placeholder.svg"}
+                          alt="2nd"
+                          fill
+                          className="rounded-full object-cover border-4 border-slate-300 shadow-md group-hover:scale-105 transition-transform bg-white"
+                        />
+                      </div>
+                      <div className="text-center w-full">
+                        <div className="text-xs font-bold text-slate-800 truncate px-1">{channels.find(c => c.rank === 2)!.name}</div>
+                        <div className="text-[10px] font-bold text-slate-500">{channels.find(c => c.rank === 2)!.score}점</div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+
+                {/* 1st Place */}
+                <div 
+                  className="flex flex-col items-center -mt-4 z-10 w-full"
+                  ref={myRank && channels.find(c => c.rank === 1)?.id === myRank.id ? myRankRef : undefined}
+                >
+                  {channels.find(c => c.rank === 1) && (
+                    <Link href={`/channel/${channels.find(c => c.rank === 1)!.id}`} className="flex flex-col items-center w-full group">
+                      <div className="relative w-24 h-24 mb-2">
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-3xl animate-bounce drop-shadow-md filter">👑</div>
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs font-bold px-3 py-0.5 rounded-full z-10 shadow-sm ring-2 ring-white whitespace-nowrap">1위</div>
+                        <Image
+                          src={channels.find(c => c.rank === 1)!.avatar || "/placeholder.svg"}
+                          alt="1st"
+                          fill
+                          className="rounded-full object-cover border-4 border-yellow-400 shadow-xl group-hover:scale-105 transition-transform bg-white"
+                        />
+                      </div>
+                      <div className="text-center w-full">
+                        <div className="text-sm font-black text-slate-900 truncate px-1">{channels.find(c => c.rank === 1)!.name}</div>
+                        <div className="text-xs font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full inline-block mt-1">{channels.find(c => c.rank === 1)!.score}점</div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+
+                {/* 3rd Place */}
+                <div 
+                  className="flex flex-col items-center"
+                  ref={myRank && channels.find(c => c.rank === 3)?.id === myRank.id ? myRankRef : undefined}
+                >
+                  {channels.find(c => c.rank === 3) && (
+                    <Link href={`/channel/${channels.find(c => c.rank === 3)!.id}`} className="flex flex-col items-center w-full group">
+                      <div className="relative w-16 h-16 mb-2">
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-orange-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 shadow-sm ring-2 ring-white whitespace-nowrap">3위</div>
+                        <Image
+                          src={channels.find(c => c.rank === 3)!.avatar || "/placeholder.svg"}
+                          alt="3rd"
+                          fill
+                          className="rounded-full object-cover border-4 border-orange-300 shadow-md group-hover:scale-105 transition-transform bg-white"
+                        />
+                      </div>
+                      <div className="text-center w-full">
+                        <div className="text-xs font-bold text-slate-800 truncate px-1">{channels.find(c => c.rank === 3)!.name}</div>
+                        <div className="text-[10px] font-bold text-slate-500">{channels.find(c => c.rank === 3)!.score}점</div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-t-3xl border-x-4 border-t-4 border-blue-400 bg-white">
               <div className="grid grid-cols-[60px_1fr_100px] gap-2 bg-gradient-to-r from-blue-200 to-indigo-200 px-4 py-2">
                 <div className="text-center text-sm font-bold text-gray-800">순위</div>
@@ -211,11 +460,23 @@ export default function RankingClient() {
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
               </div>
             </div>
+
+
             <div className="overflow-hidden rounded-b-3xl border-x-4 border-b-4 border-blue-400 bg-white min-h-[300px]">
               {isLoading ? (
                 <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500"></div>
                    <p className="text-sm font-medium">채널 데이터를 분석하고 있습니다...</p>
+                </div>
+              ) : loadError ? (
+                <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
+                  <p className="text-sm font-medium">{loadError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >
+                    새로고침
+                  </button>
                 </div>
               ) : channels.length === 0 ? (
                 <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
@@ -226,6 +487,7 @@ export default function RankingClient() {
                   {channels.map((channel) => (
                   <Link key={channel.rank} href={`/channel/${channel.id}`} className="block">
                     <div
+                      ref={myRank && channel.id === myRank.id ? myRankRef : undefined}
                       className={`grid grid-cols-[60px_1fr_100px] items-center gap-2 border-b border-gray-100 px-4 py-2.5 last:border-0 cursor-pointer transition-colors ${
                         channel.highlight ? "bg-slate-600" : "hover:bg-gray-50"
                       }`}
@@ -256,12 +518,46 @@ export default function RankingClient() {
                     </div>
                   </Link>
                 ))}
+                  <div ref={loadMoreRef} className="py-4">
+                    {isLoadingMore ? (
+                      <div className="flex items-center justify-center gap-2 text-slate-500">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
+                        <span className="text-sm">로딩 중...</span>
+                      </div>
+                    ) : nextOffset !== null ? (
+                      <div className="text-center text-xs text-slate-400">스크롤하여 더보기</div>
+                    ) : (
+                      <div className="text-center text-xs text-slate-400">
+                        총 {totalCount.toLocaleString()}개
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </main>
+
+      {showSticky && myRank && (
+        <div
+          onClick={scrollToMyRank}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xl z-50"
+        >
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-600 px-3 py-1 rounded-full text-xs font-bold">MY</div>
+              <div className="text-sm font-bold">
+                {myRank.rank.toLocaleString()}위
+                {myRank.topPercentile !== null ? (
+                  <span className="ml-2 text-slate-300 text-xs font-medium">(상위 {myRank.topPercentile}%)</span>
+                ) : null}
+              </div>
+            </div>
+            <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest">Jump</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -42,6 +42,18 @@ export async function POST(request: Request) {
 
     const orderData = await fetchCafe24Order(orderId)
 
+    // Security Check: Verify payment status
+    // payment_status: 'T' means Paid/Completed in Cafe24
+    const paymentStatus = orderData?.order?.payment_status
+    if (paymentStatus !== 'T') {
+      return NextResponse.json({ 
+        ok: true, 
+        skipped: true, 
+        reason: 'payment_not_completed', 
+        paymentStatus 
+      })
+    }
+
     const email = extractUserEmailFromOrder(orderData)
     if (!email) {
       return NextResponse.json({ ok: false, error: 'user_email_not_found', orderId }, { status: 422 })

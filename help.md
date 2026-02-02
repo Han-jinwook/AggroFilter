@@ -4,19 +4,42 @@
 ## 목표
 Cafe24 스토어에서 크레딧 상품 구매 시, Webhook 이벤트 기반으로 AggroFilter DB의 사용자 크레딧을 자동 충전.
 
-현재 단계: **Cafe24 OAuth 설치(1회) → access/refresh token을 DB(t_cafe24_tokens)에 저장**하는 단계에서 무한 반복/에러 발생.
+현재 단계: **Cafe24 OAuth 설정 완료 (2026-01-30 해결)** → **Webhook 연동 및 테스트 단계 진입**
 
 ---
 
-## 현재 증상
-- **`/api/cafe24/oauth/start`로 설치 진행 후**
-  - 동의 화면까지는 뜨기도 함
-  - 동의 후 콜백에서 토큰 교환 실패(401/invalid_request 등) 발생
-  - `/api/cafe24/oauth/status`는 계속 `configured: false` (토큰 미저장)
+## 해결된 이슈 (OAuth)
+- **증상**: 토큰 교환 시 401 Unauthorized 발생.
+- **원인**: `Authorization: Basic` 헤더 필수 + 환경변수 공백(Whitespace) 이슈.
+- **해결**: `.trim()` 적용 및 Basic Auth 방식으로 롤백하여 해결됨. (`configured: true` 확인 완료)
 
 ---
 
-## 구현/엔드포인트 현황
+## 다음 단계: Webhook 설정 및 테스트 (필독)
+
+### 1. Cafe24 개발자센터 설정
+Cafe24 앱 설정 화면에서 **Webhook** 항목을 찾아 설정합니다.
+
+- **Endpoint URL**: `https://aggrofilter.netlify.app/api/cafe24/webhook`
+- **이벤트(Events)**:
+  - 필수: `order.updated` (주문 상태 변경 시 발생)
+  - 권장: `order.created` (주문 생성 시 발생)
+- **이유**: 사용자가 결제를 완료하여 **입금확인(Payment Status: T)** 상태가 되었을 때 크레딧을 지급하기 위함입니다. `order.created` 시점에는 미입금 상태일 수 있으므로 `order.updated`가 필수입니다.
+
+### 2. 크레딧 상품 ID 매핑 확인
+- Netlify 환경변수 `CAFE24_CREDIT_PRODUCT_MAP`에 등록된 상품 번호와 실제 Cafe24 쇼핑몰 상품 번호가 일치하는지 확인.
+- 예: `{"123": 100, "124": 500}` (상품번호 123 구매 시 100크레딧, 124 구매 시 500크레딧)
+
+### 3. 테스트 시나리오
+1. Cafe24 쇼핑몰에서 크레딧 상품을 주문합니다.
+2. (무통장입금의 경우) 관리자 페이지에서 '입금확인' 처리합니다.
+3. Webhook이 발송되면 AggroFilter 서버가 이를 수신합니다.
+4. `t_users` 테이블의 해당 이메일 유저의 `f_recheck_credits`가 증가했는지 확인합니다.
+
+---
+
+## 현재 환경변수(중요)
+- `CAFE24_MALL_ID` = `nwjddus96`
 - OAuth 시작: `app/api/cafe24/oauth/start/route.ts`
 - OAuth 콜백: `app/api/cafe24/oauth/callback/route.ts`
 - OAuth 상태 확인: `app/api/cafe24/oauth/status/route.ts`

@@ -51,9 +51,9 @@ function MockPaymentContent() {
       <AppHeader />
       <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-black text-slate-900">Mock 결제 페이지</h1>
+          <h1 className="text-xl font-black text-slate-900">결제 테스트</h1>
           <p className="mt-2 text-sm text-slate-600">
-            PG 계약 전 임시 결제 화면입니다. 아래 버튼을 누르면 해당 크레딧이 충전된 것으로 처리됩니다. (할인 적용)
+            현재 테스트 모드입니다. (소액결제 추후 추가 예정) 아래 버튼을 누르면 해당 크레딧이 충전된 것으로 처리됩니다.
           </p>
 
           <div className="mt-4 rounded-xl bg-slate-50 p-4 border border-slate-100">
