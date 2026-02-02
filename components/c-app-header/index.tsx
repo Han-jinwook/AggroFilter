@@ -5,7 +5,7 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, FileText, TrendingUp, User } from "lucide-react"
+import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 
 export function checkLoginStatus(): boolean {
@@ -27,6 +27,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const [nickname, setNickname] = useState("")
   const [profileImage, setProfileImage] = useState("")
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const isLoggedIn = nickname.length > 0
 
@@ -34,8 +35,12 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     const loadProfile = () => {
       const savedNickname = localStorage.getItem("userNickname") || ""
       const savedProfileImage = localStorage.getItem("userProfileImage") || ""
+      const email = localStorage.getItem("userEmail") || ""
       setNickname(savedNickname)
       setProfileImage(savedProfileImage)
+      // NOTE: This is a simple admin check for the demo. 
+      // In a real application, this should be based on server-side roles.
+      setIsAdmin(email.endsWith('@aggrofilter.com'))
     }
 
     loadProfile()
@@ -181,6 +186,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           />
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
+
+          {isAdmin && (
+            <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
+          )}
 
           {isLoggedIn ? (
             <>
