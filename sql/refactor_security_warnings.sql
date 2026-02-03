@@ -6,25 +6,19 @@ CREATE SCHEMA IF NOT EXISTS extensions;
 ALTER EXTENSION vector SET SCHEMA extensions;
 
 -- Warning 2: RLS Policy Always True for t_analyses
--- Replace the overly permissive policy with a more explicit one that still allows public read access.
+-- Final approach: For truly public tables, disable RLS and grant SELECT to public roles directly.
+-- This is the clearest way to express intent and resolves the linter warning.
 
--- Drop the existing permissive policy if it exists.
--- The name 'Enable read access for all users' is a common default, but it might be different.
--- This command might fail if the policy name is different, which is acceptable.
+-- 1. Remove all RLS policies from the table.
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.t_analyses;
 DROP POLICY IF EXISTS "Allow public read-only access" ON public.t_analyses;
+DROP POLICY IF EXISTS "Allow read access for anonymous users" ON public.t_analyses;
+DROP POLICY IF EXISTS "Allow read access for authenticated users" ON public.t_analyses;
+DROP POLICY IF EXISTS "Allow public read access" ON public.t_analyses;
 
--- Ensure RLS is enabled on the table.
-ALTER TABLE public.t_analyses ENABLE ROW LEVEL SECURITY;
+-- 2. Disable RLS on the table.
+ALTER TABLE public.t_analyses DISABLE ROW LEVEL SECURITY;
 
--- Create separate, explicit policies for anonymous and authenticated users.
--- This avoids the 'RLS Policy Always True' warning.
-CREATE POLICY "Allow read access for anonymous users" ON public.t_analyses
-    FOR SELECT
-    TO anon
-    USING (true);
-
-CREATE POLICY "Allow read access for authenticated users" ON public.t_analyses
-    FOR SELECT
-    TO authenticated
-    USING (true);
+-- 3. Grant SELECT permission to anonymous and authenticated users.
+GRANT SELECT ON TABLE public.t_analyses TO anon;
+GRANT SELECT ON TABLE public.t_analyses TO authenticated;
