@@ -1,9 +1,165 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppHeader } from '@/components/c-app-header';
 
-const AutoMarketer = () => {
+const YOUTUBE_CATEGORIES = [
+  { id: 1, name: '영화/애니메이션' },
+  { id: 2, name: '자동차/교통' },
+  { id: 10, name: '음악' },
+  { id: 15, name: '애완동물/동물' },
+  { id: 17, name: '스포츠' },
+  { id: 19, name: '여행/이벤트' },
+  { id: 20, name: '게임' },
+  { id: 22, name: '인물/블로그' },
+  { id: 23, name: '코미디' },
+  { id: 24, name: '엔터테인먼트' },
+  { id: 25, name: '뉴스/정치' },
+  { id: 26, name: '노하우/스타일' },
+  { id: 27, name: '교육' },
+  { id: 28, name: '과학/기술' },
+  { id: 29, name: '비영리/사회운동' },
+];
+
+const DataCollector = () => {
+  const [budget, setBudget] = useState('1.00');
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [logs, setLogs] = useState<{ date: string; count: number; cost: number }[]>([]);
+
+  const handleCategoryChange = (categoryId: number) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+    const handleManualCollect = async () => {
+    if (selectedCategories.length === 0) {
+      alert('하나 이상의 카테고리를 선택해주세요.');
+      return;
+    }
+    setIsCollecting(true);
+    try {
+      const response = await fetch('/api/admin/collect-manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ budget: parseFloat(budget), categoryIds: selectedCategories }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '수동 수집에 실패했습니다.');
+      }
+
+      alert(data.message);
+      // TODO: After collection, refresh logs from the database.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      alert(`오류: ${message}`);
+    }
+    setIsCollecting(false);
+  };
+
+  useEffect(() => {
+    // TODO: Fetch initial logs from DB
+    setLogs([
+      { date: '2026-02-02', count: 48, cost: 0.09 },
+      { date: '2026-02-01', count: 52, cost: 0.11 },
+    ]);
+  }, []);
+
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100">
+      <h2 className="text-2xl font-bold mb-1 text-gray-800">📌 Data Collector</h2>
+      <p className="text-sm text-gray-500 mb-6">유튜브 트렌드 영상을 자동 수집하는 스케줄러를 관리합니다.</p>
+
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="budget" className="text-sm font-bold text-gray-600 block mb-2">일일 수집 예산 설정 ($)</label>
+          <input 
+            type="number" 
+            id="budget" 
+            value={budget} 
+            onChange={(e) => setBudget(e.target.value)} 
+            className="w-full md:w-1/3 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
+            placeholder="예: 1.00"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-bold text-gray-600 block mb-2">수집 카테고리 선택</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 p-4 bg-gray-50 rounded-lg border">
+            {YOUTUBE_CATEGORIES.map(cat => (
+              <label key={cat.id} className="flex items-center space-x-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={selectedCategories.includes(cat.id)}
+                  onChange={() => handleCategoryChange(cat.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700">{cat.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <button 
+          onClick={handleManualCollect}
+          disabled={isCollecting}
+          className="w-full md:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-md hover:bg-indigo-700 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          {isCollecting ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+              <span>수집 및 분석 중...</span>
+            </>
+          ) : '🚀 수동 수집 실행 (50개)'}
+        </button>
+
+        <div>
+          <h3 className="text-lg font-bold text-gray-700 mb-2">수집 로그</h3>
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수집 영상 수</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">소모 비용</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {logs.map(log => (
+                  <tr key={log.date}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{log.date}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.count} 개</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.cost.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const InsightMiner = () => {
+  // TODO: Implement Insight Miner UI
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100">
+      <h2 className="text-2xl font-bold mb-1 text-gray-800">⛏️ Insight Miner</h2>
+      <p className="text-sm text-gray-500 mb-6">수집된 데이터에서 콘텐츠 소재를 발굴합니다. (개발 예정)</p>
+    </div>
+  );
+};
+
+const ContentCrafter = () => {
   const [contentType, setContentType] = useState('press-release');
   const [dataSource, setDataSource] = useState('category-gap');
   const [generatedContent, setGeneratedContent] = useState('');
@@ -43,8 +199,8 @@ const AutoMarketer = () => {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100">
-      <h2 className="text-2xl font-bold mb-1 text-gray-800">🚀 데이터 콘텐츠 공장</h2>
-      <p className="text-sm text-gray-500 mb-6">클릭 한 번으로 바이럴 콘텐츠를 자동 생성합니다.</p>
+      <h2 className="text-2xl font-bold mb-1 text-gray-800">✍️ Content Crafter</h2>
+      <p className="text-sm text-gray-500 mb-6">선택된 소재를 바탕으로 실제 마케팅 원고를 생성합니다.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Settings */}
@@ -109,32 +265,51 @@ const AutoMarketer = () => {
 };
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState('marketer');
+  const [activeTab, setActiveTab] = useState('collector');
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'collector':
+        return <DataCollector />;
+      case 'miner':
+        return <InsightMiner />;
+      case 'crafter':
+        return <ContentCrafter />;
+      default:
+        return null;
+    }
+  };
+
+  const TabButton = ({ tabName, label }: { tabName: string; label: string }) => (
+    <button 
+      onClick={() => setActiveTab(tabName)}
+      className={`px-4 py-2 text-sm font-medium transition-colors ${
+        activeTab === tabName 
+          ? 'border-b-2 border-indigo-600 text-indigo-600'
+          : 'text-gray-500 hover:text-gray-700'
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">어드민 대시보드</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">🤖 Auto Marketer</h1>
+          <p className="text-sm text-gray-500 mt-1">마케팅 콘텐츠 자동 생성 파이프라인</p>
         </div>
 
         <div className="flex border-b border-gray-200 mb-6">
-          <button 
-            onClick={() => setActiveTab('marketer')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'marketer' 
-                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            AUTO마케터
-          </button>
-          {/* TODO: Add other admin tabs here */}
+          <TabButton tabName="collector" label="📌 Data Collector" />
+          <TabButton tabName="miner" label="⛏️ Insight Miner" />
+          <TabButton tabName="crafter" label="✍️ Content Crafter" />
         </div>
 
         <div>
-          {activeTab === 'marketer' && <AutoMarketer />}
+          {renderContent()}
         </div>
       </main>
     </div>
