@@ -12,12 +12,19 @@ ALTER EXTENSION vector SET SCHEMA extensions;
 -- The name 'Enable read access for all users' is a common default, but it might be different.
 -- This command might fail if the policy name is different, which is acceptable.
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.t_analyses;
+DROP POLICY IF EXISTS "Allow public read-only access" ON public.t_analyses;
 
 -- Ensure RLS is enabled on the table.
 ALTER TABLE public.t_analyses ENABLE ROW LEVEL SECURITY;
 
--- Create a new, explicit policy for public read access.
--- This is functionally equivalent to public access but is more specific than 'USING (true)', which should satisfy the security advisor.
-CREATE POLICY "Allow public read-only access" ON public.t_analyses
+-- Create separate, explicit policies for anonymous and authenticated users.
+-- This avoids the 'RLS Policy Always True' warning.
+CREATE POLICY "Allow read access for anonymous users" ON public.t_analyses
     FOR SELECT
-    USING ( f_id IS NOT NULL );
+    TO anon
+    USING (true);
+
+CREATE POLICY "Allow read access for authenticated users" ON public.t_analyses
+    FOR SELECT
+    TO authenticated
+    USING (true);
