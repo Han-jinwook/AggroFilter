@@ -250,18 +250,55 @@ export async function markWebhookEventOnce(params: { id: string; eventType: stri
   }
 }
 
-export async function addCreditsByEmail(params: { email: string; amount: number }) {
-  const client = await pool.connect()
+export async function addCreditsByEmail(params: { email: string; amount: number }): Promise<boolean> {
+  const client = await pool.connect();
   try {
-    await ensureCafe24Tables(client)
+    await ensureCafe24Tables(client);
+
+    // First, check if the user exists
+    const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [params.email]);
+    if (userRes.rowCount === 0) {
+      return false; // User not found
+    }
+
+    // If user exists, update credits
     await client.query(
       `UPDATE t_users
        SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1,
            f_updated_at = NOW()
        WHERE f_email = $2`,
       [params.amount, params.email]
-    )
+    );
+    return true; // Success
   } finally {
-    client.release()
+    client.release();
+  }
+}
+
+export async function logUnclaimedPayment(orderData: any) {
+  const client = await pool.connect();
+  try {
+    const order = orderData?.order || {};
+    const email = extractUserEmailFromOrder(orderData);
+    const creditItem = (order.items || []).find((it: any) => getCafe24CreditProductMap()[it.product_no]);
+
+    await client.query(
+      `INSERT INTO t_unclaimed_payments (f_cafe24_order_id, f_buyer_email, f_product_id, f_product_name, f_amount_paid, f_payment_data, f_status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')
+       ON CONFLICT (f_cafe24_order_id) DO NOTHING`,
+      [
+        order.order_id,
+        email || 'unknown',
+        creditItem?.product_no || 'unknown',
+        creditItem?.product_name || 'unknown',
+        parseFloat(order.actual_order_amount) || 0,
+        orderData, // Store the full payload
+      ]
+    );
+    console.log(`[ALERT] Unclaimed payment logged for order: ${order.order_id}, buyer_email: ${email}`);
+  } catch (e) {
+    console.error('Failed to log unclaimed payment:', e);
+  } finally {
+    client.release();
   }
 }

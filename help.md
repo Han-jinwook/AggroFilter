@@ -1,24 +1,72 @@
 @@
-# Cafe24 OAuth 설치/토큰발급 무한반복 이슈 정리 (AggroFilter 크레딧 충전)
+# Auto Marketer 시스템 구현 현황
 
-## 목표
-Cafe24 스토어에서 크레딧 상품 구매 시, Webhook 이벤트 기반으로 AggroFilter DB의 사용자 크레딧을 자동 충전.
-
-현재 단계: **Cafe24 OAuth 설정 완료 (2026-01-30 해결)** → **Webhook 연동 및 테스트 단계 진입**
-
----
-
-## 해결된 이슈 (OAuth)
-- **증상**: 토큰 교환 시 401 Unauthorized 발생.
-- **원인**: `Authorization: Basic` 헤더 필수 + 환경변수 공백(Whitespace) 이슈.
-- **해결**: `.trim()` 적용 및 Basic Auth 방식으로 롤백하여 해결됨. (`configured: true` 확인 완료)
+> **작성자**: Cascade AI
+> **작성일**: 2026-02-03 21:55
+> **목적**: 기획팀(Jemini) 리뷰용
 
 ---
 
-## 다음 단계: Webhook 설정 및 테스트 (필독)
+## 1. 목표
 
-### 1. Cafe24 개발자센터 설정
-Cafe24 앱 설정 화면에서 **Webhook** 항목을 찾아 설정합니다.
+유튜브 영상 분석 데이터를 기반으로 마케팅 콘텐츠(숏폼 대본, 보도자료 등) 생성을 자동화하여, 수작업을 최소화하고 시의성 있는 콘텐츠를 신속하게 발행하는 것을 목표로 합니다.
+
+## 2. 전체 아키텍처
+
+시스템은 크게 3단계의 파이프라인으로 구성됩니다.
+
+-   **Phase 1: Collector (수집)**: 매일 자동으로 유튜브 인기 동영상을 수집하고 분석 큐에 등록합니다.
+-   **Phase 2: Miner (발굴)**: 분석이 완료된 데이터베이스에서 마케팅적으로 활용 가치가 높은 '소재'를 필터링합니다.
+-   **Phase 3: Crafter (생성)**: 발굴된 소재를 바탕으로, Gemini AI를 통해 실제 마케팅 원고를 생성합니다.
+
+## 3. 세부 구현 내용
+
+### Phase 1: 데이터 수집기 (Collector)
+
+-   **어드민 UI (`/p-admin`)**:
+    -   'Data Collector', 'Insight Miner', 'Content Crafter' 3단 탭 구조로 페이지를 리팩토링했습니다.
+    -   `Data Collector` 탭에서 **수동 수집 실행**이 가능하도록 UI(예산 설정, 카테고리 선택)와 기능을 구현했습니다.
+-   **수동 수집 API (`/api/admin/collect-manual`)**:
+    -   관리자가 선택한 카테고리의 인기 동영상 50개를 수집하여 DB(`t_videos`)에 저장하고, 분석 큐에 추가하는 API를 구현했습니다.
+-   **자동 수집 (Cron Job)**:
+    -   매일 자정(KST)에 자동으로 동영상 수집/분석을 실행하는 **Supabase Edge Function** (`collect-and-analyze-videos`)을 생성했습니다.
+    -   PostgreSQL의 `pg_cron` 확장을 사용하여 이 함수를 주기적으로 호출하는 SQL 스크립트 (`sql/collector_cron_job.sql`)를 작성했습니다.
+
+### Phase 2: 소재 마이닝 (Miner)
+
+-   **어드민 UI (`/p-admin`)**:
+    -   `Insight Miner` 탭에서 '어그로 점수 80점 이상' 등과 같은 **조건별로 소재를 필터링**하는 UI를 구현했습니다.
+    -   발굴된 소재는 썸네일, 제목, 점수, 추천 사유가 포함된 **카드 형태**로 표시됩니다.
+-   **소재 발굴 API (`/api/admin/mine-materials`)**:
+    -   '소재 추출 실행' 버튼과 연동되어, 설정된 조건에 따라 `t_analysis_history` 테이블에서 유의미한 데이터를 조회하는 API를 구현했습니다.
+
+### Phase 3: 콘텐츠 생성 (Crafter)
+
+-   **어드민 UI (`/p-admin`)**:
+    -   `Insight Miner`에서 '콘텐츠 생성하기' 버튼을 누르면, 해당 소재 정보가 `Content Crafter`로 전달되며 **탭이 자동으로 전환**되는 워크플로우를 구현했습니다.
+    -   `Content Crafter`는 전달받은 소재의 제목과 점수를 표시하고, '숏폼 대본', '보도자료/칼럼' 등 생성할 **콘텐츠 유형을 선택**할 수 있습니다.
+-   **콘텐츠 생성 API (`/api/admin/generate-content`)**:
+    -   선택된 소재 ID와 콘텐츠 유형을 받아, **Gemini Pro AI**를 호출하는 API를 구현했습니다.
+    -   AI 프롬프트는 특정 영상의 분석 데이터(제목, 채널명, AI 평가 이유 등)를 활용하여, 페르소나(예: 팩트체크 유튜버)에 맞는 매력적인 원고를 생성하도록 설계되었습니다.
+-   **DB 연동**:
+    -   AI가 원고 생성을 완료하면, `t_marketing_materials` 테이블에 해당 내용을 저장하고 상태를 'DRAFT'에서 'GENERATED'로 업데이트하는 로직을 추가했습니다.
+
+## 4. 데이터베이스
+
+-   마케팅 소재와 생성된 콘텐츠를 관리하기 위한 `t_marketing_materials` 테이블 스키마를 설계하고, `sql/auto_marketer_schema.sql` 파일로 추가했습니다.
+
+## 5. 최종 확인 및 실행 필요 사항
+
+시스템이 완전히 동작하려면 다음 작업이 필요합니다.
+
+1.  **데이터베이스 스키마 적용**:
+    -   `sql/auto_marketer_schema.sql`
+    -   `sql/collector_cron_job.sql`
+    -   위 두 파일의 내용을 Supabase 'SQL Editor'에서 실행해야 합니다. (Cron Job 스크립트의 `<PLACEHOLDER>` 값은 실제 정보로 교체 필요)
+2.  **Edge Function 배포**:
+    -   `supabase/functions/collect-and-analyze-videos` 함수를 Supabase CLI를 통해 배포해야 합니다.
+3.  **환경 변수 설정**:
+    -   Supabase 프로젝트 설정에서 `YOUTUBE_API_KEY`와 `GOOGLE_API_KEY`가 올바르게 설정되었는지 확인해야 합니다.
 
 - **Endpoint URL**: `https://aggrofilter.netlify.app/api/cafe24/webhook`
 - **이벤트(Events)**:

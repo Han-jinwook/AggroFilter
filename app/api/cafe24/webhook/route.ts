@@ -5,6 +5,7 @@ import {
   extractUserEmailFromOrder,
   fetchCafe24Order,
   getCafe24WebhookSecret,
+  logUnclaimedPayment, // Import the new function
   markWebhookEventOnce,
 } from '@/lib/cafe24'
 
@@ -64,9 +65,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'no_credit_items', orderId }, { status: 422 })
     }
 
-    await addCreditsByEmail({ email, amount: credits })
+        const userFoundAndCredited = await addCreditsByEmail({ email, amount: credits })
 
-    return NextResponse.json({ ok: true, orderId, email, credits })
+    if (!userFoundAndCredited) {
+      // User not found, log as an unclaimed payment
+      await logUnclaimedPayment(orderData);
+      return NextResponse.json({ ok: true, status: 'unclaimed_payment_logged', orderId, email });
+    }
+
+    return NextResponse.json({ ok: true, status: 'credits_added', orderId, email, credits })
   } catch (e) {
     console.error('Cafe24 webhook error:', e)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

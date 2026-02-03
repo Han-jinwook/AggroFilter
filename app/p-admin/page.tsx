@@ -35,7 +35,7 @@ const DataCollector = () => {
     );
   };
 
-    const handleManualCollect = async () => {
+  const handleManualCollect = async () => {
     if (selectedCategories.length === 0) {
       alert('하나 이상의 카테고리를 선택해주세요.');
       return;
@@ -155,7 +155,7 @@ const InsightMiner = ({ onSelectMaterial }: { onSelectMaterial: (material: any) 
   const [isMining, setIsMining] = useState(false);
   const [materials, setMaterials] = useState<any[]>([]);
 
-    const handleMine = async () => {
+  const handleMine = async () => {
     setIsMining(true);
     setMaterials([]);
     try {
@@ -182,7 +182,6 @@ const InsightMiner = ({ onSelectMaterial }: { onSelectMaterial: (material: any) 
   };
 
   useEffect(() => {
-    // Load initial materials
     handleMine();
   }, []);
 
@@ -245,7 +244,7 @@ const InsightMiner = ({ onSelectMaterial }: { onSelectMaterial: (material: any) 
                   <span className={`text-xl font-bold ${material.score > 80 ? 'text-red-500' : 'text-green-500'}`}>{material.score}점</span>
                   <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">{material.reason}</span>
                 </div>
-                                <button 
+                <button 
                   onClick={() => onSelectMaterial(material)}
                   className="mt-4 w-full bg-gray-800 text-white font-semibold py-2 rounded-md hover:bg-black transition-colors"
                 >
@@ -261,12 +260,15 @@ const InsightMiner = ({ onSelectMaterial }: { onSelectMaterial: (material: any) 
 };
 
 const ContentCrafter = ({ material }: { material: any | null }) => {
-  const [contentType, setContentType] = useState('press-release');
-    // const [dataSource, setDataSource] = useState('category-gap'); // No longer needed
+  const [contentType, setContentType] = useState('short-form');
   const [generatedContent, setGeneratedContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGenerate = async () => {
+    if (!material) {
+      alert('소재를 먼저 선택해주세요.');
+      return;
+    }
     setIsLoading(true);
     setGeneratedContent('');
     try {
@@ -288,7 +290,7 @@ const ContentCrafter = ({ material }: { material: any | null }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
       alert(`오류: ${message}`);
-      setGeneratedContent(''); // Clear content on error
+      setGeneratedContent('');
     }
     setIsLoading(false);
   };
@@ -300,7 +302,7 @@ const ContentCrafter = ({ material }: { material: any | null }) => {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100">
-            <h2 className="text-2xl font-bold mb-1 text-gray-800">✍️ Content Crafter</h2>
+      <h2 className="text-2xl font-bold mb-1 text-gray-800">✍️ Content Crafter</h2>
       <p className="text-sm text-gray-500 mb-6">선택된 소재를 바탕으로 실제 마케팅 원고를 생성합니다.</p>
 
       {!material ? (
@@ -308,7 +310,6 @@ const ContentCrafter = ({ material }: { material: any | null }) => {
           <p>Insight Miner 탭에서 생성할 콘텐츠 소재를 먼저 선택해주세요.</p>
         </div>
       ) : (
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Settings */}
         <div className="space-y-4">
@@ -320,7 +321,7 @@ const ContentCrafter = ({ material }: { material: any | null }) => {
             </div>
           </div>
 
-                    <div>
+          <div>
             <label className="text-sm font-bold text-gray-600 block mb-2">2. 선택된 소재</label>
             <div className="p-3 border rounded-md bg-gray-50">
               <p className="text-sm font-semibold text-gray-800 truncate">{material.title}</p>
@@ -361,6 +362,7 @@ const ContentCrafter = ({ material }: { material: any | null }) => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };
