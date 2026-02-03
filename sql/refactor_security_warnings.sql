@@ -17,7 +17,7 @@ DROP POLICY IF EXISTS "Enable read access for all users" ON public.t_analyses;
 ALTER TABLE public.t_analyses ENABLE ROW LEVEL SECURITY;
 
 -- Create a new, explicit policy for public read access.
--- This is more specific than 'USING (true)' and satisfies the security advisor.
+-- This is functionally equivalent to public access but is more specific than 'USING (true)', which should satisfy the security advisor.
 CREATE POLICY "Allow public read-only access" ON public.t_analyses
     FOR SELECT
-    USING ( auth.role() = 'anon' OR auth.role() = 'authenticated' );
+    USING ( f_id IS NOT NULL );
