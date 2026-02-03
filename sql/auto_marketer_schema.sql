@@ -25,7 +25,7 @@ CREATE TYPE material_status_type AS ENUM (
 -- Main table to store mined materials and crafted content
 CREATE TABLE public.t_marketing_materials (
     f_id BIGSERIAL PRIMARY KEY,
-    f_source_video_id VARCHAR(255) REFERENCES public.t_videos(f_video_id),
+        f_source_video_id VARCHAR(255) REFERENCES public.t_videos(f_video_id) ON DELETE SET NULL,
     f_type marketing_material_type NOT NULL,
     f_content_format content_format_type,
     f_generated_text TEXT,

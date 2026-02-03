@@ -149,7 +149,7 @@ const DataCollector = () => {
   );
 };
 
-const InsightMiner = () => {
+const InsightMiner = ({ onSelectMaterial }: { onSelectMaterial: (material: any) => void }) => {
   const [miningCondition, setMiningCondition] = useState('aggro_top');
   const [period, setPeriod] = useState('today');
   const [isMining, setIsMining] = useState(false);
@@ -245,7 +245,10 @@ const InsightMiner = () => {
                   <span className={`text-xl font-bold ${material.score > 80 ? 'text-red-500' : 'text-green-500'}`}>{material.score}점</span>
                   <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">{material.reason}</span>
                 </div>
-                <button className="mt-4 w-full bg-gray-800 text-white font-semibold py-2 rounded-md hover:bg-black transition-colors">
+                                <button 
+                  onClick={() => onSelectMaterial(material)}
+                  className="mt-4 w-full bg-gray-800 text-white font-semibold py-2 rounded-md hover:bg-black transition-colors"
+                >
                   콘텐츠 생성하기
                 </button>
               </div>
@@ -257,9 +260,9 @@ const InsightMiner = () => {
   );
 };
 
-const ContentCrafter = () => {
+const ContentCrafter = ({ material }: { material: any | null }) => {
   const [contentType, setContentType] = useState('press-release');
-  const [dataSource, setDataSource] = useState('category-gap');
+    // const [dataSource, setDataSource] = useState('category-gap'); // No longer needed
   const [generatedContent, setGeneratedContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -272,7 +275,7 @@ const ContentCrafter = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ contentType, dataSource }),
+        body: JSON.stringify({ contentType, materialId: material?.id }),
       });
 
       const data = await response.json();
@@ -297,8 +300,14 @@ const ContentCrafter = () => {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100">
-      <h2 className="text-2xl font-bold mb-1 text-gray-800">✍️ Content Crafter</h2>
+            <h2 className="text-2xl font-bold mb-1 text-gray-800">✍️ Content Crafter</h2>
       <p className="text-sm text-gray-500 mb-6">선택된 소재를 바탕으로 실제 마케팅 원고를 생성합니다.</p>
+
+      {!material ? (
+        <div className="text-center py-12 text-gray-500">
+          <p>Insight Miner 탭에서 생성할 콘텐츠 소재를 먼저 선택해주세요.</p>
+        </div>
+      ) : (
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Settings */}
@@ -311,18 +320,12 @@ const ContentCrafter = () => {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="data-source" className="text-sm font-bold text-gray-600 block mb-2">2. 데이터 소스 선택</label>
-            <select 
-              id="data-source"
-              value={dataSource}
-              onChange={(e) => setDataSource(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-            >
-              <option value="category-gap">카테고리별 신뢰도 격차</option>
-              <option value="channel-rank">채널별 등급 분포</option>
-              <option value="keyword-trend">주간 낚시 키워드 트렌드</option>
-            </select>
+                    <div>
+            <label className="text-sm font-bold text-gray-600 block mb-2">2. 선택된 소재</label>
+            <div className="p-3 border rounded-md bg-gray-50">
+              <p className="text-sm font-semibold text-gray-800 truncate">{material.title}</p>
+              <p className="text-xs text-gray-500">어그로 점수: {material.score}</p>
+            </div>
           </div>
 
           <button 
@@ -364,15 +367,21 @@ const ContentCrafter = () => {
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('collector');
+  const [selectedMaterial, setSelectedMaterial] = useState<any | null>(null);
+
+  const handleSelectMaterial = (material: any) => {
+    setSelectedMaterial(material);
+    setActiveTab('crafter');
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'collector':
         return <DataCollector />;
       case 'miner':
-        return <InsightMiner />;
+        return <InsightMiner onSelectMaterial={handleSelectMaterial} />;
       case 'crafter':
-        return <ContentCrafter />;
+        return <ContentCrafter material={selectedMaterial} />;
       default:
         return null;
     }
