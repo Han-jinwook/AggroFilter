@@ -11,6 +11,9 @@ declare global {
 if (process.env.NODE_ENV === 'production') {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes('supabase.com')
+      ? { rejectUnauthorized: false }
+      : undefined,
   });
 } else {
   if (!global.__db_pool) {
