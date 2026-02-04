@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Vercel Cron Job을 위해 필요
 
 async function createMorningReport(client: any, channelId: string, channelName: string, lostCustomers: number) {

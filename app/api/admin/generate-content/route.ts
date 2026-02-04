@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+export const runtime = 'nodejs';
+
 async function getMaterialData(supabase: any, materialId: number) {
     const { data, error } = await supabase
         .from('t_marketing_materials')
