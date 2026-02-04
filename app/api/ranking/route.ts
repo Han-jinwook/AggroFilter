@@ -38,10 +38,10 @@ export async function GET(request: Request) {
           cs.f_channel_id as id,
           cs.f_official_category_id as category_id,
           cs.f_avg_reliability as score,
-          c.f_name as name,
-          c.f_profile_image_url as avatar
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as name,
+          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as avatar
         FROM t_channel_stats cs
-        JOIN t_channels c ON cs.f_channel_id = c.f_id
+        JOIN t_channels c ON cs.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
         ${whereClause}
         ORDER BY cs.f_avg_reliability DESC
         LIMIT $${whereValues.length + 1}
@@ -92,10 +92,10 @@ export async function GET(request: Request) {
               r.f_avg_reliability AS score,
               r.rank,
               r.total_count,
-              c.f_name AS name,
-              c.f_profile_image_url AS avatar
+              COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') AS name,
+              COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') AS avatar
             FROM Ranked r
-            JOIN t_channels c ON c.f_id = r.f_channel_id
+            JOIN t_channels c ON COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') = r.f_channel_id
             WHERE r.f_channel_id = $${channelIdParamIndex}
             LIMIT 1
           `;
@@ -155,11 +155,11 @@ export async function GET(request: Request) {
                 r.f_avg_reliability AS score,
                 r.rank,
                 r.total_count,
-                c.f_name AS name,
-                c.f_profile_image_url AS avatar
+                COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') AS name,
+                COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') AS avatar
               FROM Ranked r
               JOIN t_channel_subscriptions s ON s.f_channel_id = r.f_channel_id
-              JOIN t_channels c ON c.f_id = r.f_channel_id
+              JOIN t_channels c ON COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') = r.f_channel_id
               WHERE s.f_user_id = $${emailParamIndex}
               ORDER BY r.rank ASC
               LIMIT 1
