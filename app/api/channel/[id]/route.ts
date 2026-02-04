@@ -23,13 +23,13 @@ export async function GET(
       // 1. 채널 기본 정보 조회
       const channelResult = await client.query(`
         SELECT 
-          f_id,
-          f_name,
-          f_profile_image_url,
-          f_subscriber_count,
-          f_handle
-        FROM t_channels
-        WHERE f_id = $1
+          COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as f_id,
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as f_name,
+          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as f_profile_image_url,
+          COALESCE((to_jsonb(c)->>'f_subscriber_count')::bigint, 0) as f_subscriber_count,
+          COALESCE(to_jsonb(c)->>'f_handle', NULL) as f_handle
+        FROM t_channels c
+        WHERE COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') = $1
       `, [channelId]);
 
       if (channelResult.rows.length === 0) {

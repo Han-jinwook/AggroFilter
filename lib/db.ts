@@ -9,11 +9,23 @@ declare global {
 }
 
 if (process.env.NODE_ENV === 'production') {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
+  }
+
+  let hostname = '';
+  try {
+    hostname = new URL(connectionString).hostname;
+  } catch {
+    hostname = '';
+  }
+
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+
   pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('supabase.com')
-      ? { rejectUnauthorized: false }
-      : undefined,
+    connectionString,
+    ssl: isLocalHost ? undefined : { rejectUnauthorized: false },
   });
 } else {
   if (!global.__db_pool) {

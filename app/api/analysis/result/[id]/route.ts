@@ -15,9 +15,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const client = await pool.connect();
     try {
       const analysisRes = await client.query(`
-        SELECT a.*, c.f_name, c.f_profile_image_url, c.f_handle, c.f_subscriber_count
+        SELECT a.*,
+               COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as f_name,
+               COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as f_profile_image_url,
+               (to_jsonb(c)->>'f_subscriber_count')::bigint as f_subscriber_count,
+               COALESCE(to_jsonb(c)->>'f_handle', NULL) as f_handle
         FROM t_analyses a 
-        LEFT JOIN t_channels c ON a.f_channel_id = c.f_id 
+        LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
         WHERE a.f_id = $1
       `, [id]);
 

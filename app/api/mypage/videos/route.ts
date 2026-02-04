@@ -21,24 +21,24 @@ export async function POST(request: Request) {
       const refinedQuery = `
       WITH RankStats AS (
           SELECT 
-              f_id as f_channel_id, 
-              f_official_category_id,
-              RANK() OVER (PARTITION BY f_official_category_id ORDER BY f_trust_score DESC) as channel_rank,
-              COUNT(*) OVER (PARTITION BY f_official_category_id) as total_channels
-          FROM t_channels
+              COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as f_channel_id,
+              c.f_official_category_id,
+              RANK() OVER (PARTITION BY c.f_official_category_id ORDER BY c.f_trust_score DESC) as channel_rank,
+              COUNT(*) OVER (PARTITION BY c.f_official_category_id) as total_channels
+          FROM t_channels c
       )
       SELECT 
         a.f_id as id,
         a.f_title as title,
         a.f_reliability_score as score,
         a.f_created_at as created_at,
-        c.f_name as channel_name,
-        c.f_profile_image_url as channel_icon,
+        COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name,
+        COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as channel_icon,
         COALESCE(rs.channel_rank, 0) as rank,
         COALESCE(rs.total_channels, 0) as total_rank,
-        cat.f_name_ko as topic
+        COALESCE(to_jsonb(cat)->>'f_name_ko', to_jsonb(cat)->>'f_name', to_jsonb(cat)->>'f_title') as topic
       FROM t_analyses a
-      LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
+      LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
       LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
       LEFT JOIN RankStats rs ON a.f_channel_id = rs.f_channel_id AND a.f_official_category_id = rs.f_official_category_id
       WHERE a.f_user_id = $1

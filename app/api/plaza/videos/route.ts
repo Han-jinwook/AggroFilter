@@ -37,13 +37,13 @@ export async function GET(request: Request) {
           a.f_id as id,
           a.f_created_at as date,
           a.f_title as title,
-          c.f_name as channel,
-          c.f_profile_image_url as "channelIcon",
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel,
+          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
           a.f_request_count as views,
           a.f_view_count as f_view_count,
           a.f_reliability_score as score
         FROM t_analyses a
-        LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
+        LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
         WHERE a.f_is_latest = TRUE
           AND ${timeCondition}
           AND a.f_reliability_score IS NOT NULL
@@ -60,13 +60,13 @@ export async function GET(request: Request) {
             a.f_id as id,
             a.f_created_at as date,
             a.f_title as title,
-            c.f_name as channel,
-            c.f_profile_image_url as "channelIcon",
+            COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel,
+            COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
             a.f_request_count as views,
             a.f_view_count as f_view_count,
             a.f_reliability_score as score
           FROM t_analyses a
-          LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
+          LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
           WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
             AND a.f_reliability_score IS NOT NULL

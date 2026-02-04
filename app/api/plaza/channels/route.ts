@@ -23,17 +23,21 @@ export async function GET(request: Request) {
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const query = `
         SELECT
-          c.f_id as id,
-          c.f_name as name,
-          c.f_profile_image_url as "channelIcon",
+          COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as id,
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as name,
+          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
           c.f_official_category_id as category_id,
           COUNT(a.f_id)::int as analysis_count,
           ROUND(AVG(a.f_reliability_score))::int as avg_reliability
         FROM t_channels c
-        JOIN t_analyses a ON c.f_id = a.f_channel_id
+        JOIN t_analyses a ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
         WHERE a.f_is_latest = TRUE
           AND ${timeCondition}
-        GROUP BY c.f_id, c.f_name, c.f_profile_image_url, c.f_official_category_id
+        GROUP BY
+          COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id'),
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title'),
+          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url'),
+          c.f_official_category_id
         ORDER BY analysis_count DESC, avg_reliability DESC
         LIMIT 20
       `
@@ -43,17 +47,21 @@ export async function GET(request: Request) {
       if (period === '1일' && result.rows.length === 0) {
         const fallbackQuery = `
           SELECT
-            c.f_id as id,
-            c.f_name as name,
-            c.f_profile_image_url as "channelIcon",
+            COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as id,
+            COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as name,
+            COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
             c.f_official_category_id as category_id,
             COUNT(a.f_id)::int as analysis_count,
             ROUND(AVG(a.f_reliability_score))::int as avg_reliability
           FROM t_channels c
-          JOIN t_analyses a ON c.f_id = a.f_channel_id
+          JOIN t_analyses a ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
           WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
-          GROUP BY c.f_id, c.f_name, c.f_profile_image_url, c.f_official_category_id
+          GROUP BY
+            COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id'),
+            COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title'),
+            COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url'),
+            c.f_official_category_id
           ORDER BY analysis_count DESC, avg_reliability DESC
           LIMIT 20
         `
