@@ -32,7 +32,7 @@ export async function migrateV2() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS t_rankings_cache (
           f_id SERIAL PRIMARY KEY,
-          f_channel_id VARCHAR(255) REFERENCES t_channels(f_id),
+          f_channel_id VARCHAR(255) REFERENCES t_channels(f_channel_id),
           f_category_id INT,
           f_language VARCHAR(10),
           f_country VARCHAR(10),
