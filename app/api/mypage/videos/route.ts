@@ -19,28 +19,37 @@ export async function POST(request: Request) {
       
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const refinedQuery = `
-      WITH RankStats AS (
+      WITH NormalizedChannels AS (
           SELECT 
-              COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as f_channel_id,
+              COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as f_id,
+              COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as f_name,
+              COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as f_profile_image_url,
               c.f_official_category_id,
-              RANK() OVER (PARTITION BY c.f_official_category_id ORDER BY c.f_trust_score DESC) as channel_rank,
-              COUNT(*) OVER (PARTITION BY c.f_official_category_id) as total_channels
+              COALESCE((to_jsonb(c)->>'f_trust_score')::int, (to_jsonb(c)->>'f_reliability_score')::int, 0) as f_trust_score
           FROM t_channels c
+      ),
+      RankStats AS (
+          SELECT 
+              f_id,
+              f_official_category_id,
+              RANK() OVER (PARTITION BY f_official_category_id ORDER BY f_trust_score DESC) as channel_rank,
+              COUNT(*) OVER (PARTITION BY f_official_category_id) as total_channels
+          FROM NormalizedChannels
       )
       SELECT 
         a.f_id as id,
         a.f_title as title,
         a.f_reliability_score as score,
         a.f_created_at as created_at,
-        COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name,
-        COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as channel_icon,
+        COALESCE(c.f_name, '알 수 없음') as channel_name,
+        COALESCE(c.f_profile_image_url, '/placeholder.svg') as channel_icon,
         COALESCE(rs.channel_rank, 0) as rank,
         COALESCE(rs.total_channels, 0) as total_rank,
-        COALESCE(to_jsonb(cat)->>'f_name_ko', to_jsonb(cat)->>'f_name', to_jsonb(cat)->>'f_title') as topic
+        COALESCE(to_jsonb(cat)->>'f_name_ko', to_jsonb(cat)->>'f_name', to_jsonb(cat)->>'f_title', '기타') as topic
       FROM t_analyses a
-      LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+      LEFT JOIN NormalizedChannels c ON a.f_channel_id = c.f_id
       LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
-      LEFT JOIN RankStats rs ON a.f_channel_id = rs.f_channel_id AND a.f_official_category_id = rs.f_official_category_id
+      LEFT JOIN RankStats rs ON a.f_channel_id = rs.f_id AND a.f_official_category_id = rs.f_official_category_id
       WHERE a.f_user_id = $1
         AND a.f_is_latest = TRUE
       ORDER BY a.f_created_at DESC
