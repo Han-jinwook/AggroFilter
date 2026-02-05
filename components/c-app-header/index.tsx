@@ -38,9 +38,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
       const email = localStorage.getItem("userEmail") || ""
       setNickname(savedNickname)
       setProfileImage(savedProfileImage)
-      // NOTE: This is a simple admin check for the demo. 
-      // In a real application, this should be based on server-side roles.
-      setIsAdmin(email.endsWith('@aggrofilter.com'))
+      const localPart = (email.split("@")[0] || "").trim().toLowerCase()
+      setIsAdmin(localPart === "chiu3")
     }
 
     loadProfile()

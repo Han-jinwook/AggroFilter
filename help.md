@@ -1,25 +1,39 @@
 # 마케터 자동화 구축 프로젝트 가이드
-작성일: 2026-02-05 01:36
+작성일: 2026-02-06 03:10
 
 ## 1. 프로젝트 목표
-어드민 페이지 내에서 분석된 영상을 바탕으로 마케팅 문구(블로그, SNS 등)를 자동으로 생성하고 관리하는 시스템 구축. 서비스의 안정성을 최우선으로 하며, 모든 변경 사항은 단계별로 검증하며 진행함.
+본진(Next.js) 서비스의 안정성을 해치지 않으면서, 분석된 영상을 바탕으로 마케팅 문구(블로그, SNS 등)를 자동 생성/관리하는 시스템을 구축한다.
+
+핵심 원칙:
+- 본진에서는 마케팅/오토마케터 기능을 기본적으로 비활성화한다.
+- 오토마케터는 `aggro-marketing-bot/`로 완전 분리하여 본진 빌드/배포에 간섭하지 않게 한다.
+- 봇은 코어 테이블에 대해 Read-only로 접근하고, 봇 데이터는 `t_marketing_*` 테이블에만 저장한다.
 
 ## 2. 핵심 TODO 리스트
 
-### Phase 1: 기반 인프라 재정립 (안정성 확보)
-- [ ] **DB 스키마 설계 복구 및 정제**: `t_marketing_materials` 테이블 재정의 (기존 충돌 방지)
-- [ ] **API 런타임 표준화**: 새로운 마케팅 관련 모든 API는 `runtime = 'nodejs'` 및 SSL 설정을 기본 적용
-- [ ] **기존 데이터 정합성 체크**: `t_analyses` 및 `t_channels`와 연동 시 실제 존재하는 컬럼(f_channel_id 등)만 사용하도록 쿼리 작성
+### Phase 0: 본진 안전화 (가장 우선)
+- [x] **본진 오토마케터 기능 기본 OFF**: 마케팅 관련 페이지/API는 환경변수로만 ON 가능하게 가드 추가
+  - `NEXT_PUBLIC_ENABLE_MARKETING_ADMIN=true` (페이지)
+  - `ENABLE_MARKETING_ADMIN=true` (API)
+- [ ] **본진에서 마케팅 코드 제거/이동은 보류**: 먼저 안전 가드로 사고를 막고, 이후 사용자 승인 후 `git mv`로 분리 진행
 
-### Phase 2: 마케팅 콘텐츠 생성 로직
-- [ ] **LLM 프롬프트 엔지니어링**: 분석 결과(summary, score)를 바탕으로 최적의 마케팅 문구를 뽑아내는 Gemini 프롬프트 고도화
-- [ ] **콘텐츠 생성 API 구현**: 단일 분석 아이디를 받아 마케팅 초안을 생성하는 `/api/admin/generate-content` 복구 및 안정화
-- [ ] **이미지 공유 기능 연동**: 분석 결과 이미지를 마케팅 콘텐츠에 포함할 수 있는 링크 생성 로직 확인
+### Phase 1: `aggro-marketing-bot/` 완전 분리 프로젝트 생성
+- [ ] **독립 프로젝트 폴더**: `aggro-marketing-bot/` 생성 (별도 `package.json`, 별도 `.env`)
+- [ ] **빌드/배포 격리**: 본진 `npm run build`/Netlify 배포에 절대 포함되지 않도록 구성
 
-### Phase 3: 어드민 UI 구현 및 자동화
-- [ ] **마케팅 대시보드**: 생성된 마케팅 문구를 한눈에 보고 수정/복사할 수 있는 관리 UI 구축
-- [ ] **벌크 생성 기능**: 여러 영상을 선택하여 한꺼번에 마케팅 초안을 만드는 기능
-- [ ] **채널별 맞춤 전략**: 채널의 특성(신뢰도, 어그로 지수)에 따라 마케팅 톤앤매너 자동 조절
+### Phase 2: DB 스키마 (봇 전용 테이블)
+- [ ] **봇 전용 테이블만 사용**: `t_marketing_*` 테이블 설계/생성
+  - 예: `t_marketing_raw_videos`, `t_marketing_analysis_results`, `t_marketing_candidates`, `t_marketing_contents`
+- [ ] **코어 테이블 Read-only 강제**: 가능하면 DB 계정 권한으로 차단 + 코드 레벨에서도 write 쿼리 차단
+
+### Phase 3: 파이프라인 스크립트 구현
+- [ ] **Collector**: YouTube에서 인기/이슈 영상 수집 → `t_marketing_raw_videos`
+- [ ] **Analyzer**: 자막/메타 기반 분석(Gemini) → `t_marketing_analysis_results`
+- [ ] **Marketer**: 후보 선별/원고 생성 → `t_marketing_candidates`, `t_marketing_contents`
+
+### Phase 4: 대시보드(UI) (로컬 우선)
+- [ ] **로컬 대시보드**: 수집/분석/후보/콘텐츠 조회 및 편집 UI
+- [ ] **배포는 마지막**: 동작 검증 후 별도 배포(또는 로컬 전용 유지)
 
 ## 3. 개발 원칙 (실수 방지)
 1. **단계별 PR**: 모든 기능은 작은 단위로 쪼개어 `hotfix` 브랜치가 아닌 `feature/marketer-*` 브랜치에서 작업 후 `main`으로 머지.
@@ -28,4 +42,4 @@
 4. **빌드 테스트**: 배포 전 로컬 빌드 혹은 Netlify Deploy Preview에서 모듈 참조 오류(Module not found) 확인.
 
 ---
-*내일부터 위 순서에 따라 Phase 1부터 차근차근 진행합니다.*
+*위 순서에 따라 Phase 0(본진 안전화)부터 진행하고, 이후 `aggro-marketing-bot/`로 완전 분리합니다.*
