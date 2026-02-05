@@ -16,12 +16,12 @@ export async function POST(request: Request) {
 
     const client = await pool.connect();
     try {
-      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
+      const userRes = await client.query('SELECT f_email FROM t_users WHERE f_email = $1', [email]);
 
       if (userRes.rows.length === 0) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
-      const userId = userRes.rows[0].f_id;
+      const userId = email;
 
       const tableExistsRes = await client.query(
         `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`

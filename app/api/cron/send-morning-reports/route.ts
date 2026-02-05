@@ -20,6 +20,21 @@ async function createMorningReport(client: any, channelId: string, channelName: 
   const message = `대표님, 어제 하루 동안 **${lostCustomers}명**의 잠재 고객이 [${channelName}] 채널의 콘텐츠를 신뢰하지 못했습니다. 어그로필터에서 평판을 관리하고 고객 이탈을 방지하세요.`
   const link = `/p-my-page?tab=recheck`; // 재검수 페이지로 유도
 
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS t_notifications (
+      f_id BIGSERIAL PRIMARY KEY,
+      f_user_id TEXT NOT NULL,
+      f_type TEXT NOT NULL,
+      f_message TEXT NOT NULL,
+      f_link TEXT,
+      f_is_read BOOLEAN DEFAULT FALSE,
+      f_created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+  await client.query(
+    `CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON t_notifications (f_user_id, f_is_read);`
+  );
+
   await client.query(
     `INSERT INTO t_notifications (f_user_id, f_type, f_message, f_link, f_is_read, f_created_at)
      VALUES ($1, 'morning_report', $2, $3, FALSE, NOW())`,

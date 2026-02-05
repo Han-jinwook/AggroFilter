@@ -86,7 +86,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           u.f_nickname,
           COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name
         FROM t_channel_subscriptions s
-        JOIN t_users u ON s.f_user_id = u.f_id
+        JOIN t_users u ON s.f_user_id = u.f_email
         JOIN t_channels c ON s.f_channel_id = COALESCE(to_jsonb(c)->>'f_channel_id', to_jsonb(c)->>'f_id')
         WHERE s.f_channel_id = $1 
           AND s.f_notification_enabled = TRUE

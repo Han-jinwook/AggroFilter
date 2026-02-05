@@ -445,43 +445,49 @@ export async function POST(request: Request) {
       // 5-5. 채널 구독 및 소유자 지정
       if (actualUserId && hasTranscript) {
         console.log('5-5. 채널 구독 및 소유자 지정 시작...');
-        const subTableRes = await client.query(
-          `SELECT to_regclass('t_channel_subscriptions') as regclass`
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS t_channel_subscriptions (
+            f_id BIGSERIAL PRIMARY KEY,
+            f_user_id TEXT NOT NULL,
+            f_channel_id TEXT NOT NULL,
+            f_subscribed_at TIMESTAMP DEFAULT NOW(),
+            f_is_owner BOOLEAN DEFAULT FALSE,
+            f_last_rank INT,
+            f_last_rank_checked_at TIMESTAMP,
+            f_last_reliability_grade VARCHAR(10),
+            f_last_reliability_score INT,
+            f_last_top10_percent_status BOOLEAN DEFAULT FALSE,
+            f_notification_enabled BOOLEAN DEFAULT TRUE,
+            UNIQUE(f_user_id, f_channel_id)
+          );
+        `);
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS idx_channel_subscriptions_user_id ON t_channel_subscriptions(f_user_id);
+        `);
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS idx_channel_subscriptions_channel_id ON t_channel_subscriptions(f_channel_id);
+        `);
+        await client.query(`
+          CREATE INDEX IF NOT EXISTS idx_channel_subscriptions_notification
+          ON t_channel_subscriptions(f_notification_enabled)
+          WHERE f_notification_enabled = TRUE;
+        `);
+
+        const analysisExistsRes = await client.query(
+          'SELECT f_id FROM t_analyses WHERE f_channel_id = $1 AND f_id != $2 LIMIT 1',
+          [videoInfo.channelId, analysisId]
         );
-        const hasSubscriptionTable = Boolean(subTableRes.rows?.[0]?.regclass);
+        const isFirstAnalysisForChannel = analysisExistsRes.rows.length === 0;
 
-        if (hasSubscriptionTable) {
-          try {
-            const analysisExistsRes = await client.query(
-              'SELECT f_id FROM t_analyses WHERE f_channel_id = $1 AND f_id != $2 LIMIT 1',
-              [videoInfo.channelId, analysisId]
-            );
-            const isFirstAnalysisForChannel = analysisExistsRes.rows.length === 0;
-
-            await client.query(
-              `ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_is_owner BOOLEAN DEFAULT FALSE`
-            );
-
-            const subRes = await client.query(
-              `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at, f_is_owner)
-               VALUES ($1, $2, NOW(), $3)
-               ON CONFLICT (f_user_id, f_channel_id) DO UPDATE SET
-                 f_is_owner = t_channel_subscriptions.f_is_owner OR EXCLUDED.f_is_owner
-               RETURNING f_is_owner;`,
-              [actualUserId, videoInfo.channelId, isFirstAnalysisForChannel]
-            );
-            console.log(`구독 처리 완료 (소유자: ${subRes.rows[0]?.f_is_owner})`);
-          } catch (e: any) {
-            const code = e?.code;
-            if (code === '42P01' || code === '42P10' || code === '42703') {
-              console.log('구독/소유자 지정 스킵: 채널 구독 테이블/제약 조건/컬럼이 없습니다.');
-            } else {
-              throw e;
-            }
-          }
-        } else {
-          console.log('구독/소유자 지정 스킵: t_channel_subscriptions 테이블이 없습니다.');
-        }
+        const subRes = await client.query(
+          `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at, f_is_owner)
+           VALUES ($1, $2, NOW(), $3)
+           ON CONFLICT (f_user_id, f_channel_id) DO UPDATE SET
+             f_is_owner = t_channel_subscriptions.f_is_owner OR EXCLUDED.f_is_owner
+           RETURNING f_is_owner;`,
+          [actualUserId, videoInfo.channelId, isFirstAnalysisForChannel]
+        );
+        console.log(`구독 처리 완료 (소유자: ${subRes.rows[0]?.f_is_owner})`);
       }
 
       await client.query('COMMIT');

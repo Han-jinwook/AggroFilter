@@ -2,10 +2,11 @@
 -- 사용자가 분석한 채널을 자동으로 구독하고, 랭킹 변동 시 알림을 발송하기 위한 테이블
 
 CREATE TABLE IF NOT EXISTS t_channel_subscriptions (
-    f_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    f_user_id UUID NOT NULL REFERENCES t_users(f_id) ON DELETE CASCADE,
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
     f_channel_id TEXT NOT NULL,
     f_subscribed_at TIMESTAMP DEFAULT NOW(),
+    f_is_owner BOOLEAN DEFAULT FALSE,
     f_last_rank INT,  -- 마지막으로 기록된 등수
     f_last_rank_checked_at TIMESTAMP,  -- 마지막 등수 확인 시간
     f_last_reliability_grade VARCHAR(10),  -- 마지막 신뢰도 그레이드 (Red/Yellow/Blue)

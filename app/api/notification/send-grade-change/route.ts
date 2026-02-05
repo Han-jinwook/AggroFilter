@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
+import { pool } from '@/lib/db';
+
 export const runtime = 'nodejs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -23,6 +25,36 @@ export async function POST(request: Request) {
     const newGradeInfo = gradeInfo[newGrade] || gradeInfo['Yellow'];
     
     const resultUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;
+
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS t_notifications (
+          f_id BIGSERIAL PRIMARY KEY,
+          f_user_id TEXT NOT NULL,
+          f_type TEXT NOT NULL,
+          f_message TEXT NOT NULL,
+          f_link TEXT,
+          f_is_read BOOLEAN DEFAULT FALSE,
+          f_created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON t_notifications (f_user_id, f_is_read);`
+      );
+      await client.query(
+        `INSERT INTO t_notifications (f_user_id, f_type, f_message, f_link, f_is_read, f_created_at)
+         VALUES ($1, $2, $3, $4, FALSE, NOW())`,
+        [
+          email,
+          'grade_change',
+          `${channelName} 채널의 신뢰도 등급이 변경되었습니다 (${oldGrade} → ${newGrade})`,
+          `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`,
+        ]
+      );
+    } finally {
+      client.release();
+    }
 
     const { data, error } = await resend.emails.send({
       from: 'AggroFilter <onboarding@resend.dev>',
@@ -78,10 +110,10 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Resend Error:', error);
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+      return NextResponse.json({ success: true, emailSent: false, message: 'Notification saved, email failed' });
     }
 
-    return NextResponse.json({ success: true, message: 'Notification sent' });
+    return NextResponse.json({ success: true, emailSent: true, message: 'Notification sent' });
 
   } catch (error) {
     console.error('Send Grade Change Notification Error:', error);
