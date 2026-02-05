@@ -10,12 +10,12 @@ async function checkData() {
   const client = await pool.connect();
   try {
     console.log('--- Checking t_channels table ---');
-    const channels = await client.query('SELECT f_id, f_name FROM t_channels LIMIT 10');
+    const channels = await client.query('SELECT f_channel_id, f_title FROM t_channels LIMIT 10');
     console.table(channels.rows);
 
     const testChannelId = 'UCF4Wxdo3inmxP-Y59wXDsFw';
     console.log(`\n--- Checking specific channel: ${testChannelId} ---`);
-    const channelCheck = await client.query('SELECT * FROM t_channels WHERE f_id = $1', [testChannelId]);
+    const channelCheck = await client.query('SELECT * FROM t_channels WHERE f_channel_id = $1', [testChannelId]);
     console.log('Channel found:', channelCheck.rows.length > 0 ? 'YES' : 'NO');
     if (channelCheck.rows.length > 0) {
       console.table(channelCheck.rows);

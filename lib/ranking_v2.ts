@@ -40,7 +40,7 @@ export async function refreshRankingCache(f_category_id?: number) {
           AVG(v.f_trust_score) as avg_score,
           COUNT(*) as video_count
         FROM t_videos v
-        JOIN t_channels c ON v.f_channel_id = c.f_id
+        JOIN t_channels c ON v.f_channel_id = c.f_channel_id
         WHERE v.f_trust_score IS NOT NULL
         GROUP BY v.f_channel_id, v.f_official_category_id, c.f_language, c.f_country
       ),
@@ -88,7 +88,7 @@ export async function refreshRankingCache(f_category_id?: number) {
         FROM t_videos
         GROUP BY f_channel_id
       ) sub
-      WHERE c.f_id = sub.f_channel_id
+      WHERE c.f_channel_id = sub.f_channel_id
     `);
 
     await client.query("COMMIT");

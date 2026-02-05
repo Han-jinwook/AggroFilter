@@ -271,7 +271,7 @@ export async function POST(request: Request) {
           f_subscriber_count
         ) VALUES ($1, $2, NULLIF($3, ''), $4, $5)
         ON CONFLICT (f_channel_id) DO UPDATE SET
-          f_title = EXCLUDED.f_title,
+          f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
           f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
           f_official_category_id = EXCLUDED.f_official_category_id,
           f_subscriber_count = EXCLUDED.f_subscriber_count

@@ -20,7 +20,7 @@ async function cleanOrphanedAnalyses() {
       SELECT COUNT(*) as count 
       FROM t_analyses 
       WHERE f_channel_id IS NULL 
-         OR f_channel_id NOT IN (SELECT f_id FROM t_channels)
+         OR f_channel_id NOT IN (SELECT f_channel_id FROM t_channels)
     `);
     
     const count = parseInt(countRes.rows[0].count);
@@ -30,7 +30,7 @@ async function cleanOrphanedAnalyses() {
         const deleteRes = await client.query(`
           DELETE FROM t_analyses 
           WHERE f_channel_id IS NULL 
-             OR f_channel_id NOT IN (SELECT f_id FROM t_channels)
+             OR f_channel_id NOT IN (SELECT f_channel_id FROM t_channels)
         `);
         console.log(`✅ Deleted ${deleteRes.rowCount} orphaned analysis records.`);
     } else {

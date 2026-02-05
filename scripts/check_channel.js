@@ -18,7 +18,7 @@ async function checkChannel() {
     
     // 1. 채널 존재 확인
     const channelResult = await client.query(
-      'SELECT f_id, f_name, f_subscriber_count FROM t_channels WHERE f_id = $1',
+      'SELECT f_channel_id, f_title, f_subscriber_count FROM t_channels WHERE f_channel_id = $1',
       [channelId]
     );
     
@@ -26,10 +26,10 @@ async function checkChannel() {
       console.log('❌ Channel NOT found in t_channels');
       
       // 모든 채널 목록 확인
-      const allChannels = await client.query('SELECT f_id, f_name FROM t_channels LIMIT 10');
+      const allChannels = await client.query('SELECT f_channel_id, f_title FROM t_channels LIMIT 10');
       console.log('\n📋 Available channels:');
       allChannels.rows.forEach(ch => {
-        console.log(`  - ${ch.f_id}: ${ch.f_name}`);
+        console.log(`  - ${ch.f_channel_id}: ${ch.f_title}`);
       });
     } else {
       console.log('✅ Channel found:', channelResult.rows[0]);

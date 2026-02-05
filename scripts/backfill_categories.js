@@ -55,19 +55,19 @@ async function backfillCategories() {
           // t_videos 삽입/업데이트
           await client.query(`
             INSERT INTO t_videos (
-              f_id, f_channel_id, f_title, f_official_category_id, f_trust_score, f_created_at
+              f_video_id, f_channel_id, f_title, f_official_category_id, f_trust_score, f_created_at
             )
             SELECT f_video_id, f_channel_id, f_title, $1, f_reliability_score, f_created_at
             FROM t_analyses
             WHERE f_video_id = $2
-            ON CONFLICT (f_id) DO UPDATE SET f_official_category_id = $1
+            ON CONFLICT (f_video_id) DO UPDATE SET f_official_category_id = $1
           `, [categoryId, videoId]);
 
           // 채널 정보도 업데이트
           await client.query(`
             UPDATE t_channels 
             SET f_official_category_id = $1 
-            WHERE f_id = $2
+            WHERE f_channel_id = $2
           `, [categoryId, channelId]);
 
           await client.query('COMMIT');
