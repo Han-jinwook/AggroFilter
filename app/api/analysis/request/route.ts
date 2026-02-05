@@ -332,13 +332,35 @@ export async function POST(request: Request) {
         ]);
 
         console.log('5-3. 비디오 인덱스 저장 (t_videos)...');
+        // Ensure v2 columns exist on t_videos (safe no-op if already migrated)
+        await client.query(`
+          ALTER TABLE t_videos
+          ADD COLUMN IF NOT EXISTS f_official_category_id INT,
+          ADD COLUMN IF NOT EXISTS f_custom_category_id INT,
+          ADD COLUMN IF NOT EXISTS f_accuracy_score INT,
+          ADD COLUMN IF NOT EXISTS f_clickbait_score INT,
+          ADD COLUMN IF NOT EXISTS f_trust_score INT,
+          ADD COLUMN IF NOT EXISTS f_ai_recommended_title TEXT,
+          ADD COLUMN IF NOT EXISTS f_summary TEXT,
+          ADD COLUMN IF NOT EXISTS f_evaluation_reason TEXT;
+        `);
         await client.query(`
           INSERT INTO t_videos (
-            f_id, f_channel_id, f_title, f_official_category_id,
-            f_accuracy_score, f_clickbait_score, f_trust_score, f_ai_recommended_title,
-            f_summary, f_evaluation_reason, f_created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-          ON CONFLICT (f_id) DO UPDATE SET
+            f_video_id,
+            f_channel_id,
+            f_title,
+            f_official_category_id,
+            f_accuracy_score,
+            f_clickbait_score,
+            f_trust_score,
+            f_ai_recommended_title,
+            f_summary,
+            f_evaluation_reason,
+            f_thumbnail_url,
+            f_created_at,
+            f_updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+          ON CONFLICT (f_video_id) DO UPDATE SET
             f_channel_id = EXCLUDED.f_channel_id,
             f_title = EXCLUDED.f_title,
             f_official_category_id = EXCLUDED.f_official_category_id,
@@ -347,7 +369,9 @@ export async function POST(request: Request) {
             f_trust_score = EXCLUDED.f_trust_score,
             f_ai_recommended_title = EXCLUDED.f_ai_recommended_title,
             f_summary = EXCLUDED.f_summary,
-            f_evaluation_reason = EXCLUDED.f_evaluation_reason
+            f_evaluation_reason = EXCLUDED.f_evaluation_reason,
+            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_videos.f_thumbnail_url),
+            f_updated_at = NOW()
         `, [
           videoId,
           videoInfo.channelId,
@@ -358,7 +382,8 @@ export async function POST(request: Request) {
           analysisResult.reliability,
           analysisResult.recommendedTitle,
           analysisResult.subtitleSummary,
-          analysisResult.evaluationReason
+          analysisResult.evaluationReason,
+          videoInfo.thumbnailUrl
         ]);
       }
 
