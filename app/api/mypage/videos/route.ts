@@ -46,8 +46,17 @@ export async function POST(request: Request) {
         a.f_title as title,
         a.f_reliability_score as score,
         a.f_created_at as created_at,
-        c.display_name as channel_name,
-        c.display_icon as channel_icon,
+        COALESCE(
+          c.display_name,
+          to_jsonb(a)->>'f_channel_name',
+          '알 수 없음'
+        ) as channel_name,
+        COALESCE(
+          c.display_icon,
+          to_jsonb(a)->>'f_channel_thumbnail_url',
+          a.f_thumbnail_url,
+          '/placeholder.svg'
+        ) as channel_icon,
         COALESCE(rs.channel_rank, 0) as rank,
         COALESCE(rs.total_channels, 0) as total_rank,
         COALESCE(to_jsonb(cat)->>'f_name_ko', to_jsonb(cat)->>'f_name', to_jsonb(cat)->>'f_title', '기타') as topic
