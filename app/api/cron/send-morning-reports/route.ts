@@ -32,6 +32,15 @@ export async function GET() {
   console.log('모닝 리포트 생성을 시작합니다...');
   const client = await pool.connect();
   try {
+    const subTableRes = await client.query(
+      `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
+    );
+    const hasSubscriptionTable = subTableRes.rows?.[0]?.exists === true;
+    if (!hasSubscriptionTable) {
+      console.log('t_channel_subscriptions 테이블이 없어 모닝 리포트를 건너뜁니다.');
+      return NextResponse.json({ message: 'Subscription table missing. Skip.' });
+    }
+
     // 1. 어제 하루 동안 생성된, 신뢰도 69점 이하의 분석 결과를 조회
     const reportsRes = await client.query(`
       SELECT

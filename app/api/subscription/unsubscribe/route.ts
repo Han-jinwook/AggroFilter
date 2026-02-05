@@ -23,6 +23,18 @@ export async function POST(request: Request) {
       }
       const userId = userRes.rows[0].f_id;
 
+      const tableExistsRes = await client.query(
+        `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
+      );
+      const tableExists = tableExistsRes.rows?.[0]?.exists === true;
+      if (!tableExists) {
+        return NextResponse.json({
+          success: true,
+          deletedCount: 0,
+          message: '구독 테이블이 없어 해제할 항목이 없습니다.',
+        });
+      }
+
       // 채널 ID 배열과 사용자 ID를 기반으로 구독 삭제
       const result = await client.query(`
         DELETE FROM t_channel_subscriptions

@@ -16,7 +16,12 @@ function getReliabilityGrade(score: number): string {
 export async function subscribeChannelAuto(userId: string, channelId: string) {
   const client = await pool.connect();
   try {
-    // Ensure owner flag column exists
+    const tableExistsRes = await client.query(
+      `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
+    );
+    const tableExists = tableExistsRes.rows?.[0]?.exists === true;
+    if (!tableExists) return;
+
     await client.query(`ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_is_owner BOOLEAN DEFAULT FALSE`);
 
     await client.query(`
@@ -37,6 +42,12 @@ export async function subscribeChannelAuto(userId: string, channelId: string) {
 export async function checkRankingChangesAndNotify(categoryId: number) {
   const client = await pool.connect();
   try {
+    const tableExistsRes = await client.query(
+      `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
+    );
+    const tableExists = tableExistsRes.rows?.[0]?.exists === true;
+    if (!tableExists) return;
+
     // Ensure contact email column exists for future B2B features
     await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
 
@@ -73,10 +84,10 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           s.f_last_top10_percent_status,
           u.f_email,
           u.f_nickname,
-          c.f_name as channel_name
+          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name
         FROM t_channel_subscriptions s
         JOIN t_users u ON s.f_user_id = u.f_id
-        JOIN t_channels c ON s.f_channel_id = c.f_id
+        JOIN t_channels c ON s.f_channel_id = COALESCE(to_jsonb(c)->>'f_channel_id', to_jsonb(c)->>'f_id')
         WHERE s.f_channel_id = $1 
           AND s.f_notification_enabled = TRUE
       `, [f_channel_id]);
