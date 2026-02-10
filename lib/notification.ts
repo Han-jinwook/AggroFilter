@@ -56,8 +56,8 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
       SELECT 
         f_channel_id,
         f_avg_reliability,
-        ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC) as current_rank,
-        COUNT(*) OVER () as total_count
+        ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC)::int as current_rank,
+        COUNT(*) OVER ()::int as total_count
       FROM t_channel_stats
       WHERE f_official_category_id = $1
       ORDER BY f_avg_reliability DESC
@@ -71,7 +71,11 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
     // 2. 구독 중인 채널의 이전 상태와 비교
     for (const row of currentRankings.rows) {
       const { f_channel_id, f_avg_reliability, current_rank } = row;
-      const currentGrade = getReliabilityGrade(f_avg_reliability);
+      const reliabilityScore = Number(f_avg_reliability);
+      if (!Number.isFinite(reliabilityScore)) continue;
+      const reliabilityScoreInt = Math.round(reliabilityScore);
+
+      const currentGrade = getReliabilityGrade(reliabilityScore);
       const isCurrentTop10Percent = current_rank <= top10PercentThreshold;
 
       // 구독자 조회 (알림 활성화된 사용자만)
@@ -144,7 +148,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           f_last_top10_percent_status = $4,
           f_last_rank_checked_at = NOW()
         WHERE f_channel_id = $5
-      `, [current_rank, currentGrade, f_avg_reliability, isCurrentTop10Percent, f_channel_id]);
+      `, [current_rank, currentGrade, reliabilityScoreInt, isCurrentTop10Percent, f_channel_id]);
     }
 
   } finally {

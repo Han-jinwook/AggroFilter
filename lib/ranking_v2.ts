@@ -30,19 +30,24 @@ export async function refreshRankingCache(f_category_id?: number) {
         SELECT 
           v.f_channel_id,
           v.f_official_category_id as category_id,
-          c.f_language,
-          c.f_country,
+          COALESCE(NULLIF(to_jsonb(c)->>'f_language', ''), 'ko') as f_language,
+          COALESCE(NULLIF(to_jsonb(c)->>'f_country', ''), 'KR') as f_country,
           -- Smart Locale Strategy 로직
           CASE 
-            WHEN c.f_language IN ('ko', 'ja') THEN c.f_language || '_' || v.f_official_category_id::text
-            ELSE c.f_language || '_' || c.f_country || '_' || v.f_official_category_id::text
+            WHEN COALESCE(NULLIF(to_jsonb(c)->>'f_language', ''), 'ko') IN ('ko', 'ja')
+              THEN COALESCE(NULLIF(to_jsonb(c)->>'f_language', ''), 'ko') || '_' || v.f_official_category_id::text
+            ELSE COALESCE(NULLIF(to_jsonb(c)->>'f_language', ''), 'ko') || '_' || COALESCE(NULLIF(to_jsonb(c)->>'f_country', ''), 'KR') || '_' || v.f_official_category_id::text
           END as ranking_key,
           AVG(v.f_trust_score) as avg_score,
           COUNT(*) as video_count
         FROM t_videos v
         JOIN t_channels c ON v.f_channel_id = c.f_channel_id
         WHERE v.f_trust_score IS NOT NULL
-        GROUP BY v.f_channel_id, v.f_official_category_id, c.f_language, c.f_country
+        GROUP BY 
+          v.f_channel_id,
+          v.f_official_category_id,
+          COALESCE(NULLIF(to_jsonb(c)->>'f_language', ''), 'ko'),
+          COALESCE(NULLIF(to_jsonb(c)->>'f_country', ''), 'KR')
       ),
       RankedChannels AS (
         SELECT 

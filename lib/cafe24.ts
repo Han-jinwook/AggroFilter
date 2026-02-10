@@ -65,6 +65,21 @@ export async function ensureCafe24Tables(client: any) {
     )
   `)
 
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS t_unclaimed_payments (
+      f_id BIGSERIAL PRIMARY KEY,
+      f_cafe24_order_id VARCHAR(255) UNIQUE NOT NULL,
+      f_buyer_email VARCHAR(255) NOT NULL,
+      f_product_id VARCHAR(255),
+      f_product_name TEXT,
+      f_amount_paid NUMERIC,
+      f_payment_data JSONB,
+      f_status TEXT DEFAULT 'PENDING',
+      f_created_at TIMESTAMP DEFAULT NOW(),
+      f_updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `)
+
   await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`)
 }
 
