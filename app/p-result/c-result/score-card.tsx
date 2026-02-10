@@ -31,6 +31,14 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
   const clickbaitText = typeof clickbait === "number" ? `${clickbait}%` : "-"
   const trustText = typeof trust === "number" ? String(trust) : "-"
 
+  const clickbaitTier = (() => {
+    if (typeof clickbait !== 'number' || Number.isNaN(clickbait)) return null
+    if (clickbait <= 20) return '일치/마케팅/훅'
+    if (clickbait <= 40) return '과장(오해/시간적 피해/낚임 수준)'
+    if (clickbait <= 60) return '왜곡(혼란/짜증)'
+    return '허위/조작(실질 손실 가능)'
+  })()
+
   const formatDeltaRow = (label: string, before: number | null, after: number | null, isPercent: boolean) => {
     if (before === null || after === null) return null
     const diff = after - before
@@ -91,10 +99,15 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-gray-800">어그로성</span>
               <span className="text-lg font-bold text-pink-500">{clickbaitText}</span>
+              {clickbaitTier && (
+                <span className="ml-1 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink-600">
+                  {clickbaitTier}
+                </span>
+              )}
               <TooltipButton
                 active={activeTooltip === "clickbait"}
                 onToggle={() => toggleTooltip("clickbait")}
-                content="본문과 불일치하는 제목의 자극적·감정적 과장을 분석"
+                content="어그로성 점수(높을수록 나쁨): 0~20 일치/마케팅/훅(피해 없음), 21~40 과장(오해/시간적 피해/낚임 수준), 41~60 왜곡(혼란/짜증), 61~100 허위/조작(실질 손실 가능) — 제목/썸네일 vs 본문 불일치(Gap) 기준"
               />
             </div>
           </div>

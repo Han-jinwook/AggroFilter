@@ -3,6 +3,56 @@ import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
+function normalizeEvaluationReasonScores(
+  text: string | null | undefined,
+  scores: { accuracy?: unknown; clickbait?: unknown; trust?: unknown }
+): string | null {
+  if (!text) return text ?? null;
+  const accuracy = Number(scores.accuracy);
+  const clickbait = Number(scores.clickbait);
+  const trust = Number(scores.trust);
+
+  let out = text;
+
+  const clickbaitTierLabel = (() => {
+    if (!Number.isFinite(clickbait)) return null;
+    if (clickbait <= 20) return '일치/마케팅/훅';
+    if (clickbait <= 40) return '과장(오해/시간적 피해/낚임 수준)';
+    if (clickbait <= 60) return '왜곡(혼란/짜증)';
+    return '허위/조작(실질 손실 가능)';
+  })();
+
+  if (Number.isFinite(accuracy)) {
+    out = out.replace(
+      /(내용\s*정확성\s*검증\s*)\(\s*\d+\s*점\s*\)/g,
+      `$1(${Math.round(accuracy)}점)`
+    );
+  }
+
+  if (Number.isFinite(clickbait)) {
+    out = out.replace(
+      /(어그로성\s*평가\s*)\(\s*\d+\s*점\s*\)/g,
+      `$1(${Math.round(clickbait)}점${clickbaitTierLabel ? ` / ${clickbaitTierLabel}` : ''})`
+    );
+
+    if (clickbaitTierLabel && !/2\.\s*어그로성\s*평가[\s\S]*?<br\s*\/>\s*이\s*점수는/g.test(out)) {
+      out = out.replace(
+        /(2\.\s*어그로성\s*평가[^<]*<br\s*\/>)/,
+        `$1이 점수는 '${clickbaitTierLabel}' 구간입니다. `
+      );
+    }
+  }
+
+  if (Number.isFinite(trust)) {
+    out = out.replace(
+      /(신뢰도\s*총평\s*)\(\s*\d+\s*점/g,
+      `$1(${Math.round(trust)}점`
+    );
+  }
+
+  return out;
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   console.log(`Fetching analysis result for ID: ${id}`);
@@ -205,7 +255,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
           officialCategoryId: analysis.f_official_category_id,
           channelStats: channelStats,
           summary: analysis.f_summary,
-          evaluationReason: analysis.f_evaluation_reason,
+          evaluationReason: normalizeEvaluationReasonScores(analysis.f_evaluation_reason, {
+            accuracy: analysis.f_accuracy_score,
+            clickbait: analysis.f_clickbait_score,
+            trust: analysis.f_reliability_score,
+          }),
           overallAssessment: analysis.f_overall_assessment,
           aiRecommendedTitle: analysis.f_ai_title_recommendation,
           fullSubtitle: analysis.f_transcript,
