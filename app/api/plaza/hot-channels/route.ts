@@ -27,21 +27,18 @@ export async function GET(request: Request) {
       // [v2.2 Optimization] Use f_is_latest = true
       const query = `
         SELECT 
-          COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') as id,
-          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as name,
-          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
+          c.f_channel_id as id,
+          c.f_title as name,
+          c.f_thumbnail_url as "channelIcon",
           COUNT(a.f_id) as analysis_count,
           SUM(COALESCE(a.f_view_count, 0)) as view_count,
           AVG(a.f_reliability_score) as avg_reliability,
           AVG(a.f_clickbait_score) as avg_clickbait
         FROM t_channels c
-        JOIN t_analyses a ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+        JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
           AND a.f_created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY
-          COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id'),
-          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title'),
-          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url')
+        GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url
         HAVING COUNT(a.f_id) > 0
         ${orderByClause}
         LIMIT 3

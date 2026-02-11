@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -169,20 +169,10 @@ export default function MyPageClient() {
     };
   }, [analyzedVideos]);
 
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     try {
-      const email = localStorage.getItem('userEmail');
-
-      console.log("MyPage - Fetching videos for email:", email);
-
-      if (!email) {
-        console.log("No email found - user not logged in");
-        setAnalyzedVideos([]);
-        setIsLoadingVideos(false);
-        return;
-      }
-
       setIsLoadingVideos(true);
+      const email = localStorage.getItem('userEmail') || '';
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,13 +192,13 @@ export default function MyPageClient() {
     } finally {
       setIsLoadingVideos(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'analysis') {
       fetchVideos();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchVideos]);
 
   // Effects
   useEffect(() => {

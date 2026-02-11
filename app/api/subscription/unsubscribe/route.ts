@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { channelIds, email } = await request.json();
+    const { channelIds, email: emailFromBody } = await request.json();
+
+    let email = emailFromBody as string | undefined;
+    if (!email) {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.email) email = data.user.email;
+      } catch {
+      }
+    }
 
     if (!channelIds || !Array.isArray(channelIds) || channelIds.length === 0) {
       return NextResponse.json({ error: 'Invalid channel IDs' }, { status: 400 });

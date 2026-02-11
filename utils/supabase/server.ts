@@ -1,35 +1,27 @@
-export function createClient(): any {
-  const missingMessage =
-    "Supabase server client is not configured. Add a real Supabase server client implementation (e.g. @supabase/ssr) and required env vars.";
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-  const makeError = () => {
-    const err = new Error(missingMessage);
-    return err;
-  };
+export function createClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const makeAwaitableQuery = () => {
-    const query: any = {
-      select: () => query,
-      eq: () => query,
-      single: () => query,
-      order: () => query,
-      limit: () => query,
-      gte: () => query,
-      lte: () => query,
-      update: () => query,
-      upsert: () => query,
-      then: (resolve: any) =>
-        Promise.resolve(resolve({ data: null, error: makeError() })),
-      catch: (reject: any) => Promise.resolve(reject(makeError())),
-    };
+  if (!url || !anonKey) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  }
 
-    return query;
-  };
+  const cookieStore = cookies()
 
-  return {
-    auth: {
-      getUser: async () => ({ data: { user: null }, error: makeError() }),
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        } catch {
+        }
+      },
     },
-    from: () => makeAwaitableQuery(),
-  };
+  })
 }

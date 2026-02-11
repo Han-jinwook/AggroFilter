@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 import { gradePrediction } from '@/lib/prediction-grading'
+import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -14,8 +15,18 @@ export async function POST(request: NextRequest) {
       predictedAccuracy, 
       predictedClickbait,
       actualReliability,
-      userEmail
+      userEmail: userEmailFromBody
     } = body
+
+    let userEmail = userEmailFromBody as string | undefined
+    if (!userEmail) {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getUser()
+        if (data?.user?.email) userEmail = data.user.email
+      } catch {
+      }
+    }
 
     if (!analysisId || predictedAccuracy == null || predictedClickbait == null || actualReliability == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })

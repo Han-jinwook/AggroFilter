@@ -141,7 +141,7 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
                 <span className="text-lg font-bold text-orange-600">{prediction.gap}</span>
               </div>
               <div className="text-center text-xs text-gray-500">
-                ({prediction.totalPredictions}개 영상) 총 누적 '디지털 eye' 레벨 - 평균 오차 <span className="font-semibold text-blue-600">{prediction.avgGap.toFixed(1)}</span>로
+                ({prediction.totalPredictions}개 영상) 총 누적 &apos;디지털 eye&apos; 레벨 - 평균 오차 <span className="font-semibold text-blue-600">{prediction.avgGap.toFixed(1)}</span>로
               </div>
               <div className="flex items-center justify-center gap-2 pt-0.5">
                 <span className="text-2xl">{prediction.tierEmoji}</span>

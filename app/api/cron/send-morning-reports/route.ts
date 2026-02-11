@@ -60,13 +60,13 @@ export async function GET() {
     const reportsRes = await client.query(`
       SELECT
         a.f_channel_id,
-        COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name,
+        c.f_title as channel_name,
         COUNT(DISTINCT a.f_user_id) as lost_customers -- 분석을 요청한 유저 수로 '잠재 이탈 고객'을 추정
       FROM t_analyses a
-      JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+      JOIN t_channels c ON a.f_channel_id = c.f_channel_id
       WHERE a.f_created_at >= NOW() - INTERVAL '1 day'
         AND a.f_reliability_score <= 69
-      GROUP BY a.f_channel_id, COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title')
+      GROUP BY a.f_channel_id, c.f_title
       HAVING COUNT(DISTINCT a.f_user_id) > 0;
     `);
 

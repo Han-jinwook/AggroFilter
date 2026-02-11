@@ -31,15 +31,15 @@ export async function GET(request: Request) {
         SELECT 
           a.f_id as id,
           a.f_title as title,
-          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel,
-          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
+          c.f_title as channel,
+          c.f_thumbnail_url as "channelIcon",
           a.f_official_category_id as category_id,
           a.f_reliability_score as reliability_score,
           a.f_clickbait_score as clickbait_score,
           a.f_request_count as analysis_count,
           a.f_view_count as view_count
         FROM t_analyses a
-        LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
           AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
           AND a.f_reliability_score IS NOT NULL
@@ -55,15 +55,15 @@ export async function GET(request: Request) {
           SELECT 
             a.f_id as id,
             a.f_title as title,
-            COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel,
-            COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as "channelIcon",
+            c.f_title as channel,
+            c.f_thumbnail_url as "channelIcon",
             a.f_official_category_id as category_id,
             a.f_reliability_score as reliability_score,
             a.f_clickbait_score as clickbait_score,
             a.f_request_count as analysis_count,
             a.f_view_count as view_count
           FROM t_analyses a
-          LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+          LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
           WHERE a.f_is_latest = TRUE
             AND a.f_created_at >= NOW() - INTERVAL '7 days'
             AND a.f_reliability_score IS NOT NULL

@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { videoId, text, email, nickname, parentId } = body;
+    const { videoId, text, email: emailFromBody, nickname, parentId } = body;
+
+    let email = emailFromBody as string | undefined;
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) email = data.user.email;
+    } catch {
+    }
 
     if (!videoId || !text || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

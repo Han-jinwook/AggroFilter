@@ -1,15 +1,26 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
+import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
+    const emailFromQuery = searchParams.get('email')
+
+    let email = emailFromQuery
+    if (!email) {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getUser()
+        email = data?.user?.email ?? null
+      } catch {
+      }
+    }
 
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Login required' }, { status: 401 })
     }
 
     const client = await pool.connect()

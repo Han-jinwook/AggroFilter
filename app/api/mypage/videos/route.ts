@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
+import { getCategoryName } from '@/lib/categoryMap';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const { email: emailFromBody } = await request.json();
+
+    let email = emailFromBody as string | undefined;
+    if (!email) {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.email) email = data.user.email;
+      } catch {
+      }
+    }
 
     if (!email) {
       return NextResponse.json({ videos: [] });
@@ -19,38 +31,17 @@ export async function POST(request: Request) {
       
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const refinedQuery = `
-      WITH NormalizedChannels AS (
-          SELECT 
-              COALESCE(NULLIF(to_jsonb(c)->>'f_channel_id', ''), NULLIF(to_jsonb(c)->>'f_id', '')) as join_id,
-              COALESCE(NULLIF(to_jsonb(c)->>'f_id', ''), NULLIF(to_jsonb(c)->>'f_channel_id', '')) as display_id,
-              COALESCE(NULLIF(to_jsonb(c)->>'f_name', ''), NULLIF(to_jsonb(c)->>'f_title', ''), '알 수 없는 채널') as display_name,
-              COALESCE(NULLIF(to_jsonb(c)->>'f_profile_image_url', ''), NULLIF(to_jsonb(c)->>'f_thumbnail_url', ''), '/placeholder.svg') as display_icon,
-              c.f_official_category_id,
-              COALESCE((NULLIF(to_jsonb(c)->>'f_trust_score', ''))::int, (NULLIF(to_jsonb(c)->>'f_reliability_score', ''))::int, 0) as f_trust_score
-          FROM t_channels c
-      ),
-      RankStats AS (
-          SELECT 
-              join_id,
-              f_official_category_id,
-              RANK() OVER (PARTITION BY f_official_category_id ORDER BY f_trust_score DESC) as channel_rank,
-              COUNT(*) OVER (PARTITION BY f_official_category_id) as total_channels
-          FROM NormalizedChannels
-      )
       SELECT 
         a.f_id as id,
         a.f_title as title,
         a.f_reliability_score as score,
         a.f_created_at as created_at,
-        COALESCE(NULLIF(c.display_name, ''), '알 수 없음') as channel_name,
-        COALESCE(NULLIF(c.display_icon, ''), '/placeholder.svg') as channel_icon,
-        COALESCE(rs.channel_rank, 0) as rank,
-        COALESCE(rs.total_channels, 0) as total_rank,
-        COALESCE(to_jsonb(cat)->>'f_name_ko', to_jsonb(cat)->>'f_name', to_jsonb(cat)->>'f_title', '기타') as topic
+        COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
+        COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
+        a.f_official_category_id as category_id,
+        a.f_channel_id as channel_id
       FROM t_analyses a
-      LEFT JOIN NormalizedChannels c ON a.f_channel_id = c.join_id OR a.f_channel_id = c.display_id
-      LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
-      LEFT JOIN RankStats rs ON (a.f_channel_id = rs.join_id) AND a.f_official_category_id = rs.f_official_category_id
+      LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
       WHERE a.f_user_id = $1
         AND a.f_is_latest = TRUE
       ORDER BY a.f_created_at DESC
@@ -64,15 +55,15 @@ export async function POST(request: Request) {
         channel: row.channel_name || '알 수 없음',
         channelIcon: row.channel_icon,
         score: row.score,
-        category: row.topic,
+        category: getCategoryName(row.category_id),
         fullDate: row.created_at, // 정렬용 정밀 타임스탬프 추가
         date: new Date(row.created_at).toLocaleDateString('ko-KR', {
            year: '2-digit',
            month: '2-digit',
            day: '2-digit'
         }).replace(/\./g, '').split(' ').join('.'), // Format: 25.01.15
-        rank: row.rank > 0 ? row.rank : '-', 
-        totalRank: row.total_rank > 0 ? row.total_rank : '-', 
+        rank: '-', 
+        totalRank: '-', 
         views: '-' // Not available in t_analyses
       }));
 

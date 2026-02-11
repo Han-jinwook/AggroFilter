@@ -5,6 +5,7 @@ import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto, checkRankingChangesAndNotify } from '@/lib/notification';
 import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -62,7 +63,15 @@ function normalizeEvaluationReasonScores(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url, userId, forceRecheck, isRecheck } = body;
+    const { url, userId: userIdFromBody, forceRecheck, isRecheck } = body;
+
+    let userId = userIdFromBody as string | undefined;
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) userId = data.user.email;
+    } catch {
+    }
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });

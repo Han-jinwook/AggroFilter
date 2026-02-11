@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -16,6 +16,7 @@ interface TChannel {
   score: number
   color: string
   highlight?: boolean
+  analysisCount?: number
 }
 
 interface TRankingApiResponse {
@@ -26,6 +27,7 @@ interface TRankingApiResponse {
     avatar: string
     score: number
     categoryId: number
+    analysisCount?: number
   }>
   totalCount: number
   nextOffset: number | null
@@ -68,11 +70,6 @@ export default function RankingClient() {
   const nextOffsetRef = useRef<number | null>(0)
   const channelsLengthRef = useRef<number>(0)
 
-  const userEmail = useMemo(() => {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem('userEmail')
-  }, [])
-
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -114,10 +111,9 @@ export default function RankingClient() {
       setIsLoading(true)
       setLoadError(null)
       try {
-        const emailQs = userEmail ? `&email=${encodeURIComponent(userEmail)}` : ''
         const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
         const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
-        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=0${emailQs}${focusQs}`)
+        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=0${focusQs}`)
         if (!res.ok) {
           const bodyText = await res.text().catch(() => '')
           console.error('[RankingClient] /api/ranking failed', {
@@ -141,6 +137,7 @@ export default function RankingClient() {
           score: c.score,
           color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
           highlight: false,
+          analysisCount: c.analysisCount || 0,
         }))
         setChannels(formatted)
         setNextOffset(data.nextOffset)
@@ -154,7 +151,7 @@ export default function RankingClient() {
     }
 
     fetchChannels()
-  }, [currentCategoryId, userEmail])
+  }, [currentCategoryId])
 
   useEffect(() => {
     nextOffsetRef.current = nextOffset
@@ -164,16 +161,15 @@ export default function RankingClient() {
     channelsLengthRef.current = channels.length
   }, [channels.length])
 
-  const fetchMore = async () => {
+  const fetchMore = useCallback(async () => {
     if (isLoadingMore) return
     const currentOffset = nextOffsetRef.current
     if (currentOffset === null) return
     setIsLoadingMore(true)
     try {
-      const emailQs = userEmail ? `&email=${encodeURIComponent(userEmail)}` : ''
       const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
       const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
-      const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=${currentOffset}${emailQs}${focusQs}`)
+      const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=${currentOffset}${focusQs}`)
       if (!res.ok) {
         const bodyText = await res.text().catch(() => '')
         console.error('[RankingClient] /api/ranking (fetchMore) failed', {
@@ -193,6 +189,7 @@ export default function RankingClient() {
         score: c.score,
         color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
         highlight: false,
+        analysisCount: c.analysisCount || 0,
       }))
 
       setChannels((prev) => [...prev, ...formatted])
@@ -204,7 +201,7 @@ export default function RankingClient() {
     } finally {
       setIsLoadingMore(false)
     }
-  }
+  }, [currentCategoryId, isLoadingMore])
 
   // Infinite scroll observer
   useEffect(() => {
@@ -220,7 +217,7 @@ export default function RankingClient() {
     )
     observer.observe(target)
     return () => observer.disconnect()
-  }, [currentCategoryId])
+  }, [fetchMore])
 
   // Sticky My-Rank bar visibility
   useEffect(() => {
@@ -454,9 +451,10 @@ export default function RankingClient() {
             )}
 
             <div className="overflow-hidden rounded-t-3xl border-x-4 border-t-4 border-blue-400 bg-white">
-              <div className="grid grid-cols-[60px_1fr_100px] gap-2 bg-gradient-to-r from-blue-200 to-indigo-200 px-4 py-2">
+              <div className="grid grid-cols-[60px_1fr_70px_80px] gap-2 bg-gradient-to-r from-blue-200 to-indigo-200 px-4 py-2">
                 <div className="text-center text-sm font-bold text-gray-800">순위</div>
                 <div className="text-center text-sm font-bold text-gray-800">채널명</div>
+                <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
               </div>
             </div>
@@ -488,7 +486,7 @@ export default function RankingClient() {
                   <Link key={channel.rank} href={`/channel/${channel.id}`} className="block">
                     <div
                       ref={myRank && channel.id === myRank.id ? myRankRef : undefined}
-                      className={`grid grid-cols-[60px_1fr_100px] items-center gap-2 border-b border-gray-100 px-4 py-2.5 last:border-0 cursor-pointer transition-colors ${
+                      className={`grid grid-cols-[60px_1fr_70px_80px] items-center gap-2 border-b border-gray-100 px-4 py-2.5 last:border-0 cursor-pointer transition-colors ${
                         channel.highlight ? "bg-slate-600" : "hover:bg-gray-50"
                       }`}
                     >
@@ -507,6 +505,11 @@ export default function RankingClient() {
                         />
                         <span className={`text-sm font-medium ${channel.highlight ? "text-white" : "text-gray-800"}`}>
                           {channel.name}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className={`text-sm font-medium ${channel.highlight ? "text-white/70" : "text-gray-500"}`}>
+                          {channel.analysisCount || 0}개
                         </span>
                       </div>
                       <div className="flex items-center justify-end gap-2 pr-2">

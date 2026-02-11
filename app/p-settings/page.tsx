@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut } from 'lucide-react'
@@ -59,11 +60,15 @@ export default function SettingsPage() {
   }
 
   const handleLogout = () => {
-    localStorage.clear()
-    setNickname('')
-    setProfileImage('')
-    window.dispatchEvent(new Event('profileUpdated'))
-    router.push('/')
+    fetch('/api/auth/logout', { method: 'POST' })
+      .catch(() => {})
+      .finally(() => {
+        localStorage.clear()
+        setNickname('')
+        setProfileImage('')
+        window.dispatchEvent(new Event('profileUpdated'))
+        router.push('/')
+      })
   }
 
   const getDisplayNickname = () => {
@@ -112,10 +117,14 @@ export default function SettingsPage() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 {getDisplayImage() ? (
-                  <img
+                  <Image
                     src={getDisplayImage() || "/placeholder.svg"}
                     alt="Profile"
+                    width={80}
+                    height={80}
                     className="h-20 w-20 rounded-full object-cover"
+                    unoptimized
+                    loader={({ src }) => src}
                   />
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">

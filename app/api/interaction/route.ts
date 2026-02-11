@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +12,26 @@ async function getUserId(client: any, email: string) {
   return userRes.rows[0].f_id;
 }
 
-export async function POST(request: Request) {
-  const { videoId, type, email } = await request.json();
+async function getVideoIdFromAnalysisId(client: any, analysisId: string) {
+  const res = await client.query('SELECT f_video_id FROM t_analyses WHERE f_id = $1 LIMIT 1', [analysisId]);
+  if (res.rows.length === 0 || !res.rows[0]?.f_video_id) {
+    throw new Error('Analysis not found');
+  }
+  return String(res.rows[0].f_video_id);
+}
 
-  if (!videoId || !type || !email) {
+export async function POST(request: Request) {
+  const { videoId: videoIdFromBody, analysisId, type, email: emailFromBody } = await request.json();
+
+  let email = emailFromBody as string | undefined;
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data?.user?.email) email = data.user.email;
+  } catch {
+  }
+
+  if (!type || !email) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -25,6 +42,17 @@ export async function POST(request: Request) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    const videoId =
+      (typeof videoIdFromBody === 'string' && videoIdFromBody.length > 0)
+        ? videoIdFromBody
+        : (typeof analysisId === 'string' && analysisId.length > 0)
+          ? await getVideoIdFromAnalysisId(client, analysisId)
+          : null;
+
+    if (!videoId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
 
     const userId = await getUserId(client, email);
 

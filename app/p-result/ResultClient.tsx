@@ -70,10 +70,7 @@ export default function ResultClient() {
     const fetchAnalysisData = async () => {
       try {
         setLoading(true)
-        const email = localStorage.getItem("userEmail")
-        const url = email ? `/api/analysis/result/${id}?email=${email}` : `/api/analysis/result/${id}`
-        
-        const response = await fetch(url, {
+        const response = await fetch(`/api/analysis/result/${id}`, {
           cache: 'no-store'
         })
         
@@ -178,8 +175,7 @@ export default function ResultClient() {
 
   const handleLikeClick = async () => {
     if (!analysisData) return
-    const email = localStorage.getItem("userEmail")
-    if (!email) return
+    if (!checkLoginStatus()) return
 
     const previousLiked = liked
     const previousDisliked = disliked
@@ -197,8 +193,7 @@ export default function ResultClient() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 analysisId: analysisData.id,
-                type: 'like',
-                email
+                type: 'like'
             })
         })
         const data = await response.json()
@@ -222,8 +217,7 @@ export default function ResultClient() {
 
   const handleDislikeClick = async () => {
     if (!analysisData) return
-    const email = localStorage.getItem("userEmail")
-    if (!email) return
+    if (!checkLoginStatus()) return
 
     const previousLiked = liked
     const previousDisliked = disliked
@@ -241,8 +235,7 @@ export default function ResultClient() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 analysisId: analysisData.id,
-                type: 'dislike',
-                email
+                type: 'dislike'
             })
         })
         const data = await response.json()
@@ -277,9 +270,8 @@ export default function ResultClient() {
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return
     if (!analysisData) return
-    const email = localStorage.getItem("userEmail")
     const nickname = localStorage.getItem("userNickname")
-    if (!email) {
+    if (!checkLoginStatus()) {
       requireLogin("comment", () => {})
       return
     }
@@ -290,7 +282,6 @@ export default function ResultClient() {
         body: JSON.stringify({
           videoId: analysisData.videoId,
           text: newComment,
-          email,
           nickname
         })
       });
@@ -310,9 +301,8 @@ export default function ResultClient() {
   const handleReplySubmit = async (commentId: string) => {
     if (!replyText.trim()) return
     if (!analysisData) return
-    const email = localStorage.getItem("userEmail")
     const nickname = localStorage.getItem("userNickname")
-    if (!email) {
+    if (!checkLoginStatus()) {
       requireLogin("comment", () => {})
       return
     }
@@ -323,7 +313,6 @@ export default function ResultClient() {
         body: JSON.stringify({
           videoId: analysisData.videoId,
           text: replyText,
-          email,
           nickname,
           parentId: commentId
         })
@@ -717,6 +706,7 @@ ${content}
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-600 border border-indigo-200">#{getCategoryName(analysisData.officialCategoryId)}</span>
                 <span className="text-base font-bold text-indigo-600">상위 {topPercentileText}</span>
                 <span className="text-sm font-medium text-gray-500">({channelRankText} / {totalChannelsText})</span>
               </div>
@@ -779,7 +769,7 @@ ${content}
                   <div className="absolute left-1/2 top-full z-20 mt-2 w-80 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
                     <p className="text-xs leading-relaxed text-gray-700">
                       &lt;청소년의 미디어 리터러시 교육용 서비스&gt;
-                      <br />( )속에 8 ~ 18의 나이를 넣고 '클릭' 하면 ChatGPT가 선생님이 되어, 나의
+                      <br />( )속에 8 ~ 18의 나이를 넣고 &apos;클릭&apos; 하면 ChatGPT가 선생님이 되어, 나의
                       나이에 맞는 설명과 간단한 퀴즈를 보여줘요.
                     </p>
                     <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>

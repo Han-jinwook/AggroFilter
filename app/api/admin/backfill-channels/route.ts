@@ -134,7 +134,7 @@ export async function POST(request: Request) {
           SELECT DISTINCT a.f_channel_id
           FROM t_analyses a
           LEFT JOIN t_channels c
-            ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+            ON a.f_channel_id = c.f_channel_id
           WHERE a.f_channel_id IS NOT NULL
             AND a.f_channel_id <> ''
             ${whereMissing}

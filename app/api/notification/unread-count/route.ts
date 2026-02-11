@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { pool } from '@/lib/db'
+import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,7 +9,16 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
+    const emailFromQuery = searchParams.get('email')
+    let email = emailFromQuery
+    if (!email) {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getUser()
+        email = data?.user?.email ?? null
+      } catch {
+      }
+    }
     if (!email) return NextResponse.json({ unreadCount: 0 })
 
     const client = await pool.connect()

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useMemo, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppHeader } from '@/components/c-app-header'
 
@@ -16,11 +16,36 @@ function MockPaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const userId = searchParams.get('userId') || ''
+  const userIdParam = searchParams.get('userId') || ''
   const redirectUrlParam = searchParams.get('redirectUrl') || '/'
   const redirectUrl = redirectUrlParam.startsWith('/') ? redirectUrlParam : '/'
 
   const [isPaying, setIsPaying] = useState(false)
+  const [userId, setUserId] = useState(userIdParam)
+
+  useEffect(() => {
+    if (userIdParam) {
+      setUserId(userIdParam)
+      return
+    }
+
+    let isMounted = true
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null
+        return res.json()
+      })
+      .then((data) => {
+        const email = String(data?.user?.email || '')
+        if (!email) return
+        if (isMounted) setUserId(email)
+      })
+      .catch(() => {})
+
+    return () => {
+      isMounted = false
+    }
+  }, [userIdParam])
 
   const options = useMemo(
     () => [
@@ -39,7 +64,7 @@ function MockPaymentContent() {
 
     try {
       setIsPaying(true)
-      const callbackUrl = `/api/payment/callback?status=success&amount=${credits}&userId=${encodeURIComponent(userId)}&redirectUrl=${encodeURIComponent(redirectUrl)}`
+      const callbackUrl = `/api/payment/callback?status=success&amount=${credits}&redirectUrl=${encodeURIComponent(redirectUrl)}`
       router.push(callbackUrl)
     } finally {
       setIsPaying(false)

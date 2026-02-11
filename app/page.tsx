@@ -22,8 +22,23 @@ export default function MainPage() {
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail")
-    if (storedEmail) {
-      setUserEmail(storedEmail)
+    if (storedEmail) setUserEmail(storedEmail)
+
+    let isMounted = true
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return null
+        return res.json()
+      })
+      .then((data) => {
+        const email = String(data?.user?.email || '')
+        if (!email) return
+        localStorage.setItem('userEmail', email)
+        if (isMounted) setUserEmail(email)
+      })
+      .catch(() => {})
+    return () => {
+      isMounted = false
     }
   }, [])
 
@@ -51,17 +66,13 @@ export default function MainPage() {
     console.log("분석 요청:", analysisUrl)
 
     try {
-      // Get current user email if available
-      const currentEmail = userEmail || localStorage.getItem("userEmail");
-      
       const response = await fetch('/api/analysis/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-            url: analysisUrl,
-            userId: currentEmail // Send email as userId
+            url: analysisUrl
         }),
       });
 

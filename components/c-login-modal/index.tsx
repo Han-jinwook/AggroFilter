@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/c-dialog"
+import { createClient } from "@/utils/supabase/client"
 
 interface TLoginModalProps {
   open: boolean
@@ -26,16 +27,15 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     
     try {
-      const res = await fetch('/api/auth/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      })
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to send code');
-      }
+      if (error) throw error
 
       setStep("code")
     } catch (error) {
@@ -77,16 +77,14 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     
     try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: verificationCode })
-      });
+      const supabase = createClient()
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: verificationCode,
+        type: 'email',
+      })
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Verification failed');
-      }
+      if (error) throw error
 
       // Success
       onLoginSuccess(email)
@@ -110,17 +108,16 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     if (!email) return;
     
     try {
-      const res = await fetch('/api/auth/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      })
+      if (error) throw error
 
-      if (res.ok) {
-        alert("인증코드가 재발송되었습니다.");
-      } else {
-        throw new Error('Failed to resend');
-      }
+      alert("인증코드가 재발송되었습니다.");
     } catch (error) {
       console.error(error);
       alert('인증코드 재발송에 실패했습니다.');

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -66,12 +67,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
     try {
       const analysisRes = await client.query(`
         SELECT a.*,
-               COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as f_name,
-               COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as f_profile_image_url,
-               (to_jsonb(c)->>'f_subscriber_count')::bigint as f_subscriber_count,
-               COALESCE(to_jsonb(c)->>'f_handle', NULL) as f_handle
+               c.f_title as f_channel_name,
+               c.f_thumbnail_url as f_channel_thumbnail,
+               c.f_subscriber_count as f_subscriber_count
         FROM t_analyses a 
-        LEFT JOIN t_channels c ON a.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_id = $1
       `, [id]);
 
@@ -118,17 +118,28 @@ export async function GET(request: Request, { params }: { params: { id: string }
       };
 
       try {
+        // Real-time ranking from t_channel_stats (same source as /api/ranking)
         const rankingRes = await client.query(`
-          SELECT f_rank, f_total_count, f_top_percentile
-          FROM t_rankings_cache
-          WHERE f_channel_id = $1 AND f_category_id = $2
+          WITH Ranked AS (
+            SELECT 
+              f_channel_id,
+              f_avg_reliability,
+              RANK() OVER (ORDER BY f_avg_reliability DESC) as rank,
+              COUNT(*) OVER () as total_count
+            FROM t_channel_stats
+            WHERE f_official_category_id = $2
+          )
+          SELECT rank, total_count,
+            ROUND((rank::numeric / total_count) * 100) as top_percentile
+          FROM Ranked
+          WHERE f_channel_id = $1
         `, [analysis.f_channel_id, analysis.f_official_category_id]);
 
         if (rankingRes.rows.length > 0) {
           const rankData = rankingRes.rows[0];
-          channelStats.rank = Number(rankData.f_rank);
-          channelStats.totalChannels = Number(rankData.f_total_count);
-          channelStats.topPercentile = Number(rankData.f_top_percentile);
+          channelStats.rank = Number(rankData.rank);
+          channelStats.totalChannels = Number(rankData.total_count);
+          channelStats.topPercentile = Number(rankData.top_percentile);
         }
 
         const statsRes = await client.query(`
@@ -161,7 +172,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
       };
       
       const { searchParams } = new URL(request.url);
-      const email = searchParams.get('email');
+      const emailFromQuery = searchParams.get('email');
+      let email = emailFromQuery;
+      if (!email) {
+        try {
+          const supabase = createClient();
+          const { data } = await supabase.auth.getUser();
+          email = data?.user?.email ?? null;
+        } catch {
+        }
+      }
 
       if (analysis.f_video_id) {
         // ... (existing comments fetching code) ...
@@ -209,24 +229,33 @@ export async function GET(request: Request, { params }: { params: { id: string }
         });
       }
 
-      // Fetch interaction data using analysis ID (f_id)
-      const likeCountRes = await client.query("SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'like'", [id]);
-      const dislikeCountRes = await client.query("SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'dislike'", [id]);
-      interaction.likeCount = parseInt(likeCountRes.rows[0].count, 10);
-      interaction.dislikeCount = parseInt(dislikeCountRes.rows[0].count, 10);
+      // Fetch interaction data using analysis ID
+      const analysisId = analysis.f_id ? String(analysis.f_id) : null;
+      if (analysisId) {
+        const likeCountRes = await client.query(
+          "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'like'",
+          [analysisId]
+        );
+        const dislikeCountRes = await client.query(
+          "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'dislike'",
+          [analysisId]
+        );
+        interaction.likeCount = parseInt(likeCountRes.rows[0].count, 10);
+        interaction.dislikeCount = parseInt(dislikeCountRes.rows[0].count, 10);
 
-      if (email) {
+        if (email) {
           const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
           if (userRes.rows.length > 0) {
             const userId = userRes.rows[0].f_id;
             const userInteractionRes = await client.query(
               'SELECT f_type FROM t_interactions WHERE f_analysis_id = $1 AND f_user_id = $2',
-              [id, userId]
+              [analysisId, userId]
             );
             if (userInteractionRes.rows.length > 0) {
               interaction.userInteraction = userInteractionRes.rows[0].f_type;
             }
           }
+        }
       }
 
       const resultData = {
@@ -236,9 +265,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
           videoTitle: analysis.f_title,
           videoId: analysis.f_video_id,
           id: analysis.f_id, // Ensure ID is passed
-          channelName: analysis.f_name, 
-          channelImage: analysis.f_profile_image_url || "/images/channel-logo.png", 
-          channelHandle: analysis.f_handle,
+          channelName: analysis.f_channel_name || analysis.f_channel_id, 
+          channelImage: analysis.f_channel_thumbnail || "/images/channel-logo.png", 
+          channelHandle: null,
           subscriberCount: analysis.f_subscriber_count,
           videoThumbnail: analysis.f_thumbnail_url || "/images/video-thumbnail.jpg",
           date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),

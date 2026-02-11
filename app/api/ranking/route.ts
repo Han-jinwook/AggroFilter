@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -8,8 +9,16 @@ export async function GET(request: Request) {
   const categoryId = searchParams.get('category');
   const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
   const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
-  const email = searchParams.get('email');
+  const emailFromQuery = searchParams.get('email');
   const focusChannelId = searchParams.get('channelId');
+
+  let email = emailFromQuery;
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data?.user?.email) email = data.user.email;
+  } catch {
+  }
 
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 20;
   const safeOffset = Number.isFinite(offset) ? Math.max(offset, 0) : 0;
@@ -38,10 +47,16 @@ export async function GET(request: Request) {
           cs.f_channel_id as id,
           cs.f_official_category_id as category_id,
           cs.f_avg_reliability as score,
-          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as name,
-          COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') as avatar
+          c.f_title as name,
+          c.f_thumbnail_url as avatar,
+          (
+            SELECT COUNT(*)::int FROM t_analyses a
+            WHERE a.f_channel_id = cs.f_channel_id
+              AND a.f_is_latest = TRUE
+              AND a.f_official_category_id = cs.f_official_category_id
+          ) as analysis_count
         FROM t_channel_stats cs
-        JOIN t_channels c ON cs.f_channel_id = COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id')
+        JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
         ${whereClause}
         ORDER BY cs.f_avg_reliability DESC
         LIMIT $${whereValues.length + 1}
@@ -58,6 +73,7 @@ export async function GET(request: Request) {
         avatar: row.avatar,
         score: Number.parseFloat(row.score),
         categoryId: row.category_id,
+        analysisCount: row.analysis_count || 0,
       }));
 
       const nextOffset = safeOffset + rankedChannels.length < totalCount ? safeOffset + rankedChannels.length : null;
@@ -92,10 +108,10 @@ export async function GET(request: Request) {
               r.f_avg_reliability AS score,
               r.rank,
               r.total_count,
-              COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') AS name,
-              COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') AS avatar
+              c.f_title AS name,
+              c.f_thumbnail_url AS avatar
             FROM Ranked r
-            JOIN t_channels c ON COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') = r.f_channel_id
+            JOIN t_channels c ON c.f_channel_id = r.f_channel_id
             WHERE r.f_channel_id = $${channelIdParamIndex}
             LIMIT 1
           `;
@@ -155,11 +171,11 @@ export async function GET(request: Request) {
                 r.f_avg_reliability AS score,
                 r.rank,
                 r.total_count,
-                COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') AS name,
-                COALESCE(to_jsonb(c)->>'f_profile_image_url', to_jsonb(c)->>'f_thumbnail_url') AS avatar
+                c.f_title AS name,
+                c.f_thumbnail_url AS avatar
               FROM Ranked r
               JOIN t_channel_subscriptions s ON s.f_channel_id = r.f_channel_id
-              JOIN t_channels c ON COALESCE(to_jsonb(c)->>'f_id', to_jsonb(c)->>'f_channel_id') = r.f_channel_id
+              JOIN t_channels c ON c.f_channel_id = r.f_channel_id
               WHERE s.f_user_id = $${emailParamIndex}
               ORDER BY r.rank ASC
               LIMIT 1

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
+import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const amountParam = searchParams.get('amount')
-    const userId = searchParams.get('userId')
+    const userIdFromQuery = searchParams.get('userId')
     const redirectUrlParam = searchParams.get('redirectUrl')
 
     const redirectUrl = redirectUrlParam && redirectUrlParam.startsWith('/') ? redirectUrlParam : '/'
@@ -17,9 +18,17 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
+    let userId = userIdFromQuery
     if (!userId) {
-      return NextResponse.redirect(new URL(redirectUrl, request.url))
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getUser()
+        userId = data?.user?.email ?? null
+      } catch {
+      }
     }
+
+    if (!userId) return NextResponse.redirect(new URL(redirectUrl, request.url))
 
     const amount = Number(amountParam)
     if (!Number.isFinite(amount) || amount <= 0) {

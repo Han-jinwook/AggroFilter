@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { Share2, MessageSquare } from "lucide-react"
 import { calculateReliability, calculateGap, calculateTier, type TierInfo } from "@/lib/prediction-grading"
@@ -23,6 +23,38 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null)
   const [gap, setGap] = useState<number>(0)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+
+  const saveToDatabase = useCallback(
+    async (data: PredictionData, gap: number, tier: TierInfo) => {
+      if (savingRef.current) return
+      savingRef.current = true
+      setSaving(true)
+
+      try {
+        const response = await fetch("/api/prediction/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            analysisId,
+            predictedAccuracy: data.accuracy,
+            predictedClickbait: data.clickbait,
+            actualReliability,
+          }),
+        })
+
+        if (!response.ok && response.status !== 409) {
+          console.error("Failed to save prediction")
+        }
+      } catch (error) {
+        console.error("Error saving prediction:", error)
+      } finally {
+        setSaving(false)
+        savingRef.current = false
+      }
+    },
+    [analysisId, actualReliability]
+  )
 
   useEffect(() => {
     try {
@@ -42,33 +74,7 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
     } catch (error) {
       console.error("Failed to load prediction:", error)
     }
-  }, [analysisId, actualReliability])
-
-  const saveToDatabase = async (data: PredictionData, gap: number, tier: TierInfo) => {
-    if (saving) return
-    setSaving(true)
-
-    try {
-      const response = await fetch("/api/prediction/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          analysisId,
-          predictedAccuracy: data.accuracy,
-          predictedClickbait: data.clickbait,
-          actualReliability
-        })
-      })
-
-      if (!response.ok && response.status !== 409) {
-        console.error("Failed to save prediction")
-      }
-    } catch (error) {
-      console.error("Error saving prediction:", error)
-    } finally {
-      setSaving(false)
-    }
-  }
+  }, [analysisId, actualReliability, saveToDatabase])
 
   if (!prediction || !tierInfo) {
     return null

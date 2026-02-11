@@ -206,13 +206,13 @@ export default function RealTimeBestClient() {
     }
   }, [])
 
-  if (!isMounted) return null
-
   useEffect(() => {
     if (tabParam) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
+
+  if (!isMounted) return null
 
   const handleSort = (type: 'date' | 'name' | 'topic' | 'videoCount' | 'score') => {
     if (sortBy === type) {

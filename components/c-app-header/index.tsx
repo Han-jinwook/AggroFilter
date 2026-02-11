@@ -55,6 +55,38 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   }, [])
 
   useEffect(() => {
+    let isMounted = true
+
+    const syncSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const email = String(data?.user?.email || '')
+        if (!email) return
+
+        const nicknameFromEmail = (email.split('@')[0] || '').trim()
+        const currentNickname = localStorage.getItem('userNickname') || ''
+        const currentEmail = localStorage.getItem('userEmail') || ''
+
+        if (currentEmail !== email) localStorage.setItem('userEmail', email)
+        if (!currentNickname) localStorage.setItem('userNickname', nicknameFromEmail)
+        if (isMounted) {
+          if (!currentNickname) setNickname(nicknameFromEmail)
+          const localPart = nicknameFromEmail.toLowerCase()
+          setIsAdmin(localPart === 'chiu3')
+        }
+      } catch {
+      }
+    }
+
+    syncSession()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     if (!isLoggedIn) {
       setUnreadCount(0)
@@ -63,9 +95,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
     const fetchUnreadCount = async () => {
       try {
-        const email = localStorage.getItem('userEmail')
-        const url = email ? `/api/notification/unread-count?email=${encodeURIComponent(email)}` : '/api/notification/unread-count'
-        const res = await fetch(url, { cache: 'no-store' })
+        const res = await fetch('/api/notification/unread-count', { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
         const nextCount = Number(data?.unreadCount)
@@ -224,10 +254,14 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               >
                 {profileImage ? (
                   <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
-                    <img
+                    <Image
                       src={profileImage || "/placeholder.svg"}
                       alt="Profile"
+                      width={36}
+                      height={36}
                       className="h-9 w-9 rounded-lg object-cover shadow-sm"
+                      unoptimized
+                      loader={({ src }) => src}
                     />
                   </div>
                 ) : (

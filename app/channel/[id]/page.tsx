@@ -7,7 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/c-button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/c-accordion"
 import { Card, CardContent } from "@/components/ui/c-card"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { AppHeader } from "@/components/c-app-header"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -147,12 +147,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     if (!channelId) return
     try {
       localStorage.setItem('focusChannelId', channelId)
-      const email = localStorage.getItem('userEmail')
-      if (!email) {
-        setCredits(null)
-        return
-      }
-      fetch(`/api/credits?email=${encodeURIComponent(email)}`, { cache: 'no-store' })
+      fetch('/api/credits', { cache: 'no-store' })
         .then(async (res) => {
           if (!res.ok) return
           const data = await res.json()
@@ -178,6 +173,22 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     return localStorage.getItem('userEmail')
   }
 
+  const ensureUserEmail = async () => {
+    const existing = getUserEmail()
+    if (existing) return existing
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' })
+      if (!res.ok) return null
+      const data = await res.json()
+      const email = String(data?.user?.email || '')
+      if (!email) return null
+      localStorage.setItem('userEmail', email)
+      return email
+    } catch {
+      return null
+    }
+  }
+
   const openReanalysisEntry = () => {
     if (isMobileDevice()) {
       setModalStep('mobile')
@@ -187,17 +198,12 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   }
 
   const goToMockPayment = () => {
-    const email = getUserEmail()
-    if (!email) {
-      alert('로그인이 필요합니다.')
-      return
-    }
     if (!channelId) {
       alert('채널 정보를 찾을 수 없습니다.')
       return
     }
     const redirectUrl = `/channel/${channelId}`
-    router.push(`/payment/mock?userId=${encodeURIComponent(email)}&redirectUrl=${encodeURIComponent(redirectUrl)}`)
+    router.push(`/payment/mock?redirectUrl=${encodeURIComponent(redirectUrl)}`)
   }
 
   const closeModal = () => setModalStep(null)
@@ -340,7 +346,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
       return
     }
 
-    const email = localStorage.getItem('userEmail')
+    const email = await ensureUserEmail()
     if (!email) {
       alert('로그인이 필요합니다.')
       return
@@ -365,7 +371,6 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: video.url,
-          userId: email,
           forceRecheck: true,
           isRecheck: true,
         }),
@@ -411,14 +416,14 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
     }
   }
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (returnTo) {
       router.push(returnTo)
       return
     }
     if (typeof window !== 'undefined' && window.history.length > 1) router.back()
     else router.push('/p-plaza?tab=channel')
-  }
+  }, [returnTo, router])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -430,7 +435,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [returnTo])
+  }, [handleBack])
 
   const [sortState, setSortState] = useState<Record<string, { type: "date" | "score"; direction: "asc" | "desc" }>>({})
 
@@ -476,7 +481,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
   }
 
   const getSortedVideos = (topic: TTopic) => {
-    const { type, direction } = sortState[topic.categoryId] || { type: "date", direction: "desc" }
+    const { type, direction } = sortState[topic.categoryId] || { type: "score", direction: "asc" }
     return [...topic.videos].sort((a, b) => {
       let comparison = 0
       if (type === "date") {
@@ -489,8 +494,8 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
   }
 
   const getSortIcon = (topicId: string, type: "date" | "score") => {
-    const current = sortState[topicId]
-    if (current?.type !== type) return null
+    const current = sortState[topicId] || { type: "score", direction: "asc" }
+    if (current.type !== type) return null
     return current.direction === "desc" ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
   }
 
@@ -654,51 +659,41 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
             </div>
           </div>
 
-          <Accordion type="single" collapsible className="space-y-3">
-            {channelData.topics.map((topic) => (
+          <Accordion type="multiple" defaultValue={channelData.topics.map(t => t.categoryId.toString())} className="space-y-3">
+            {[...channelData.topics].sort((a, b) => a.score - b.score).map((topic) => (
               <AccordionItem
                 key={topic.categoryId}
                 value={topic.categoryId.toString()}
                 className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm data-[state=open]:ring-1 data-[state=open]:ring-indigo-500 data-[state=open]:border-indigo-500 transition-all duration-200"
               >
-                <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-slate-50 transition-colors">
+                <AccordionTrigger className="px-5 py-2.5 hover:no-underline hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between w-full pr-4">
-                    <div className="flex flex-col items-start gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-lg">{topic.name}</span>
-                        {topic.rankPercent && (
-                          <Link
-                            href={`/p-ranking?category=${topic.categoryId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="hover:opacity-80 active:scale-95 transition-all"
-                          >
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-lg">{topic.name}</span>
+                      <span className="text-xs text-slate-400">({topic.count}개)</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {topic.rank && (
+                        <Link
+                          href={`/p-ranking?category=${topic.categoryId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="group/rank hover:opacity-80 active:scale-95 transition-all flex items-center gap-2"
+                        >
+                          {topic.rankPercent && (
                             <Badge
                               variant="secondary"
                               className="text-[10px] px-1.5 h-5 font-medium bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100"
                             >
                               상위 {topic.rankPercent}%
                             </Badge>
-                          </Link>
-                        )}
-                      </div>
-                      <span className="text-xs text-slate-500">분석 영상 {topic.count}개</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {topic.rank && (
-                        <div className="text-right mr-1">
-                          <Link
-                            href={`/p-ranking?category=${topic.categoryId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="group/rank hover:opacity-80 active:scale-95 transition-all"
-                          >
-                            <div className="text-sm font-bold text-slate-600 leading-none group-hover/rank:text-indigo-600 transition-colors">
-                              {topic.rank}위{" "}
-                              <span className="text-slate-400 font-normal text-xs group-hover/rank:text-indigo-400 transition-colors">
-                                / {topic.totalChannels}
-                              </span>
-                            </div>
-                          </Link>
-                        </div>
+                          )}
+                          <div className="text-sm font-bold text-slate-600 leading-none group-hover/rank:text-indigo-600 transition-colors">
+                            {topic.rank}위{" "}
+                            <span className="text-slate-400 font-normal text-xs group-hover/rank:text-indigo-400 transition-colors">
+                              / {topic.totalChannels}
+                            </span>
+                          </div>
+                        </Link>
                       )}
 
                       <div
@@ -718,7 +713,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                       onClick={() => handleSort(topic.categoryId.toString(), "date")}
                       className={cn(
                         "text-xs font-medium flex items-center gap-1 transition-colors",
-                        (sortState[topic.categoryId]?.type || "date") === "date"
+                        (sortState[topic.categoryId]?.type || "score") === "date"
                           ? "text-slate-900"
                           : "text-slate-400 hover:text-slate-600",
                       )}
@@ -731,7 +726,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                       onClick={() => handleSort(topic.categoryId.toString(), "score")}
                       className={cn(
                         "text-xs font-medium flex items-center gap-1 transition-colors",
-                        sortState[topic.categoryId]?.type === "score"
+                        (sortState[topic.categoryId]?.type || "score") === "score"
                           ? "text-indigo-600"
                           : "text-slate-400 hover:text-slate-600",
                       )}

@@ -35,8 +35,8 @@ function getTierVisual(tier: TReliabilityTier) {
 
   if (tier === "mid") {
     return {
-      title: "약간 과장됨",
-      subtitle: "과장/연출이 섞였을 수 있어요",
+      title: "주의 필요",
+      subtitle: "신뢰하기 어려운 부분이 있을 수 있어요",
       container: "bg-amber-500/10 border-amber-200",
       badge: "bg-amber-500 text-white",
       iconWrap: "bg-amber-500",
@@ -45,8 +45,8 @@ function getTierVisual(tier: TReliabilityTier) {
   }
 
   return {
-    title: "낚시 주의!",
-    subtitle: "제목/썸네일과 내용이 다를 수 있어요",
+    title: "위험 구간!",
+    subtitle: "신뢰도가 낮아 위험할 수 있어요",
     container: "bg-rose-500/10 border-rose-200",
     badge: "bg-rose-600 text-white",
     iconWrap: "bg-rose-600",

@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react"
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
@@ -95,7 +95,10 @@ export default function PlazaPage() {
   const [channelSortDirection, setChannelSortDirection] = useState<"best" | "worst">("best")
 
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedPeriod, setSelectedPeriod] = useState<"1일" | "1주일" | "1개월">("1주일")
+  const [searchSort, setSearchSort] = useState<"clean" | "toxic">("clean")
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   const [allAnalyzedVideos, setAllAnalyzedVideos] = useState<TVideoData[]>([])
   const [filteredVideos, setFilteredVideos] = useState<TVideoData[]>([])
@@ -115,8 +118,6 @@ export default function PlazaPage() {
   const [hotChannels, setHotChannels] = useState<any[]>([])
   const [isLoadingHotChannels, setIsLoadingHotChannels] = useState(true)
 
-  const [trendingChannels, setTrendingChannels] = useState<any[]>([])
-  const [isLoadingTrendingChannels, setIsLoadingTrendingChannels] = useState(true)
 
   const [analyzedChannels, setAnalyzedChannels] = useState<TAnalyzedChannelData[]>([])
   const [isLoadingAnalyzedChannels, setIsLoadingAnalyzedChannels] = useState(true)
@@ -132,7 +133,7 @@ export default function PlazaPage() {
     const fetchVideos = async () => {
       setIsLoadingVideos(true)
       try {
-        const res = await fetch(`/api/plaza/videos?period=${selectedPeriod}&sort=${videoSortConfig.key}&direction=${videoSortConfig.direction}`)
+        const res = await fetch(`/api/plaza/videos?sort=${videoSortConfig.key}&direction=${videoSortConfig.direction}`)
         if (res.ok) {
           const data = await res.json()
           setAllAnalyzedVideos(data.videos || [])
@@ -144,13 +145,13 @@ export default function PlazaPage() {
       }
     }
     fetchVideos()
-  }, [selectedPeriod, videoSortConfig])
+  }, [videoSortConfig])
 
   useEffect(() => {
     const fetchAnalyzedChannels = async () => {
       setIsLoadingAnalyzedChannels(true)
       try {
-        const res = await fetch(`/api/plaza/channels?period=${selectedPeriod}`)
+        const res = await fetch(`/api/plaza/channels`)
         if (res.ok) {
           const data = await res.json()
           setAnalyzedChannels(data.channels || [])
@@ -162,18 +163,47 @@ export default function PlazaPage() {
       }
     }
     fetchAnalyzedChannels()
-  }, [selectedPeriod])
+  }, [])
+
+  const executeSearch = useCallback(async (query: string, sort: "clean" | "toxic") => {
+    if (!query.trim()) {
+      setHasSearched(false)
+      setSearchResults([])
+      return
+    }
+    setIsSearching(true)
+    setHasSearched(true)
+    try {
+      const res = await fetch(`/api/plaza/search?q=${encodeURIComponent(query.trim())}&sort=${sort}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSearchResults(data.results || [])
+      }
+    } catch (error) {
+      console.error('Search failed:', error)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (searchQuery) {
+    if (hasSearched && searchQuery.trim()) {
+      executeSearch(searchQuery, searchSort)
+    }
+  }, [searchSort, hasSearched, searchQuery, executeSearch])
+
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredVideos(allAnalyzedVideos)
+      setHasSearched(false)
+      setSearchResults([])
+    } else {
       const query = searchQuery.toLowerCase()
       const filtered = allAnalyzedVideos.filter(v => 
         v.title.toLowerCase().includes(query) || 
         v.channel.toLowerCase().includes(query)
       )
       setFilteredVideos(filtered)
-    } else {
-      setFilteredVideos(allAnalyzedVideos)
     }
   }, [searchQuery, allAnalyzedVideos])
 
@@ -222,45 +252,6 @@ export default function PlazaPage() {
     fetchHotChannels()
   }, [channelHotFilter, channelSortDirection])
 
-  useEffect(() => {
-    const fetchTrendingChannels = async () => {
-      setIsLoadingTrendingChannels(true)
-      try {
-        const viewsRes = await fetch('/api/plaza/hot-channels?filter=views&direction=desc')
-        const trustRes = await fetch('/api/plaza/hot-channels?filter=trust&direction=desc')
-        
-        if (viewsRes.ok && trustRes.ok) {
-          const viewsData = await viewsRes.json()
-          const trustData = await trustRes.json()
-          
-          console.log('Views data:', viewsData)
-          console.log('Trust data:', trustData)
-          
-          const trending = []
-          
-          if (viewsData.hotChannels && viewsData.hotChannels.length > 0) {
-            trending.push({ ...viewsData.hotChannels[0], type: 'views', label: '주간 분석수' })
-          }
-          
-          if (trustData.hotChannels && trustData.hotChannels.length > 0) {
-            trending.push({ ...trustData.hotChannels[0], type: 'trust', label: '최근 분석 평균' })
-          }
-          
-          if (viewsData.hotChannels && viewsData.hotChannels.length > 1) {
-            trending.push({ ...viewsData.hotChannels[1], type: 'views', label: '주간 분석수' })
-          }
-          
-          console.log('Trending channels:', trending)
-          setTrendingChannels(trending)
-        }
-      } catch (error) {
-        console.error('Failed to fetch trending channels:', error)
-      } finally {
-        setIsLoadingTrendingChannels(false)
-      }
-    }
-    fetchTrendingChannels()
-  }, [])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -526,20 +517,23 @@ export default function PlazaPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    executeSearch(searchQuery, searchSort)
                     e.currentTarget.blur()
                   }
                 }}
                 enterKeyHint="search"
-                placeholder="검색"
+                placeholder="키워드 검색 (예: 비트코인, 대선)"
                 className="flex-1 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none min-w-0 bg-transparent"
                 autoFocus
                 onBlur={() => {
-                  if (!searchQuery) setIsSearchExpanded(false)
+                  if (!searchQuery && !hasSearched) setIsSearchExpanded(false)
                 }}
               />
               <button
                 onClick={() => {
                   setSearchQuery("")
+                  setHasSearched(false)
+                  setSearchResults([])
                   setIsSearchExpanded(false)
                 }}
                 className="flex-shrink-0 rounded-full p-1 hover:bg-slate-100"
@@ -565,29 +559,132 @@ export default function PlazaPage() {
           </button>
         </div>
 
-        {/* 3. 탭별 콘텐츠 */}
-        {activeTab === "video" ? (
+        {/* 2.5 키워드 검색 결과 */}
+        {hasSearched ? (
           <div className="rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
             <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-xs text-slate-500">최초 분석일 기준</span>
-                <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-                  {["1일", "1주일", "1개월"].map((period) => (
-                    <button
-                      key={period}
-                      onClick={() => setSelectedPeriod(period as any)}
-                      className={`rounded-md px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-bold transition-all ${
-                        selectedPeriod === period
-                          ? "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"
-                          : "text-slate-400 hover:text-slate-600"
-                      }`}
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                  &ldquo;{searchQuery}&rdquo; 검색 결과
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isSearching ? '검색 중...' : `${searchResults.length}개의 영상`}
+                </p>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                  <button
+                    onClick={() => setSearchSort("clean")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                      searchSort === "clean"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    🟢 Clean First
+                  </button>
+                  <button
+                    onClick={() => setSearchSort("toxic")}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                      searchSort === "toxic"
+                        ? "bg-rose-500 text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    🔴 Toxic First
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchQuery("")
+                    setHasSearched(false)
+                    setSearchResults([])
+                    setIsSearchExpanded(false)
+                  }}
+                  className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
+              <div className="w-10 sm:w-12 text-center">날짜</div>
+              <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
+              <div className="w-12 sm:w-14 text-center">어그로</div>
+              <div className="w-10 sm:w-12 text-center ml-0.5 sm:ml-1">신뢰도</div>
+            </div>
+
+            <div className="space-y-3">
+              {isSearching ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-purple-500"></div>
+                  <p className="text-sm text-slate-400 font-medium">DB에서 실시간 검색 중...</p>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  &ldquo;{searchQuery}&rdquo;에 대한 분석 결과가 없습니다
+                </div>
+              ) : (
+                searchResults.map((item: any, idx: number) => {
+                  const dateObj = new Date(item.date);
+                  const formattedDate = `${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
+                  return (
+                    <div key={item.id || idx} className="flex items-center gap-2 sm:gap-4">
+                      <div className="w-10 sm:w-12 flex-shrink-0 text-center">
+                        <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 tabular-nums leading-none">
+                          {formattedDate}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/p-result?id=${item.id}`} className="group/title block">
+                          <h3 className="line-clamp-1 text-[11px] sm:text-[13px] font-bold text-slate-800 transition-colors group-hover/title:text-blue-600">
+                            {item.title}
+                          </h3>
+                        </Link>
+                        <div className="mt-0.5 sm:mt-1 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500">
+                          <Image
+                            src={item.channelIcon || "/placeholder.svg?height=12&width=12"}
+                            alt=""
+                            width={10}
+                            height={10}
+                            className="rounded-full flex-shrink-0 sm:w-3 sm:h-3"
+                          />
+                          <span className="truncate">{item.channel}</span>
+                        </div>
+                      </div>
+                      <div className="w-12 sm:w-14 flex-shrink-0 flex justify-center">
+                        <div className={`flex flex-col items-center w-full rounded-lg py-1 sm:py-2 border ${
+                          item.clickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                          item.clickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                          'bg-rose-50/50 border-rose-100/30'
+                        }`}>
+                          <span className={`text-xs sm:text-sm font-black tabular-nums tracking-tight leading-none ${
+                            item.clickbait <= 20 ? 'text-emerald-600' :
+                            item.clickbait <= 40 ? 'text-amber-600' :
+                            'text-rose-600'
+                          }`}>
+                            {item.clickbait}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-10 sm:w-12 flex-shrink-0 flex justify-center">
+                        <div className={`text-base sm:text-lg font-black tracking-tighter tabular-nums leading-none ${item.color === "green" ? "text-green-500" : "text-red-500"}`}>
+                          {item.reliability}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        ) :
+        /* 3. 탭별 콘텐츠 */
+        activeTab === "video" ? (
+          <div className="rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div className="mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상</h2>
             </div>
 
             <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
@@ -701,77 +798,10 @@ export default function PlazaPage() {
           </div>
         ) : (
           <>
-            {/* 지금 뜨는 채널 섹션 */}
-            <div className="mb-6 rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
-              <div className="mb-4 flex items-center gap-2">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
-                <h2 className="text-xl font-bold text-slate-800">지금 뜨는 채널</h2>
-              </div>
-              {isLoadingTrendingChannels ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
-                </div>
-              ) : trendingChannels.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  최근 7일간 분석된 채널이 없습니다
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-4">
-                  {trendingChannels.map((channel, idx) => {
-                    const colors = [
-                      { bg: 'bg-blue-50', border: 'border-blue-100', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', textColor: 'text-blue-600' },
-                      { bg: 'bg-green-50', border: 'border-green-100', iconBg: 'bg-green-100', iconColor: 'text-green-600', textColor: 'text-green-600' },
-                      { bg: 'bg-amber-50', border: 'border-amber-100', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', textColor: 'text-amber-600' }
-                    ]
-                    const color = colors[idx] || colors[0]
-                    const value = channel.type === 'views' 
-                      ? channel.analysis_count 
-                      : Math.round(channel.avg_reliability || 0)
-                    const displayValue = channel.type === 'views' ? value : `${value}점`
-                    
-                    return (
-                      <div key={channel.id} className={`text-center p-4 ${color.bg} rounded-xl border ${color.border}`}>
-                        <div className="flex items-center justify-center mb-2">
-                          <div className={`p-2 ${color.iconBg} rounded-full`}>
-                            {channel.type === 'trust' ? (
-                              <TrendingUp className={`h-5 w-5 ${color.iconColor}`} />
-                            ) : (
-                              <Activity className={`h-5 w-5 ${color.iconColor}`} />
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-sm text-slate-600 mb-1 truncate">{channel.name}</div>
-                        <div className="text-sm text-slate-500">({channel.label})</div>
-                        <div className={`text-2xl font-black ${color.textColor} mt-2`}>{displayValue}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
             {/* 전체 분석 채널 섹션 */}
             <div className="rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4">
                 <h2 className="text-xl font-bold text-slate-800">전체 분석 채널</h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">최초 분석일 기준</span>
-                  <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-                    {(["1일", "1주일", "1개월"] as const).map((period) => (
-                      <button
-                        key={period}
-                        onClick={() => setSelectedPeriod(period)}
-                        className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all ${
-                          selectedPeriod === period
-                            ? "bg-white text-slate-900 shadow-sm ring-1 ring-black/5"
-                            : "text-slate-400 hover:text-slate-600"
-                        }`}
-                      >
-                        {period}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
@@ -786,12 +816,20 @@ export default function PlazaPage() {
                   <div className="flex items-center justify-center py-8">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                   </div>
-                ) : analyzedChannels.length === 0 ? (
+                ) : analyzedChannels.filter(ch => {
+                  if (!searchQuery.trim()) return true
+                  const q = searchQuery.toLowerCase()
+                  return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
+                }).length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-sm">
-                    선택한 기간 내 분석된 채널이 없습니다
+                    {searchQuery.trim() ? `"${searchQuery}"에 대한 채널이 없습니다` : '분석된 채널이 없습니다'}
                   </div>
                 ) : (
-                  analyzedChannels.map((item) => (
+                  analyzedChannels.filter(ch => {
+                    if (!searchQuery.trim()) return true
+                    const q = searchQuery.toLowerCase()
+                    return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
+                  }).map((item, idx) => (
                     <Link
                       key={item.id}
                       href={`/channel/${item.id}`}
@@ -800,7 +838,7 @@ export default function PlazaPage() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-8 flex-shrink-0 text-center">
-                          <span className="text-sm font-bold text-slate-400">{item.rank}</span>
+                          <span className="text-sm font-bold text-slate-400">{idx + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
