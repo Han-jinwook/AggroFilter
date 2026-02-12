@@ -40,6 +40,7 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
             predictedAccuracy: data.accuracy,
             predictedClickbait: data.clickbait,
             actualReliability,
+            userEmail: typeof window !== 'undefined' ? localStorage.getItem('userEmail') || undefined : undefined,
           }),
         })
 

@@ -527,9 +527,7 @@ export default function RankingClient() {
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                         <span className="text-sm">로딩 중...</span>
                       </div>
-                    ) : nextOffset !== null ? (
-                      <div className="text-center text-xs text-slate-400">스크롤하여 더보기</div>
-                    ) : (
+                    ) : nextOffset !== null ? null : (
                       <div className="text-center text-xs text-slate-400">
                         총 {totalCount.toLocaleString()}개
                       </div>

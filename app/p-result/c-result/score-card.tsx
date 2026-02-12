@@ -21,10 +21,20 @@ interface TScoreCardProps {
     tierEmoji: string
     totalPredictions: number
     avgGap: number
+    cumulativeTier?: string
+    cumulativeTierLabel?: string
+    cumulativeTierEmoji?: string
   }
+  userPredictionStats?: {
+    totalPredictions: number
+    avgGap: number | null
+    currentTier: string | null
+    currentTierLabel: string | null
+    tierEmoji: string | null
+  } | null
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
@@ -99,11 +109,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             <div className="flex items-center gap-1">
               <span className="text-sm font-bold text-gray-800">어그로성</span>
               <span className="text-lg font-bold text-pink-500">{clickbaitText}</span>
-              {clickbaitTier && (
-                <span className="ml-1 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink-600">
-                  {clickbaitTier}
-                </span>
-              )}
               <TooltipButton
                 active={activeTooltip === "clickbait"}
                 onToggle={() => toggleTooltip("clickbait")}
@@ -132,26 +137,49 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             </div>
           )}
 
-          {prediction && (
-            <div className="mt-3 space-y-1.5 border-t border-gray-200 pt-3">
-              <div className="flex items-center justify-center gap-2 text-sm">
+          {prediction ? (
+            <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
+              {/* Line 1: This video's prediction */}
+              <div className="flex items-center justify-center gap-1.5 text-sm flex-wrap">
                 <span className="font-medium text-gray-600">나의 신뢰도 촉은?</span>
                 <span className="text-lg font-bold text-purple-600">{prediction.predictedReliability}</span>
-                <span className="font-medium text-gray-600">으로 AI와 오차</span>
+                <span className="font-medium text-gray-600">AI와 오차</span>
                 <span className="text-lg font-bold text-orange-600">{prediction.gap}</span>
+                <span className="font-medium text-gray-600">로</span>
+                <span className="text-base font-bold text-yellow-600">{prediction.tierEmoji} {prediction.tierLabel}({prediction.tier}급)</span>
               </div>
-              <div className="text-center text-xs text-gray-500">
-                ({prediction.totalPredictions}개 영상) 총 누적 &apos;디지털 eye&apos; 레벨 - 평균 오차 <span className="font-semibold text-blue-600">{prediction.avgGap.toFixed(1)}</span>로
-              </div>
-              <div className="flex items-center justify-center gap-2 pt-0.5">
-                <span className="text-2xl">{prediction.tierEmoji}</span>
-                <span className="text-base font-bold text-yellow-600">{prediction.tier}등급</span>
-                <span className="text-gray-400">-</span>
-                <span className="text-base font-bold text-gray-800">{prediction.tierLabel}</span>
-                <span className="text-sm text-gray-600">입니다.</span>
+              {/* Line 2: Cumulative average */}
+              <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 bg-slate-50 rounded-lg py-1.5 px-2">
+                <span>◁</span>
+                <span>누적</span>
+                <span className="font-bold text-blue-600">{prediction.totalPredictions}개</span>
+                <span>영상 평균</span>
+                <span className="font-bold text-blue-600">{prediction.avgGap.toFixed(1)}</span>
+                <span>로</span>
+                <span className="font-bold text-gray-800">{prediction.cumulativeTierLabel || prediction.tierLabel}({prediction.cumulativeTier || prediction.tier}급)</span>
+                <span>▷</span>
               </div>
             </div>
-          )}
+          ) : userPredictionStats ? (
+            <div className="mt-3 border-t border-gray-200 pt-3">
+              {userPredictionStats.totalPredictions > 0 ? (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 bg-slate-50 rounded-lg py-1.5 px-2">
+                  <span>◁</span>
+                  <span>누적</span>
+                  <span className="font-bold text-blue-600">{userPredictionStats.totalPredictions}개</span>
+                  <span>영상 평균</span>
+                  <span className="font-bold text-blue-600">{userPredictionStats.avgGap?.toFixed(1) ?? '-'}</span>
+                  <span>로</span>
+                  <span className="font-bold text-gray-800">{userPredictionStats.currentTierLabel || ''}({userPredictionStats.currentTier || ''}급)</span>
+                  <span>▷</span>
+                </div>
+              ) : (
+                <div className="text-center text-xs text-gray-400 py-1">
+                  촉점수를 준 영상이 없어 등급이 없습니다
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -58,9 +58,10 @@ const TIER_ROADMAP = [
 interface TierRoadmapProps {
   currentTier?: string
   currentGap?: number
+  totalPredictions?: number
 }
 
-export function TierRoadmap({ currentTier = 'B', currentGap = 0 }: TierRoadmapProps) {
+export function TierRoadmap({ currentTier = 'B', currentGap = 0, totalPredictions = 0 }: TierRoadmapProps) {
   return (
     <div className="bg-card border rounded-xl p-6 shadow-sm">
       <h2 className="text-xl font-semibold mb-4">등급 로드맵</h2>
@@ -119,10 +120,10 @@ export function TierRoadmap({ currentTier = 'B', currentGap = 0 }: TierRoadmapPr
                     {tier.description}
                   </p>
 
-                  {isCurrentTier && currentGap > 0 && (
+                  {isCurrentTier && (currentGap > 0 || totalPredictions > 0) && (
                     <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                       <p className="text-xs font-medium text-muted-foreground">
-                        현재 평균 오차: <span className={tier.color}>{currentGap.toFixed(1)}점</span>
+                        누적 <span className={tier.color}>{totalPredictions}개</span> 영상 · 평균 오차 <span className={tier.color}>{currentGap.toFixed(1)}점</span>
                       </p>
                     </div>
                   )}

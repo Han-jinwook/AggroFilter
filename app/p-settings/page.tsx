@@ -14,12 +14,30 @@ export default function SettingsPage() {
   const [profileImage, setProfileImage] = useState('')
   const [tempNickname, setTempNickname] = useState('')
   const [tempProfileImage, setTempProfileImage] = useState('')
+  const [predictionStats, setPredictionStats] = useState<{ currentTier: string; avgGap: number; totalPredictions: number }>({ currentTier: 'B', avgGap: 0, totalPredictions: 0 })
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('userNickname')
     const savedProfileImage = localStorage.getItem('userProfileImage')
     if (savedNickname) setNickname(savedNickname)
     if (savedProfileImage) setProfileImage(savedProfileImage)
+
+    // Fetch user prediction stats
+    const email = localStorage.getItem('userEmail')
+    if (email) {
+      fetch(`/api/prediction/stats?email=${encodeURIComponent(email)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setPredictionStats({
+              currentTier: data.currentTier || 'B',
+              avgGap: data.avgGap || 0,
+              totalPredictions: data.totalPredictions || 0,
+            })
+          }
+        })
+        .catch(() => {})
+    }
   }, [])
 
   const handleEdit = () => {
@@ -93,7 +111,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 왼쪽: 등급 로드맵 */}
           <div className="order-2 lg:order-1">
-            <TierRoadmap currentTier="B" currentGap={0} />
+            <TierRoadmap currentTier={predictionStats.currentTier} currentGap={predictionStats.avgGap} totalPredictions={predictionStats.totalPredictions} />
           </div>
 
           {/* 오른쪽: 프로필 정보 */}

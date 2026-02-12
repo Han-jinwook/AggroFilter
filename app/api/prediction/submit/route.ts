@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('[prediction/submit] email:', userEmail, 'analysisId:', analysisId, 'predicted:', predictedAccuracy, predictedClickbait, 'actual:', actualReliability)
+
     if (!analysisId || predictedAccuracy == null || predictedClickbait == null || actualReliability == null) {
+      console.log('[prediction/submit] Missing required fields')
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 

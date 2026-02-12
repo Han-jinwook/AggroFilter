@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import html2canvas from 'html2canvas'
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/c-button"
@@ -13,7 +12,17 @@ import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
+import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
+
+function extractVideoId(url: string): string {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1)
+    return u.searchParams.get('v') || url
+  } catch {
+    return url
+  }
+}
 
 export default function ResultClient() {
   const router = useRouter()
@@ -32,20 +41,32 @@ export default function ResultClient() {
   const [showReplies, setShowReplies] = useState<{ [key: string]: boolean }>({})
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState("")
+  const [editingComment, setEditingComment] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState("")
+  const [userProfileImage, setUserProfileImage] = useState<string | null>(null)
+  const [userNickname, setUserNickname] = useState<string>("")
   const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
   const [playerTime, setPlayerTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
   const captureRef = useRef<HTMLDivElement>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
 
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [predictionData, setPredictionData] = useState<any>(null)
+  const [userPredictionStats, setUserPredictionStats] = useState<any>(null)
+  const hasSavedPrediction = useRef(false)
+
+  useEffect(() => {
+    const profileImage = localStorage.getItem('userProfileImage')
+    const nickname = localStorage.getItem('userNickname')
+    setUserProfileImage(profileImage)
+    setUserNickname(nickname || '')
+  }, [])
 
   useEffect(() => {
     setPredictionData(null); // 이전 예측 데이터 초기화
@@ -56,21 +77,13 @@ export default function ResultClient() {
       return
     }
 
-    try {
-      const storedPrediction = sessionStorage.getItem('prediction_quiz_v1')
-      if (storedPrediction) {
-        setPredictionData(JSON.parse(storedPrediction))
-      }
-    } catch (e) {
-      console.error('Failed to load prediction data:', e)
-    }
-
     let isCancelled = false;
 
     const fetchAnalysisData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/analysis/result/${id}`, {
+        const email = localStorage.getItem('userEmail') || ''
+        const response = await fetch(`/api/analysis/result/${id}${email ? `?email=${encodeURIComponent(email)}` : ''}`, {
           cache: 'no-store'
         })
         
@@ -81,6 +94,69 @@ export default function ResultClient() {
         
         if (!isCancelled) {
           setAnalysisData(data.analysisData)
+          setUserPredictionStats(data.userPredictionStats || null)
+
+          // Load prediction: sessionStorage (current session) or DB (past record)
+          let matched = false
+          try {
+            const storedPrediction = sessionStorage.getItem('prediction_quiz_v1')
+            if (storedPrediction) {
+              const parsed = JSON.parse(storedPrediction)
+              const videoUrl = data.analysisData?.url || ''
+              if (parsed.url && videoUrl && (parsed.url === videoUrl || extractVideoId(parsed.url) === extractVideoId(videoUrl))) {
+                setPredictionData(parsed)
+                matched = true
+                // Save to DB if not already saved
+                if (!hasSavedPrediction.current && !data.videoPrediction) {
+                  hasSavedPrediction.current = true
+                  const email = localStorage.getItem('userEmail') || ''
+                  if (email) {
+                    fetch('/api/prediction/submit', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        analysisId: id,
+                        predictedAccuracy: parsed.accuracy,
+                        predictedClickbait: parsed.clickbait,
+                        actualReliability: data.analysisData?.scores?.trust,
+                        userEmail: email,
+                      }),
+                    })
+                      .then(res => {
+                        if (res.ok) {
+                          // Re-fetch cumulative stats after successful save
+                          return fetch(`/api/prediction/stats?email=${encodeURIComponent(email)}`)
+                        }
+                        return null
+                      })
+                      .then(res => res?.ok ? res.json() : null)
+                      .then(stats => {
+                        if (stats) {
+                          setUserPredictionStats({
+                            totalPredictions: stats.totalPredictions || 0,
+                            avgGap: stats.avgGap ?? null,
+                            currentTier: stats.currentTier || null,
+                            currentTierLabel: stats.currentTierLabel || null,
+                            tierEmoji: stats.tierEmoji || null,
+                          })
+                        }
+                      })
+                      .catch(err => console.error('Failed to save prediction:', err))
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to load prediction data:', e)
+          }
+          // Fallback: use DB record for this video
+          if (!matched && data.videoPrediction) {
+            setPredictionData({
+              predictedReliability: data.videoPrediction.predictedReliability,
+              accuracy: 0,
+              clickbait: 0,
+            })
+          }
           setComments(data.comments || [])
           setLikeCount(data.interaction?.likeCount || 0)
           setDislikeCount(data.interaction?.dislikeCount || 0)
@@ -193,7 +269,8 @@ export default function ResultClient() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 analysisId: analysisData.id,
-                type: 'like'
+                type: 'like',
+                email: localStorage.getItem('userEmail') || undefined
             })
         })
         const data = await response.json()
@@ -235,7 +312,8 @@ export default function ResultClient() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 analysisId: analysisData.id,
-                type: 'dislike'
+                type: 'dislike',
+                email: localStorage.getItem('userEmail') || undefined
             })
         })
         const data = await response.json()
@@ -280,9 +358,10 @@ export default function ResultClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          videoId: analysisData.videoId,
+          analysisId: analysisData.id,
           text: newComment,
-          nickname
+          nickname,
+          email: localStorage.getItem('userEmail') || undefined
         })
       });
       if (!response.ok) throw new Error('Failed to post comment');
@@ -311,21 +390,21 @@ export default function ResultClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          videoId: analysisData.videoId,
+          analysisId: analysisData.id,
           text: replyText,
           nickname,
-          parentId: commentId
+          parentId: commentId,
+          email: localStorage.getItem('userEmail') || undefined
         })
       });
       if (!response.ok) throw new Error('Failed to post reply');
       const data = await response.json();
       if (data.success && data.comment) {
-        const newReply = data.comment;
         const updatedComments = comments.map((comment) => {
           if (comment.id === commentId) {
              return {
                ...comment,
-               replies: [...(comment.replies || []), { ...newReply, replyTo: comment.author }]
+               replies: [...(comment.replies || []), { ...data.comment, replyTo: comment.author }]
              }
           }
           return comment
@@ -341,40 +420,61 @@ export default function ResultClient() {
     }
   }
 
+  const handleCommentLike = async (commentId: string) => {
+    const email = localStorage.getItem('userEmail')
+    if (!email) {
+      requireLogin('comment', () => {})
+      return
+    }
+    try {
+      const response = await fetch('/api/comments/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId, type: 'like', email })
+      })
+      if (!response.ok) throw new Error('Failed to like comment')
+      const data = await response.json()
+      if (data.success) {
+        setComments(comments.map(c => 
+          c.id === commentId 
+            ? { ...c, likeCount: data.likeCount, dislikeCount: data.dislikeCount }
+            : c
+        ))
+      }
+    } catch (error) {
+      console.error('Comment like error:', error)
+    }
+  }
+
+  const handleCommentDislike = async (commentId: string) => {
+    const email = localStorage.getItem('userEmail')
+    if (!email) {
+      requireLogin('comment', () => {})
+      return
+    }
+    try {
+      const response = await fetch('/api/comments/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId, type: 'dislike', email })
+      })
+      if (!response.ok) throw new Error('Failed to dislike comment')
+      const data = await response.json()
+      if (data.success) {
+        setComments(comments.map(c => 
+          c.id === commentId 
+            ? { ...c, likeCount: data.likeCount, dislikeCount: data.dislikeCount }
+            : c
+        ))
+      }
+    } catch (error) {
+      console.error('Comment dislike error:', error)
+    }
+  }
+
   const toggleTooltip = (tooltipId: string) => {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
   }
-
-  const handleImageShare = async () => {
-    if (!captureRef.current) return;
-    setIsCapturing(true);
-
-    try {
-      const canvas = await html2canvas(captureRef.current, {
-        useCORS: true,
-        allowTaint: true,
-        logging: true,
-        backgroundColor: '#f0f9ff', // A light blue background similar to the page
-        onclone: (document) => {
-          // Hide elements that shouldn't be in the capture
-          const elementsToHide = document.querySelectorAll('.no-capture');
-          elementsToHide.forEach(el => (el as HTMLElement).style.display = 'none');
-        }
-      });
-      const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `AggroFilter_Analysis_${analysisData?.videoId || 'result'}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('이미지 캡처에 실패했습니다:', error);
-      alert('이미지 공유 파일을 생성하는 데 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsCapturing(false);
-    }
-  };
 
   const handleShare = async () => {
     if (!analysisData) return
@@ -648,15 +748,21 @@ ${content}
                   tier: tierInfo.tier,
                   tierLabel: tierInfo.label,
                   tierEmoji: tierInfo.emoji,
-                  totalPredictions: 1,
-                  avgGap: gap
+                  totalPredictions: userPredictionStats?.totalPredictions || 0,
+                  avgGap: userPredictionStats?.avgGap ?? gap,
+                  cumulativeTier: userPredictionStats?.currentTier || tierInfo.tier,
+                  cumulativeTierLabel: userPredictionStats?.currentTierLabel || tierInfo.label,
+                  cumulativeTierEmoji: userPredictionStats?.tierEmoji || tierInfo.emoji,
                 }
               })() : undefined}
+              userPredictionStats={userPredictionStats}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
               <p className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
-                {analysisData.evaluationReason.split('<br />').join('\n')}
+                {analysisData.evaluationReason
+                  .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
+                  .split('<br />').join('\n')}
                 {showMore && <span className="ml-1"> {analysisData.overallAssessment}</span>}
               </p>
               <button
@@ -803,12 +909,9 @@ ${content}
             </div>
           </div>
           </div>
-          <div className="mt-4 flex justify-center items-center gap-4">
- 
-            <Button onClick={handleImageShare} disabled={isCapturing} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-transform transform hover:scale-105 no-capture">
-              {isCapturing ? '이미지 생성 중...' : '결과 이미지로 공유'}
-            </Button>
-          <InteractionBar 
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <p className="text-sm font-semibold text-blue-600">어그로필터 AI분석 결과</p>
+            <InteractionBar 
               liked={liked} 
               disliked={disliked} 
               likeCount={likeCount} 
@@ -821,8 +924,20 @@ ${content}
           <div className="rounded-3xl border-4 border-gray-300 bg-white p-5">
             <h3 className="mb-4 text-lg font-bold">{comments.length}개의 댓글</h3>
             <div className="mb-6 flex items-start gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-500 text-white font-bold">C</div>
-              <div className="flex-1">
+              {userProfileImage ? (
+                <Image
+                  src={userProfileImage}
+                  alt="Profile"
+                  width={30}
+                  height={30}
+                  className="h-[30px] w-[30px] flex-shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-bold">
+                  {userNickname ? userNickname[0].toUpperCase() : 'U'}
+                </div>
+              )}
+              <div className="flex-1 flex items-end gap-2">
                 <input
                   type="text"
                   value={newComment}
@@ -835,22 +950,263 @@ ${content}
                     }
                   }}
                   placeholder="댓글 추가..."
-                  className="w-full border-b-2 border-gray-300 bg-transparent px-1 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                  className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-sm focus:border-gray-900 focus:outline-none"
                 />
+                {isCommentFocused && (
+                  <button
+                    onClick={handleCommentSubmit}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-semibold pb-2"
+                  >
+                    등록
+                  </button>
+                )}
               </div>
             </div>
             <div className="space-y-4">
               {comments.map((comment) => (
-                <div key={comment.id} className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-400 text-white text-sm font-bold">
-                    {comment.author[1]}
-                  </div>
-                  <div className="flex-1">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
-                      <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
+                <div key={comment.id} className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    {comment.authorImage ? (
+                      <Image
+                        src={comment.authorImage}
+                        alt={comment.author}
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-400 text-white text-sm font-bold">
+                        {comment.author[0]}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
+                        <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
+                        {comment.author === localStorage.getItem('userNickname') && (
+                          <>
+                            <button 
+                              onClick={() => {
+                                setEditingComment(comment.id)
+                                setEditText(comment.text)
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                if (confirm('정말 이 댓글을 삭제하시겠습니까?')) {
+                                  try {
+                                    const email = localStorage.getItem('userEmail')
+                                    const response = await fetch('/api/comments/delete', {
+                                      method: 'DELETE',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ commentId: comment.id, email })
+                                    })
+                                    if (response.ok) {
+                                      setComments(comments.filter(c => c.id !== comment.id))
+                                    } else {
+                                      alert('댓글 삭제에 실패했습니다.')
+                                    }
+                                  } catch (error) {
+                                    console.error('Delete error:', error)
+                                    alert('댓글 삭제에 실패했습니다.')
+                                  }
+                                }
+                              }}
+                              className="text-gray-500 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {editingComment === comment.id ? (
+                        <div className="mt-2 flex items-start gap-2">
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              setEditingComment(null)
+                              setEditText("")
+                            }}
+                            className="text-xs text-gray-600 hover:text-gray-800"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => {
+                              // TODO: Call update API
+                              setComments(comments.map(c => 
+                                c.id === comment.id ? { ...c, text: editText } : c
+                              ))
+                              setEditingComment(null)
+                              setEditText("")
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            저장
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-700">{comment.text}</p>
+                      )}
+                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
+                        <button 
+                          onClick={() => handleCommentLike(comment.id)}
+                          className="flex items-center gap-1 hover:text-blue-600"
+                        >
+                          <ThumbsUp className="h-3 w-3" />
+                          <span>{comment.likeCount || 0}</span>
+                        </button>
+                        <button 
+                          onClick={() => handleCommentDislike(comment.id)}
+                          className="flex items-center gap-1 hover:text-red-600"
+                        >
+                          <ThumbsDown className="h-3 w-3" />
+                          <span>{comment.dislikeCount || 0}</span>
+                        </button>
+                        <button 
+                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                          className="hover:text-blue-600"
+                        >
+                          답글
+                        </button>
+                      </div>
+                      {replyingTo === comment.id && (
+                        <div className="mt-3 flex items-start gap-2">
+                          <input
+                            type="text"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault()
+                                handleReplySubmit(comment.id)
+                              }
+                            }}
+                            placeholder="답글 추가..."
+                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => handleReplySubmit(comment.id)}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            등록
+                          </button>
+                        </div>
+                      )}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {comment.replies.map((reply: any) => (
+                            <div key={reply.id} className="flex items-start gap-2 pl-4 border-l-2 border-gray-200">
+                              {reply.authorImage ? (
+                                <Image
+                                  src={reply.authorImage}
+                                  alt={reply.author}
+                                  width={32}
+                                  height={32}
+                                  className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-300 text-white text-xs font-bold">
+                                  {reply.author[0]}
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <div className="mb-1 flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-gray-900">{reply.author}</span>
+                                  <span className="text-xs text-gray-500">{reply.date} {reply.time}</span>
+                                  {reply.author === localStorage.getItem('userNickname') && (
+                                    <>
+                                      <button 
+                                        onClick={() => {
+                                          setEditingComment(reply.id)
+                                          setEditText(reply.text)
+                                        }}
+                                        className="text-gray-500 hover:text-gray-700"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </button>
+                                      <button 
+                                        onClick={async () => {
+                                          if (confirm('정말 이 답글을 삭제하시겠습니까?')) {
+                                            try {
+                                              const email = localStorage.getItem('userEmail')
+                                              const response = await fetch('/api/comments/delete', {
+                                                method: 'DELETE',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ commentId: reply.id, email })
+                                              })
+                                              if (response.ok) {
+                                                setComments(comments.map(c => ({
+                                                  ...c,
+                                                  replies: c.replies?.filter((r: any) => r.id !== reply.id)
+                                                })))
+                                              } else {
+                                                alert('답글 삭제에 실패했습니다.')
+                                              }
+                                            } catch (error) {
+                                              console.error('Delete error:', error)
+                                              alert('답글 삭제에 실패했습니다.')
+                                            }
+                                          }
+                                        }}
+                                        className="text-gray-500 hover:text-red-600"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                                {editingComment === reply.id ? (
+                                  <div className="mt-2 flex items-start gap-2">
+                                    <input
+                                      type="text"
+                                      value={editText}
+                                      onChange={(e) => setEditText(e.target.value)}
+                                      className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-xs focus:border-gray-900 focus:outline-none"
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setEditingComment(null)
+                                        setEditText("")
+                                      }}
+                                      className="text-xs text-gray-600 hover:text-gray-800"
+                                    >
+                                      취소
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        // TODO: Call update API
+                                        setComments(comments.map(c => ({
+                                          ...c,
+                                          replies: c.replies?.map((r: any) => 
+                                            r.id === reply.id ? { ...r, text: editText } : r
+                                          )
+                                        })))
+                                        setEditingComment(null)
+                                        setEditText("")
+                                      }}
+                                      className="text-xs text-blue-600 hover:text-blue-800"
+                                    >
+                                      저장
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-700">{reply.text}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-700">{comment.text}</p>
                   </div>
                 </div>
               ))}

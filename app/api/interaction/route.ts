@@ -12,16 +12,9 @@ async function getUserId(client: any, email: string) {
   return userRes.rows[0].f_id;
 }
 
-async function getVideoIdFromAnalysisId(client: any, analysisId: string) {
-  const res = await client.query('SELECT f_video_id FROM t_analyses WHERE f_id = $1 LIMIT 1', [analysisId]);
-  if (res.rows.length === 0 || !res.rows[0]?.f_video_id) {
-    throw new Error('Analysis not found');
-  }
-  return String(res.rows[0].f_video_id);
-}
 
 export async function POST(request: Request) {
-  const { videoId: videoIdFromBody, analysisId, type, email: emailFromBody } = await request.json();
+  const { analysisId, type, email: emailFromBody } = await request.json();
 
   let email = emailFromBody as string | undefined;
   try {
@@ -43,22 +36,15 @@ export async function POST(request: Request) {
   try {
     await client.query('BEGIN');
 
-    const videoId =
-      (typeof videoIdFromBody === 'string' && videoIdFromBody.length > 0)
-        ? videoIdFromBody
-        : (typeof analysisId === 'string' && analysisId.length > 0)
-          ? await getVideoIdFromAnalysisId(client, analysisId)
-          : null;
-
-    if (!videoId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!analysisId) {
+      return NextResponse.json({ error: 'Missing analysisId' }, { status: 400 });
     }
 
     const userId = await getUserId(client, email);
 
     const existingInteraction = await client.query(
-      'SELECT f_id, f_type FROM t_interactions WHERE f_user_id = $1 AND f_video_id = $2',
-      [userId, videoId]
+      'SELECT f_id, f_type FROM t_interactions WHERE f_user_id = $1 AND f_analysis_id = $2',
+      [userId, analysisId]
     );
 
     if (existingInteraction.rows.length > 0) {
@@ -68,7 +54,7 @@ export async function POST(request: Request) {
         await client.query('DELETE FROM t_interactions WHERE f_id = $1', [existingInteraction.rows[0].f_id]);
       } else {
         // Switch type: update the existing interaction
-        await client.query('UPDATE t_interactions SET f_type = $1, f_updated_at = NOW() WHERE f_id = $2', [
+        await client.query('UPDATE t_interactions SET f_type = $1 WHERE f_id = $2', [
           type,
           existingInteraction.rows[0].f_id,
         ]);
@@ -76,19 +62,19 @@ export async function POST(request: Request) {
     } else {
       // New interaction: insert it
       await client.query(
-        'INSERT INTO t_interactions (f_user_id, f_video_id, f_type) VALUES ($1, $2, $3)',
-        [userId, videoId, type]
+        'INSERT INTO t_interactions (f_user_id, f_analysis_id, f_type) VALUES ($1, $2, $3)',
+        [userId, analysisId, type]
       );
     }
 
     // Fetch the new counts
     const likeCountRes = await client.query(
-      "SELECT COUNT(*) FROM t_interactions WHERE f_video_id = $1 AND f_type = 'like'",
-      [videoId]
+      "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'like'",
+      [analysisId]
     );
     const dislikeCountRes = await client.query(
-      "SELECT COUNT(*) FROM t_interactions WHERE f_video_id = $1 AND f_type = 'dislike'",
-      [videoId]
+      "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'dislike'",
+      [analysisId]
     );
 
     await client.query('COMMIT');

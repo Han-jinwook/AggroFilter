@@ -189,9 +189,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
           SELECT c.*, u.f_nickname, u.f_image
           FROM t_comments c
           JOIN t_users u ON c.f_user_id = u.f_id
-          WHERE c.f_video_id = $1
+          WHERE c.f_analysis_id = $1
           ORDER BY c.f_created_at DESC
-        `, [analysis.f_video_id]);
+        `, [id]);
 
         // ... (existing comments processing code) ...
         const comments = commentsRes.rows;
@@ -203,6 +203,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             id: c.f_id,
             author: c.f_nickname || 'Unknown',
             authorId: c.f_user_id,
+            authorImage: c.f_image || null,
             date: new Date(c.f_created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
             time: new Date(c.f_created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
             text: c.f_text,
@@ -258,6 +259,53 @@ export async function GET(request: Request, { params }: { params: { id: string }
         }
       }
 
+      // Fetch user's cumulative prediction stats + this video's prediction
+      let userPredictionStats = null;
+      let videoPrediction = null;
+      if (email) {
+        try {
+          const userStatsRes = await client.query(
+            `SELECT total_predictions, avg_gap, current_tier, current_tier_label, tier_emoji
+             FROM t_users WHERE f_email = $1`,
+            [email]
+          );
+          if (userStatsRes.rows.length > 0) {
+            const u = userStatsRes.rows[0];
+            userPredictionStats = {
+              totalPredictions: Number(u.total_predictions) || 0,
+              avgGap: u.avg_gap !== null ? Number(u.avg_gap) : null,
+              currentTier: u.current_tier || null,
+              currentTierLabel: u.current_tier_label || null,
+              tierEmoji: u.tier_emoji || null,
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching user prediction stats:', e);
+        }
+
+        // Fetch this video's prediction record from DB
+        try {
+          const vpRes = await client.query(
+            `SELECT predicted_reliability, actual_reliability, gap, tier, tier_label, tier_emoji
+             FROM t_prediction_quiz WHERE user_email = $1 AND analysis_id = $2`,
+            [email, id]
+          );
+          if (vpRes.rows.length > 0) {
+            const vp = vpRes.rows[0];
+            videoPrediction = {
+              predictedReliability: Number(vp.predicted_reliability),
+              actualReliability: Number(vp.actual_reliability),
+              gap: Number(vp.gap),
+              tier: vp.tier,
+              tierLabel: vp.tier_label,
+              tierEmoji: vp.tier_emoji,
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching video prediction:', e);
+        }
+      }
+
       const resultData = {
         analysisData: {
           // ... (existing fields)
@@ -295,7 +343,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
           summarySubtitle: analysis.f_summary,
         },
         comments: formattedComments,
-        interaction: interaction
+        interaction: interaction,
+        userPredictionStats: userPredictionStats,
+        videoPrediction: videoPrediction
       };
 
       return NextResponse.json(resultData);

@@ -39,7 +39,7 @@ function normalizeEvaluationReasonScores(
   if (Number.isFinite(clickbait)) {
     out = out.replace(
       /(어그로성\s*평가\s*)\(\s*\d+\s*점\s*\)/g,
-      `$1(${Math.round(clickbait)}점${clickbaitTierLabel ? ` / ${clickbaitTierLabel}` : ''})`
+      `$1(${Math.round(clickbait)}점)`
     );
 
     if (clickbaitTierLabel && !/2\.\s*어그로성\s*평가[\s\S]*?<br\s*\/>\s*이\s*점수는/g.test(out)) {

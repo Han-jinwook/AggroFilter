@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { videoId, text, email: emailFromBody, nickname, parentId } = body;
+    const { analysisId, text, email: emailFromBody, nickname, parentId } = body;
 
     let email = emailFromBody as string | undefined;
     try {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     } catch {
     }
 
-    if (!videoId || !text || !email) {
+    if (!analysisId || !text || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -48,22 +48,29 @@ export async function POST(request: Request) {
       }
 
       // 2. Insert Comment
-      const commentId = uuidv4();
-      await client.query(`
-        INSERT INTO t_comments (f_id, f_text, f_video_id, f_user_id, f_parent_id, f_created_at, f_updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-      `, [commentId, text, videoId, userId, parentId || null]);
+      const insertRes = await client.query(`
+        INSERT INTO t_comments (f_text, f_analysis_id, f_user_id, f_parent_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING f_id
+      `, [text, analysisId, userId, parentId || null]);
+      
+      const commentId = insertRes.rows[0].f_id;
 
       await client.query('COMMIT');
+
+      // Fetch user image
+      const userImageRes = await client.query('SELECT f_image FROM t_users WHERE f_id = $1', [userId]);
+      const authorImage = userImageRes.rows[0]?.f_image || null;
 
       // Return the new comment data so frontend can prepend it immediately
       const newComment = {
         id: commentId,
         text,
-        videoId,
+        analysisId,
         userId,
         parentId,
         author: nickname || email.split('@')[0],
+        authorImage: authorImage,
         date: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
         time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
         replies: []
