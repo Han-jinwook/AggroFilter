@@ -43,3 +43,35 @@
 
 ---
 *위 순서에 따라 Phase 0(본진 안전화)부터 진행하고, 이후 `aggro-marketing-bot/`로 완전 분리합니다.*
+
+---
+
+## 현재 미해결 문제 (2026-02-13 05:00)
+
+### 댓글/답글 프로필 이미지 새로고침 후 사라지는 문제
+
+**증상:**
+- 새로 작성한 댓글/답글에는 프로필 이미지가 표시됨
+- 새로고침 후 모든 댓글/답글의 프로필 이미지가 사라짐 (이니셜만 표시)
+
+**시도한 해결 방법:**
+1. ✅ API 응답에 `authorImage` 포함: `/api/analysis/result/[id]/route.ts`에서 `c.f_image` 추가
+2. ✅ 댓글 등록 API에서 `authorImage` 반환: `/api/comments/route.ts`에서 사용자 이미지 조회 후 반환
+3. ✅ 프론트엔드에서 수동 오버라이드 제거: API 응답을 그대로 사용하도록 수정
+
+**관련 파일:**
+- `app/api/analysis/result/[id]/route.ts` (line 206: authorImage 추가)
+- `app/api/comments/route.ts` (line 62-63: 사용자 이미지 조회)
+- `app/p-result/ResultClient.tsx` (댓글/답글 렌더링 부분)
+
+**추가 확인 필요:**
+- DB `t_users` 테이블의 `f_image` 컬럼에 실제 이미지 URL이 저장되어 있는지 확인
+- API 응답에서 `authorImage` 값이 null이 아닌지 확인
+- 프로필 이미지가 localStorage에만 저장되고 DB에는 저장되지 않는 것은 아닌지 확인
+
+**완료된 기능:**
+- ✅ 댓글/답글 좋아요/싫어요 기능
+- ✅ 댓글/답글 수정 기능 (UI)
+- ✅ 댓글/답글 삭제 기능 (DB 연동)
+- ✅ '어그로필터 AI분석 결과' 제목 파란색 표시
+- ✅ 댓글 입력창 프로필 크기 조정 (30px)
