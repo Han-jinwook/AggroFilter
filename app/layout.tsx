@@ -1,6 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { Analytics } from "@vercel/analytics/react"
+import { ThemeProvider } from "@/components/c-theme-provider"
 import "./globals.css"
 import { BottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
@@ -23,11 +25,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: TRootLayoutProps) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body className={inter.className}>
-        {children}
-        <SideWingAds />
-        <BottomBanner />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+          <SideWingAds />
+          <BottomBanner />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

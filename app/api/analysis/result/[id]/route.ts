@@ -184,31 +184,35 @@ export async function GET(request: Request, { params }: { params: { id: string }
       }
 
       if (analysis.f_video_id) {
-        // ... (existing comments fetching code) ...
         const commentsRes = await client.query(`
-          SELECT c.*, u.f_nickname, u.f_image
+          SELECT c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
+            u.f_nickname, u.f_image, u.f_email,
+            COUNT(CASE WHEN ci.f_type = 'like' THEN 1 END)::int as like_count,
+            COUNT(CASE WHEN ci.f_type = 'dislike' THEN 1 END)::int as dislike_count
           FROM t_comments c
           JOIN t_users u ON c.f_user_id = u.f_id
+          LEFT JOIN t_comment_interactions ci ON ci.f_comment_id = c.f_id::text
           WHERE c.f_analysis_id = $1
+          GROUP BY c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
+                   u.f_nickname, u.f_image, u.f_email
           ORDER BY c.f_created_at DESC
         `, [id]);
 
-        // ... (existing comments processing code) ...
         const comments = commentsRes.rows;
         const commentMap = new Map();
 
         comments.forEach(c => {
-            // ...
              const commentObj = {
             id: c.f_id,
             author: c.f_nickname || 'Unknown',
             authorId: c.f_user_id,
+            authorEmail: c.f_email || null,
             authorImage: c.f_image || null,
             date: new Date(c.f_created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
             time: new Date(c.f_created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
             text: c.f_text,
-            likes: 0, 
-            dislikes: 0,
+            likeCount: parseInt(c.like_count) || 0, 
+            dislikeCount: parseInt(c.dislike_count) || 0,
             replies: [],
             replyTo: null 
           };
@@ -313,6 +317,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           videoTitle: analysis.f_title,
           videoId: analysis.f_video_id,
           id: analysis.f_id, // Ensure ID is passed
+          channelId: analysis.f_channel_id,
           channelName: analysis.f_channel_name || analysis.f_channel_id, 
           channelImage: analysis.f_channel_thumbnail || "/images/channel-logo.png", 
           channelHandle: null,

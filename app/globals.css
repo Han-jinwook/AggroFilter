@@ -83,3 +83,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes myRankPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+  }
+}

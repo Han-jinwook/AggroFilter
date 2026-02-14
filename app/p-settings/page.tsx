@@ -17,14 +17,32 @@ export default function SettingsPage() {
   const [predictionStats, setPredictionStats] = useState<{ currentTier: string; avgGap: number; totalPredictions: number }>({ currentTier: 'B', avgGap: 0, totalPredictions: 0 })
 
   useEffect(() => {
-    const savedNickname = localStorage.getItem('userNickname')
-    const savedProfileImage = localStorage.getItem('userProfileImage')
-    if (savedNickname) setNickname(savedNickname)
-    if (savedProfileImage) setProfileImage(savedProfileImage)
-
-    // Fetch user prediction stats
     const email = localStorage.getItem('userEmail')
     if (email) {
+      // DB에서 프로필 정보 fetch (source of truth)
+      fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.user) {
+            const dbNickname = data.user.nickname || email.split('@')[0]
+            const dbImage = data.user.image || ''
+            setNickname(dbNickname)
+            setProfileImage(dbImage)
+            // localStorage는 캐시 용도로만 업데이트
+            localStorage.setItem('userNickname', dbNickname)
+            localStorage.setItem('userProfileImage', dbImage)
+            window.dispatchEvent(new Event('profileUpdated'))
+          }
+        })
+        .catch(() => {
+          // DB 실패 시 localStorage fallback
+          const savedNickname = localStorage.getItem('userNickname')
+          const savedProfileImage = localStorage.getItem('userProfileImage')
+          if (savedNickname) setNickname(savedNickname)
+          if (savedProfileImage) setProfileImage(savedProfileImage)
+        })
+
+      // Fetch user prediction stats
       fetch(`/api/prediction/stats?email=${encodeURIComponent(email)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -46,14 +64,42 @@ export default function SettingsPage() {
     setIsEditing(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (tempNickname.trim()) {
-      setNickname(tempNickname)
-      setProfileImage(tempProfileImage)
-      localStorage.setItem('userNickname', tempNickname)
-      localStorage.setItem('userProfileImage', tempProfileImage)
-      window.dispatchEvent(new Event('profileUpdated'))
-      setIsEditing(false)
+      const email = localStorage.getItem('userEmail')
+      
+      if (email) {
+        try {
+          // DB에 먼저 저장 (source of truth)
+          const response = await fetch('/api/user/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              nickname: tempNickname,
+              profileImage: tempProfileImage || null
+            })
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            const savedNickname = data.user?.nickname || tempNickname
+            const savedImage = data.user?.image || ''
+            
+            // DB 저장 성공 후 localStorage 캐시 업데이트
+            setNickname(savedNickname)
+            setProfileImage(savedImage)
+            localStorage.setItem('userNickname', savedNickname)
+            localStorage.setItem('userProfileImage', savedImage)
+            window.dispatchEvent(new Event('profileUpdated'))
+            setIsEditing(false)
+          } else {
+            console.error('Failed to update profile in DB')
+          }
+        } catch (error) {
+          console.error('Profile update error:', error)
+        }
+      }
     }
   }
 

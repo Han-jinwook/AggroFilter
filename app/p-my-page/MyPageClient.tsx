@@ -14,19 +14,23 @@ interface TAnalysisVideo {
   fullDate?: string // 정렬용 정밀 타임스탬프
   title: string
   channel: string
+  channelId: string
   channelIcon: string
   score: number
   rank: number | string
   totalRank: number | string
   category: string
+  categoryId: number
   views?: string
 }
 
 interface TSubscribedChannel {
   id: string
+  channelId: string
   date: string
   channelName: string
   topic: string
+  categoryId: number
   videoCount: number
   rankScore: number
 }
@@ -53,6 +57,7 @@ export default function MyPageClient() {
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [guideCount, setGuideCount] = useState(0)
@@ -123,9 +128,11 @@ export default function MyPageClient() {
       if (!existing) {
         channelMap.set(v.channel, {
           id: v.channel,
+          channelId: v.channelId,
           date: v.date,
           channelName: v.channel,
           topic: v.category || "기타",
+          categoryId: v.categoryId,
           videoCount: 1,
           rankScore: v.score
         });
@@ -256,11 +263,12 @@ export default function MyPageClient() {
     }
   }
 
-  const handleChannelPressStart = () => {
+  const handleChannelPressStart = (channelId: string, categoryId?: number) => {
     isLongPressRef.current = false
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true
-      router.push("/p-ranking")
+      const categoryParam = categoryId ? `category=${categoryId}&` : ''
+      router.push(`/p-ranking?${categoryParam}channel=${channelId}`)
     }, 500)
   }
 
@@ -286,6 +294,10 @@ export default function MyPageClient() {
   const sortedChannels = useMemo(() => {
     let filtered = [...channels]
 
+    if (selectedCategory) {
+      filtered = filtered.filter(c => c.topic === selectedCategory)
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(c => 
@@ -307,7 +319,18 @@ export default function MyPageClient() {
       if (aValue > bValue) return sortOrder === "asc" ? 1 : -1
       return 0
     })
-  }, [channels, sortKey, sortOrder, searchQuery])
+  }, [channels, sortKey, sortOrder, searchQuery, selectedCategory])
+
+  const categoryFilterStats = useMemo(() => {
+    if (!selectedCategory) return null
+    const vids = analyzedVideos.filter(v => (v.category || "기타") === selectedCategory)
+    if (vids.length === 0) return null
+    const totalScore = vids.reduce((sum, v) => sum + v.score, 0)
+    return {
+      videoCount: vids.length,
+      avgScore: Math.round(totalScore / vids.length)
+    }
+  }, [analyzedVideos, selectedCategory])
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
@@ -367,12 +390,20 @@ export default function MyPageClient() {
                     <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {greenTopics.length > 0 ? (
                         greenTopics.map((topic) => (
-                          <span
+                          <button
                             key={topic}
-                            className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs sm:text-sm font-bold shadow-sm border border-emerald-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                            onClick={() => {
+                              setSelectedCategory(topic)
+                              setActiveTab("channels")
+                            }}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm border whitespace-nowrap hover:scale-105 transition-all cursor-pointer ${
+                              selectedCategory === topic
+                                ? "bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-300"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                            }`}
                           >
                             #{topic}
-                          </span>
+                          </button>
                         ))
                       ) : (
                          <div className="w-full text-center py-2 text-sm text-slate-400">
@@ -390,12 +421,20 @@ export default function MyPageClient() {
                     <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {redTopics.length > 0 ? (
                         redTopics.map((topic) => (
-                          <span
+                          <button
                             key={topic}
-                            className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs sm:text-sm font-bold shadow-sm border border-rose-100 whitespace-nowrap hover:scale-105 transition-transform cursor-default"
+                            onClick={() => {
+                              setSelectedCategory(topic)
+                              setActiveTab("channels")
+                            }}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm border whitespace-nowrap hover:scale-105 transition-all cursor-pointer ${
+                              selectedCategory === topic
+                                ? "bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300"
+                                : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100"
+                            }`}
                           >
                             #{topic}
-                          </span>
+                          </button>
                         ))
                       ) : (
                         <div className="w-full text-center py-2 text-sm text-slate-400">
@@ -465,7 +504,10 @@ export default function MyPageClient() {
             )}
 
             <button
-              onClick={() => setActiveTab("channels")}
+              onClick={() => {
+                setActiveTab("channels")
+                setSelectedCategory(null)
+              }}
               className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
                 activeTab === "channels"
                   ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200"
@@ -572,7 +614,7 @@ export default function MyPageClient() {
                       <span className="text-xs font-medium text-slate-400">신뢰도 점수</span>
                       <span className={`px-2 py-0.5 rounded-md font-bold ${
                         video.score >= 70 ? 'text-emerald-500 bg-emerald-50' : 
-                        video.score >= 51 ? 'text-amber-500 bg-amber-50' : 
+                        video.score >= 50 ? 'text-amber-500 bg-amber-50' : 
                         'text-rose-500 bg-rose-50'
                       }`}>{video.score}</span>
                     </span>
@@ -608,6 +650,28 @@ export default function MyPageClient() {
                 </div>
               )}
 
+              {/* Category Filter Badge */}
+              {selectedCategory && (
+                <div className="mb-3 flex items-center gap-2 px-1">
+                  <span className="text-xs text-slate-500 font-medium">필터:</span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200">
+                    #{selectedCategory}
+                    <button
+                      onClick={() => setSelectedCategory(null)}
+                      className="ml-0.5 rounded-full p-0.5 hover:bg-indigo-200 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    {sortedChannels.length}개 채널
+                    {categoryFilterStats && (
+                      <> · {categoryFilterStats.videoCount}개 영상 · 평균 신뢰도 <strong className={categoryFilterStats.avgScore >= 70 ? 'text-emerald-600' : categoryFilterStats.avgScore >= 50 ? 'text-amber-600' : 'text-rose-600'}>{categoryFilterStats.avgScore}점</strong></>
+                    )}
+                  </span>
+                </div>
+              )}
+
               {/* Table Header */}
               <div className="mb-2 flex items-center gap-1 sm:gap-2 border-b border-slate-100 pb-2 text-[10px] sm:text-xs font-medium text-slate-400 px-1">
                 {isManageMode && (
@@ -628,7 +692,7 @@ export default function MyPageClient() {
                 )}
                 <button
                   onClick={() => handleSort("date")}
-                  className="flex items-center gap-1 hover:text-slate-600 w-8 sm:w-9 pl-1"
+                  className="flex items-center gap-1 hover:text-slate-600 w-10 sm:w-11 pl-1 whitespace-nowrap"
                 >
                   날짜
                   <ChevronDown
@@ -646,6 +710,7 @@ export default function MyPageClient() {
                 </button>
                 <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
+                    onClick={() => handleSort("topic")}
                     className="flex items-center justify-end gap-1 hover:text-slate-600 w-20 sm:w-24"
                   >
                     카테고리
@@ -680,10 +745,10 @@ export default function MyPageClient() {
                   return (
                     <div key={channel.id} className="relative group">
                       <button
-                        onMouseDown={isManageMode ? undefined : handleChannelPressStart}
+                        onMouseDown={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId)}
                         onMouseUp={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
                         onMouseLeave={isManageMode ? undefined : handleChannelPressCancel}
-                        onTouchStart={isManageMode ? undefined : handleChannelPressStart}
+                        onTouchStart={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId)}
                         onTouchEnd={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
                         onTouchCancel={isManageMode ? undefined : handleChannelPressCancel}
                         onClick={isManageMode ? () => {

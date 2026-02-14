@@ -53,9 +53,11 @@ export async function POST(request: Request) {
         id: row.id,
         title: row.title,
         channel: row.channel_name || '알 수 없음',
+        channelId: row.channel_id,
         channelIcon: row.channel_icon,
         score: row.score,
         category: getCategoryName(row.category_id),
+        categoryId: row.category_id,
         fullDate: row.created_at, // 정렬용 정밀 타임스탬프 추가
         date: new Date(row.created_at).toLocaleDateString('ko-KR', {
            year: '2-digit',

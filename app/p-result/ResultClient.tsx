@@ -62,10 +62,29 @@ export default function ResultClient() {
   const hasSavedPrediction = useRef(false)
 
   useEffect(() => {
-    const profileImage = localStorage.getItem('userProfileImage')
-    const nickname = localStorage.getItem('userNickname')
-    setUserProfileImage(profileImage)
-    setUserNickname(nickname || '')
+    const email = localStorage.getItem('userEmail')
+    if (email) {
+      // DB에서 프로필 정보 fetch (source of truth)
+      fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.user) {
+            const dbNickname = data.user.nickname || email.split('@')[0]
+            const dbImage = data.user.image || ''
+            setUserNickname(dbNickname)
+            setUserProfileImage(dbImage)
+            localStorage.setItem('userNickname', dbNickname)
+            localStorage.setItem('userProfileImage', dbImage)
+          } else {
+            setUserNickname(localStorage.getItem('userNickname') || '')
+            setUserProfileImage(localStorage.getItem('userProfileImage'))
+          }
+        })
+        .catch(() => {
+          setUserNickname(localStorage.getItem('userNickname') || '')
+          setUserProfileImage(localStorage.getItem('userProfileImage'))
+        })
+    }
   }, [])
 
   useEffect(() => {
@@ -233,10 +252,42 @@ export default function ResultClient() {
     return true
   }
 
-  const handleLoginSuccess = (email: string) => {
-    const nickname = email.split("@")[0]
+  const handleLoginSuccess = async (email: string) => {
     localStorage.setItem("userEmail", email)
-    localStorage.setItem("userNickname", nickname)
+
+    // DB에서 프로필 정보 fetch (source of truth)
+    try {
+      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.user) {
+          const dbNickname = data.user.nickname || email.split("@")[0]
+          const dbImage = data.user.image || ""
+          localStorage.setItem("userNickname", dbNickname)
+          localStorage.setItem("userProfileImage", dbImage)
+          setUserNickname(dbNickname)
+          setUserProfileImage(dbImage)
+        } else {
+          const nickname = email.split("@")[0]
+          localStorage.setItem("userNickname", nickname)
+          localStorage.setItem("userProfileImage", "")
+          setUserNickname(nickname)
+          setUserProfileImage("")
+          await fetch('/api/user/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, nickname, profileImage: null })
+          })
+        }
+      }
+    } catch (error) {
+      const nickname = email.split("@")[0]
+      localStorage.setItem("userNickname", nickname)
+      localStorage.setItem("userProfileImage", "")
+      setUserNickname(nickname)
+      setUserProfileImage("")
+    }
+
     window.dispatchEvent(new CustomEvent("profileUpdated"))
 
     setShowLoginModal(false)
@@ -341,7 +392,7 @@ export default function ResultClient() {
 
   const getTrafficLightImage = (score: number) => {
     if (score >= 70) return "/images/traffic-light-green.png"
-    if (score >= 51) return "/images/traffic-light-yellow.png"
+    if (score >= 50) return "/images/traffic-light-yellow.png"
     return "/images/traffic-light-red.png"
   }
 
@@ -683,7 +734,7 @@ ${content}
               videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
-              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}`)}
+              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}`)}
               onHeaderClick={() => setShowPlayer(!showPlayer)}
             />
             {/* YouTube Embed Player - Conditional and Non-Sticky */}
@@ -785,7 +836,7 @@ ${content}
             </div>
           )}
           <div
-            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}`)}
+            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}`)}
             className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
           >
             <div className="mb-2 flex items-center justify-between">
@@ -967,11 +1018,9 @@ ${content}
                 <div key={comment.id} className="space-y-2">
                   <div className="flex items-start gap-3">
                     {comment.authorImage ? (
-                      <Image
+                      <img
                         src={comment.authorImage}
                         alt={comment.author}
-                        width={40}
-                        height={40}
                         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                       />
                     ) : (
@@ -983,7 +1032,7 @@ ${content}
                       <div className="mb-1 flex items-center gap-2">
                         <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
                         <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
-                        {comment.author === localStorage.getItem('userNickname') && (
+                        {comment.authorEmail === localStorage.getItem('userEmail') && (
                           <>
                             <button 
                               onClick={() => {
@@ -1106,11 +1155,9 @@ ${content}
                           {comment.replies.map((reply: any) => (
                             <div key={reply.id} className="flex items-start gap-2 pl-4 border-l-2 border-gray-200">
                               {reply.authorImage ? (
-                                <Image
+                                <img
                                   src={reply.authorImage}
                                   alt={reply.author}
-                                  width={32}
-                                  height={32}
                                   className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
                                 />
                               ) : (
@@ -1122,7 +1169,7 @@ ${content}
                                 <div className="mb-1 flex items-center gap-2">
                                   <span className="text-xs font-semibold text-gray-900">{reply.author}</span>
                                   <span className="text-xs text-gray-500">{reply.date} {reply.time}</span>
-                                  {reply.author === localStorage.getItem('userNickname') && (
+                                  {reply.authorEmail === localStorage.getItem('userEmail') && (
                                     <>
                                       <button 
                                         onClick={() => {

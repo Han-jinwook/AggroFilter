@@ -100,9 +100,9 @@ export async function POST(request: Request) {
         if (userRes.rows.length === 0) {
           const newUserId = uuidv4();
           await creditClient.query(
-            `INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
-             VALUES ($1, $2, $3, NOW(), NOW())`,
-            [newUserId, userId, userId.split('@')[0]]
+            `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+             VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+            [newUserId, userId, userId.split('@')[0], null]
           );
         }
 
@@ -317,9 +317,9 @@ export async function POST(request: Request) {
           // Create user if doesn't exist
           const newUserId = uuidv4();
           await client.query(`
-            INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-          `, [newUserId, userId, userId.split('@')[0]]);
+            INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
+          `, [newUserId, userId, userId.split('@')[0], null]);
           console.log('새 유저 생성:', newUserId);
         }
         // Store email directly in f_user_id

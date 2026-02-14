@@ -46,28 +46,36 @@
 
 ---
 
-## 현재 미해결 문제 (2026-02-13 05:00)
+## 해결 완료 (2026-02-14 01:10)
 
-### 댓글/답글 프로필 이미지 새로고침 후 사라지는 문제
+### 댓글/답글 프로필 이미지 새로고침 후 사라지는 문제 ✅
 
-**증상:**
-- 새로 작성한 댓글/답글에는 프로필 이미지가 표시됨
-- 새로고침 후 모든 댓글/답글의 프로필 이미지가 사라짐 (이니셜만 표시)
+**근본 원인 (2단계):**
+1. **1차 원인**: 프로필 이미지가 `localStorage`에만 저장되고 DB(`t_users.f_image`)에는 저장되지 않음
+2. **2차 원인 (핵심)**: `t_analyses.f_user_id`가 `NULL`로 저장되어 댓글 조회 시 `t_users`와 JOIN 불가
+   - 며칠 전부터 분석 요청 시 로그인하지 않은 상태로 진행되어 `f_user_id`가 `NULL`로 저장됨
+   - `app/api/analysis/request/route.ts:395`에서 `actualUserId`가 `null`이면 그대로 저장됨
 
-**시도한 해결 방법:**
-1. ✅ API 응답에 `authorImage` 포함: `/api/analysis/result/[id]/route.ts`에서 `c.f_image` 추가
-2. ✅ 댓글 등록 API에서 `authorImage` 반환: `/api/comments/route.ts`에서 사용자 이미지 조회 후 반환
-3. ✅ 프론트엔드에서 수동 오버라이드 제거: API 응답을 그대로 사용하도록 수정
+**해결 방법:**
 
-**관련 파일:**
-- `app/api/analysis/result/[id]/route.ts` (line 206: authorImage 추가)
-- `app/api/comments/route.ts` (line 62-63: 사용자 이미지 조회)
-- `app/p-result/ResultClient.tsx` (댓글/답글 렌더링 부분)
+**Phase 1: 프로필 이미지 DB 저장 로직 구현 ✅**
+1. ✅ **프로필 업데이트 API 생성**: `/api/user/profile` (PUT/GET)
+2. ✅ **설정 페이지 수정**: `app/p-settings/page.tsx`
+3. ✅ **로그인 로직 수정**: `app/page.tsx`, `app/p-result/ResultClient.tsx`
+4. ✅ **사용자 생성 로직 수정**: `app/api/comments/route.ts`, `app/api/analysis/request/route.ts`
 
-**추가 확인 필요:**
-- DB `t_users` 테이블의 `f_image` 컬럼에 실제 이미지 URL이 저장되어 있는지 확인
-- API 응답에서 `authorImage` 값이 null이 아닌지 확인
-- 프로필 이미지가 localStorage에만 저장되고 DB에는 저장되지 않는 것은 아닌지 확인
+**Phase 2: 기존 NULL 데이터 일괄 수정 ⏳**
+1. ✅ **SQL 파일 생성**: `scripts/fix_null_user_ids.sql`
+2. ⏳ **Supabase Dashboard에서 실행 필요**:
+   ```sql
+   UPDATE t_analyses 
+   SET f_user_id = 'chiu3@naver.com' 
+   WHERE f_user_id IS NULL;
+   ```
+
+**다음 단계:**
+1. Supabase Dashboard > SQL Editor에서 `scripts/fix_null_user_ids.sql` 실행
+2. 댓글 작성 후 새로고침하여 프로필 이미지 유지 확인
 
 **완료된 기능:**
 - ✅ 댓글/답글 좋아요/싫어요 기능

@@ -104,13 +104,33 @@ export default function MainPage() {
     await startAnalysis(url);
   }
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = async (email: string) => {
     localStorage.setItem("userEmail", email)
     setUserEmail(email)
 
-    const nickname = email.split("@")[0]
-    localStorage.setItem("userNickname", nickname)
-    localStorage.setItem("userProfileImage", "")
+    // DB에서 프로필 정보 fetch (source of truth)
+    try {
+      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.user) {
+          localStorage.setItem("userNickname", data.user.nickname || email.split("@")[0])
+          localStorage.setItem("userProfileImage", data.user.image || "")
+        } else {
+          // DB에 사용자가 없으면 기본값으로 생성
+          localStorage.setItem("userNickname", email.split("@")[0])
+          localStorage.setItem("userProfileImage", "")
+          await fetch('/api/user/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, nickname: email.split("@")[0], profileImage: null })
+          })
+        }
+      }
+    } catch (error) {
+      localStorage.setItem("userNickname", email.split("@")[0])
+      localStorage.setItem("userProfileImage", "")
+    }
 
     window.dispatchEvent(new CustomEvent("profileUpdated"))
 

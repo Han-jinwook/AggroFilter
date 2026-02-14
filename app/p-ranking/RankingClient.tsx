@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -31,7 +31,7 @@ interface TRankingApiResponse {
   }>
   totalCount: number
   nextOffset: number | null
-  myRank: null | {
+  focusRank: null | {
     id: string
     rank: number
     name: string
@@ -49,6 +49,7 @@ export default function RankingClient() {
   const fromTab = searchParams.get("tab")
   
   const currentCategoryId = searchParams.get("category") || ""
+  const focusChannelId = searchParams.get("channel") || ""
   const currentCategoryName = currentCategoryId ? (YOUTUBE_CATEGORIES[Number.parseInt(currentCategoryId)] || "전체") : "전체"
   
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
@@ -58,17 +59,11 @@ export default function RankingClient() {
   const [channels, setChannels] = useState<TChannel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [nextOffset, setNextOffset] = useState<number | null>(0)
   const [totalCount, setTotalCount] = useState<number>(0)
-  const [myRank, setMyRank] = useState<TRankingApiResponse['myRank']>(null)
+  const [focusRank, setFocusRank] = useState<TRankingApiResponse['focusRank']>(null)
   const [showSticky, setShowSticky] = useState(false)
 
-  const myRankRef = useRef<HTMLDivElement | null>(null)
-  const loadMoreRef = useRef<HTMLDivElement | null>(null)
-
-  const nextOffsetRef = useRef<number | null>(0)
-  const channelsLengthRef = useRef<number>(0)
+  const focusRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -98,6 +93,7 @@ export default function RankingClient() {
           })
 
           setAvailableCategories(sortedCategories)
+
         }
       } catch (error) {
         console.error("Failed to fetch categories:", error)
@@ -111,9 +107,8 @@ export default function RankingClient() {
       setIsLoading(true)
       setLoadError(null)
       try {
-        const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
-        const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
-        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=0${focusQs}`)
+        const channelQs = focusChannelId ? `&channelId=${encodeURIComponent(focusChannelId)}` : ''
+        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=1000&offset=0${channelQs}`)
         if (!res.ok) {
           const bodyText = await res.text().catch(() => '')
           console.error('[RankingClient] /api/ranking failed', {
@@ -123,9 +118,8 @@ export default function RankingClient() {
           })
           setLoadError(`랭킹 데이터를 불러오지 못했습니다. (HTTP ${res.status})`)
           setChannels([])
-          setNextOffset(null)
           setTotalCount(0)
-          setMyRank(null)
+          setFocusRank(null)
           return
         }
         const data = (await res.json()) as TRankingApiResponse
@@ -140,9 +134,8 @@ export default function RankingClient() {
           analysisCount: c.analysisCount || 0,
         }))
         setChannels(formatted)
-        setNextOffset(data.nextOffset)
         setTotalCount(data.totalCount || 0)
-        setMyRank(data.myRank)
+        setFocusRank(data.focusRank)
       } catch (error) {
         console.error("Failed to fetch ranking:", error)
       } finally {
@@ -151,87 +144,21 @@ export default function RankingClient() {
     }
 
     fetchChannels()
-  }, [currentCategoryId])
+  }, [currentCategoryId, focusChannelId])
 
-  useEffect(() => {
-    nextOffsetRef.current = nextOffset
-  }, [nextOffset])
-
-  useEffect(() => {
-    channelsLengthRef.current = channels.length
-  }, [channels.length])
-
-  const fetchMore = useCallback(async () => {
-    if (isLoadingMore) return
-    const currentOffset = nextOffsetRef.current
-    if (currentOffset === null) return
-    setIsLoadingMore(true)
-    try {
-      const focusChannelIdNow = typeof window !== 'undefined' ? localStorage.getItem('focusChannelId') : null
-      const focusQs = focusChannelIdNow ? `&channelId=${encodeURIComponent(focusChannelIdNow)}` : ''
-      const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=20&offset=${currentOffset}${focusQs}`)
-      if (!res.ok) {
-        const bodyText = await res.text().catch(() => '')
-        console.error('[RankingClient] /api/ranking (fetchMore) failed', {
-          status: res.status,
-          statusText: res.statusText,
-          body: bodyText,
-        })
-        return
-      }
-      const data = (await res.json()) as TRankingApiResponse
-
-      const formatted = (data.channels || []).map((c) => ({
-        id: c.id,
-        rank: c.rank,
-        name: c.name,
-        avatar: c.avatar,
-        score: c.score,
-        color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
-        highlight: false,
-        analysisCount: c.analysisCount || 0,
-      }))
-
-      setChannels((prev) => [...prev, ...formatted])
-      setNextOffset(data.nextOffset)
-      setTotalCount(data.totalCount || 0)
-      setMyRank(data.myRank)
-    } catch (error) {
-      console.error("Failed to fetch more ranking:", error)
-    } finally {
-      setIsLoadingMore(false)
-    }
-  }, [currentCategoryId, isLoadingMore])
-
-  // Infinite scroll observer
-  useEffect(() => {
-    if (!loadMoreRef.current) return
-    const target = loadMoreRef.current
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          fetchMore()
-        }
-      },
-      { threshold: 0.1 },
-    )
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [fetchMore])
 
   // Sticky My-Rank bar visibility
   useEffect(() => {
     const handleScroll = () => {
-      if (!myRank) {
+      if (!focusRank) {
         setShowSticky(false)
         return
       }
-      if (!myRankRef.current) {
-        // Not loaded into DOM yet -> definitely off-screen
+      if (!focusRef.current) {
         setShowSticky(true)
         return
       }
-      const rect = myRankRef.current.getBoundingClientRect()
+      const rect = focusRef.current.getBoundingClientRect()
       const isOffScreen = rect.top > window.innerHeight || rect.bottom < 0
       setShowSticky(isOffScreen)
     }
@@ -239,28 +166,12 @@ export default function RankingClient() {
     window.addEventListener('scroll', handleScroll)
     handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [myRank, channels])
+  }, [focusRank, channels])
 
-  const scrollToMyRank = async () => {
-    if (!myRank) return
-
-    // If my rank row exists in current DOM, scroll immediately.
-    if (myRankRef.current) {
-      myRankRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return
-    }
-
-    // Otherwise load pages until we include the rank, or until exhausted.
-    // We estimate needed offset by (rank - 1), since we use deterministic ordering.
-    const desiredIndex = Math.max(0, myRank.rank - 1)
-    while (nextOffsetRef.current !== null && channelsLengthRef.current <= desiredIndex) {
-      await fetchMore()
-      // Yield back to allow DOM updates
-      await new Promise((r) => setTimeout(r, 0))
-    }
-
-    if (myRankRef.current) {
-      myRankRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const scrollToFocus = () => {
+    if (!focusRank) return
+    if (focusRef.current) {
+      focusRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
 
@@ -273,8 +184,74 @@ export default function RankingClient() {
   }
 
   const handleCategoryClick = (categoryId: string) => {
-    router.push(`/p-ranking?category=${categoryId}`)
+    const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
+    router.push(`/p-ranking?category=${categoryId}${channelParam}`)
     setIsTopicDropdownOpen(false)
+  }
+
+  const renderChannelRow = (channel: TChannel) => {
+    const isFocus = focusRank != null && channel.id === focusRank.id
+    return (
+      <Link key={channel.rank} href={`/channel/${channel.id}`} className="block">
+        <div
+          ref={isFocus ? focusRef : undefined}
+          className={`relative grid grid-cols-[28px_1fr_auto] md:grid-cols-[60px_1fr_70px_80px] items-center gap-1 md:gap-2 border-b px-2 md:px-4 py-2.5 last:border-0 cursor-pointer transition-all duration-300 ${
+            isFocus
+              ? "bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.25)] my-1 rounded-xl scale-[1.02] z-10 overflow-visible"
+              : "border-gray-100 hover:bg-gray-50"
+          }`}
+          style={isFocus ? { animation: 'myRankPulse 2.5s ease-in-out infinite' } : undefined}
+        >
+          {isFocus && (
+            <div className="absolute -left-3 top-1/2 -translate-y-1/2 bg-indigo-600 text-white text-[11px] font-bold px-1 py-0.5 rounded-sm shadow-md leading-none z-[100]">
+              ▶
+            </div>
+          )}
+          <div
+            className={`text-center text-sm md:text-base font-bold ${isFocus ? "text-indigo-700" : "text-gray-800"}`}
+          >
+            {channel.rank}
+          </div>
+          <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
+            <div className={`relative flex-shrink-0 ${isFocus ? "ring-2 ring-indigo-400 ring-offset-1 rounded-full" : ""}`}>
+              <Image
+                src={channel.avatar || "/placeholder.svg"}
+                alt={channel.name}
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            </div>
+            <span className={`text-sm font-medium truncate ${isFocus ? "text-indigo-900 font-bold" : "text-gray-800"}`}>
+              {channel.name}
+            </span>
+          </div>
+          {/* Mobile: 분석영상+신뢰도 합침 */}
+          <div className="flex md:hidden items-center gap-1.5 flex-shrink-0 pl-2">
+            <span className={`text-xs font-medium ${isFocus ? "text-indigo-400" : "text-gray-400"}`}>
+              {channel.analysisCount || 0}개
+            </span>
+            <span className={`text-sm font-bold ${isFocus ? "text-indigo-700" : "text-gray-800"}`}>
+              {channel.score}
+            </span>
+            <span className={`text-base ${channel.color}`}>●</span>
+          </div>
+          {/* PC: 분석영상 별도 컬럼 */}
+          <div className="hidden md:block text-center">
+            <span className={`text-sm font-medium ${isFocus ? "text-indigo-500" : "text-gray-500"}`}>
+              {channel.analysisCount || 0}개
+            </span>
+          </div>
+          {/* PC: 신뢰도 점수 별도 컬럼 */}
+          <div className="hidden md:flex items-center justify-end gap-2 pr-2">
+            <span className={`text-base font-bold ${isFocus ? "text-indigo-700" : "text-gray-800"}`}>
+              {channel.score}
+            </span>
+            <span className={`text-xl ${channel.color}`}>●</span>
+          </div>
+        </div>
+      </Link>
+    )
   }
 
   return (
@@ -283,7 +260,7 @@ export default function RankingClient() {
 
       <main className="py-6 pt-6">
         <div className="mx-auto max-w-[var(--app-max-width)] px-4">
-          <div className="relative rounded-3xl bg-blue-100 px-4 py-3">
+            <div className="relative rounded-3xl bg-blue-100 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
               <button
                 onClick={() => {
@@ -344,16 +321,17 @@ export default function RankingClient() {
                 </button>
                 {isTopicDropdownOpen && (
                   <div className="absolute right-0 top-full z-30 mt-2 w-64 max-h-80 overflow-y-auto rounded-2xl bg-slate-600 p-4 shadow-xl custom-scrollbar">
-                    <div className="mb-3 flex items-center justify-between border-b border-slate-500 pb-2">
+                    <button 
+                      onClick={() => handleCategoryClick('')}
+                      className="w-full mb-3 flex items-center justify-between border-b border-slate-500 pb-2 text-left transition-colors hover:bg-slate-700 rounded-t-lg -mx-4 -mt-4 px-4 pt-4"
+                    >
                       <h3 className="text-sm font-bold text-white">
                         유튜브 공식 카테고리 ({availableCategories.length})
                       </h3>
-                      <button onClick={() => setIsTopicDropdownOpen(false)}>
-                        <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </button>
-                    </div>
+                      <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
                     <div className="space-y-1">
                       {availableCategories.map((cat) => (
                         <button
@@ -378,7 +356,7 @@ export default function RankingClient() {
                 {/* 2nd Place */}
                 <div 
                   className="flex flex-col items-center"
-                  ref={myRank && channels.find(c => c.rank === 2)?.id === myRank.id ? myRankRef : undefined}
+                  ref={focusRank && channels.find(c => c.rank === 2)?.id === focusRank.id ? focusRef : undefined}
                 >
                   {channels.find(c => c.rank === 2) && (
                     <Link href={`/channel/${channels.find(c => c.rank === 2)!.id}`} className="flex flex-col items-center w-full group">
@@ -402,7 +380,7 @@ export default function RankingClient() {
                 {/* 1st Place */}
                 <div 
                   className="flex flex-col items-center -mt-4 z-10 w-full"
-                  ref={myRank && channels.find(c => c.rank === 1)?.id === myRank.id ? myRankRef : undefined}
+                  ref={focusRank && channels.find(c => c.rank === 1)?.id === focusRank.id ? focusRef : undefined}
                 >
                   {channels.find(c => c.rank === 1) && (
                     <Link href={`/channel/${channels.find(c => c.rank === 1)!.id}`} className="flex flex-col items-center w-full group">
@@ -427,7 +405,7 @@ export default function RankingClient() {
                 {/* 3rd Place */}
                 <div 
                   className="flex flex-col items-center"
-                  ref={myRank && channels.find(c => c.rank === 3)?.id === myRank.id ? myRankRef : undefined}
+                  ref={focusRank && channels.find(c => c.rank === 3)?.id === focusRank.id ? focusRef : undefined}
                 >
                   {channels.find(c => c.rank === 3) && (
                     <Link href={`/channel/${channels.find(c => c.rank === 3)!.id}`} className="flex flex-col items-center w-full group">
@@ -451,16 +429,17 @@ export default function RankingClient() {
             )}
 
             <div className="overflow-hidden rounded-t-3xl border-x-4 border-t-4 border-blue-400 bg-white">
-              <div className="grid grid-cols-[60px_1fr_70px_80px] gap-2 bg-gradient-to-r from-blue-200 to-indigo-200 px-4 py-2">
-                <div className="text-center text-sm font-bold text-gray-800">순위</div>
-                <div className="text-center text-sm font-bold text-gray-800">채널명</div>
-                <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
-                <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
+              <div className="grid grid-cols-[28px_1fr_auto] md:grid-cols-[60px_1fr_70px_80px] gap-1 md:gap-2 bg-gradient-to-r from-blue-200 to-indigo-200 px-2 md:px-4 py-2">
+                <div className="text-center text-xs md:text-sm font-bold text-gray-800">순위</div>
+                <div className="text-sm font-bold text-gray-800 pl-1">채널명 {!isLoading && totalCount > 0 && <span className="text-xs font-medium text-gray-500">(총 {totalCount.toLocaleString()}개)</span>}</div>
+                <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap pr-1 md:hidden">분석 영상</div>
+                <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
+                <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
               </div>
             </div>
 
 
-            <div className="overflow-hidden rounded-b-3xl border-x-4 border-b-4 border-blue-400 bg-white min-h-[300px]">
+            <div className="rounded-b-3xl border-x-4 border-b-4 border-blue-400 bg-white min-h-[300px] overflow-visible">
               {isLoading ? (
                 <div className="flex h-[300px] w-full flex-col items-center justify-center gap-3 text-slate-400">
                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500"></div>
@@ -482,57 +461,7 @@ export default function RankingClient() {
                 </div>
               ) : (
                 <div>
-                  {channels.map((channel) => (
-                  <Link key={channel.rank} href={`/channel/${channel.id}`} className="block">
-                    <div
-                      ref={myRank && channel.id === myRank.id ? myRankRef : undefined}
-                      className={`grid grid-cols-[60px_1fr_70px_80px] items-center gap-2 border-b border-gray-100 px-4 py-2.5 last:border-0 cursor-pointer transition-colors ${
-                        channel.highlight ? "bg-slate-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <div
-                        className={`text-center text-base font-bold ${channel.highlight ? "text-white" : "text-gray-800"}`}
-                      >
-                        {channel.rank}
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <Image
-                          src={channel.avatar || "/placeholder.svg"}
-                          alt={channel.name}
-                          width={36}
-                          height={36}
-                          className="h-9 w-9 rounded-full object-cover"
-                        />
-                        <span className={`text-sm font-medium ${channel.highlight ? "text-white" : "text-gray-800"}`}>
-                          {channel.name}
-                        </span>
-                      </div>
-                      <div className="text-center">
-                        <span className={`text-sm font-medium ${channel.highlight ? "text-white/70" : "text-gray-500"}`}>
-                          {channel.analysisCount || 0}개
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-end gap-2 pr-2">
-                        <span className={`text-base font-bold ${channel.highlight ? "text-white" : "text-gray-800"}`}>
-                          {channel.score}
-                        </span>
-                        <span className={`text-xl ${channel.color}`}>●</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-                  <div ref={loadMoreRef} className="py-4">
-                    {isLoadingMore ? (
-                      <div className="flex items-center justify-center gap-2 text-slate-500">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
-                        <span className="text-sm">로딩 중...</span>
-                      </div>
-                    ) : nextOffset !== null ? null : (
-                      <div className="text-center text-xs text-slate-400">
-                        총 {totalCount.toLocaleString()}개
-                      </div>
-                    )}
-                  </div>
+                  {channels.map((channel) => renderChannelRow(channel))}
                 </div>
               )}
             </div>
@@ -540,18 +469,18 @@ export default function RankingClient() {
         </div>
       </main>
 
-      {showSticky && myRank && (
+      {showSticky && focusRank && (
         <div
-          onClick={scrollToMyRank}
+          onClick={scrollToFocus}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xl z-50"
         >
           <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 px-3 py-1 rounded-full text-xs font-bold">MY</div>
+              <div className="bg-indigo-600 px-3 py-1 rounded-full text-sm font-bold">▶</div>
               <div className="text-sm font-bold">
-                {myRank.rank.toLocaleString()}위
-                {myRank.topPercentile !== null ? (
-                  <span className="ml-2 text-slate-300 text-xs font-medium">(상위 {myRank.topPercentile}%)</span>
+                {focusRank.rank.toLocaleString()}위
+                {focusRank.topPercentile !== null ? (
+                  <span className="ml-2 text-slate-300 text-xs font-medium">(상위 {focusRank.topPercentile}%)</span>
                 ) : null}
               </div>
             </div>

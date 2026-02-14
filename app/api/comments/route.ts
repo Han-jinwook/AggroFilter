@@ -38,13 +38,11 @@ export async function POST(request: Request) {
             await client.query('UPDATE t_users SET f_nickname = $1 WHERE f_id = $2', [nickname, userId]);
         }
       } else {
-        userId = uuidv4(); // Or use email as ID if preferred, but UUID is safer
-        // Create new user
-        // Assuming f_image is optional
+        userId = uuidv4();
         await client.query(`
-          INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
-          VALUES ($1, $2, $3, NOW(), NOW())
-        `, [userId, email, nickname || email.split('@')[0]]);
+          INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+          VALUES ($1, $2, $3, $4, NOW(), NOW())
+        `, [userId, email, nickname || email.split('@')[0], null]);
       }
 
       // 2. Insert Comment
