@@ -561,18 +561,16 @@ export async function POST(request: Request) {
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
 
-      // [v2.0] 분석 완료 후 백그라운드에서 랭킹 캐시 갱신 (비동기)
-      // 특정 카테고리만 갱신하여 효율성 확보
-      refreshRankingCache(videoInfo.officialCategoryId).catch(err => {
-        console.error('랭킹 캐시 갱신 실패:', err);
-      });
-
-      // 랭킹 변동 감지 및 알림 발송 (비동기)
-      if (actualUserId && hasTranscript) {
-        checkRankingChangesAndNotify(videoInfo.officialCategoryId).catch(err => {
-          console.error('랭킹 변동 감지 실패:', err);
+      // [v2.0] 분석 완료 후 백그라운드에서 랭킹 캐시 갱신 → 변동 감지 (순서 보장)
+      refreshRankingCache(videoInfo.officialCategoryId)
+        .then(() => {
+          if (actualUserId && hasTranscript) {
+            return checkRankingChangesAndNotify(videoInfo.officialCategoryId);
+          }
+        })
+        .catch(err => {
+          console.error('랭킹 캐시 갱신/변동 감지 실패:', err);
         });
-      }
 
     } catch (error) {
       await client.query('ROLLBACK');

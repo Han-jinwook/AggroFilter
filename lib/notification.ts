@@ -36,8 +36,9 @@ export async function subscribeChannelAuto(userId: string, channelId: string) {
 
 /**
  * 채널 랭킹 변동 감지 및 알림 발송
- * - 신뢰도 그레이드 변화 (Red/Yellow/Blue)
- * - TOP 10 진입/탈락
+ * - 신뢰도 그레이드 변화 (Red/Yellow/Blue) → send-grade-change
+ * - 순위 변동 (10% 이상) → send-ranking-change
+ * - TOP 10% 진입/탈락 → send-top10-change
  */
 export async function checkRankingChangesAndNotify(categoryId: number) {
   const client = await pool.connect();
@@ -47,9 +48,6 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
     );
     const tableExists = tableExistsRes.rows?.[0]?.exists === true;
     if (!tableExists) return;
-
-    // Ensure contact email column exists for future B2B features
-    await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
 
     // 1. 현재 랭킹 조회 (해당 카테고리)
     const currentRankings = await client.query(`
@@ -65,6 +63,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
 
     if (currentRankings.rows.length === 0) return;
 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const totalChannels = currentRankings.rows[0].total_count;
     const top10PercentThreshold = Math.ceil(totalChannels * 0.1);
 
@@ -88,10 +87,10 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           s.f_last_top10_percent_status,
           u.f_email,
           u.f_nickname,
-          COALESCE(to_jsonb(c)->>'f_name', to_jsonb(c)->>'f_title') as channel_name
+          c.f_title as channel_name
         FROM t_channel_subscriptions s
         JOIN t_users u ON s.f_user_id = u.f_email
-        JOIN t_channels c ON s.f_channel_id = COALESCE(to_jsonb(c)->>'f_channel_id', to_jsonb(c)->>'f_id')
+        JOIN t_channels c ON s.f_channel_id = c.f_channel_id
         WHERE s.f_channel_id = $1 
           AND s.f_notification_enabled = TRUE
       `, [f_channel_id]);
@@ -101,11 +100,31 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
         const oldRank = sub.f_last_rank;
         const oldTop10PercentStatus = sub.f_last_top10_percent_status;
 
-        // 그레이드 변화 감지
+        // 그레이드 변화 감지 → send-grade-change
         if (oldGrade && oldGrade !== currentGrade) {
-          console.log(`그레이드 변화 감지: ${sub.channel_name} (${oldGrade} → ${currentGrade})`);
+          console.log(`[알림] 그레이드 변화: ${sub.channel_name} (${oldGrade} → ${currentGrade})`);
           
-          fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/notification/send-ranking-change`, {
+          fetch(`${baseUrl}/api/notification/send-grade-change`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: sub.f_email,
+              channelName: sub.channel_name,
+              channelId: f_channel_id,
+              oldGrade: oldGrade,
+              newGrade: currentGrade,
+              categoryName: null
+            })
+          }).catch(err => {
+            console.error('[알림] 그레이드 변화 알림 발송 실패:', err);
+          });
+        }
+
+        // 순위 변동 감지 (10% 이상 변동) → send-ranking-change
+        if (oldRank && Math.abs(current_rank - oldRank) >= Math.max(1, Math.ceil(totalChannels * 0.1))) {
+          console.log(`[알림] 순위 변동: ${sub.channel_name} (${oldRank}위 → ${current_rank}위)`);
+          
+          fetch(`${baseUrl}/api/notification/send-ranking-change`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -113,18 +132,18 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
               channelName: sub.channel_name,
               channelId: f_channel_id,
               oldRank: oldRank,
-              categoryName: null // TODO: 카테고리 이름 매핑 추가
+              categoryName: null
             })
           }).catch(err => {
-            console.error('랭킹 변동 알림 발송 실패:', err);
+            console.error('[알림] 순위 변동 알림 발송 실패:', err);
           });
         }
 
-        // 상위 10% 진입/탈락 감지
-        if (oldTop10PercentStatus !== null && oldTop10PercentStatus !== isCurrentTop10Percent) {
-          console.log(`상위 10% 변화 감지: ${sub.channel_name} (${oldTop10PercentStatus ? '진입' : '탈락'} → ${isCurrentTop10Percent ? '진입' : '탈락'})`);
+        // 상위 10% 진입/탈락 감지 → send-top10-change
+        if (oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
+          console.log(`[알림] 상위 10%: ${sub.channel_name} (${oldTop10PercentStatus ? '탈락' : '진입'})`);
           
-          fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/notification/send-top10-change`, {
+          fetch(`${baseUrl}/api/notification/send-top10-change`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -132,10 +151,10 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
               channelName: sub.channel_name,
               channelId: f_channel_id,
               isEntered: isCurrentTop10Percent,
-              categoryName: null // TODO: 카테고리 이름 매핑 추가
+              categoryName: null
             })
           }).catch(err => {
-            console.error('상위 10% 변화 알림 발송 실패:', err);
+            console.error('[알림] 상위 10% 변화 알림 발송 실패:', err);
           });
         }
       }
