@@ -373,6 +373,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
           url: video.url,
           forceRecheck: true,
           isRecheck: true,
+          userId: email,
         }),
       })
 

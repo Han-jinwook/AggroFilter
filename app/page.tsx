@@ -72,7 +72,8 @@ export default function MainPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-            url: analysisUrl
+            url: analysisUrl,
+            userId: userEmail || localStorage.getItem('userEmail') || undefined
         }),
       });
 
