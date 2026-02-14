@@ -9,7 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
-    const { email, channelName, oldGrade, newGrade, categoryName } = await request.json();
+    const { email, channelName, channelId, oldGrade, newGrade, categoryName } = await request.json();
 
     if (!email || !channelName || !oldGrade || !newGrade) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     const oldGradeInfo = gradeInfo[oldGrade] || gradeInfo['Yellow'];
     const newGradeInfo = gradeInfo[newGrade] || gradeInfo['Yellow'];
     
-    const resultUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const resultUrl = channelId
+      ? `${baseUrl}/channel/${channelId}`
+      : `${baseUrl}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;
 
     const client = await pool.connect();
     try {
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
           email,
           'grade_change',
           `${channelName} 채널의 신뢰도 등급이 변경되었습니다 (${oldGrade} → ${newGrade})`,
-          `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`,
+          channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`,
         ]
       );
     } finally {
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
 
             <div style="text-align: center; margin-top: 32px;">
               <a href="${resultUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
-                전체 랭킹 확인하기
+                ${channelId ? '채널 리포트 확인하기' : '전체 랭킹 확인하기'}
               </a>
             </div>
 

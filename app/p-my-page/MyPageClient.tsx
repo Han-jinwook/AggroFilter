@@ -43,7 +43,13 @@ export default function MyPageClient() {
   const tabParam = searchParams.get("tab") as "analysis" | "subscribed" | null
 
   // State
-  const [activeTab, setActiveTab] = useState<"analysis" | "channels">("analysis")
+  const [activeTab, setActiveTab] = useState<"analysis" | "channels">(tabParam === "subscribed" ? "channels" : "analysis")
+
+  const switchTab = useCallback((tab: "analysis" | "channels") => {
+    setActiveTab(tab)
+    const tabValue = tab === "channels" ? "subscribed" : "analysis"
+    router.replace(`/p-my-page?tab=${tabValue}`, { scroll: false })
+  }, [router])
   const [activeTopicTab, setActiveTopicTab] = useState<"trust" | "caution">("trust")
   const [sortBy, setSortBy] = useState<TSortOption>("date")
 
@@ -156,8 +162,7 @@ export default function MyPageClient() {
 
     const red = topics
       .filter(t => t.avgScore < 70)
-      .sort((a, b) => a.avgScore - b.avgScore)
-      .map(t => t.topic);
+      .sort((a, b) => a.avgScore - b.avgScore);
 
     const processedChannels = Array.from(channelMap.values()).map(c => ({
       ...c,
@@ -202,16 +207,36 @@ export default function MyPageClient() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'analysis') {
-      fetchVideos();
-    }
-  }, [activeTab, fetchVideos]);
+    fetchVideos();
+  }, [fetchVideos]);
 
-  // Effects
+  // 뒤로가기(popstate / bfcache) 시 URL에서 탭 복원 + 데이터 재로드
+  useEffect(() => {
+    const restoreFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      setActiveTab(tab === "subscribed" ? "channels" : "analysis");
+      fetchVideos();
+    };
+
+    const handlePopState = () => restoreFromUrl();
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) restoreFromUrl();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [fetchVideos]);
+
+  // Next.js 클라이언트 네비게이션 뒤로가기 시 탭 동기화
   useEffect(() => {
     if (tabParam === "subscribed") {
       setActiveTab("channels")
-    } else if (tabParam === "analysis") {
+    } else if (tabParam === "analysis" || tabParam === null) {
       setActiveTab("analysis")
     }
   }, [tabParam])
@@ -394,7 +419,7 @@ export default function MyPageClient() {
                             key={topic}
                             onClick={() => {
                               setSelectedCategory(topic)
-                              setActiveTab("channels")
+                              switchTab("channels")
                             }}
                             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm border whitespace-nowrap hover:scale-105 transition-all cursor-pointer ${
                               selectedCategory === topic
@@ -420,20 +445,24 @@ export default function MyPageClient() {
                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
                     <div className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                       {redTopics.length > 0 ? (
-                        redTopics.map((topic) => (
+                        redTopics.map((t) => (
                           <button
-                            key={topic}
+                            key={t.topic}
                             onClick={() => {
-                              setSelectedCategory(topic)
-                              setActiveTab("channels")
+                              setSelectedCategory(t.topic)
+                              switchTab("channels")
                             }}
                             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm border whitespace-nowrap hover:scale-105 transition-all cursor-pointer ${
-                              selectedCategory === topic
-                                ? "bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300"
-                                : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100"
+                              selectedCategory === t.topic
+                                ? t.avgScore >= 50
+                                  ? "bg-amber-600 text-white border-amber-600 ring-2 ring-amber-300"
+                                  : "bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300"
+                                : t.avgScore >= 50
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                  : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100"
                             }`}
                           >
-                            #{topic}
+                            #{t.topic}
                           </button>
                         ))
                       ) : (
@@ -454,7 +483,7 @@ export default function MyPageClient() {
         <div className="z-40 mb-2 flex flex-col lg:flex-row items-center justify-between gap-2 bg-transparent transition-all py-0.5">
           <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 w-full lg:w-auto flex-1 transition-all duration-300 ease-in-out mb-2 lg:mb-0">
             <button
-              onClick={() => setActiveTab("analysis")}
+              onClick={() => switchTab("analysis")}
               className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
                 activeTab === "analysis"
                   ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white border-transparent shadow-md shadow-orange-200"
@@ -505,7 +534,7 @@ export default function MyPageClient() {
 
             <button
               onClick={() => {
-                setActiveTab("channels")
+                switchTab("channels")
                 setSelectedCategory(null)
               }}
               className={`flex-1 rounded-full px-3 py-2.5 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
@@ -519,17 +548,63 @@ export default function MyPageClient() {
             
             {activeTab === "channels" && (
               <button
-                onClick={() => {
-                  setIsManageMode(!isManageMode)
-                  setSelectedChannels(new Set())
+                onClick={async () => {
+                  if (!isManageMode) {
+                    setIsManageMode(true)
+                    setSelectedChannels(new Set())
+                    return
+                  }
+                  if (selectedChannels.size === 0) {
+                    setIsManageMode(false)
+                    setSelectedChannels(new Set())
+                    return
+                  }
+                  // 선택된 채널이 있으면 구독 취소 실행
+                  const selectedNames = channels
+                    .filter(c => selectedChannels.has(c.id))
+                    .map(c => c.channelName)
+                    .join(', ')
+                  if (!confirm(
+                    `⚠️ 다음 ${selectedChannels.size}개 채널을 구독 취소하시겠습니까?\n\n${selectedNames}\n\n해당 채널의 분석영상들에 대한 나의 구독기록이 모두 삭제되며 복구할 수 없습니다.`
+                  )) return
+                  try {
+                    const email = localStorage.getItem('userEmail')
+                    if (!email) { alert('로그인이 필요합니다.'); return }
+                    const channelIdsToDelete = channels
+                      .filter(c => selectedChannels.has(c.id))
+                      .map(c => c.channelId)
+                    const response = await fetch('/api/subscription/unsubscribe', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ channelIds: channelIdsToDelete, email })
+                    })
+                    if (response.ok) {
+                      const data = await response.json()
+                      alert(data.message || '구독이 해제되었습니다.')
+                      setSelectedChannels(new Set())
+                      setIsManageMode(false)
+                      await fetchVideos()
+                    } else {
+                      alert('구독 해제에 실패했습니다.')
+                    }
+                  } catch (error) {
+                    console.error('구독 해제 오류:', error)
+                    alert('구독 해제 중 오류가 발생했습니다.')
+                  }
                 }}
                 className={`rounded-full px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
                   isManageMode
-                    ? "bg-red-500 text-white border-transparent shadow-md shadow-red-200"
+                    ? selectedChannels.size > 0
+                      ? "bg-red-600 text-white border-transparent shadow-md shadow-red-200 animate-pulse"
+                      : "bg-slate-500 text-white border-transparent shadow-md"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                {isManageMode ? "취소" : "구독 관리"}
+                {isManageMode
+                  ? selectedChannels.size > 0
+                    ? `구독 취소 (${selectedChannels.size})`
+                    : "취소"
+                  : "구독 관리"}
               </button>
             )}
           </div>
@@ -678,10 +753,10 @@ export default function MyPageClient() {
                   <div className="w-6 sm:w-8 flex items-center justify-center">
                     <input
                       type="checkbox"
-                      checked={selectedChannels.size === channels.length && channels.length > 0}
+                      checked={sortedChannels.length > 0 && sortedChannels.every(c => selectedChannels.has(c.id))}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedChannels(new Set(channels.map(c => c.id)))
+                          setSelectedChannels(new Set(sortedChannels.map(c => c.id)))
                         } else {
                           setSelectedChannels(new Set())
                         }
@@ -707,6 +782,7 @@ export default function MyPageClient() {
                   <ChevronDown
                     className={`h-3 w-3 transition-all ${sortKey === "name" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                   />
+                  <span className="text-slate-400 font-normal ml-2 text-[11px] sm:text-xs">구독중 {channels.length}개</span>
                 </button>
                 <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
@@ -833,49 +909,6 @@ export default function MyPageClient() {
                   )
                 })}
               </div>
-              {isManageMode && selectedChannels.size > 0 && (
-                <div className="mt-4 flex justify-end gap-2 px-1">
-                  <button
-                    onClick={async () => {
-                      if (!confirm(`선택한 ${selectedChannels.size}개 채널의 구독을 해제하시겠습니까?`)) return
-
-                      try {
-                        const email = localStorage.getItem('userEmail');
-                        if (!email) {
-                          alert('로그인이 필요합니다.');
-                          return;
-                        }
-
-                        const response = await fetch('/api/subscription/unsubscribe', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            channelIds: Array.from(selectedChannels),
-                            email: email 
-                          })
-                        });
-
-                        if (response.ok) {
-                          alert('구독이 해제되었습니다.');
-                          // Refetch or remove from local state
-                          setAnalyzedVideos(analyzedVideos.filter(v => !selectedChannels.has(v.channel)));
-                          setSelectedChannels(new Set());
-                          setIsManageMode(false);
-                        } else {
-                          alert('구독 해제에 실패했습니다.');
-                        }
-                      } catch (error) {
-                        console.error('구독 해제 오류:', error);
-                        alert('구독 해제 중 오류가 발생했습니다.');
-                      }
-                    }}
-                    className="px-4 py-2 bg-red-500 text-white rounded-full text-sm font-bold hover:bg-red-600 transition-colors shadow-md"
-                  >
-                    선택 삭제 ({selectedChannels.size})
-                  </button>
-                </div>
-              )}
-              <div className="mt-4 text-center text-xs font-medium text-slate-400">총 채널 수: {channels.length}</div>
             </div>
           )}
         </div>

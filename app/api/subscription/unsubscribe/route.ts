@@ -34,29 +34,32 @@ export async function POST(request: Request) {
       }
       const userId = email;
 
-      const tableExistsRes = await client.query(
-        `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
-      );
-      const tableExists = tableExistsRes.rows?.[0]?.exists === true;
-      if (!tableExists) {
-        return NextResponse.json({
-          success: true,
-          deletedCount: 0,
-          message: '구독 테이블이 없어 해제할 항목이 없습니다.',
-        });
+      // 1. t_channel_subscriptions에서 구독 삭제 (테이블이 있는 경우)
+      let subDeletedCount = 0;
+      try {
+        const subResult = await client.query(`
+          DELETE FROM t_channel_subscriptions
+          WHERE f_channel_id = ANY($1::text[]) AND f_user_id = $2
+          RETURNING f_id
+        `, [channelIds, userId]);
+        subDeletedCount = subResult.rowCount || 0;
+      } catch {
+        // 테이블이 없거나 에러 시 무시
       }
 
-      // 채널 ID 배열과 사용자 ID를 기반으로 구독 삭제
-      const result = await client.query(`
-        DELETE FROM t_channel_subscriptions
+      // 2. t_analyses에서 해당 유저의 해당 채널 분석 기록 삭제
+      const analysisResult = await client.query(`
+        DELETE FROM t_analyses
         WHERE f_channel_id = ANY($1::text[]) AND f_user_id = $2
         RETURNING f_id
       `, [channelIds, userId]);
+      const analysisDeletedCount = analysisResult.rowCount || 0;
 
       return NextResponse.json({ 
         success: true, 
-        deletedCount: result.rowCount,
-        message: `${result.rowCount}개 채널 구독이 해제되었습니다.`
+        deletedSubscriptions: subDeletedCount,
+        deletedAnalyses: analysisDeletedCount,
+        message: `${channelIds.length}개 채널의 구독 및 분석 기록(${analysisDeletedCount}건)이 삭제되었습니다.`
       });
 
     } finally {

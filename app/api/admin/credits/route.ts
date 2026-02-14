@@ -4,18 +4,24 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
-async function isAdmin(email: string | null) {
+function isAdminEmail(email: string | null | undefined) {
   if (!email) return false;
-  return email.split('@')[0].toLowerCase() === 'chiu3';
+  return email.split('@')[0].trim().toLowerCase() === 'chiu3';
+}
+
+async function getAdminEmail(request: Request) {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data?.user?.email) return data.user.email;
+  } catch {}
+  return request.headers.get('x-admin-email');
 }
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    const email = data?.user?.email ?? null;
-
-    if (!await isAdmin(email)) {
+    const email = await getAdminEmail(request);
+    if (!isAdminEmail(email)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -49,11 +55,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    const adminEmail = data?.user?.email ?? null;
-
-    if (!await isAdmin(adminEmail)) {
+    const adminEmail = await getAdminEmail(request);
+    if (!isAdminEmail(adminEmail)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

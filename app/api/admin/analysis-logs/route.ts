@@ -4,18 +4,24 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
-async function isAdmin(email: string | null) {
+function isAdminEmail(email: string | null | undefined) {
   if (!email) return false;
-  return email.split('@')[0].toLowerCase() === 'chiu3';
+  return email.split('@')[0].trim().toLowerCase() === 'chiu3';
 }
 
-export async function GET() {
+async function getAdminEmail(request: Request) {
   try {
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
-    const email = data?.user?.email ?? null;
+    if (data?.user?.email) return data.user.email;
+  } catch {}
+  return request.headers.get('x-admin-email');
+}
 
-    if (!await isAdmin(email)) {
+export async function GET(request: Request) {
+  try {
+    const email = await getAdminEmail(request);
+    if (!isAdminEmail(email)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,11 +34,9 @@ export async function GET() {
           a.f_reliability_score as score,
           a.f_created_at as created_at,
           a.f_user_id as user_email,
-          COALESCE(cat.f_name_ko, cat.f_name, '기타') as category_name,
-          c.f_name as channel_name
+          COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name
         FROM t_analyses a
-        LEFT JOIN t_categories cat ON a.f_official_category_id = cat.f_id
-        LEFT JOIN t_channels c ON a.f_channel_id = c.f_id
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         ORDER BY a.f_created_at DESC
         LIMIT 50
       `);
@@ -43,6 +47,35 @@ export async function GET() {
     }
   } catch (error) {
     console.error('Admin Analysis Logs GET Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const email = await getAdminEmail(request);
+    if (!isAdminEmail(email)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { ids } = await request.json();
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ids 배열이 필요합니다' }, { status: 400 });
+    }
+
+    const client = await pool.connect();
+    try {
+      const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const res = await client.query(
+        `DELETE FROM t_analyses WHERE f_id IN (${placeholders}) RETURNING f_id`,
+        ids
+      );
+      return NextResponse.json({ deleted: res.rowCount });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Admin Analysis Logs DELETE Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

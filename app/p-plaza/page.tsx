@@ -684,7 +684,7 @@ export default function PlazaPage() {
         activeTab === "video" ? (
           <div className="rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
             <div className="mb-4">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상 <span className="text-sm font-normal text-slate-400 ml-1">{allAnalyzedVideos.length}개 영상</span></h2>
             </div>
 
             <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
@@ -801,7 +801,7 @@ export default function PlazaPage() {
             {/* 전체 분석 채널 섹션 */}
             <div className="rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
               <div className="mb-4">
-                <h2 className="text-xl font-bold text-slate-800">전체 분석 채널</h2>
+                <h2 className="text-xl font-bold text-slate-800">전체 분석 채널 <span className="text-sm font-normal text-slate-400 ml-1">{analyzedChannels.length}개 채널</span></h2>
               </div>
 
               <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">

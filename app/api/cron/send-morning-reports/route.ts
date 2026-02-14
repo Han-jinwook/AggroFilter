@@ -18,7 +18,7 @@ async function createMorningReport(client: any, channelId: string, channelName: 
 
   const ownerId = ownerRes.rows[0].f_user_id;
   const message = `대표님, 어제 하루 동안 **${lostCustomers}명**의 잠재 고객이 [${channelName}] 채널의 콘텐츠를 신뢰하지 못했습니다. 어그로필터에서 평판을 관리하고 고객 이탈을 방지하세요.`
-  const link = `/p-my-page?tab=recheck`; // 재검수 페이지로 유도
+  const link = `/channel/${channelId}`; // 채널 통합 리포트로 유도
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS t_notifications (

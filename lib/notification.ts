@@ -111,6 +111,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
             body: JSON.stringify({
               email: sub.f_email,
               channelName: sub.channel_name,
+              channelId: f_channel_id,
               oldRank: oldRank,
               categoryName: null // TODO: 카테고리 이름 매핑 추가
             })
@@ -129,6 +130,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
             body: JSON.stringify({
               email: sub.f_email,
               channelName: sub.channel_name,
+              channelId: f_channel_id,
               isEntered: isCurrentTop10Percent,
               categoryName: null // TODO: 카테고리 이름 매핑 추가
             })

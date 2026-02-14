@@ -1,8 +1,18 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
-import { Settings, X } from 'lucide-react'
+import { Settings, X, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
+
+type TNotification = {
+  id: number
+  type: string
+  message: string
+  link: string | null
+  is_read: boolean
+  created_at: string
+}
 
 type TNotificationSettings = {
   gradeChange: boolean
@@ -18,9 +28,52 @@ const DEFAULT_SETTINGS: TNotificationSettings = {
 
 const SETTINGS_KEY = 'notification_settings_v1'
 
+const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string; label: string }> = {
+  grade_change: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', label: '등급 변화' },
+  ranking_change: { icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', label: '랭킹 변동' },
+  top10_change: { icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', label: '상위 10%' },
+  morning_report: { icon: Bell, color: 'text-rose-600', bg: 'bg-rose-50', label: '모닝 리포트' },
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = now - then
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}일 전`
+  return new Date(dateStr).toLocaleDateString()
+}
+
 export default function Page() {
+  const router = useRouter()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [settings, setSettings] = useState<TNotificationSettings>(DEFAULT_SETTINGS)
+  const [notifications, setNotifications] = useState<TNotification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
+
+  const fetchNotifications = useCallback(async () => {
+    if (!email) { setIsLoading(false); return }
+    try {
+      const res = await fetch(`/api/notification/list?email=${encodeURIComponent(email)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data.notifications || [])
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [email])
+
+  useEffect(() => { fetchNotifications() }, [fetchNotifications])
 
   useEffect(() => {
     try {
@@ -32,18 +85,38 @@ export default function Page() {
         rankingChange: Boolean(parsed?.rankingChange),
         top10Change: Boolean(parsed?.top10Change),
       })
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [])
 
   useEffect(() => {
     try {
       window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [settings])
+
+  const markAsRead = async (ids: number[]) => {
+    if (!email || ids.length === 0) return
+    try {
+      await fetch('/api/notification/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, ids })
+      })
+      setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, is_read: true } : n))
+    } catch (e) { console.error(e) }
+  }
+
+  const markAllAsRead = () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+    if (unreadIds.length > 0) markAsRead(unreadIds)
+  }
+
+  const handleNotificationClick = (n: TNotification) => {
+    if (!n.is_read) markAsRead([n.id])
+    if (n.link) router.push(n.link)
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
 
   const ToggleRow = ({
     label,
@@ -86,20 +159,81 @@ export default function Page() {
 
       <main className="container mx-auto px-4 py-6 max-w-[var(--app-max-width)]">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">알림</h1>
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
-            aria-label="알림 설정"
-          >
-            <Settings className="h-5 w-5 text-slate-700" />
-          </button>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">알림</h1>
+            {unreadCount > 0 && (
+              <span className="px-2 py-0.5 bg-rose-500 text-white text-xs font-bold rounded-full">{unreadCount}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all"
+              >
+                <CheckCheck className="h-3.5 w-3.5" /> 모두 읽음
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
+              aria-label="알림 설정"
+            >
+              <Settings className="h-5 w-5 text-slate-700" />
+            </button>
+          </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-          알림 목록은 아직 준비중입니다.
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+            <Bell className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-sm font-bold text-slate-500">아직 알림이 없습니다</p>
+            <p className="text-xs text-slate-400 mt-1">구독한 채널에 변화가 생기면 여기에 표시됩니다</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {notifications.map((n) => {
+              const config = TYPE_CONFIG[n.type] || { icon: Bell, color: 'text-slate-600', bg: 'bg-slate-50', label: '알림' }
+              const Icon = config.icon
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => handleNotificationClick(n)}
+                  className={`w-full text-left rounded-xl border p-4 transition-all hover:shadow-md active:scale-[0.99] ${
+                    n.is_read
+                      ? 'bg-white border-slate-100 opacity-60'
+                      : 'bg-white border-slate-200 shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-xl ${config.bg} flex items-center justify-center`}>
+                      <Icon className={`h-5 w-5 ${config.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${config.bg} ${config.color}`}>
+                          {config.label}
+                        </span>
+                        {!n.is_read && (
+                          <span className="h-2 w-2 rounded-full bg-rose-500 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 leading-snug">{n.message}</p>
+                      <p className="text-xs text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </main>
 
       {isSettingsOpen && (

@@ -216,10 +216,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
-          {isAdmin && (
-            <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
-          )}
-
           {isLoggedIn ? (
             <>
               <Link
@@ -273,6 +269,12 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                 )}
                 <span className="text-[10px] font-bold text-slate-900">{nickname}</span>
               </Link>
+
+              {isAdmin && (
+                <div className="hidden lg:flex">
+                  <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
+                </div>
+              )}
             </>
           ) : (
             <MenuItem icon={User} label="로그인" onClick={handleLoginClick} />
