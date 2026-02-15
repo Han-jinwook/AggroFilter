@@ -86,6 +86,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           u.f_email,
           u.f_nickname,
           c.f_title as channel_name,
+          c.f_thumbnail_url as channel_thumbnail,
           COALESCE(u.f_notify_grade_change, TRUE) as notify_grade,
           COALESCE(u.f_notify_ranking_change, TRUE) as notify_ranking,
           COALESCE(u.f_notify_top10_change, TRUE) as notify_top10
@@ -112,6 +113,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
               email: sub.f_email,
               channelName: sub.channel_name,
               channelId: f_channel_id,
+              channelThumbnail: sub.channel_thumbnail,
               oldGrade: oldGrade,
               newGrade: currentGrade,
               categoryName: null
@@ -132,7 +134,9 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
               email: sub.f_email,
               channelName: sub.channel_name,
               channelId: f_channel_id,
+              channelThumbnail: sub.channel_thumbnail,
               oldRank: oldRank,
+              newRank: current_rank,
               categoryName: null
             })
           }).catch(err => {
@@ -151,6 +155,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
               email: sub.f_email,
               channelName: sub.channel_name,
               channelId: f_channel_id,
+              channelThumbnail: sub.channel_thumbnail,
               isEntered: isCurrentTop10Percent,
               categoryName: null
             })

@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { email, channelName, channelId, oldRank, categoryName } = await request.json();
+    const { email, channelName, channelId, channelThumbnail, oldRank, newRank, categoryName } = await request.json();
 
     if (!email || !channelName || oldRank === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
         [
           email,
           'ranking_change',
-          `${channelName} 채널의 신뢰도 등수에 변화가 생겼습니다 (기존 ${oldRank}위)`,
+          `${channelName} 채널의 신뢰도 등수에 변화가 생겼습니다 (${oldRank}위 → ${newRank}위)`,
           channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`,
-          JSON.stringify({ channelName, channelId, oldRank, categoryName }),
+          JSON.stringify({ channelName, channelId, channelThumbnail, oldRank, newRank, categoryName }),
         ]
       );
     } finally {
