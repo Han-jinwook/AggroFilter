@@ -411,7 +411,8 @@ export async function POST(request: Request) {
           ADD COLUMN IF NOT EXISTS f_trust_score INT,
           ADD COLUMN IF NOT EXISTS f_ai_recommended_title TEXT,
           ADD COLUMN IF NOT EXISTS f_summary TEXT,
-          ADD COLUMN IF NOT EXISTS f_evaluation_reason TEXT;
+          ADD COLUMN IF NOT EXISTS f_evaluation_reason TEXT,
+          ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMPTZ;
         `);
         await client.query(`
           INSERT INTO t_videos (
@@ -426,9 +427,10 @@ export async function POST(request: Request) {
             f_summary,
             f_evaluation_reason,
             f_thumbnail_url,
+            f_published_at,
             f_created_at,
             f_updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
           ON CONFLICT (f_video_id) DO UPDATE SET
             f_channel_id = EXCLUDED.f_channel_id,
             f_title = EXCLUDED.f_title,
@@ -440,6 +442,7 @@ export async function POST(request: Request) {
             f_summary = EXCLUDED.f_summary,
             f_evaluation_reason = EXCLUDED.f_evaluation_reason,
             f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_videos.f_thumbnail_url),
+            f_published_at = COALESCE(EXCLUDED.f_published_at, t_videos.f_published_at),
             f_updated_at = NOW()
         `, [
           videoId,
@@ -452,7 +455,8 @@ export async function POST(request: Request) {
           analysisResult.recommendedTitle,
           analysisResult.subtitleSummary,
           analysisResult.evaluationReason,
-          videoInfo.thumbnailUrl
+          videoInfo.thumbnailUrl,
+          videoInfo.publishedAt || null
         ]);
       }
 
