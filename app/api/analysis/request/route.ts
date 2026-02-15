@@ -250,7 +250,8 @@ export async function POST(request: Request) {
         promptTranscript,
         videoInfo.thumbnailUrl,
         videoInfo.duration,
-        transcriptItems
+        transcriptItems,
+        videoInfo.publishedAt
       );
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {

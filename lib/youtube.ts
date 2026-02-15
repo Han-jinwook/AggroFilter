@@ -12,6 +12,7 @@ export interface VideoInfo {
   description: string;
   officialCategoryId: number; // 추가: 유튜브 공식 카테고리 ID
   duration?: string; // 추가: 영상 길이 (ISO 8601 형식)
+  publishedAt?: string; // 영상 업로드 날짜 (ISO 8601)
 }
 
 export interface TranscriptItem {
@@ -149,6 +150,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     description: snippet.description,
     officialCategoryId,
     duration,
+    publishedAt: snippet.publishedAt || '',
   };
 }
 

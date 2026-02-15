@@ -275,7 +275,8 @@ export async function analyzeContent(
   transcript: string,
   thumbnailUrl: string,
   duration?: string,
-  transcriptItems?: { text: string; start: number; duration: number }[]
+  transcriptItems?: { text: string; start: number; duration: number }[],
+  publishedAt?: string
 ) {
   // .env 파일의 GOOGLE_API_KEY를 우선적으로 사용
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
@@ -318,12 +319,17 @@ export async function analyzeContent(
   }
 
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+  const uploadDateStr = publishedAt
+    ? new Date(publishedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' })
+    : null;
 
   const systemPrompt = `
     # 어그로필터 분석 AI용 프롬프트 (유튜브 생태계 분석가 모드)
 
-    ## 현재 날짜
-    오늘은 **${today}**이다. 제목에 연도가 포함되어 있더라도, 현재 시점 기준으로 과거이거나 현재라면 '미래 시점'으로 간주하지 마라.
+    ## 시간 정보
+    - 오늘(분석 시점): **${today}**
+    - 영상 업로드일: **${uploadDateStr || '알 수 없음'}**
+    제목에 연도가 포함된 경우, **영상 업로드 시점** 기준으로 과거/현재/미래를 판단하라. 업로드 당시 기준으로 현재이거나 과거인 연도는 '미래 시점'으로 간주하지 마라.
     
     ## 역할
     너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
