@@ -217,8 +217,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <MenuItem
             icon={FileText}
             label="My Page"
-            href={isLoggedIn ? "/p-my-page?tab=analysis" : undefined}
-            onClick={isLoggedIn ? undefined : handleMyPageClick}
+            href="/p-my-page?tab=analysis"
             active={isActive("/p-my-page")}
           />
 

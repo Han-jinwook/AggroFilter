@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X } from "lucide-react"
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
+import { getUserId } from "@/lib/anon"
 
 interface TAnalysisVideo {
   id: string
@@ -184,11 +185,11 @@ export default function MyPageClient() {
   const fetchVideos = useCallback(async () => {
     try {
       setIsLoadingVideos(true);
-      const email = localStorage.getItem('userEmail') || '';
+      const uid = getUserId();
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: uid })
       });
 
       if (res.ok) {
