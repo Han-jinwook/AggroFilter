@@ -87,8 +87,17 @@
 @keyframes myRankPulse {
   0%, 100% {
     box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+    transform: translateY(0) scale(1.02);
   }
-  50% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+  40% {
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.5);
+    transform: translateY(-6px) scale(1.04);
+  }
+  60% {
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.35);
+    transform: translateY(2px) scale(1.01);
+  }
+  80% {
+    transform: translateY(-1px) scale(1.02);
   }
 }
