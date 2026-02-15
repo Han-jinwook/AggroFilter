@@ -106,8 +106,8 @@ export default function ResultClient() {
     const fetchAnalysisData = async () => {
       try {
         setLoading(true)
-        const email = localStorage.getItem('userEmail') || ''
-        const response = await fetch(`/api/analysis/result/${id}${email ? `?email=${encodeURIComponent(email)}` : ''}`, {
+        const uid = getUserId()
+        const response = await fetch(`/api/analysis/result/${id}${uid ? `?email=${encodeURIComponent(uid)}` : ''}`, {
           cache: 'no-store'
         })
         
@@ -133,8 +133,8 @@ export default function ResultClient() {
                 // Save to DB if not already saved
                 if (!hasSavedPrediction.current && !data.videoPrediction) {
                   hasSavedPrediction.current = true
-                  const email = localStorage.getItem('userEmail') || ''
-                  if (email) {
+                  const predUid = getUserId()
+                  if (predUid) {
                     fetch('/api/prediction/submit', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -143,13 +143,13 @@ export default function ResultClient() {
                         predictedAccuracy: parsed.accuracy,
                         predictedClickbait: parsed.clickbait,
                         actualReliability: data.analysisData?.scores?.trust,
-                        userEmail: email,
+                        userEmail: predUid,
                       }),
                     })
                       .then(res => {
                         if (res.ok) {
                           // Re-fetch cumulative stats after successful save
-                          return fetch(`/api/prediction/stats?email=${encodeURIComponent(email)}`)
+                          return fetch(`/api/prediction/stats?email=${encodeURIComponent(predUid)}`)
                         }
                         return null
                       })
@@ -1017,7 +1017,7 @@ ${content}
                       <div className="mb-1 flex items-center gap-2">
                         <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
                         <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
-                        {comment.authorEmail === localStorage.getItem('userEmail') && (
+                        {comment.authorEmail === getUserId() && (
                           <>
                             <button 
                               onClick={() => {
@@ -1032,11 +1032,11 @@ ${content}
                               onClick={async () => {
                                 if (confirm('정말 이 댓글을 삭제하시겠습니까?')) {
                                   try {
-                                    const email = localStorage.getItem('userEmail')
+                                    const delUid = getUserId()
                                     const response = await fetch('/api/comments/delete', {
                                       method: 'DELETE',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ commentId: comment.id, email })
+                                      body: JSON.stringify({ commentId: comment.id, email: delUid })
                                     })
                                     if (response.ok) {
                                       setComments(comments.filter(c => c.id !== comment.id))
@@ -1154,7 +1154,7 @@ ${content}
                                 <div className="mb-1 flex items-center gap-2">
                                   <span className="text-xs font-semibold text-gray-900">{reply.author}</span>
                                   <span className="text-xs text-gray-500">{reply.date} {reply.time}</span>
-                                  {reply.authorEmail === localStorage.getItem('userEmail') && (
+                                  {reply.authorEmail === getUserId() && (
                                     <>
                                       <button 
                                         onClick={() => {
@@ -1169,11 +1169,11 @@ ${content}
                                         onClick={async () => {
                                           if (confirm('정말 이 답글을 삭제하시겠습니까?')) {
                                             try {
-                                              const email = localStorage.getItem('userEmail')
+                                              const delReplyUid = getUserId()
                                               const response = await fetch('/api/comments/delete', {
                                                 method: 'DELETE',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ commentId: reply.id, email })
+                                                body: JSON.stringify({ commentId: reply.id, email: delReplyUid })
                                               })
                                               if (response.ok) {
                                                 setComments(comments.map(c => ({
