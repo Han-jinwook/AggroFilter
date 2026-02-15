@@ -97,8 +97,11 @@ export default function SettingsPage() {
         })
         .catch(() => {})
     } else {
-      // 익명 사용자
-      setNickname(getAnonNickname())
+      // 익명 사용자: localStorage에 저장된 커스텀 값 우선, 없으면 기본값
+      const savedNickname = localStorage.getItem('userNickname')
+      const savedProfileImage = localStorage.getItem('userProfileImage')
+      setNickname(savedNickname || getAnonNickname())
+      setProfileImage(savedProfileImage || '')
       setEmail('')
     }
   }, [])
