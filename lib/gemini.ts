@@ -317,8 +317,13 @@ export async function analyzeContent(
     subtitleSummaryOverride = null;
   }
 
+  const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
+
   const systemPrompt = `
     # 어그로필터 분석 AI용 프롬프트 (유튜브 생태계 분석가 모드)
+
+    ## 현재 날짜
+    오늘은 **${today}**이다. 제목에 연도가 포함되어 있더라도, 현재 시점 기준으로 과거이거나 현재라면 '미래 시점'으로 간주하지 마라.
     
     ## 역할
     너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
