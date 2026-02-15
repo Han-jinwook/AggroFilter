@@ -7,6 +7,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
+import { getAnonEmoji, getAnonNickname, getOrCreateAnonId } from "@/lib/anon"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -28,6 +29,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const [profileImage, setProfileImage] = useState("")
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [anonEmoji, setAnonEmoji] = useState("")
+  const [anonNickname, setAnonNickname] = useState("")
 
   const isLoggedIn = nickname.length > 0
 
@@ -43,6 +46,11 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     }
 
     loadProfile()
+
+    // 익명 세션 초기화
+    getOrCreateAnonId()
+    setAnonEmoji(getAnonEmoji())
+    setAnonNickname(getAnonNickname())
 
     const handleProfileUpdate = () => {
       loadProfile()
@@ -277,7 +285,18 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               )}
             </>
           ) : (
-            <MenuItem icon={User} label="로그인" onClick={handleLoginClick} />
+            <>
+              <Link
+                href="/p-settings"
+                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+                onClick={handleLoginClick}
+              >
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
+                  <span className="text-lg w-5 h-5 flex items-center justify-center">{anonEmoji || '🐾'}</span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-500">{anonNickname || '게스트'}</span>
+              </Link>
+            </>
           )}
         </div>
       </div>
