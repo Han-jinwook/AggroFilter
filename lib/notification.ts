@@ -22,8 +22,6 @@ export async function subscribeChannelAuto(userId: string, channelId: string) {
     const tableExists = tableExistsRes.rows?.[0]?.exists === true;
     if (!tableExists) return;
 
-    await client.query(`ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_is_owner BOOLEAN DEFAULT FALSE`);
-
     await client.query(`
       INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at)
       VALUES ($1, $2, NOW())
@@ -77,7 +75,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
       const currentGrade = getReliabilityGrade(reliabilityScore);
       const isCurrentTop10Percent = current_rank <= top10PercentThreshold;
 
-      // 구독자 조회 (알림 활성화된 사용자만)
+      // 구독자 조회 (알림 활성화된 사용자만 + 사용자별 알림 설정)
       const subscribers = await client.query(`
         SELECT 
           s.f_user_id,
@@ -87,7 +85,10 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           s.f_last_top10_percent_status,
           u.f_email,
           u.f_nickname,
-          c.f_title as channel_name
+          c.f_title as channel_name,
+          COALESCE(u.f_notify_grade_change, TRUE) as notify_grade,
+          COALESCE(u.f_notify_ranking_change, TRUE) as notify_ranking,
+          COALESCE(u.f_notify_top10_change, TRUE) as notify_top10
         FROM t_channel_subscriptions s
         JOIN t_users u ON s.f_user_id = u.f_email
         JOIN t_channels c ON s.f_channel_id = c.f_channel_id
@@ -101,7 +102,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
         const oldTop10PercentStatus = sub.f_last_top10_percent_status;
 
         // 그레이드 변화 감지 → send-grade-change
-        if (oldGrade && oldGrade !== currentGrade) {
+        if (sub.notify_grade && oldGrade && oldGrade !== currentGrade) {
           console.log(`[알림] 그레이드 변화: ${sub.channel_name} (${oldGrade} → ${currentGrade})`);
           
           fetch(`${baseUrl}/api/notification/send-grade-change`, {
@@ -121,7 +122,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
         }
 
         // 순위 변동 감지 (10% 이상 변동) → send-ranking-change
-        if (oldRank && Math.abs(current_rank - oldRank) >= Math.max(1, Math.ceil(totalChannels * 0.1))) {
+        if (sub.notify_ranking && oldRank && Math.abs(current_rank - oldRank) >= Math.max(1, Math.ceil(totalChannels * 0.1))) {
           console.log(`[알림] 순위 변동: ${sub.channel_name} (${oldRank}위 → ${current_rank}위)`);
           
           fetch(`${baseUrl}/api/notification/send-ranking-change`, {
@@ -140,7 +141,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
         }
 
         // 상위 10% 진입/탈락 감지 → send-top10-change
-        if (oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
+        if (sub.notify_top10 && oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
           console.log(`[알림] 상위 10%: ${sub.channel_name} (${oldTop10PercentStatus ? '탈락' : '진입'})`);
           
           fetch(`${baseUrl}/api/notification/send-top10-change`, {

@@ -510,16 +510,15 @@ export async function POST(request: Request) {
         creditDeducted = true;
       }
 
-      // 5-5. 채널 구독 및 소유자 지정
+      // 5-5. 채널 구독 처리
       if (actualUserId && hasTranscript) {
-        console.log('5-5. 채널 구독 및 소유자 지정 시작...');
+        console.log('5-5. 채널 구독 처리 시작...');
         await client.query(`
           CREATE TABLE IF NOT EXISTS t_channel_subscriptions (
             f_id BIGSERIAL PRIMARY KEY,
             f_user_id TEXT NOT NULL,
             f_channel_id TEXT NOT NULL,
             f_subscribed_at TIMESTAMP DEFAULT NOW(),
-            f_is_owner BOOLEAN DEFAULT FALSE,
             f_last_rank INT,
             f_last_rank_checked_at TIMESTAMP,
             f_last_reliability_grade VARCHAR(10),
@@ -541,21 +540,13 @@ export async function POST(request: Request) {
           WHERE f_notification_enabled = TRUE;
         `);
 
-        const analysisExistsRes = await client.query(
-          'SELECT f_id FROM t_analyses WHERE f_channel_id = $1 AND f_id != $2 LIMIT 1',
-          [videoInfo.channelId, analysisId]
+        await client.query(
+          `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (f_user_id, f_channel_id) DO NOTHING;`,
+          [actualUserId, videoInfo.channelId]
         );
-        const isFirstAnalysisForChannel = analysisExistsRes.rows.length === 0;
-
-        const subRes = await client.query(
-          `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at, f_is_owner)
-           VALUES ($1, $2, NOW(), $3)
-           ON CONFLICT (f_user_id, f_channel_id) DO UPDATE SET
-             f_is_owner = t_channel_subscriptions.f_is_owner OR EXCLUDED.f_is_owner
-           RETURNING f_is_owner;`,
-          [actualUserId, videoInfo.channelId, isFirstAnalysisForChannel]
-        );
-        console.log(`구독 처리 완료 (소유자: ${subRes.rows[0]?.f_is_owner})`);
+        console.log('구독 처리 완료');
       }
 
       await client.query('COMMIT');

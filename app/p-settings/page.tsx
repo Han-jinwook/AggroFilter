@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
-import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, BellOff } from 'lucide-react'
+import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -15,8 +15,12 @@ export default function SettingsPage() {
   const [tempNickname, setTempNickname] = useState('')
   const [tempProfileImage, setTempProfileImage] = useState('')
   const [predictionStats, setPredictionStats] = useState<{ currentTier: string; avgGap: number; totalPredictions: number }>({ currentTier: 'B', avgGap: 0, totalPredictions: 0 })
-  const [subscriptions, setSubscriptions] = useState<any[]>([])
-  const [togglingChannels, setTogglingChannels] = useState<Set<string>>(new Set())
+  const [notifySettings, setNotifySettings] = useState({
+    f_notify_grade_change: true,
+    f_notify_ranking_change: true,
+    f_notify_top10_change: true,
+  })
+  const [togglingKey, setTogglingKey] = useState<string | null>(null)
 
   useEffect(() => {
     const email = localStorage.getItem('userEmail')
@@ -44,11 +48,15 @@ export default function SettingsPage() {
           if (savedProfileImage) setProfileImage(savedProfileImage)
         })
 
-      // Fetch subscription notification settings
+      // Fetch notification settings
       fetch(`/api/subscription/notifications?email=${encodeURIComponent(email)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data?.subscriptions) setSubscriptions(data.subscriptions)
+          if (data) setNotifySettings({
+            f_notify_grade_change: data.f_notify_grade_change ?? true,
+            f_notify_ranking_change: data.f_notify_ranking_change ?? true,
+            f_notify_top10_change: data.f_notify_top10_change ?? true,
+          })
         })
         .catch(() => {})
 
@@ -158,30 +166,24 @@ export default function SettingsPage() {
     return text.charAt(0).toUpperCase()
   }
 
-  const handleToggleNotification = async (channelId: string, currentEnabled: boolean) => {
+  const handleToggleNotify = async (key: keyof typeof notifySettings) => {
     const email = localStorage.getItem('userEmail')
     if (!email) return
 
-    setTogglingChannels(prev => new Set(prev).add(channelId))
+    setTogglingKey(key)
     try {
       const res = await fetch('/api/subscription/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, channelId, enabled: !currentEnabled })
+        body: JSON.stringify({ email, key, enabled: !notifySettings[key] })
       })
       if (res.ok) {
-        setSubscriptions(prev => prev.map(s =>
-          s.f_channel_id === channelId ? { ...s, f_notification_enabled: !currentEnabled } : s
-        ))
+        setNotifySettings(prev => ({ ...prev, [key]: !prev[key] }))
       }
     } catch (e) {
       console.error('Toggle notification error:', e)
     } finally {
-      setTogglingChannels(prev => {
-        const next = new Set(prev)
-        next.delete(channelId)
-        return next
-      })
+      setTogglingKey(null)
     }
   }
 
@@ -317,38 +319,31 @@ export default function SettingsPage() {
                 <Bell className="h-5 w-5" />
                 알림 설정
               </h2>
-              {subscriptions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">구독 중인 채널이 없습니다. 영상을 분석하면 자동으로 채널이 구독됩니다.</p>
-              ) : (
-                <div className="space-y-3">
-                  {subscriptions.map((sub) => (
-                    <div key={sub.f_channel_id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {sub.f_notification_enabled ? (
-                          <Bell className="h-4 w-4 text-primary flex-shrink-0" />
-                        ) : (
-                          <BellOff className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <span className="text-sm font-medium truncate">{sub.channel_name}</span>
-                      </div>
-                      <button
-                        onClick={() => handleToggleNotification(sub.f_channel_id, sub.f_notification_enabled)}
-                        disabled={togglingChannels.has(sub.f_channel_id)}
-                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                          sub.f_notification_enabled ? 'bg-primary' : 'bg-gray-300'
-                        } ${togglingChannels.has(sub.f_channel_id) ? 'opacity-50' : ''}`}
-                      >
-                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                          sub.f_notification_enabled ? 'translate-x-5' : 'translate-x-0'
-                        }`} />
-                      </button>
+              <div className="space-y-3">
+                {([
+                  { key: 'f_notify_grade_change' as const, label: '등급 변화 알림', desc: '구독 채널의 신뢰도 등급(Red/Yellow/Blue)이 변경될 때' },
+                  { key: 'f_notify_ranking_change' as const, label: '순위 변동 알림', desc: '구독 채널의 카테고리 내 순위가 크게 변동될 때' },
+                  { key: 'f_notify_top10_change' as const, label: 'TOP 10% 알림', desc: '구독 채널이 상위 10%에 진입하거나 탈락할 때' },
+                ]).map(({ key, label, desc }) => (
+                  <div key={key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
                     </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    알림을 끄면 해당 채널의 등급/순위 변동 이메일을 받지 않습니다.
-                  </p>
-                </div>
-              )}
+                    <button
+                      onClick={() => handleToggleNotify(key)}
+                      disabled={togglingKey === key}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${
+                        notifySettings[key] ? 'bg-primary' : 'bg-gray-300'
+                      } ${togglingKey === key ? 'opacity-50' : ''}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        notifySettings[key] ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">

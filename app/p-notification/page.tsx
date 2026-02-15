@@ -32,7 +32,6 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string
   grade_change: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', label: '등급 변화' },
   ranking_change: { icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', label: '랭킹 변동' },
   top10_change: { icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50', label: '상위 10%' },
-  morning_report: { icon: Bell, color: 'text-rose-600', bg: 'bg-rose-50', label: '모닝 리포트' },
 }
 
 function timeAgo(dateStr: string): string {

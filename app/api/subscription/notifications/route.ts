@@ -3,8 +3,10 @@ import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
+const VALID_KEYS = ['f_notify_grade_change', 'f_notify_ranking_change', 'f_notify_top10_change'] as const;
+
 /**
- * GET: 사용자의 구독 채널별 알림 설정 조회
+ * GET: 사용자의 알림 설정 조회 (3개 조건별 ON/OFF)
  * Query: ?email=user@example.com
  */
 export async function GET(request: Request) {
@@ -18,69 +20,73 @@ export async function GET(request: Request) {
 
     const client = await pool.connect();
     try {
-      const tableExistsRes = await client.query(
-        `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
-      );
-      if (!tableExistsRes.rows?.[0]?.exists) {
-        return NextResponse.json({ subscriptions: [] });
-      }
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_grade_change BOOLEAN DEFAULT TRUE`);
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_ranking_change BOOLEAN DEFAULT TRUE`);
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_top10_change BOOLEAN DEFAULT TRUE`);
 
       const result = await client.query(`
-        SELECT 
-          s.f_channel_id,
-          s.f_notification_enabled,
-          c.f_title as channel_name,
-          c.f_thumbnail_url
-        FROM t_channel_subscriptions s
-        JOIN t_channels c ON s.f_channel_id = c.f_channel_id
-        WHERE s.f_user_id = $1
-        ORDER BY s.f_subscribed_at DESC
+        SELECT
+          COALESCE(f_notify_grade_change, TRUE) as f_notify_grade_change,
+          COALESCE(f_notify_ranking_change, TRUE) as f_notify_ranking_change,
+          COALESCE(f_notify_top10_change, TRUE) as f_notify_top10_change
+        FROM t_users
+        WHERE f_email = $1
       `, [email]);
 
-      return NextResponse.json({ subscriptions: result.rows });
+      if (result.rows.length === 0) {
+        return NextResponse.json({
+          f_notify_grade_change: true,
+          f_notify_ranking_change: true,
+          f_notify_top10_change: true,
+        });
+      }
+
+      return NextResponse.json(result.rows[0]);
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Get subscription notifications error:', error);
+    console.error('Get notification settings error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 /**
- * PUT: 특정 채널의 알림 토글 변경
- * Body: { email, channelId, enabled }
+ * PUT: 알림 조건별 토글 변경
+ * Body: { email, key, enabled }
+ * key: 'f_notify_grade_change' | 'f_notify_ranking_change' | 'f_notify_top10_change'
  */
 export async function PUT(request: Request) {
   try {
-    const { email, channelId, enabled } = await request.json();
+    const { email, key, enabled } = await request.json();
 
-    if (!email || !channelId || typeof enabled !== 'boolean') {
+    if (!email || !key || typeof enabled !== 'boolean') {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!VALID_KEYS.includes(key)) {
+      return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
     }
 
     const client = await pool.connect();
     try {
       const result = await client.query(`
-        UPDATE t_channel_subscriptions
-        SET f_notification_enabled = $1
-        WHERE f_user_id = $2 AND f_channel_id = $3
-        RETURNING f_notification_enabled
-      `, [enabled, email, channelId]);
+        UPDATE t_users
+        SET ${key} = $1
+        WHERE f_email = $2
+        RETURNING ${key}
+      `, [enabled, email]);
 
       if (result.rows.length === 0) {
-        return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        enabled: result.rows[0].f_notification_enabled 
-      });
+      return NextResponse.json({ success: true, [key]: result.rows[0][key] });
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Update subscription notification error:', error);
+    console.error('Update notification setting error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
