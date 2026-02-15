@@ -26,6 +26,7 @@ export default function SettingsPage() {
   })
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [anonEmoji, setAnonEmoji] = useState('')
 
   useEffect(() => {
     const handleOpenLoginModal = () => setShowLoginModal(true)
@@ -45,6 +46,7 @@ export default function SettingsPage() {
     const storedEmail = localStorage.getItem('userEmail')
     const anon = isAnonymousUser()
     setIsAnon(anon)
+    if (anon) setAnonEmoji(getAnonEmoji())
 
     if (storedEmail && !anon) {
       setEmail(storedEmail)
@@ -264,7 +266,7 @@ export default function SettingsPage() {
                   />
                 ) : isAnon ? (
                   <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
-                    <span className="text-4xl">{getAnonEmoji()}</span>
+                    <span className="text-4xl">{anonEmoji}</span>
                   </div>
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
