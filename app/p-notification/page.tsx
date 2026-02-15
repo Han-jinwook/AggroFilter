@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
+import { LoginModal } from '@/components/c-login-modal'
+import { isAnonymousUser } from '@/lib/anon'
 import { Settings, X, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
 
 type TNotification = {
@@ -54,8 +56,15 @@ export default function Page() {
   const [settings, setSettings] = useState<TNotificationSettings>(DEFAULT_SETTINGS)
   const [notifications, setNotifications] = useState<TNotification[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
+  const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
   const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
+
+  // 익명 사용자가 알림 페이지 접근 시 로그인 모달 표시
+  useEffect(() => {
+    if (isAnon) setShowLoginModal(true)
+  }, [isAnon])
 
   const fetchNotifications = useCallback(async () => {
     if (!email) { setIsLoading(false); return }
@@ -116,6 +125,15 @@ export default function Page() {
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
+
+  const handleLoginSuccess = (loginEmail: string) => {
+    localStorage.setItem('userEmail', loginEmail)
+    localStorage.setItem('userNickname', loginEmail.split('@')[0])
+    window.dispatchEvent(new CustomEvent('profileUpdated'))
+    setShowLoginModal(false)
+    // 로그인 후 페이지 새로고침하여 알림 데이터 로드
+    window.location.reload()
+  }
 
   const ToggleRow = ({
     label,
@@ -279,6 +297,8 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
     </div>
   )
 }
