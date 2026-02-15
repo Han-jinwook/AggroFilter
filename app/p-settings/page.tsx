@@ -93,16 +93,16 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (tempNickname.trim()) {
-      const email = localStorage.getItem('userEmail')
+      const storedEmail = localStorage.getItem('userEmail')
       
-      if (email) {
+      if (storedEmail && !isAnon) {
         try {
           // DB에 먼저 저장 (source of truth)
           const response = await fetch('/api/user/profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email,
+              email: storedEmail,
               nickname: tempNickname,
               profileImage: tempProfileImage || null
             })
@@ -126,6 +126,14 @@ export default function SettingsPage() {
         } catch (error) {
           console.error('Profile update error:', error)
         }
+      } else {
+        // 익명 사용자: localStorage에만 저장
+        setNickname(tempNickname)
+        setProfileImage(tempProfileImage || '')
+        localStorage.setItem('userNickname', tempNickname)
+        localStorage.setItem('userProfileImage', tempProfileImage || '')
+        window.dispatchEvent(new Event('profileUpdated'))
+        setIsEditing(false)
       }
     }
   }
@@ -238,6 +246,10 @@ export default function SettingsPage() {
                     unoptimized
                     loader={({ src }) => src}
                   />
+                ) : isAnon ? (
+                  <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
+                    <span className="text-4xl">{getAnonEmoji()}</span>
+                  </div>
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
                     <span className="text-2xl font-bold text-primary">

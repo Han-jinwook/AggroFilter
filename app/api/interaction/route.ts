@@ -1,15 +1,25 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
-async function getUserId(client: any, email: string) {
+async function getOrCreateUserId(client: any, email: string) {
   const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
-  if (userRes.rows.length === 0) {
-    throw new Error('User not found');
+  if (userRes.rows.length > 0) {
+    return userRes.rows[0].f_id;
   }
-  return userRes.rows[0].f_id;
+  // Auto-create user (supports anon_id and email)
+  const newId = uuidv4();
+  const isAnon = email.startsWith('anon_');
+  const nickname = isAnon ? '익명사용자' : email.split('@')[0];
+  await client.query(
+    `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+     VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+    [newId, email, nickname, null]
+  );
+  return newId;
 }
 
 
@@ -40,7 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing analysisId' }, { status: 400 });
     }
 
-    const userId = await getUserId(client, email);
+    const userId = await getOrCreateUserId(client, email);
 
     const existingInteraction = await client.query(
       'SELECT f_id, f_type FROM t_interactions WHERE f_user_id = $1 AND f_analysis_id = $2',

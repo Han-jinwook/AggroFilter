@@ -39,10 +39,12 @@ export async function POST(request: Request) {
         }
       } else {
         userId = uuidv4();
+        const isAnon = typeof email === 'string' && email.startsWith('anon_');
+        const defaultNickname = isAnon ? (nickname || '익명사용자') : (nickname || email.split('@')[0]);
         await client.query(`
           INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
           VALUES ($1, $2, $3, $4, NOW(), NOW())
-        `, [userId, email, nickname || email.split('@')[0], null]);
+        `, [userId, email, defaultNickname, null]);
       }
 
       // 2. Insert Comment

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
@@ -29,10 +30,20 @@ export async function POST(request: Request) {
     
     try {
       const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
-      if (userRes.rows.length === 0) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      let userId: string;
+      if (userRes.rows.length > 0) {
+        userId = userRes.rows[0].f_id;
+      } else {
+        // Auto-create user (supports anon_id and email)
+        userId = uuidv4();
+        const isAnon = typeof email === 'string' && email.startsWith('anon_');
+        const nickname = isAnon ? '익명사용자' : (email || '').split('@')[0];
+        await client.query(
+          `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+          [userId, email, nickname, null]
+        );
       }
-      const userId = userRes.rows[0].f_id;
 
       const existingRes = await client.query(
         'SELECT f_type FROM t_comment_interactions WHERE f_comment_id = $1 AND f_user_id = $2',

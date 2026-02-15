@@ -10,7 +10,7 @@ import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { UrlDisplayBox } from "@/components/c-url-display-box"
 import { Disclaimer } from "@/app/c-home/disclaimer"
-import { getUserId } from "@/lib/anon"
+import { getUserId, isAnonymousUser } from "@/lib/anon"
 
 export default function MainPage() {
   const router = useRouter()
@@ -87,6 +87,15 @@ export default function MainPage() {
       // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
+
+      // 익명 사용자 분석 횟수 추적 → 3회 후 로그인 유도
+      if (isAnonymousUser()) {
+        const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
+        localStorage.setItem('anonAnalysisCount', String(count));
+        if (count >= 3) {
+          setTimeout(() => setShowLoginModal(true), 4000);
+        }
+      }
     } catch (error) {
       console.error(error);
       // TODO: Add error handling for the user

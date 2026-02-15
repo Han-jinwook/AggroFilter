@@ -224,34 +224,48 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
+          {/* 알림 종 — 로그인 상태에선 알림 페이지, 익명이면 로그인 모달 */}
+          {isLoggedIn ? (
+            <Link
+              href="/p-notification"
+              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+            >
+              <div className="relative">
+                <div
+                  className={
+                    "p-2 rounded-xl transition-colors " +
+                    (isActive('/p-notification')
+                      ? 'bg-slate-900 text-white'
+                      : 'group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white')
+                  }
+                >
+                  <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
+                </div>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors">
+                알림
+              </span>
+            </Link>
+          ) : (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
+            >
+              <div className="p-2 rounded-xl group-hover:bg-slate-100 transition-colors">
+                <Bell className="h-5 w-5 text-slate-400 transition-transform group-hover:scale-110" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-500">알림</span>
+            </button>
+          )}
+
+          {/* 프로필 */}
           {isLoggedIn ? (
             <>
-              <Link
-                href="/p-notification"
-                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-              >
-                <div className="relative">
-                  <div
-                    className={
-                      "p-2 rounded-xl transition-colors " +
-                      (isActive('/p-notification')
-                        ? 'bg-slate-900 text-white'
-                        : 'group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white')
-                    }
-                  >
-                    <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
-                  </div>
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors">
-                  알림
-                </span>
-              </Link>
-
               <Link
                 href="/p-settings"
                 className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
@@ -285,17 +299,15 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               )}
             </>
           ) : (
-            <>
-              <Link
-                href="/p-settings"
-                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-              >
-                <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
-                  <span className="text-lg w-5 h-5 flex items-center justify-center">{anonEmoji || '🐾'}</span>
-                </div>
-                <span className="text-[10px] font-bold text-slate-500">{anonNickname || '게스트'}</span>
-              </Link>
-            </>
+            <Link
+              href="/p-settings"
+              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+            >
+              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
+                <span className="text-lg w-5 h-5 flex items-center justify-center">{anonEmoji || '🐾'}</span>
+              </div>
+              <span className="text-[10px] font-bold text-slate-500">{anonNickname || '게스트'}</span>
+            </Link>
           )}
         </div>
       </div>

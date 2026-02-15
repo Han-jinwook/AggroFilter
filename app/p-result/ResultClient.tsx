@@ -12,6 +12,7 @@ import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
+import { getUserId, getAnonNickname, getAnonEmoji, isAnonymousUser } from "@/lib/anon"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
 
 function extractVideoId(url: string): string {
@@ -63,7 +64,7 @@ export default function ResultClient() {
 
   useEffect(() => {
     const email = localStorage.getItem('userEmail')
-    if (email) {
+    if (email && !isAnonymousUser()) {
       // DB에서 프로필 정보 fetch (source of truth)
       fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
         .then(res => res.ok ? res.json() : null)
@@ -84,6 +85,10 @@ export default function ResultClient() {
           setUserNickname(localStorage.getItem('userNickname') || '')
           setUserProfileImage(localStorage.getItem('userProfileImage'))
         })
+    } else {
+      // 익명 사용자
+      setUserNickname(localStorage.getItem('userNickname') || getAnonNickname())
+      setUserProfileImage(null)
     }
   }, [])
 
@@ -243,11 +248,7 @@ export default function ResultClient() {
   }, [])
 
   const requireLogin = (action: "like" | "comment", callback: () => void) => {
-    if (!checkLoginStatus()) {
-      setLoginTrigger(action)
-      setShowLoginModal(true)
-      return false
-    }
+    // 익명 사용자도 허용 — 로그인 강제 안 함
     callback()
     return true
   }
@@ -302,7 +303,6 @@ export default function ResultClient() {
 
   const handleLikeClick = async () => {
     if (!analysisData) return
-    if (!checkLoginStatus()) return
 
     const previousLiked = liked
     const previousDisliked = disliked
@@ -321,7 +321,7 @@ export default function ResultClient() {
             body: JSON.stringify({
                 analysisId: analysisData.id,
                 type: 'like',
-                email: localStorage.getItem('userEmail') || undefined
+                email: getUserId()
             })
         })
         const data = await response.json()
@@ -345,7 +345,6 @@ export default function ResultClient() {
 
   const handleDislikeClick = async () => {
     if (!analysisData) return
-    if (!checkLoginStatus()) return
 
     const previousLiked = liked
     const previousDisliked = disliked
@@ -364,7 +363,7 @@ export default function ResultClient() {
             body: JSON.stringify({
                 analysisId: analysisData.id,
                 type: 'dislike',
-                email: localStorage.getItem('userEmail') || undefined
+                email: getUserId()
             })
         })
         const data = await response.json()
@@ -399,11 +398,7 @@ export default function ResultClient() {
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return
     if (!analysisData) return
-    const nickname = localStorage.getItem("userNickname")
-    if (!checkLoginStatus()) {
-      requireLogin("comment", () => {})
-      return
-    }
+    const nickname = localStorage.getItem("userNickname") || getAnonNickname()
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -412,7 +407,7 @@ export default function ResultClient() {
           analysisId: analysisData.id,
           text: newComment,
           nickname,
-          email: localStorage.getItem('userEmail') || undefined
+          email: getUserId()
         })
       });
       if (!response.ok) throw new Error('Failed to post comment');
@@ -431,11 +426,7 @@ export default function ResultClient() {
   const handleReplySubmit = async (commentId: string) => {
     if (!replyText.trim()) return
     if (!analysisData) return
-    const nickname = localStorage.getItem("userNickname")
-    if (!checkLoginStatus()) {
-      requireLogin("comment", () => {})
-      return
-    }
+    const nickname = localStorage.getItem("userNickname") || getAnonNickname()
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -445,7 +436,7 @@ export default function ResultClient() {
           text: replyText,
           nickname,
           parentId: commentId,
-          email: localStorage.getItem('userEmail') || undefined
+          email: getUserId()
         })
       });
       if (!response.ok) throw new Error('Failed to post reply');
@@ -472,16 +463,13 @@ export default function ResultClient() {
   }
 
   const handleCommentLike = async (commentId: string) => {
-    const email = localStorage.getItem('userEmail')
-    if (!email) {
-      requireLogin('comment', () => {})
-      return
-    }
+    const uid = getUserId()
+    if (!uid) return
     try {
       const response = await fetch('/api/comments/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'like', email })
+        body: JSON.stringify({ commentId, type: 'like', email: uid })
       })
       if (!response.ok) throw new Error('Failed to like comment')
       const data = await response.json()
@@ -498,16 +486,13 @@ export default function ResultClient() {
   }
 
   const handleCommentDislike = async (commentId: string) => {
-    const email = localStorage.getItem('userEmail')
-    if (!email) {
-      requireLogin('comment', () => {})
-      return
-    }
+    const uid = getUserId()
+    if (!uid) return
     try {
       const response = await fetch('/api/comments/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'dislike', email })
+        body: JSON.stringify({ commentId, type: 'dislike', email: uid })
       })
       if (!response.ok) throw new Error('Failed to dislike comment')
       const data = await response.json()

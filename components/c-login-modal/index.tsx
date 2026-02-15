@@ -131,7 +131,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
           <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
             AggroFilter
           </DialogTitle>
-          <p className="text-center text-sm text-muted-foreground">로그인하고 분석을 시작하세요</p>
+          <p className="text-center text-sm text-muted-foreground">이메일을 등록하면 알림과 데이터 보존이 가능해요</p>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
