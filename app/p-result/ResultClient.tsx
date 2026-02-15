@@ -974,10 +974,14 @@ ${content}
                 </div>
               )}
               <div className="flex-1 flex items-end gap-2">
-                <input
-                  type="text"
+                <textarea
+                  rows={1}
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e) => {
+                    setNewComment(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
                   onFocus={handleCommentFocus}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -986,7 +990,7 @@ ${content}
                     }
                   }}
                   placeholder="댓글 추가..."
-                  className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                  className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-sm focus:border-gray-900 focus:outline-none resize-none overflow-hidden"
                 />
                 {isCommentFocused && (
                   <button
@@ -1088,7 +1092,7 @@ ${content}
                           </button>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-700">{comment.text}</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.text}</p>
                       )}
                       <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
                         <button 
@@ -1114,10 +1118,14 @@ ${content}
                       </div>
                       {replyingTo === comment.id && (
                         <div className="mt-3 flex items-start gap-2">
-                          <input
-                            type="text"
+                          <textarea
+                            rows={1}
                             value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
+                            onChange={(e) => {
+                              setReplyText(e.target.value)
+                              e.target.style.height = 'auto'
+                              e.target.style.height = e.target.scrollHeight + 'px'
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault()
@@ -1125,7 +1133,7 @@ ${content}
                               }
                             }}
                             placeholder="답글 추가..."
-                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none"
+                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none resize-none overflow-hidden"
                           />
                           <button
                             onClick={() => handleReplySubmit(comment.id)}
@@ -1231,7 +1239,7 @@ ${content}
                                     </button>
                                   </div>
                                 ) : (
-                                  <p className="text-xs text-gray-700">{reply.text}</p>
+                                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{reply.text}</p>
                                 )}
                               </div>
                             </div>
