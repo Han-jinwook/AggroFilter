@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
 import { LoginModal } from '@/components/c-login-modal'
 import { isAnonymousUser } from '@/lib/anon'
+import { mergeAnonToEmail } from '@/lib/merge'
 import { Settings, X, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
 
 type TNotification = {
@@ -126,8 +127,9 @@ export default function Page() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  const handleLoginSuccess = (loginEmail: string) => {
+  const handleLoginSuccess = async (loginEmail: string) => {
     localStorage.setItem('userEmail', loginEmail)
+    await mergeAnonToEmail(loginEmail)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)

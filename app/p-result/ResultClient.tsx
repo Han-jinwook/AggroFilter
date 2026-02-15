@@ -13,6 +13,7 @@ import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { getUserId, getAnonNickname, getAnonEmoji, isAnonymousUser } from "@/lib/anon"
+import { mergeAnonToEmail } from "@/lib/merge"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
 
 function extractVideoId(url: string): string {
@@ -264,6 +265,9 @@ export default function ResultClient() {
 
   const handleLoginSuccess = async (email: string) => {
     localStorage.setItem("userEmail", email)
+
+    // 익명 데이터 → 이메일 계정으로 병합
+    await mergeAnonToEmail(email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {

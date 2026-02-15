@@ -8,6 +8,7 @@ import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X } from "lucide-
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
 import { getUserId } from "@/lib/anon"
+import { mergeAnonToEmail } from "@/lib/merge"
 
 interface TAnalysisVideo {
   id: string
@@ -257,10 +258,14 @@ export default function MyPageClient() {
     }
   }, [activeTab])
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = async (email: string) => {
+    localStorage.setItem("userEmail", email)
+
+    // 익명 데이터 → 이메일 계정으로 병합
+    await mergeAnonToEmail(email)
+
     const nickname = email.split("@")[0]
     localStorage.setItem("userNickname", nickname)
-    localStorage.setItem("userEmail", email)
     localStorage.setItem("userProfileImage", "") 
 
     window.dispatchEvent(new CustomEvent("profileUpdated"))

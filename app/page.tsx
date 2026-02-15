@@ -11,6 +11,7 @@ import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { UrlDisplayBox } from "@/components/c-url-display-box"
 import { Disclaimer } from "@/app/c-home/disclaimer"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
+import { mergeAnonToEmail } from "@/lib/merge"
 
 export default function MainPage() {
   const router = useRouter()
@@ -109,6 +110,9 @@ export default function MainPage() {
   const handleLoginSuccess = async (email: string) => {
     localStorage.setItem("userEmail", email)
     setUserEmail(email)
+
+    // 익명 데이터 → 이메일 계정으로 병합
+    await mergeAnonToEmail(email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {

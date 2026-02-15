@@ -8,6 +8,7 @@ import { LoginModal } from '@/components/c-login-modal'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser } from '@/lib/anon'
+import { mergeAnonToEmail } from '@/lib/merge'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -34,8 +35,9 @@ export default function SettingsPage() {
     return () => window.removeEventListener('openLoginModal', handleOpenLoginModal)
   }, [])
 
-  const handleLoginSuccess = (loginEmail: string) => {
+  const handleLoginSuccess = async (loginEmail: string) => {
     localStorage.setItem('userEmail', loginEmail)
+    await mergeAnonToEmail(loginEmail)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)
