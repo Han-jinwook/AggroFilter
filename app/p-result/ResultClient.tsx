@@ -205,10 +205,11 @@ export default function ResultClient() {
             }).catch(err => console.error('View counting failed:', err));
           }
 
-          // 익명 사용자 분석 3회 이상 시 로그인 유도 모달
+          // 익명 사용자 분석 3회 이상 시 로그인 유도 모달 (닫은 후 새 분석 전까지 억제)
           if (isAnonymousUser()) {
             const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10);
-            if (count >= 3) {
+            const dismissedAt = parseInt(localStorage.getItem('anonModalDismissedAt') || '0', 10);
+            if (count >= 3 && count > dismissedAt) {
               setTimeout(() => setShowLoginModal(true), 2000);
             }
           }
@@ -719,7 +720,12 @@ ${content}
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+      <LoginModal open={showLoginModal} onOpenChange={(open) => {
+        setShowLoginModal(open);
+        if (!open && isAnonymousUser()) {
+          localStorage.setItem('anonModalDismissedAt', localStorage.getItem('anonAnalysisCount') || '0');
+        }
+      }} onLoginSuccess={handleLoginSuccess} />
       <main className="pt-6 pb-24">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
