@@ -308,23 +308,36 @@ export async function POST(request: Request) {
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
 
       // 5-0. User lookup/creation (if userId/email provided)
-      // Note: f_user_id stores email directly (not UUID) to match existing data pattern
+      // Supports both email users and anonymous (anon_*) users
       let actualUserId = null;
+      const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
       if (userId) {
-        console.log('5-0. User 확인 중...', userId);
-        const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
-        
-        if (userRes.rows.length === 0) {
-          // Create user if doesn't exist
-          const newUserId = uuidv4();
-          await client.query(`
-            INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-            VALUES ($1, $2, $3, $4, NOW(), NOW())
-          `, [newUserId, userId, userId.split('@')[0], null]);
-          console.log('새 유저 생성:', newUserId);
+        console.log('5-0. User 확인 중...', userId, isAnon ? '(익명)' : '(이메일)');
+        if (isAnon) {
+          // 익명 사용자: t_users에 anon_id로 저장
+          const anonRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
+          if (anonRes.rows.length === 0) {
+            const newUserId = uuidv4();
+            await client.query(`
+              INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+            `, [newUserId, userId, '익명사용자', null]);
+            console.log('익명 유저 생성:', newUserId);
+          }
+          actualUserId = userId;
+        } else {
+          // 이메일 사용자
+          const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
+          if (userRes.rows.length === 0) {
+            const newUserId = uuidv4();
+            await client.query(`
+              INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+              VALUES ($1, $2, $3, $4, NOW(), NOW())
+            `, [newUserId, userId, userId.split('@')[0], null]);
+            console.log('새 유저 생성:', newUserId);
+          }
+          actualUserId = userId;
         }
-        // Store email directly in f_user_id
-        actualUserId = userId;
       }
 
       console.log('5-1. 채널 정보 저장 (t_channels)...');

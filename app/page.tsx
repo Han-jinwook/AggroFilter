@@ -10,6 +10,7 @@ import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { UrlDisplayBox } from "@/components/c-url-display-box"
 import { Disclaimer } from "@/app/c-home/disclaimer"
+import { getUserId } from "@/lib/anon"
 
 export default function MainPage() {
   const router = useRouter()
@@ -73,7 +74,7 @@ export default function MainPage() {
         },
         body: JSON.stringify({ 
             url: analysisUrl,
-            userId: userEmail || localStorage.getItem('userEmail') || undefined
+            userId: userEmail || localStorage.getItem('userEmail') || getUserId()
         }),
       });
 
@@ -96,12 +97,6 @@ export default function MainPage() {
 
   const handleAnalyze = async () => {
     if (!url.trim()) return
-
-    if (!userEmail) {
-      setShowLoginModal(true)
-      return
-    }
-    
     await startAnalysis(url);
   }
 

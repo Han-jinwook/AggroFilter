@@ -289,7 +289,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               <Link
                 href="/p-settings"
                 className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-                onClick={handleLoginClick}
               >
                 <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
                   <span className="text-lg w-5 h-5 flex items-center justify-center">{anonEmoji || '🐾'}</span>
