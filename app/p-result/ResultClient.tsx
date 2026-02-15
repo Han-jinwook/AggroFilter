@@ -204,6 +204,14 @@ export default function ResultClient() {
               body: JSON.stringify({ analysisId: id })
             }).catch(err => console.error('View counting failed:', err));
           }
+
+          // 익명 사용자 분석 3회 이상 시 로그인 유도 모달
+          if (isAnonymousUser()) {
+            const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10);
+            if (count >= 3) {
+              setTimeout(() => setShowLoginModal(true), 2000);
+            }
+          }
         }
       } catch (err) {
         if (!isCancelled) {

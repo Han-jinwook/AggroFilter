@@ -88,13 +88,10 @@ export default function MainPage() {
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
 
-      // 익명 사용자 분석 횟수 추적 → 3회 후 로그인 유도
+      // 익명 사용자 분석 횟수 추적 (모달은 결과 페이지에서 표시)
       if (isAnonymousUser()) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
         localStorage.setItem('anonAnalysisCount', String(count));
-        if (count >= 3) {
-          setTimeout(() => setShowLoginModal(true), 4000);
-        }
       }
     } catch (error) {
       console.error(error);
