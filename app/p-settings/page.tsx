@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
-import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
+import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
+import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser } from '@/lib/anon'
 
 export default function SettingsPage() {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
-  const [nickname, setNickname] = useState('chiu3')
+  const [nickname, setNickname] = useState('')
   const [profileImage, setProfileImage] = useState('')
+  const [email, setEmail] = useState('')
+  const [isAnon, setIsAnon] = useState(true)
   const [tempNickname, setTempNickname] = useState('')
   const [tempProfileImage, setTempProfileImage] = useState('')
   const [predictionStats, setPredictionStats] = useState<{ currentTier: string; avgGap: number; totalPredictions: number }>({ currentTier: 'B', avgGap: 0, totalPredictions: 0 })
@@ -23,25 +26,27 @@ export default function SettingsPage() {
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
 
   useEffect(() => {
-    const email = localStorage.getItem('userEmail')
-    if (email) {
+    const storedEmail = localStorage.getItem('userEmail')
+    const anon = isAnonymousUser()
+    setIsAnon(anon)
+
+    if (storedEmail && !anon) {
+      setEmail(storedEmail)
       // DB에서 프로필 정보 fetch (source of truth)
-      fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
+      fetch(`/api/user/profile?email=${encodeURIComponent(storedEmail)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data?.user) {
-            const dbNickname = data.user.nickname || email.split('@')[0]
+            const dbNickname = data.user.nickname || storedEmail.split('@')[0]
             const dbImage = data.user.image || ''
             setNickname(dbNickname)
             setProfileImage(dbImage)
-            // localStorage는 캐시 용도로만 업데이트
             localStorage.setItem('userNickname', dbNickname)
             localStorage.setItem('userProfileImage', dbImage)
             window.dispatchEvent(new Event('profileUpdated'))
           }
         })
         .catch(() => {
-          // DB 실패 시 localStorage fallback
           const savedNickname = localStorage.getItem('userNickname')
           const savedProfileImage = localStorage.getItem('userProfileImage')
           if (savedNickname) setNickname(savedNickname)
@@ -49,7 +54,7 @@ export default function SettingsPage() {
         })
 
       // Fetch notification settings
-      fetch(`/api/subscription/notifications?email=${encodeURIComponent(email)}`)
+      fetch(`/api/subscription/notifications?email=${encodeURIComponent(storedEmail)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data) setNotifySettings({
@@ -61,7 +66,7 @@ export default function SettingsPage() {
         .catch(() => {})
 
       // Fetch user prediction stats
-      fetch(`/api/prediction/stats?email=${encodeURIComponent(email)}`)
+      fetch(`/api/prediction/stats?email=${encodeURIComponent(storedEmail)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data) {
@@ -73,6 +78,10 @@ export default function SettingsPage() {
           }
         })
         .catch(() => {})
+    } else {
+      // 익명 사용자
+      setNickname(getAnonNickname())
+      setEmail('')
     }
   }, [])
 
@@ -264,12 +273,18 @@ export default function SettingsPage() {
                 <Mail className="h-4 w-4" />
                 이메일
               </label>
-              <input
-                type="email"
-                value="chiu3@naver.com"
-                disabled
-                className="w-full px-4 py-2 border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
-              />
+              {isAnon ? (
+                <div className="w-full px-4 py-2 border rounded-lg bg-amber-50 text-amber-700 text-sm">
+                  이메일을 등록하면 분석 기록을 보존하고 알림을 받을 수 있어요
+                </div>
+              ) : (
+                <input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="w-full px-4 py-2 border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              )}
             </div>
 
             {/* 닉네임 */}
@@ -346,18 +361,35 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">
+            <div className={`bg-card border ${isAnon ? 'border-blue-200' : 'border-red-200'} rounded-xl p-6 shadow-sm`}>
               <h2 className="text-lg font-semibold mb-3">계정</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                로그아웃하면 메인 페이지로 이동합니다.
-              </p>
-              <button
-                onClick={handleLogout}
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-              >
-                <LogOut className="h-4 w-4" />
-                로그아웃
-              </button>
+              {isAnon ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    이메일을 등록하면 기기 변경 시에도 데이터를 유지할 수 있어요.
+                  </p>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    이메일 등록하기
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    로그아웃하면 메인 페이지로 이동합니다.
+                  </p>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    로그아웃
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
