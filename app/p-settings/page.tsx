@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
+import { LoginModal } from '@/components/c-login-modal'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser } from '@/lib/anon'
@@ -24,6 +25,21 @@ export default function SettingsPage() {
     f_notify_top10_change: true,
   })
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+
+  useEffect(() => {
+    const handleOpenLoginModal = () => setShowLoginModal(true)
+    window.addEventListener('openLoginModal', handleOpenLoginModal)
+    return () => window.removeEventListener('openLoginModal', handleOpenLoginModal)
+  }, [])
+
+  const handleLoginSuccess = (loginEmail: string) => {
+    localStorage.setItem('userEmail', loginEmail)
+    localStorage.setItem('userNickname', loginEmail.split('@')[0])
+    window.dispatchEvent(new CustomEvent('profileUpdated'))
+    setShowLoginModal(false)
+    window.location.reload()
+  }
 
   useEffect(() => {
     const storedEmail = localStorage.getItem('userEmail')
@@ -406,6 +422,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
+      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
     </div>
   )
 }
