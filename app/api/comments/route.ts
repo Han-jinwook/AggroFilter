@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { analysisId, text, email: emailFromBody, nickname, parentId } = body;
+    const { analysisId, text, email: emailFromBody, nickname, parentId, profileImage } = body;
 
     let email = emailFromBody as string | undefined;
     try {
@@ -33,9 +33,15 @@ export async function POST(request: Request) {
       
       if (userRes.rows.length > 0) {
         userId = userRes.rows[0].f_id;
-        // Update nickname if changed (optional)
-        if (nickname) {
-            await client.query('UPDATE t_users SET f_nickname = $1 WHERE f_id = $2', [nickname, userId]);
+        // Update nickname and image if provided
+        if (nickname || profileImage) {
+            const updates: string[] = [];
+            const vals: any[] = [];
+            let idx = 1;
+            if (nickname) { updates.push(`f_nickname = $${idx++}`); vals.push(nickname); }
+            if (profileImage) { updates.push(`f_image = $${idx++}`); vals.push(profileImage); }
+            vals.push(userId);
+            await client.query(`UPDATE t_users SET ${updates.join(', ')} WHERE f_id = $${idx}`, vals);
         }
       } else {
         userId = uuidv4();
@@ -44,7 +50,7 @@ export async function POST(request: Request) {
         await client.query(`
           INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
           VALUES ($1, $2, $3, $4, NOW(), NOW())
-        `, [userId, email, defaultNickname, null]);
+        `, [userId, email, defaultNickname, profileImage || null]);
       }
 
       // 2. Insert Comment

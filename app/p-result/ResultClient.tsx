@@ -86,9 +86,9 @@ export default function ResultClient() {
           setUserProfileImage(localStorage.getItem('userProfileImage'))
         })
     } else {
-      // 익명 사용자
+      // 익명 사용자: localStorage에 저장된 커스텀 값 우선
       setUserNickname(localStorage.getItem('userNickname') || getAnonNickname())
-      setUserProfileImage(null)
+      setUserProfileImage(localStorage.getItem('userProfileImage') || null)
     }
   }, [])
 
@@ -399,6 +399,7 @@ export default function ResultClient() {
     if (!newComment.trim()) return
     if (!analysisData) return
     const nickname = localStorage.getItem("userNickname") || getAnonNickname()
+    const profileImg = localStorage.getItem("userProfileImage") || ''
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -407,7 +408,8 @@ export default function ResultClient() {
           analysisId: analysisData.id,
           text: newComment,
           nickname,
-          email: getUserId()
+          email: getUserId(),
+          profileImage: profileImg
         })
       });
       if (!response.ok) throw new Error('Failed to post comment');
@@ -427,6 +429,7 @@ export default function ResultClient() {
     if (!replyText.trim()) return
     if (!analysisData) return
     const nickname = localStorage.getItem("userNickname") || getAnonNickname()
+    const profileImg = localStorage.getItem("userProfileImage") || ''
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -436,7 +439,8 @@ export default function ResultClient() {
           text: replyText,
           nickname,
           parentId: commentId,
-          email: getUserId()
+          email: getUserId(),
+          profileImage: profileImg
         })
       });
       if (!response.ok) throw new Error('Failed to post reply');
