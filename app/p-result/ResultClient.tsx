@@ -818,13 +818,6 @@ ${content}
               </div>
             )}
           </div>
-          <div className="bg-background pb-1 pt-1 flex items-center justify-between">
-            <AccessibilityToolbar
-              ttsText={buildTTSText()}
-              onLargeFontToggle={handleLargeFontToggle}
-              largeFontEnabled={largeFontMode}
-            />
-          </div>
           <div className="bg-background pb-3 pt-0">
             <SubtitleButtons 
               activeSubtitle={activeSubtitle} 
@@ -872,6 +865,13 @@ ${content}
                 }
               })() : undefined}
               userPredictionStats={userPredictionStats}
+              accessibilityToolbar={
+                <AccessibilityToolbar
+                  ttsText={buildTTSText()}
+                  onLargeFontToggle={handleLargeFontToggle}
+                  largeFontEnabled={largeFontMode}
+                />
+              }
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">

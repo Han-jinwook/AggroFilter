@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
+import { useState, ReactNode } from "react"
 
 interface TScoreCardProps {
   accuracy: number | null | undefined
@@ -32,9 +32,10 @@ interface TScoreCardProps {
     currentTierLabel: string | null
     tierEmoji: string | null
   } | null
+  accessibilityToolbar?: ReactNode
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats, accessibilityToolbar }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
@@ -75,13 +76,16 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
 
   return (
     <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
-      <div className="mb-2 flex items-center gap-2">
-        <div className="rounded-2xl bg-blue-200 px-3 py-1">
-          <h2 className="text-lg font-bold text-pink-500">분석 보고</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="rounded-2xl bg-blue-200 px-3 py-1">
+            <h2 className="text-lg font-bold text-pink-500">분석 보고</h2>
+          </div>
+          <span className="rounded-full border-2 border-pink-400 bg-white px-3 py-0.5 text-sm font-medium text-pink-600">
+            #{topic}
+          </span>
         </div>
-        <span className="rounded-full border-2 border-pink-400 bg-white px-3 py-0.5 text-sm font-medium text-pink-600">
-          #{topic}
-        </span>
+        {accessibilityToolbar && <div className="flex-shrink-0">{accessibilityToolbar}</div>}
       </div>
 
       <div className="relative">
