@@ -56,82 +56,42 @@
 
   // ─── 자막(Transcript) 추출 ───
 
-  // 방법 1: ytInitialPlayerResponse에서 자막 트랙 URL 추출 후 fetch
-  async function getTranscriptFromPlayerResponse() {
-    try {
-      // 페이지 소스에서 ytInitialPlayerResponse 찾기
-      const scripts = document.querySelectorAll('script');
-      let playerResponse = null;
-
-      for (const script of scripts) {
-        const text = script.textContent || '';
-        const match = text.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
-        if (match) {
-          try {
-            playerResponse = JSON.parse(match[1]);
-          } catch { /* ignore */ }
-          break;
+  // main world에서 데이터 가져오기 헬퍼
+  function getFromMainWorld(expression) {
+    return new Promise((resolve) => {
+      const msgId = 'AGGRO_MW_' + Math.random().toString(36).slice(2);
+      const handler = (event) => {
+        if (event.data?.type === msgId) {
+          window.removeEventListener('message', handler);
+          resolve(event.data.payload);
         }
-      }
+      };
+      window.addEventListener('message', handler);
 
-      // SPA 환경에서는 window 객체에서 직접 접근 시도
-      if (!playerResponse) {
-        // inject script to extract from window
-        const data = await new Promise((resolve) => {
-          const handler = (event) => {
-            if (event.data?.type === 'AGGRO_PLAYER_RESPONSE') {
-              window.removeEventListener('message', handler);
-              resolve(event.data.payload);
-            }
-          };
-          window.addEventListener('message', handler);
+      const injected = document.createElement('script');
+      injected.textContent = `
+        try {
+          const result = ${expression};
+          window.postMessage({ type: '${msgId}', payload: result }, '*');
+        } catch(e) {
+          window.postMessage({ type: '${msgId}', payload: null }, '*');
+        }
+      `;
+      document.documentElement.appendChild(injected);
+      injected.remove();
 
-          const injected = document.createElement('script');
-          injected.textContent = `
-            window.postMessage({
-              type: 'AGGRO_PLAYER_RESPONSE',
-              payload: window.ytInitialPlayerResponse || null
-            }, '*');
-          `;
-          document.documentElement.appendChild(injected);
-          injected.remove();
+      setTimeout(() => {
+        window.removeEventListener('message', handler);
+        resolve(null);
+      }, 3000);
+    });
+  }
 
-          // timeout
-          setTimeout(() => {
-            window.removeEventListener('message', handler);
-            resolve(null);
-          }, 3000);
-        });
-
-        playerResponse = data;
-      }
-
-      if (!playerResponse) {
-        log('playerResponse를 찾을 수 없습니다.');
-        return null;
-      }
-
-      // captions → playerCaptionsTracklistRenderer → captionTracks
-      const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-      if (!captions || captions.length === 0) {
-        log('자막 트랙이 없습니다.');
-        return null;
-      }
-
-      // 한국어 자막 우선, 없으면 첫 번째
-      const koTrack = captions.find(t => t.languageCode === 'ko') ||
-                       captions.find(t => t.languageCode?.startsWith('ko')) ||
-                       captions[0];
-
-      if (!koTrack?.baseUrl) {
-        log('자막 URL을 찾을 수 없습니다.');
-        return null;
-      }
-
-      log(`자막 트랙 발견: ${koTrack.name?.simpleText || koTrack.languageCode} (${koTrack.languageCode})`);
-
-      // JSON 형식으로 자막 가져오기
-      const url = koTrack.baseUrl + '&fmt=json3';
+  // 자막 트랙 URL에서 자막 아이템 fetch
+  async function fetchCaptionItems(baseUrl) {
+    try {
+      const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'fmt=json3';
+      log('자막 URL fetch:', url.substring(0, 100) + '...');
       const response = await fetch(url);
       if (!response.ok) {
         log('자막 fetch 실패:', response.status);
@@ -153,20 +113,180 @@
         });
       }
 
-      log(`자막 추출 성공: ${items.length}개 항목`);
-      return items;
+      if (items.length > 0) {
+        log(`자막 fetch 성공: ${items.length}개 항목`);
+      }
+      return items.length > 0 ? items : null;
     } catch (error) {
-      log('자막 추출 오류:', error);
+      log('자막 fetch 오류:', error);
       return null;
     }
   }
 
-  // 방법 2: 유튜브 자막 패널에서 텍스트 추출 (폴백)
-  function getTranscriptFromPanel() {
+  // 자막 트랙 목록에서 최적 트랙 선택
+  function pickBestTrack(captionTracks) {
+    if (!captionTracks || captionTracks.length === 0) return null;
+    return captionTracks.find(t => t.languageCode === 'ko') ||
+           captionTracks.find(t => t.languageCode?.startsWith('ko')) ||
+           captionTracks[0];
+  }
+
+  // 방법 1: window.ytInitialPlayerResponse에서 자막 트랙 URL 추출
+  async function method1_playerResponse() {
+    log('[방법1] ytInitialPlayerResponse 시도...');
+
+    // 1a: <script> 태그에서 파싱
+    const scripts = document.querySelectorAll('script');
+    let playerResponse = null;
+
+    for (const script of scripts) {
+      const text = script.textContent || '';
+      const match = text.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+      if (match) {
+        try { playerResponse = JSON.parse(match[1]); } catch { /* ignore */ }
+        break;
+      }
+    }
+
+    // 1b: main world에서 직접 접근 (SPA 환경)
+    if (!playerResponse) {
+      log('[방법1] script 태그에서 못 찾음, main world 접근 시도...');
+      playerResponse = await getFromMainWorld('window.ytInitialPlayerResponse');
+    }
+
+    if (!playerResponse) {
+      log('[방법1] playerResponse 없음');
+      return null;
+    }
+
+    const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if (!captions || captions.length === 0) {
+      log('[방법1] 자막 트랙 없음');
+      return null;
+    }
+
+    log(`[방법1] 자막 트랙 ${captions.length}개 발견`);
+    const track = pickBestTrack(captions);
+    if (!track?.baseUrl) {
+      log('[방법1] 자막 URL 없음');
+      return null;
+    }
+
+    log(`[방법1] 선택 트랙: ${track.name?.simpleText || track.languageCode}`);
+    return await fetchCaptionItems(track.baseUrl);
+  }
+
+  // 방법 2: YouTube 페이지의 ytcfg + movie_player에서 자막 정보 추출
+  async function method2_moviePlayer() {
+    log('[방법2] movie_player 시도...');
+
+    const captionData = await getFromMainWorld(`
+      (function() {
+        const player = document.getElementById('movie_player');
+        if (!player || !player.getPlayerResponse) return null;
+        const resp = player.getPlayerResponse();
+        const tracks = resp?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        if (!tracks || tracks.length === 0) return null;
+        return tracks.map(t => ({ languageCode: t.languageCode, baseUrl: t.baseUrl, name: t.name }));
+      })()
+    `);
+
+    if (!captionData || captionData.length === 0) {
+      log('[방법2] movie_player에서 자막 트랙 없음');
+      return null;
+    }
+
+    log(`[방법2] 자막 트랙 ${captionData.length}개 발견`);
+    const track = pickBestTrack(captionData);
+    if (!track?.baseUrl) {
+      log('[방법2] 자막 URL 없음');
+      return null;
+    }
+
+    log(`[방법2] 선택 트랙: ${track.name?.simpleText || track.languageCode}`);
+    return await fetchCaptionItems(track.baseUrl);
+  }
+
+  // 방법 3: YouTube innertube API로 자막 가져오기
+  async function method3_innertube() {
+    log('[방법3] innertube API 시도...');
+
+    const videoId = getVideoId();
+    if (!videoId) return null;
+
+    // ytcfg에서 API 키와 클라이언트 정보 가져오기
+    const ytcfgData = await getFromMainWorld(`
+      (function() {
+        if (typeof ytcfg === 'undefined' || !ytcfg.get) return null;
+        return {
+          apiKey: ytcfg.get('INNERTUBE_API_KEY'),
+          clientName: ytcfg.get('INNERTUBE_CLIENT_NAME'),
+          clientVersion: ytcfg.get('INNERTUBE_CLIENT_VERSION'),
+        };
+      })()
+    `);
+
+    if (!ytcfgData?.apiKey) {
+      log('[방법3] ytcfg 데이터 없음');
+      return null;
+    }
+
+    log(`[방법3] innertube API 키: ${ytcfgData.apiKey.substring(0, 10)}...`);
+
+    try {
+      // 먼저 player 엔드포인트로 자막 트랙 URL 가져오기
+      const playerResp = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${ytcfgData.apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: videoId,
+          context: {
+            client: {
+              clientName: ytcfgData.clientName || 'WEB',
+              clientVersion: ytcfgData.clientVersion || '2.20240101.00.00',
+            }
+          }
+        })
+      });
+
+      if (!playerResp.ok) {
+        log('[방법3] player API 실패:', playerResp.status);
+        return null;
+      }
+
+      const playerData = await playerResp.json();
+      const captions = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+      if (!captions || captions.length === 0) {
+        log('[방법3] innertube 자막 트랙 없음');
+        return null;
+      }
+
+      log(`[방법3] 자막 트랙 ${captions.length}개 발견`);
+      const track = pickBestTrack(captions);
+      if (!track?.baseUrl) {
+        log('[방법3] 자막 URL 없음');
+        return null;
+      }
+
+      log(`[방법3] 선택 트랙: ${track.name?.simpleText || track.languageCode}`);
+      return await fetchCaptionItems(track.baseUrl);
+    } catch (error) {
+      log('[방법3] innertube 오류:', error);
+      return null;
+    }
+  }
+
+  // 방법 4: 유튜브 자막 패널에서 텍스트 추출 (최후 폴백)
+  function method4_panel() {
+    log('[방법4] 자막 패널 시도...');
     const segments = document.querySelectorAll(
       'ytd-transcript-segment-renderer yt-formatted-string.segment-text'
     );
-    if (segments.length === 0) return null;
+    if (segments.length === 0) {
+      log('[방법4] 자막 패널 없음');
+      return null;
+    }
 
     const items = [];
     segments.forEach(seg => {
@@ -176,21 +296,31 @@
       }
     });
 
-    log(`자막 패널에서 추출: ${items.length}개 항목`);
+    log(`[방법4] 자막 패널에서 추출: ${items.length}개 항목`);
     return items.length > 0 ? items : null;
   }
 
-  // 자막 추출 메인
+  // 자막 추출 메인 — 4가지 방법을 순서대로 시도
   async function extractTranscript() {
-    // 방법 1 시도
-    const items = await getTranscriptFromPlayerResponse();
-    if (items && items.length > 0) return items;
+    log('=== 자막 추출 시작 ===');
 
-    // 방법 2 시도 (폴백)
-    const panelItems = getTranscriptFromPanel();
-    if (panelItems && panelItems.length > 0) return panelItems;
+    // 방법 1
+    const items1 = await method1_playerResponse();
+    if (items1 && items1.length > 0) { log('✅ 방법1 성공'); return items1; }
 
-    log('자막을 추출할 수 없습니다.');
+    // 방법 2
+    const items2 = await method2_moviePlayer();
+    if (items2 && items2.length > 0) { log('✅ 방법2 성공'); return items2; }
+
+    // 방법 3
+    const items3 = await method3_innertube();
+    if (items3 && items3.length > 0) { log('✅ 방법3 성공'); return items3; }
+
+    // 방법 4
+    const items4 = method4_panel();
+    if (items4 && items4.length > 0) { log('✅ 방법4 성공'); return items4; }
+
+    log('❌ 모든 자막 추출 방법 실패');
     return [];
   }
 
