@@ -85,32 +85,39 @@ export default function MainPage() {
     }
   }, [])
 
-  // 크롬 확장팩에서 자막 데이터 가져오기 (window에 주입된 데이터 읽기)
-  const fetchTranscriptFromExtension = async (): Promise<{ transcript?: string; transcriptItems?: any[] } | null> => {
-    // 이미 주입된 데이터가 있으면 바로 반환
-    const existing = (window as any).__AGGRO_TRANSCRIPT_DATA
-    if (existing?.transcript) {
-      console.log(`[확장팩] 자막 데이터 즉시 수신: ${existing.transcript.length}자`)
-      return existing
-    }
-
-    // 아직 주입 안 됐으면 이벤트 대기 (최대 5초)
+  // 크롬 확장팩에서 자막 데이터 가져오기 (postMessage 리스닝)
+  const fetchTranscriptFromExtension = (): Promise<{ transcript?: string; transcriptItems?: any[] } | null> => {
     return new Promise((resolve) => {
-      const handler = () => {
-        const data = (window as any).__AGGRO_TRANSCRIPT_DATA
-        if (data?.transcript) {
-          console.log(`[확장팩] 자막 데이터 이벤트 수신: ${data.transcript.length}자`)
-          resolve(data)
-        } else {
-          resolve(null)
+      let resolved = false
+
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === 'AGGRO_TRANSCRIPT_DATA' && !resolved) {
+          resolved = true
+          window.removeEventListener('message', handler)
+          // 수신 확인 → inject-transcript.js가 반복 전송 중단
+          window.postMessage({ type: 'AGGRO_TRANSCRIPT_RECEIVED' }, '*')
+          const data = event.data.data
+          if (data?.transcript) {
+            console.log(`[확장팩] 자막 데이터 수신: ${data.transcript.length}자`)
+            resolve(data)
+          } else {
+            console.log('[확장팩] 자막 데이터 없음 — 서버 자막 추출로 진행')
+            resolve(null)
+          }
         }
       }
-      window.addEventListener('aggro-transcript-ready', handler, { once: true })
+
+      window.addEventListener('message', handler)
+
+      // 최대 8초 대기 (inject-transcript.js가 background 응답 받는 시간 포함)
       setTimeout(() => {
-        window.removeEventListener('aggro-transcript-ready', handler)
-        console.log('[확장팩] 자막 데이터 대기 타임아웃 — 서버 자막 추출로 진행')
-        resolve(null)
-      }, 5000)
+        if (!resolved) {
+          resolved = true
+          window.removeEventListener('message', handler)
+          console.log('[확장팩] 자막 데이터 대기 타임아웃 — 서버 자막 추출로 진행')
+          resolve(null)
+        }
+      }, 8000)
     })
   }
 

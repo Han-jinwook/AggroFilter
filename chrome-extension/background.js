@@ -2,6 +2,7 @@
 // content script에서 추출한 자막/메타데이터를 저장하고 웹사이트를 열어줍니다.
 // 어그로필터 사이트의 inject-transcript.js가 자막 데이터를 가져갑니다.
 
+// 로컬 테스트: 'http://localhost:3000', 배포: 'https://aggrofilter.netlify.app'
 const SITE_URL = 'https://aggrofilter.netlify.app';
 
 // 최신 자막 데이터 (메모리에 보관, 웹사이트 content script가 가져갈 때까지)
