@@ -50,7 +50,8 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
     e.preventDefault()
     e.stopPropagation()
     const shareUrl = `${window.location.origin}/channel/${item.id}`
-    if (navigator.share) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile && navigator.share) {
       navigator.share({
         title: item.name,
         text: `${item.name} - ${item.topic} 채널 분석`,

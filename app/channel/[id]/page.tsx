@@ -544,7 +544,8 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
           <h1 className="flex-1 text-center font-bold text-lg text-slate-800">채널 종합 리포트</h1>
           <button
             onClick={() => {
-              if (navigator.share) {
+              const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+              if (isMobile && navigator.share) {
                 navigator.share({
                   title: `${channelData.name} 채널 리포트`,
                   text: `${channelData.name}의 신뢰도는 ${channelData.trustScore}점입니다!`,

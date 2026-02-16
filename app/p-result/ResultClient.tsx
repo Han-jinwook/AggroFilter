@@ -534,7 +534,8 @@ export default function ResultClient() {
 
   const handleShare = () => {
     if (!analysisData) return
-    if (navigator.share) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile && navigator.share) {
       navigator.share({
         title: "어그로필터 - AI가 검증하는 신뢰도 분석",
         text: `📊 분석 결과: 신뢰도 ${analysisData.scores.trust}점 | 정확성 ${analysisData.scores.accuracy}% | 어그로성 ${analysisData.scores.clickbait}%`,

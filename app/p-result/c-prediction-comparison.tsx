@@ -140,7 +140,8 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
             onClick={() => {
               const text = `나는 ${tierInfo.tier}급 (${tierInfo.label})! 오차 ${gap.toFixed(1)}점으로 영상 신뢰도를 예측했어요 🎯`
-              if (navigator.share) {
+              const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+              if (isMobile && navigator.share) {
                 navigator.share({ text }).catch(() => {})
               } else {
                 navigator.clipboard.writeText(text)

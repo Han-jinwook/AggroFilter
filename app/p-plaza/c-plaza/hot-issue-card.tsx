@@ -40,7 +40,8 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
     e.preventDefault()
     e.stopPropagation()
     const shareUrl = `${window.location.origin}/p-result?id=${item.id}`
-    if (navigator.share) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile && navigator.share) {
       navigator.share({
         title: item.title,
         text: `${item.channel}의 "${item.title}" - 신뢰도 ${item.score}점`,
