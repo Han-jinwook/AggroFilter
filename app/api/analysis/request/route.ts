@@ -10,6 +10,17 @@ import { createClient } from '@/utils/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
+// CORS 헤더 (크롬 확장팩 등 외부 origin 허용)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 function normalizeEvaluationReasonScores(
   text: string | null | undefined,
   scores: { accuracy?: unknown; clickbait?: unknown; trust?: unknown }
@@ -74,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     if (!url) {
-      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+      return NextResponse.json({ error: 'URL is required' }, { status: 400, headers: corsHeaders });
     }
 
     console.log('분석 요청 URL:', url);
@@ -82,14 +93,14 @@ export async function POST(request: Request) {
     // 1. YouTube 영상 ID 추출
     const videoId = extractVideoId(url);
     if (!videoId) {
-      return NextResponse.json({ error: '유효한 YouTube URL이 아닙니다.' }, { status: 400 });
+      return NextResponse.json({ error: '유효한 YouTube URL이 아닙니다.' }, { status: 400, headers: corsHeaders });
     }
 
     console.log('영상 ID:', videoId);
 
     if (isRecheck) {
       if (!userId) {
-        return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+        return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401, headers: corsHeaders });
       }
 
       const creditClient = await pool.connect();
@@ -112,7 +123,7 @@ export async function POST(request: Request) {
         );
         const credits = creditRes.rows.length > 0 ? Number(creditRes.rows[0].credits) : 0;
         if (!Number.isFinite(credits) || credits <= 0) {
-          return NextResponse.json({ error: '크레딧이 부족합니다.' }, { status: 402 });
+          return NextResponse.json({ error: '크레딧이 부족합니다.' }, { status: 402, headers: corsHeaders });
         }
       } finally {
         creditClient.release();
@@ -146,7 +157,7 @@ export async function POST(request: Request) {
               return NextResponse.json({ 
                 message: '이미 분석된 영상입니다.',
                 analysisId: row.f_id
-              });
+              }, { headers: corsHeaders });
             }
           }
         } finally {
@@ -190,7 +201,7 @@ export async function POST(request: Request) {
           if (isSameTitle && isSameThumb) {
             return NextResponse.json(
               { error: '썸네일/제목 수정이 없어 재심을 할 수 없습니다.' },
-              { status: 409 }
+              { status: 409, headers: corsHeaders }
             );
           }
         }
@@ -606,13 +617,13 @@ export async function POST(request: Request) {
         : '분석이 완료되었습니다.',
       analysisId: finalAnalysisId,
       creditDeducted,
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('분석 요청 오류:', error);
     const statusCode = typeof (error as any)?.statusCode === 'number' ? (error as any).statusCode : 500;
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : '분석 중 오류가 발생했습니다.' 
-    }, { status: statusCode });
+    }, { status: statusCode, headers: corsHeaders });
   }
 }
