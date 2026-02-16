@@ -98,27 +98,87 @@
     return null;
   }
 
-  // 방법 2: 유튜브 자막 패널에서 텍스트 추출 (최후 폴백)
-  function method2_panel() {
-    log('[방법2] 자막 패널 시도...');
+  function collectPanelItems() {
     const segments = document.querySelectorAll(
       'ytd-transcript-segment-renderer yt-formatted-string.segment-text'
     );
-    if (segments.length === 0) {
-      log('[방법2] 자막 패널 없음');
-      return null;
-    }
+    if (segments.length === 0) return null;
 
     const items = [];
-    segments.forEach(seg => {
+    segments.forEach((seg) => {
       const text = seg.textContent?.trim();
-      if (text) {
-        items.push({ text, start: 0, duration: 0 });
-      }
+      if (text) items.push({ text, start: 0, duration: 0 });
     });
-
-    log(`[방법2] 자막 패널에서 추출: ${items.length}개 항목`);
     return items.length > 0 ? items : null;
+  }
+
+  async function waitForPanelItems(timeoutMs = 5000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const items = collectPanelItems();
+      if (items && items.length > 0) return items;
+      await sleep(250);
+    }
+    return null;
+  }
+
+  function findClickableByText(texts) {
+    const candidates = document.querySelectorAll(
+      'button, a, ytd-menu-service-item-renderer, tp-yt-paper-item, yt-formatted-string'
+    );
+    for (const el of candidates) {
+      const t = (el.textContent || '').trim().toLowerCase();
+      if (!t) continue;
+      if (texts.some((q) => t.includes(q))) {
+        return el.closest('button, a, ytd-menu-service-item-renderer, tp-yt-paper-item') || el;
+      }
+    }
+    return null;
+  }
+
+  // 방법 2: 자막 패널 자동 오픈 후 텍스트 추출 (최후 폴백)
+  async function method2_panel() {
+    log('[방법2] 자막 패널 시도...');
+
+    // 이미 열려있는 경우
+    const already = collectPanelItems();
+    if (already && already.length > 0) {
+      log(`[방법2] 자막 패널에서 추출: ${already.length}개 항목`);
+      return already;
+    }
+
+    // 1) "스크립트 표시 / Show transcript" 직접 클릭 시도
+    const transcriptDirect = findClickableByText(['show transcript', 'transcript', '스크립트 표시', '대본 보기']);
+    if (transcriptDirect) {
+      transcriptDirect.click();
+      const items = await waitForPanelItems(5000);
+      if (items && items.length > 0) {
+        log(`[방법2] 자막 패널(직접 오픈) 추출: ${items.length}개 항목`);
+        return items;
+      }
+    }
+
+    // 2) 더보기 메뉴 열기 후 transcript 메뉴 클릭
+    const moreButton = document.querySelector(
+      'button[aria-label*="더보기"], button[aria-label*="More"], ytd-menu-renderer button'
+    );
+    if (moreButton) {
+      moreButton.click();
+      await sleep(300);
+
+      const transcriptMenu = findClickableByText(['show transcript', 'transcript', '스크립트 표시', '대본 보기']);
+      if (transcriptMenu) {
+        transcriptMenu.click();
+        const items = await waitForPanelItems(6000);
+        if (items && items.length > 0) {
+          log(`[방법2] 자막 패널(메뉴 오픈) 추출: ${items.length}개 항목`);
+          return items;
+        }
+      }
+    }
+
+    log('[방법2] 자막 패널 없음');
+    return null;
   }
 
   // 자막 추출 메인
@@ -130,7 +190,7 @@
     if (items1 && items1.length > 0) return items1;
 
     // 방법 2: 자막 패널 DOM (폴백)
-    const items2 = method2_panel();
+    const items2 = await method2_panel();
     if (items2 && items2.length > 0) { log('✅ 방법2 성공 (panel)'); return items2; }
 
     log('❌ 모든 자막 추출 방법 실패');
