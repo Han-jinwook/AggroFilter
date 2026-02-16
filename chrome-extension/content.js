@@ -362,11 +362,25 @@
     return items.length > 0 ? items : null;
   }
 
-  // 자막 추출 메인 — 4가지 방법을 순서대로 시도
+  // 자막 추출 메인 — 5가지 방법을 순서대로 시도
   async function extractTranscript() {
     log('=== 자막 추출 시작 ===');
 
-    // 방법 1: main-world.js (movie_player / ytInitialPlayerResponse)
+    // 방법 0: 플레이어 내부 자막 데이터 직접 추출 (XHR + 내부 메서드 탐색)
+    log('[방법0] 플레이어 내부 자막 데이터 탐색...');
+    const playerData = await requestMainWorld('GET_PLAYER_SUBTITLE_DATA');
+    if (playerData?.text && playerData.text.length > 10) {
+      log(`[방법0] 성공! source: ${playerData.source}, 길이: ${playerData.text.length}`);
+      const items = parseCaptionXml(playerData.text);
+      if (items && items.length > 0) { log('✅ 방법0 성공 (player XHR)'); return items; }
+      // XML이 아닐 수 있으므로 JSON3도 시도
+      const jsonItems = parseCaptionJson3(playerData.text);
+      if (jsonItems && jsonItems.length > 0) { log('✅ 방법0 성공 (player XHR JSON)'); return jsonItems; }
+    } else {
+      log('[방법0] 실패:', playerData);
+    }
+
+    // 방법 1: main-world.js (movie_player / ytInitialPlayerResponse) + fetch
     const items1 = await method1_mainWorld();
     if (items1 && items1.length > 0) { log('✅ 방법1 성공 (main-world)'); return items1; }
 
