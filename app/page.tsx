@@ -21,6 +21,7 @@ export default function MainPage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [autoStarted, setAutoStarted] = useState(false)
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail")
@@ -43,6 +44,17 @@ export default function MainPage() {
       isMounted = false
     }
   }, [])
+
+  // 크롬 확장팩에서 ?url= 파라미터로 진입 시 자동 분석 시작
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlParam = params.get('url')
+    if (urlParam && !autoStarted && !isAnalyzing && !isCompleted) {
+      setUrl(urlParam)
+      setAutoStarted(true)
+      startAnalysis(urlParam)
+    }
+  }, [autoStarted, isAnalyzing, isCompleted])
 
   useEffect(() => {
     if (isCompleted && analysisId) {

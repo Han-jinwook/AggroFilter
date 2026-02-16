@@ -1,5 +1,6 @@
 // 어그로필터 크롬 확장팩 - Content Script
 // 유튜브 영상 페이지에서 "어그로필터 분석" 버튼을 삽입합니다.
+// 버튼 클릭 시 어그로필터 웹사이트를 새 탭으로 열어 분석을 진행합니다.
 
 (function () {
   'use strict';
@@ -28,54 +29,6 @@
     return window.location.pathname === '/watch' && !!getVideoId();
   }
 
-  // 신뢰도 점수 → 등급
-  function getGrade(trust) {
-    if (trust >= 70) return { label: 'Blue', className: 'aggro-grade-blue' };
-    if (trust >= 40) return { label: 'Yellow', className: 'aggro-grade-yellow' };
-    return { label: 'Red', className: 'aggro-grade-red' };
-  }
-
-  // 결과 미니 카드 생성
-  function createResultCard(data) {
-    const analysis = data.analysisData || data;
-    const scores = analysis.scores || {};
-    const grade = getGrade(scores.trust);
-    const analysisId = analysis.id || analysis.analysisId;
-
-    const card = document.createElement('div');
-    card.className = 'aggro-result-card';
-    card.innerHTML = `
-      <div class="aggro-result-header">
-        <span class="aggro-result-title">🚦 어그로필터 분석 결과</span>
-        <span class="aggro-result-grade ${grade.className}">${grade.label}</span>
-      </div>
-      <div class="aggro-scores">
-        <div class="aggro-score-item">
-          <span class="aggro-score-label">정확성</span>
-          <span class="aggro-score-value">${scores.accuracy ?? '-'}%</span>
-        </div>
-        <div class="aggro-score-item">
-          <span class="aggro-score-label">어그로성</span>
-          <span class="aggro-score-value">${scores.clickbait ?? '-'}%</span>
-        </div>
-        <div class="aggro-score-item">
-          <span class="aggro-score-label">신뢰도</span>
-          <span class="aggro-score-value">${scores.trust ?? '-'}</span>
-        </div>
-      </div>
-      <span class="aggro-detail-link" data-analysis-id="${analysisId}">상세 분석 보기 →</span>
-    `;
-
-    card.querySelector('.aggro-detail-link').addEventListener('click', () => {
-      chrome.runtime.sendMessage({
-        type: 'OPEN_RESULT_PAGE',
-        analysisId: analysisId,
-      });
-    });
-
-    return card;
-  }
-
   // 분석 버튼 생성
   function createAnalyzeButton() {
     const container = document.createElement('div');
@@ -86,70 +39,12 @@
     btn.className = 'aggro-filter-btn';
     btn.innerHTML = '🚦 어그로필터 분석';
 
-    btn.addEventListener('click', async () => {
-      if (btn.classList.contains('analyzing')) return;
-
-      btn.classList.add('analyzing');
-      btn.classList.remove('done', 'error');
-      btn.innerHTML = '<span class="aggro-spinner"></span> 분석 중...';
-
-      const oldCard = container.querySelector('.aggro-result-card');
-      if (oldCard) oldCard.remove();
-
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: 'ANALYZE_VIDEO',
-          videoUrl: getVideoUrl(),
-        });
-
-        if (response.success) {
-          const data = response.data;
-          btn.classList.remove('analyzing');
-          btn.classList.add('done');
-          btn.innerHTML = '✅ 분석 완료';
-
-          if (data.analysisData || data.scores) {
-            container.appendChild(createResultCard(data));
-          } else if (data.analysisId || data.id) {
-            const analysisId = data.analysisId || data.id;
-            try {
-              const resultResponse = await chrome.runtime.sendMessage({
-                type: 'GET_RESULT',
-                analysisId: analysisId,
-              });
-              if (resultResponse.success && resultResponse.data) {
-                container.appendChild(createResultCard(resultResponse.data));
-              }
-            } catch {
-              const link = document.createElement('span');
-              link.className = 'aggro-detail-link';
-              link.textContent = '상세 분석 보기 →';
-              link.style.cssText = 'margin-top:8px;display:inline-block';
-              link.addEventListener('click', () => {
-                chrome.runtime.sendMessage({ type: 'OPEN_RESULT_PAGE', analysisId });
-              });
-              container.appendChild(link);
-            }
-          }
-        } else {
-          btn.classList.remove('analyzing');
-          btn.classList.add('error');
-          btn.innerHTML = `❌ ${response.error || '분석 실패'}`;
-          setTimeout(() => {
-            btn.classList.remove('error');
-            btn.innerHTML = '🚦 어그로필터 분석';
-          }, 3000);
-        }
-      } catch (error) {
-        log('분석 오류:', error);
-        btn.classList.remove('analyzing');
-        btn.classList.add('error');
-        btn.innerHTML = '❌ 오류 발생';
-        setTimeout(() => {
-          btn.classList.remove('error');
-          btn.innerHTML = '🚦 어그로필터 분석';
-        }, 3000);
-      }
+    btn.addEventListener('click', () => {
+      // 어그로필터 웹사이트로 이동하여 분석 진행
+      chrome.runtime.sendMessage({
+        type: 'ANALYZE_VIDEO',
+        videoUrl: getVideoUrl(),
+      });
     });
 
     container.appendChild(btn);
