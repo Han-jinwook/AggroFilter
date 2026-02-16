@@ -14,6 +14,7 @@ import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { getUserId, getAnonNickname, getAnonEmoji, isAnonymousUser } from "@/lib/anon"
 import { mergeAnonToEmail } from "@/lib/merge"
+import { ShareModal } from "@/components/c-share-modal"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
 
 function extractVideoId(url: string): string {
@@ -529,28 +530,18 @@ export default function ResultClient() {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
   }
 
-  const handleShare = async () => {
+  const [showShareModal, setShowShareModal] = useState(false)
+
+  const handleShare = () => {
     if (!analysisData) return
-    const shareData = {
-      title: "어그로필터 - AI가 검증하는 신뢰도 분석",
-      text: `AI가 검증하는 어그로필터!\n유튜브 어그로 영상과 기사뉴스, 이에 나이에 맞게!\n\n📊 분석 결과:\n• 신뢰도 점수: ${analysisData.scores.trust}\n• 정확성: ${analysisData.scores.accuracy}%\n• 어그로성: ${analysisData.scores.clickbait}%\n\n제공 서비스:\n- 자막 전문/요약\n- 분석보고 (정확성과 어그로성 신뢰도 점수 및 평가)\n- 채널 순위\n\n우리가족 슬기로운 유튜브 생활 🚦\n\n${window.location.href}`,
-      url: window.location.href,
-    }
-    try {
-      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-        await navigator.share(shareData)
-      } else {
-        const textToCopy = `${shareData.title}\n\n${shareData.text}`
-        await navigator.clipboard.writeText(textToCopy)
-        alert("📋 링크가 클립보드에 복사되었습니다!")
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        if (err.name !== "AbortError") {
-          console.error("[v0] 공유 중 오류:", err)
-          alert("공유 기능을 사용할 수 없습니다. 브라우저 설정을 확인해주세요.")
-        }
-      }
+    if (navigator.share) {
+      navigator.share({
+        title: "어그로필터 - AI가 검증하는 신뢰도 분석",
+        text: `📊 분석 결과: 신뢰도 ${analysisData.scores.trust}점 | 정확성 ${analysisData.scores.accuracy}% | 어그로성 ${analysisData.scores.clickbait}%`,
+        url: window.location.href,
+      }).catch(() => {})
+    } else {
+      setShowShareModal(true)
     }
   }
 
@@ -730,6 +721,15 @@ ${content}
           localStorage.setItem('anonModalDismissedAt', localStorage.getItem('anonAnalysisCount') || '0');
         }
       }} onLoginSuccess={handleLoginSuccess} />
+      {analysisData && (
+        <ShareModal
+          open={showShareModal}
+          onOpenChange={setShowShareModal}
+          title={`어그로필터 - ${analysisData.videoTitle}`}
+          description={`📊 신뢰도 ${analysisData.scores.trust}점 | 정확성 ${analysisData.scores.accuracy}% | 어그로성 ${analysisData.scores.clickbait}%`}
+          url={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+      )}
       <main className="pt-6 pb-24">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">

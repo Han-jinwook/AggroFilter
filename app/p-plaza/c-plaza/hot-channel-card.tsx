@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
 
 import Link from "next/link"
-import { Share2 } from "lucide-react"
+import { Share2, Check } from "lucide-react"
 
 interface THotChannelItem {
   id: string | number
@@ -43,18 +44,22 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
     return "text-amber-500"
   }
 
+  const [copied, setCopied] = useState(false)
+
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    const shareUrl = `${window.location.origin}/channel/${item.id}`
     if (navigator.share) {
       navigator.share({
         title: item.name,
         text: `${item.name} - ${item.topic} 채널 분석`,
-        url: `${window.location.origin}/channel/${item.id}`,
-      })
+        url: shareUrl,
+      }).catch(() => {})
     } else {
-      navigator.clipboard.writeText(`${window.location.origin}/channel/${item.id}`)
-      alert("링크가 복사되었습니다!")
+      navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -98,10 +103,10 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
         <div
           role="button"
           onClick={handleShare}
-          className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-          title="공유하기"
+          className={`p-1.5 rounded-full transition-all cursor-pointer ${copied ? 'text-green-500 bg-green-50 opacity-100' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100'}`}
+          title={copied ? "복사됨" : "공유하기"}
         >
-          <Share2 className="h-4 w-4" />
+          {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
         </div>
       </div>
     </Link>

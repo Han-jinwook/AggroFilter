@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/c-button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/c-accordion"
 import { Card, CardContent } from "@/components/ui/c-card"
 import { useState, useEffect, useCallback } from "react"
+import { ShareModal } from "@/components/c-share-modal"
 import { cn } from "@/lib/utils"
 import { AppHeader } from "@/components/c-app-header"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -110,6 +111,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   const [credits, setCredits] = useState<number | null>(null)
   const [isRecheckingVideoId, setIsRecheckingVideoId] = useState<string | null>(null)
   const [modalStep, setModalStep] = useState<null | 'intro' | 'mobile' | 'charge'>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -547,10 +549,9 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                   title: `${channelData.name} 채널 리포트`,
                   text: `${channelData.name}의 신뢰도는 ${channelData.trustScore}점입니다!`,
                   url: window.location.href,
-                })
+                }).catch(() => {})
               } else {
-                navigator.clipboard.writeText(window.location.href)
-                alert("링크가 복사되었습니다!")
+                setShowShareModal(true)
               }
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-full transition-all active:scale-95 border border-blue-200"
@@ -805,6 +806,15 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
           </Accordion>
         </div>
       </main>
+      {channelData && (
+        <ShareModal
+          open={showShareModal}
+          onOpenChange={setShowShareModal}
+          title={`${channelData.name} 채널 리포트`}
+          description={`${channelData.name}의 신뢰도는 ${channelData.trustScore}점입니다!`}
+          url={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+      )}
     </div>
   )
 }

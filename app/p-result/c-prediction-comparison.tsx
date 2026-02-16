@@ -141,10 +141,15 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
             onClick={() => {
               const text = `나는 ${tierInfo.tier}급 (${tierInfo.label})! 오차 ${gap.toFixed(1)}점으로 영상 신뢰도를 예측했어요 🎯`
               if (navigator.share) {
-                navigator.share({ text })
+                navigator.share({ text }).catch(() => {})
               } else {
                 navigator.clipboard.writeText(text)
-                alert("클립보드에 복사되었습니다!")
+                const btn = document.activeElement as HTMLButtonElement
+                if (btn) {
+                  const orig = btn.textContent
+                  btn.textContent = '✅ 복사됨!'
+                  setTimeout(() => { btn.textContent = orig }, 2000)
+                }
               }
             }}
           >
