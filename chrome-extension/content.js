@@ -56,29 +56,23 @@
 
   // ─── 자막(Transcript) 추출 ───
 
-  // main world에서 데이터 가져오기 헬퍼
-  function getFromMainWorld(expression) {
+  // main-world.js에 요청을 보내고 응답을 받는 헬퍼
+  function requestMainWorld(action) {
     return new Promise((resolve) => {
-      const msgId = 'AGGRO_MW_' + Math.random().toString(36).slice(2);
+      const requestId = 'req_' + Math.random().toString(36).slice(2);
       const handler = (event) => {
-        if (event.data?.type === msgId) {
+        if (event.data?.type === 'AGGRO_MAIN_WORLD_RESPONSE' && event.data.requestId === requestId) {
           window.removeEventListener('message', handler);
           resolve(event.data.payload);
         }
       };
       window.addEventListener('message', handler);
 
-      const injected = document.createElement('script');
-      injected.textContent = `
-        try {
-          const result = ${expression};
-          window.postMessage({ type: '${msgId}', payload: result }, '*');
-        } catch(e) {
-          window.postMessage({ type: '${msgId}', payload: null }, '*');
-        }
-      `;
-      document.documentElement.appendChild(injected);
-      injected.remove();
+      window.postMessage({
+        type: 'AGGRO_MAIN_WORLD_REQUEST',
+        requestId: requestId,
+        action: action,
+      }, '*');
 
       setTimeout(() => {
         window.removeEventListener('message', handler);
@@ -201,11 +195,32 @@
            captionTracks[0];
   }
 
-  // 방법 1: window.ytInitialPlayerResponse에서 자막 트랙 URL 추출
-  async function method1_playerResponse() {
-    log('[방법1] ytInitialPlayerResponse 시도...');
+  // 방법 1: main-world.js를 통해 movie_player / ytInitialPlayerResponse에서 자막 트랙 가져오기
+  async function method1_mainWorld() {
+    log('[방법1] main-world.js 통해 자막 트랙 요청...');
 
-    // 1a: <script> 태그에서 파싱
+    const result = await requestMainWorld('GET_CAPTION_TRACKS');
+
+    if (!result || !result.tracks || result.tracks.length === 0) {
+      log('[방법1] 자막 트랙 없음');
+      return null;
+    }
+
+    log(`[방법1] ${result.source}에서 자막 트랙 ${result.tracks.length}개 발견`);
+    const track = pickBestTrack(result.tracks);
+    if (!track?.baseUrl) {
+      log('[방법1] 자막 URL 없음');
+      return null;
+    }
+
+    log(`[방법1] 선택 트랙: ${track.name || track.languageCode}`);
+    return await fetchCaptionItems(track.baseUrl);
+  }
+
+  // 방법 2: <script> 태그에서 ytInitialPlayerResponse 파싱 (초기 로드 시에만 유효)
+  async function method2_scriptTag() {
+    log('[방법2] script 태그에서 playerResponse 파싱 시도...');
+
     const scripts = document.querySelectorAll('script');
     let playerResponse = null;
 
@@ -218,56 +233,19 @@
       }
     }
 
-    // 1b: main world에서 직접 접근 (SPA 환경)
     if (!playerResponse) {
-      log('[방법1] script 태그에서 못 찾음, main world 접근 시도...');
-      playerResponse = await getFromMainWorld('window.ytInitialPlayerResponse');
-    }
-
-    if (!playerResponse) {
-      log('[방법1] playerResponse 없음');
+      log('[방법2] script 태그에서 playerResponse 없음');
       return null;
     }
 
     const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
     if (!captions || captions.length === 0) {
-      log('[방법1] 자막 트랙 없음');
+      log('[방법2] 자막 트랙 없음');
       return null;
     }
 
-    log(`[방법1] 자막 트랙 ${captions.length}개 발견`);
+    log(`[방법2] 자막 트랙 ${captions.length}개 발견`);
     const track = pickBestTrack(captions);
-    if (!track?.baseUrl) {
-      log('[방법1] 자막 URL 없음');
-      return null;
-    }
-
-    log(`[방법1] 선택 트랙: ${track.name?.simpleText || track.languageCode}`);
-    return await fetchCaptionItems(track.baseUrl);
-  }
-
-  // 방법 2: YouTube 페이지의 ytcfg + movie_player에서 자막 정보 추출
-  async function method2_moviePlayer() {
-    log('[방법2] movie_player 시도...');
-
-    const captionData = await getFromMainWorld(`
-      (function() {
-        const player = document.getElementById('movie_player');
-        if (!player || !player.getPlayerResponse) return null;
-        const resp = player.getPlayerResponse();
-        const tracks = resp?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-        if (!tracks || tracks.length === 0) return null;
-        return tracks.map(t => ({ languageCode: t.languageCode, baseUrl: t.baseUrl, name: t.name }));
-      })()
-    `);
-
-    if (!captionData || captionData.length === 0) {
-      log('[방법2] movie_player에서 자막 트랙 없음');
-      return null;
-    }
-
-    log(`[방법2] 자막 트랙 ${captionData.length}개 발견`);
-    const track = pickBestTrack(captionData);
     if (!track?.baseUrl) {
       log('[방법2] 자막 URL 없음');
       return null;
@@ -284,17 +262,8 @@
     const videoId = getVideoId();
     if (!videoId) return null;
 
-    // ytcfg에서 API 키와 클라이언트 정보 가져오기
-    const ytcfgData = await getFromMainWorld(`
-      (function() {
-        if (typeof ytcfg === 'undefined' || !ytcfg.get) return null;
-        return {
-          apiKey: ytcfg.get('INNERTUBE_API_KEY'),
-          clientName: ytcfg.get('INNERTUBE_CLIENT_NAME'),
-          clientVersion: ytcfg.get('INNERTUBE_CLIENT_VERSION'),
-        };
-      })()
-    `);
+    // main-world.js를 통해 ytcfg 데이터 가져오기
+    const ytcfgData = await requestMainWorld('GET_YTCFG');
 
     if (!ytcfgData?.apiKey) {
       log('[방법3] ytcfg 데이터 없음');
@@ -304,7 +273,6 @@
     log(`[방법3] innertube API 키: ${ytcfgData.apiKey.substring(0, 10)}...`);
 
     try {
-      // 먼저 player 엔드포인트로 자막 트랙 URL 가져오기
       const playerResp = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${ytcfgData.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -374,21 +342,21 @@
   async function extractTranscript() {
     log('=== 자막 추출 시작 ===');
 
-    // 방법 1
-    const items1 = await method1_playerResponse();
-    if (items1 && items1.length > 0) { log('✅ 방법1 성공'); return items1; }
+    // 방법 1: main-world.js (movie_player / ytInitialPlayerResponse)
+    const items1 = await method1_mainWorld();
+    if (items1 && items1.length > 0) { log('✅ 방법1 성공 (main-world)'); return items1; }
 
-    // 방법 2
-    const items2 = await method2_moviePlayer();
-    if (items2 && items2.length > 0) { log('✅ 방법2 성공'); return items2; }
+    // 방법 2: script 태그 파싱
+    const items2 = await method2_scriptTag();
+    if (items2 && items2.length > 0) { log('✅ 방법2 성공 (script tag)'); return items2; }
 
-    // 방법 3
+    // 방법 3: innertube API
     const items3 = await method3_innertube();
-    if (items3 && items3.length > 0) { log('✅ 방법3 성공'); return items3; }
+    if (items3 && items3.length > 0) { log('✅ 방법3 성공 (innertube)'); return items3; }
 
-    // 방법 4
+    // 방법 4: 자막 패널 DOM
     const items4 = method4_panel();
-    if (items4 && items4.length > 0) { log('✅ 방법4 성공'); return items4; }
+    if (items4 && items4.length > 0) { log('✅ 방법4 성공 (panel)'); return items4; }
 
     log('❌ 모든 자막 추출 방법 실패');
     return [];
