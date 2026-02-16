@@ -84,15 +84,22 @@
 
     const resp = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${cfg.apiKey}&prettyPrint=false`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-YouTube-Client-Name': '1',
+        'X-YouTube-Client-Version': cfg.clientVersion,
+        ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
+      },
       body: JSON.stringify({
         context: buildContext(cfg),
+        externalVideoId: videoId,
         params: params,
       })
     });
 
     if (!resp.ok) {
-      console.log(TAG, '/get_transcript API 실패:', resp.status);
+      const errText = await resp.text();
+      console.log(TAG, '/get_transcript API 실패:', resp.status, errText?.substring(0, 400));
       return null;
     }
 
