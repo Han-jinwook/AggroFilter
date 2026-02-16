@@ -26,6 +26,13 @@
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://aggrofilter.netlify.app/*"
+      ],
+      "js": ["inject-transcript.js"],
+      "run_at": "document_start"
     }
   ],
   "action": {
