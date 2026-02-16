@@ -87,38 +87,108 @@
     });
   }
 
-  // 자막 트랙 URL에서 자막 아이템 fetch
+  // 자막 트랙 URL에서 자막 아이템 fetch (XML → JSON3 순서로 시도)
   async function fetchCaptionItems(baseUrl) {
+    // 1차: XML 형식 (기본, 자동 생성 자막에서 더 안정적)
+    const xmlItems = await fetchCaptionXml(baseUrl);
+    if (xmlItems && xmlItems.length > 0) return xmlItems;
+
+    // 2차: JSON3 형식
+    const jsonItems = await fetchCaptionJson3(baseUrl);
+    if (jsonItems && jsonItems.length > 0) return jsonItems;
+
+    return null;
+  }
+
+  // XML 형식 자막 fetch
+  async function fetchCaptionXml(baseUrl) {
     try {
-      const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'fmt=json3';
-      log('자막 URL fetch:', url.substring(0, 100) + '...');
-      const response = await fetch(url);
+      log('자막 XML fetch:', baseUrl.substring(0, 100) + '...');
+      const response = await fetch(baseUrl);
       if (!response.ok) {
-        log('자막 fetch 실패:', response.status);
+        log('자막 XML fetch 실패:', response.status);
         return null;
       }
 
-      const json = await response.json();
+      const text = await response.text();
+      if (!text || text.length < 10) {
+        log('자막 XML 응답 비어있음, 길이:', text.length);
+        return null;
+      }
+
+      log('자막 XML 응답 길이:', text.length, '처음 200자:', text.substring(0, 200));
+
+      // XML 파싱
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/xml');
+      const textNodes = doc.querySelectorAll('text');
+
+      if (textNodes.length === 0) {
+        log('자막 XML에서 <text> 노드 없음');
+        return null;
+      }
+
+      const items = [];
+      textNodes.forEach(node => {
+        const content = node.textContent?.trim();
+        if (!content) return;
+        // HTML 엔티티 디코딩
+        const decoded = content.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+        items.push({
+          text: decoded,
+          start: parseFloat(node.getAttribute('start') || '0'),
+          duration: parseFloat(node.getAttribute('dur') || '0'),
+        });
+      });
+
+      if (items.length > 0) {
+        log(`자막 XML 파싱 성공: ${items.length}개 항목`);
+      }
+      return items.length > 0 ? items : null;
+    } catch (error) {
+      log('자막 XML 오류:', error);
+      return null;
+    }
+  }
+
+  // JSON3 형식 자막 fetch
+  async function fetchCaptionJson3(baseUrl) {
+    try {
+      const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'fmt=json3';
+      log('자막 JSON3 fetch:', url.substring(0, 100) + '...');
+      const response = await fetch(url);
+      if (!response.ok) {
+        log('자막 JSON3 fetch 실패:', response.status);
+        return null;
+      }
+
+      const text = await response.text();
+      if (!text || text.length < 10) {
+        log('자막 JSON3 응답 비어있음');
+        return null;
+      }
+
+      const json = JSON.parse(text);
       const events = json.events || [];
 
       const items = [];
       for (const event of events) {
         if (!event.segs) continue;
-        const text = event.segs.map(s => s.utf8 || '').join('').trim();
-        if (!text) continue;
+        const segText = event.segs.map(s => s.utf8 || '').join('').trim();
+        if (!segText) continue;
         items.push({
-          text: text,
+          text: segText,
           start: (event.tStartMs || 0) / 1000,
           duration: (event.dDurationMs || 0) / 1000,
         });
       }
 
       if (items.length > 0) {
-        log(`자막 fetch 성공: ${items.length}개 항목`);
+        log(`자막 JSON3 파싱 성공: ${items.length}개 항목`);
       }
       return items.length > 0 ? items : null;
     } catch (error) {
-      log('자막 fetch 오류:', error);
+      log('자막 JSON3 오류:', error);
       return null;
     }
   }
