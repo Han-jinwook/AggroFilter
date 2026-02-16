@@ -5,7 +5,7 @@
   'use strict';
 
   // content script(isolated world)에서 요청이 오면 데이터를 반환
-  window.addEventListener('message', (event) => {
+  window.addEventListener('message', async (event) => {
     if (event.source !== window) return;
     if (event.data?.type !== 'AGGRO_MAIN_WORLD_REQUEST') return;
 
@@ -50,6 +50,27 @@
               kind: t.kind || '',
               vssId: t.vssId || '',
             }))};
+          }
+        }
+      }
+
+      if (action === 'FETCH_CAPTION') {
+        // main world에서 자막 URL fetch (쿠키/세션 포함)
+        const captionUrl = event.data.url;
+        if (captionUrl) {
+          try {
+            const resp = await fetch(captionUrl);
+            if (resp.ok) {
+              const text = await resp.text();
+              console.log('[어그로필터 main-world] 자막 fetch 응답 길이:', text.length);
+              result = { text: text, status: resp.status };
+            } else {
+              console.log('[어그로필터 main-world] 자막 fetch 실패:', resp.status);
+              result = { text: '', status: resp.status };
+            }
+          } catch (e) {
+            console.error('[어그로필터 main-world] 자막 fetch 오류:', e);
+            result = { text: '', error: e.message };
           }
         }
       }
