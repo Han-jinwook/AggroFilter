@@ -222,10 +222,10 @@
 
         log(`자막: ${transcript.length}자, ${transcriptItems.length}개 항목`);
 
-        // 3. background로 전달 → API 호출 → 웹사이트 새 탭 열기
-        btn.innerHTML = '<span class="aggro-spinner"></span> 분석 요청 중...';
+        // 3. background로 전달 → 자막 저장 + 웹사이트 새 탭 열기
+        btn.innerHTML = '<span class="aggro-spinner"></span> 웹으로 이동 중...';
 
-        const response = await chrome.runtime.sendMessage({
+        chrome.runtime.sendMessage({
           type: 'ANALYZE_VIDEO',
           data: {
             url: metadata.url,
@@ -239,15 +239,11 @@
           }
         });
 
-        if (response?.success) {
-          btn.classList.remove('analyzing');
-          btn.innerHTML = '✅ 분석 완료 — 새 탭에서 확인하세요';
-          setTimeout(() => {
-            btn.innerHTML = '🚦 어그로필터 분석';
-          }, 5000);
-        } else {
-          throw new Error(response?.error || '분석 요청 실패');
-        }
+        btn.classList.remove('analyzing');
+        btn.innerHTML = '✅ 새 탭에서 분석 진행 중';
+        setTimeout(() => {
+          btn.innerHTML = '🚦 어그로필터 분석';
+        }, 5000);
 
       } catch (error) {
         log('분석 시작 오류:', error);

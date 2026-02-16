@@ -5,7 +5,8 @@
   "description": "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
@@ -34,6 +35,12 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://aggrofilter.netlify.app/*",
+      "http://localhost:3000/*"
+    ]
   },
   "icons": {
     "16": "icons/icon16.png",

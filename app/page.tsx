@@ -49,21 +49,19 @@ export default function MainPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const from = params.get('from')
-
-    // ?analysisId= : 확장팩이 이미 분석 완료 → 결과 페이지로 이동
-    const extAnalysisId = params.get('analysisId')
-    if (extAnalysisId && from === 'chrome-extension' && !autoStarted) {
-      setAutoStarted(true)
-      setAnalysisId(extAnalysisId)
-      setIsCompleted(true)
-      return
-    }
-
-    // ?url= : URL만 전달된 경우 → 자동 분석 시작
     const urlParam = params.get('url')
-    if (urlParam && !autoStarted && !isAnalyzing && !isCompleted) {
-      setUrl(urlParam)
-      setAutoStarted(true)
+
+    if (!urlParam || autoStarted || isAnalyzing || isCompleted) return
+
+    setUrl(urlParam)
+    setAutoStarted(true)
+
+    if (from === 'chrome-extension') {
+      // 확장팩에서 자막 데이터 가져오기 (externally_connectable)
+      fetchTranscriptFromExtension().then((extData) => {
+        startAnalysis(urlParam, extData?.transcript, extData?.transcriptItems)
+      })
+    } else {
       startAnalysis(urlParam)
     }
   }, [autoStarted, isAnalyzing, isCompleted])
@@ -87,20 +85,55 @@ export default function MainPage() {
     }
   }, [])
 
-  const startAnalysis = async (analysisUrl: string) => {
+  // 크롬 확장팩에서 자막 데이터 가져오기 (window에 주입된 데이터 읽기)
+  const fetchTranscriptFromExtension = async (): Promise<{ transcript?: string; transcriptItems?: any[] } | null> => {
+    // 이미 주입된 데이터가 있으면 바로 반환
+    const existing = (window as any).__AGGRO_TRANSCRIPT_DATA
+    if (existing?.transcript) {
+      console.log(`[확장팩] 자막 데이터 즉시 수신: ${existing.transcript.length}자`)
+      return existing
+    }
+
+    // 아직 주입 안 됐으면 이벤트 대기 (최대 5초)
+    return new Promise((resolve) => {
+      const handler = () => {
+        const data = (window as any).__AGGRO_TRANSCRIPT_DATA
+        if (data?.transcript) {
+          console.log(`[확장팩] 자막 데이터 이벤트 수신: ${data.transcript.length}자`)
+          resolve(data)
+        } else {
+          resolve(null)
+        }
+      }
+      window.addEventListener('aggro-transcript-ready', handler, { once: true })
+      setTimeout(() => {
+        window.removeEventListener('aggro-transcript-ready', handler)
+        console.log('[확장팩] 자막 데이터 대기 타임아웃 — 서버 자막 추출로 진행')
+        resolve(null)
+      }, 5000)
+    })
+  }
+
+  const startAnalysis = async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
     setIsAnalyzing(true)
-    console.log("분석 요청:", analysisUrl)
+    console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
+      const body: any = { 
+        url: analysisUrl,
+        userId: userEmail || localStorage.getItem('userEmail') || getUserId()
+      }
+      if (clientTranscript) {
+        body.clientTranscript = clientTranscript
+        body.clientTranscriptItems = clientTranscriptItems
+      }
+
       const response = await fetch('/api/analysis/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-            url: analysisUrl,
-            userId: userEmail || localStorage.getItem('userEmail') || getUserId()
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
