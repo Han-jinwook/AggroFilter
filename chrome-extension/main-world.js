@@ -21,11 +21,16 @@
           const resp = player.getPlayerResponse();
           const tracks = resp?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
           if (tracks && tracks.length > 0) {
+            console.log('[어그로필터 main-world] movie_player 자막 트랙:', JSON.stringify(tracks.map(t => ({
+              lang: t.languageCode, kind: t.kind, url: t.baseUrl?.substring(0, 200),
+              vssId: t.vssId, name: t.name?.simpleText,
+            }))));
             result = { source: 'movie_player', tracks: tracks.map(t => ({
               languageCode: t.languageCode,
               baseUrl: t.baseUrl,
               name: t.name?.simpleText || t.languageCode,
               kind: t.kind || '',
+              vssId: t.vssId || '',
             }))};
           }
         }
@@ -34,11 +39,16 @@
         if (!result && window.ytInitialPlayerResponse) {
           const tracks = window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
           if (tracks && tracks.length > 0) {
+            console.log('[어그로필터 main-world] ytInitialPlayerResponse 자막 트랙:', JSON.stringify(tracks.map(t => ({
+              lang: t.languageCode, kind: t.kind, url: t.baseUrl?.substring(0, 200),
+              vssId: t.vssId, name: t.name?.simpleText,
+            }))));
             result = { source: 'ytInitialPlayerResponse', tracks: tracks.map(t => ({
               languageCode: t.languageCode,
               baseUrl: t.baseUrl,
               name: t.name?.simpleText || t.languageCode,
               kind: t.kind || '',
+              vssId: t.vssId || '',
             }))};
           }
         }

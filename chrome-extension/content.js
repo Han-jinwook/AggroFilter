@@ -97,7 +97,7 @@
   // XML 형식 자막 fetch
   async function fetchCaptionXml(baseUrl) {
     try {
-      log('자막 XML fetch:', baseUrl.substring(0, 100) + '...');
+      log('자막 XML fetch 전체 URL:', baseUrl);
       const response = await fetch(baseUrl);
       if (!response.ok) {
         log('자막 XML fetch 실패:', response.status);
