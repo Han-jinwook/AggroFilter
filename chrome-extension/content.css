@@ -59,3 +59,37 @@
   align-items: flex-start;
   margin: 8px 0;
 }
+
+/* 플레이어 하단 컨트롤(영상 화면 하단) 모드 */
+.aggro-filter-container.player-control {
+  display: inline-flex;
+  margin: 0;
+  align-items: center;
+}
+
+.aggro-filter-btn.player-control {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: none;
+  transform: none;
+}
+
+.aggro-filter-btn.player-control:hover {
+  background: rgba(59, 130, 246, 0.85);
+  border-color: rgba(147, 197, 253, 0.95);
+  box-shadow: none;
+  transform: none;
+}
+
+.aggro-filter-btn.player-control.analyzing {
+  background: rgba(245, 158, 11, 0.9);
+  color: #111827;
+}

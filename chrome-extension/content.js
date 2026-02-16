@@ -138,20 +138,44 @@
   }
 
   // ─── 분석 버튼 ───
-  function createAnalyzeButton() {
+  function createAnalyzeButton(mode = 'metadata') {
+    const isPlayerMode = mode === 'player';
     const container = document.createElement('div');
     container.className = 'aggro-filter-container';
+    if (isPlayerMode) container.classList.add('player-control');
     container.id = 'aggro-filter-container';
 
     const btn = document.createElement('button');
     btn.className = 'aggro-filter-btn';
-    btn.innerHTML = '🚦 어그로필터 분석';
+    if (isPlayerMode) {
+      btn.classList.add('player-control');
+      btn.title = '어그로필터 분석';
+      btn.innerHTML = '🚦';
+    } else {
+      btn.innerHTML = '🚦 어그로필터 분석';
+    }
+
+    const setButtonState = (state) => {
+      if (isPlayerMode) {
+        if (state === 'loading') btn.innerHTML = '⏳';
+        else if (state === 'moving') btn.innerHTML = '↗';
+        else if (state === 'success') btn.innerHTML = '✅';
+        else if (state === 'error') btn.innerHTML = '❌';
+        else btn.innerHTML = '🚦';
+      } else {
+        if (state === 'loading') btn.innerHTML = '<span class="aggro-spinner"></span> 자막 가져오는 중...';
+        else if (state === 'moving') btn.innerHTML = '<span class="aggro-spinner"></span> 웹으로 이동 중...';
+        else if (state === 'success') btn.innerHTML = '✅ 새 탭에서 분석 진행 중';
+        else if (state === 'error') btn.innerHTML = '❌ 오류 발생';
+        else btn.innerHTML = '🚦 어그로필터 분석';
+      }
+    };
 
     btn.addEventListener('click', async () => {
       if (btn.classList.contains('analyzing')) return;
 
       btn.classList.add('analyzing');
-      btn.innerHTML = '<span class="aggro-spinner"></span> 자막 추출 중...';
+      setButtonState('loading');
 
       try {
         // 1. 메타데이터 추출
@@ -159,14 +183,14 @@
         log('메타데이터:', metadata);
 
         // 2. 자막 추출
-        btn.innerHTML = '<span class="aggro-spinner"></span> 자막 가져오는 중...';
+        setButtonState('loading');
         const transcriptItems = await extractTranscript();
         const transcript = transcriptItems.map(item => item.text).join(' ');
 
         log(`자막: ${transcript.length}자, ${transcriptItems.length}개 항목`);
 
         // 3. background로 전달 → 자막 저장 + 웹사이트 새 탭 열기
-        btn.innerHTML = '<span class="aggro-spinner"></span> 웹으로 이동 중...';
+        setButtonState('moving');
 
         chrome.runtime.sendMessage({
           type: 'ANALYZE_VIDEO',
@@ -183,17 +207,17 @@
         });
 
         btn.classList.remove('analyzing');
-        btn.innerHTML = '✅ 새 탭에서 분석 진행 중';
+        setButtonState('success');
         setTimeout(() => {
-          btn.innerHTML = '🚦 어그로필터 분석';
+          setButtonState('idle');
         }, 5000);
 
       } catch (error) {
         log('분석 시작 오류:', error);
         btn.classList.remove('analyzing');
-        btn.innerHTML = '❌ 오류 발생';
+        setButtonState('error');
         setTimeout(() => {
-          btn.innerHTML = '🚦 어그로필터 분석';
+          setButtonState('idle');
         }, 3000);
       }
     });
@@ -219,7 +243,19 @@
     const existing = document.getElementById('aggro-filter-container');
     if (existing) existing.remove();
 
-    // 유튜브 영상 제목/채널 영역 셀렉터 (우선순위 순)
+    // 1순위: 영상 하단 플레이어 컨트롤 영역 (요청사항)
+    const playerControls = document.querySelector('.ytp-right-controls');
+    if (playerControls) {
+      const button = createAnalyzeButton('player');
+      playerControls.insertAdjacentElement('afterbegin', button);
+      currentVideoId = videoId;
+      buttonInserted = true;
+      log('버튼 삽입 위치: .ytp-right-controls (영상 하단 컨트롤)');
+      log(`버튼 삽입 완료 (videoId: ${videoId})`);
+      return true;
+    }
+
+    // 2순위: 유튜브 영상 제목/채널 영역 셀렉터 (폴백)
     const targetSelectors = [
       'ytd-watch-metadata #owner',                    // 2024+ 데스크톱: 채널 정보
       '#above-the-fold #owner',                        // 대체: above-the-fold 내 owner
@@ -249,7 +285,7 @@
 
     log(`버튼 삽입 위치: ${matchedSelector}`);
 
-    const button = createAnalyzeButton();
+    const button = createAnalyzeButton('metadata');
     target.insertAdjacentElement('beforebegin', button);
 
     currentVideoId = videoId;

@@ -13,14 +13,29 @@
       apiKey: ytcfg.get('INNERTUBE_API_KEY'),
       clientName: ytcfg.get('INNERTUBE_CLIENT_NAME') || 'WEB',
       clientVersion: ytcfg.get('INNERTUBE_CLIENT_VERSION') || '2.20240101.00.00',
+      clientNameHeader: String(ytcfg.get('INNERTUBE_CONTEXT_CLIENT_NAME') || 1),
+      context: ytcfg.get('INNERTUBE_CONTEXT') || null,
       hl: ytcfg.get('HL') || 'ko',
       gl: ytcfg.get('GL') || 'KR',
       visitorData: ytcfg.get('VISITOR_DATA') || '',
+      loggedIn: !!ytcfg.get('LOGGED_IN'),
     };
   }
 
   // innertube 요청용 context 생성
   function buildContext(cfg) {
+    if (cfg.context && typeof cfg.context === 'object') {
+      const cloned = JSON.parse(JSON.stringify(cfg.context));
+      cloned.client = cloned.client || {};
+      // 필요한 값은 최신 ytcfg 값으로 덮어써서 일관성 확보
+      cloned.client.hl = cfg.hl;
+      cloned.client.gl = cfg.gl;
+      cloned.client.clientName = cfg.clientName;
+      cloned.client.clientVersion = cfg.clientVersion;
+      if (cfg.visitorData) cloned.client.visitorData = cfg.visitorData;
+      return cloned;
+    }
+
     return {
       client: {
         hl: cfg.hl,
@@ -38,7 +53,15 @@
     
     const resp = await fetch(`https://www.youtube.com/youtubei/v1/next?key=${cfg.apiKey}&prettyPrint=false`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      referrer: location.href,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-YouTube-Client-Name': cfg.clientNameHeader,
+        'X-YouTube-Client-Version': cfg.clientVersion,
+        ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
+        'X-Youtube-Bootstrap-Logged-In': cfg.loggedIn ? 'true' : 'false',
+      },
       body: JSON.stringify({
         context: buildContext(cfg),
         videoId: videoId,
@@ -84,11 +107,14 @@
 
     const resp = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${cfg.apiKey}&prettyPrint=false`, {
       method: 'POST',
+      credentials: 'include',
+      referrer: location.href,
       headers: {
         'Content-Type': 'application/json',
-        'X-YouTube-Client-Name': '1',
+        'X-YouTube-Client-Name': cfg.clientNameHeader,
         'X-YouTube-Client-Version': cfg.clientVersion,
         ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
+        'X-Youtube-Bootstrap-Logged-In': cfg.loggedIn ? 'true' : 'false',
       },
       body: JSON.stringify({
         context: buildContext(cfg),
