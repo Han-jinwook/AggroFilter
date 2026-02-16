@@ -12,6 +12,10 @@
     console.log(LOG_PREFIX, ...args);
   }
 
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   // 유튜브 URL에서 영상 ID 추출
   function getVideoId() {
     const params = new URLSearchParams(window.location.search);
