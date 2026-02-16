@@ -45,9 +45,21 @@ export default function MainPage() {
     }
   }, [])
 
-  // 크롬 확장팩에서 ?url= 파라미터로 진입 시 자동 분석 시작
+  // 크롬 확장팩에서 진입 시 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const from = params.get('from')
+
+    // ?analysisId= : 확장팩이 이미 분석 완료 → 결과 페이지로 이동
+    const extAnalysisId = params.get('analysisId')
+    if (extAnalysisId && from === 'chrome-extension' && !autoStarted) {
+      setAutoStarted(true)
+      setAnalysisId(extAnalysisId)
+      setIsCompleted(true)
+      return
+    }
+
+    // ?url= : URL만 전달된 경우 → 자동 분석 시작
     const urlParam = params.get('url')
     if (urlParam && !autoStarted && !isAnalyzing && !isCompleted) {
       setUrl(urlParam)

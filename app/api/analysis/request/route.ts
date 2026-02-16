@@ -63,7 +63,7 @@ function normalizeEvaluationReasonScores(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { url, userId: userIdFromBody, forceRecheck, isRecheck } = body;
+    const { url, userId: userIdFromBody, forceRecheck, isRecheck, clientTranscript, clientTranscriptItems } = body;
 
     let userId = userIdFromBody as string | undefined;
     try {
@@ -199,24 +199,34 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. 자막 추출
+    // 3. 자막 추출 (클라이언트에서 보낸 자막이 있으면 우선 사용)
     let transcript = '';
     let transcriptItems: { text: string; start: number; duration: number }[] = [];
     let hasTranscript = false;
-    try {
-      const items = await getTranscriptItems(videoId);
-      if (items.length > 0) {
-        transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
-        transcript = items.map((it) => it.text).join(' ');
-      } else {
-        transcript = await getTranscript(videoId);
-      }
 
-      hasTranscript = transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다');
-      console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '실패');
-    } catch (e) {
-      console.error('자막 추출 중 치명적 에러:', e);
-      hasTranscript = false;
+    if (clientTranscript && typeof clientTranscript === 'string' && clientTranscript.length > 50) {
+      // 크롬 확장팩/모바일 앱에서 보낸 자막 사용
+      transcript = clientTranscript;
+      transcriptItems = Array.isArray(clientTranscriptItems) ? clientTranscriptItems : [];
+      hasTranscript = true;
+      console.log(`클라이언트 자막 사용: ${transcript.length}자, items: ${transcriptItems.length}`);
+    } else {
+      // 서버에서 자막 추출 시도
+      try {
+        const items = await getTranscriptItems(videoId);
+        if (items.length > 0) {
+          transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
+          transcript = items.map((it) => it.text).join(' ');
+        } else {
+          transcript = await getTranscript(videoId);
+        }
+
+        hasTranscript = transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다');
+        console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '실패');
+      } catch (e) {
+        console.error('자막 추출 중 치명적 에러:', e);
+        hasTranscript = false;
+      }
     }
 
     // [v2.0 Youtube Native Strategy]
