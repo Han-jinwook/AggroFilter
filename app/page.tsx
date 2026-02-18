@@ -138,19 +138,25 @@ export default function MainPage() {
         body.clientTranscriptItems = clientTranscriptItems
       }
 
-      const response = await fetch('/api/analysis/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error('분석 요청에 실패했습니다.');
+      const fetchAnalysis = async () => {
+        const response = await fetch('/api/analysis/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error('분석 요청에 실패했습니다.');
+        return response.json();
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await fetchAnalysis();
+      } catch (firstError) {
+        // Netlify CDN 게이트웨이 타임아웃 대비: 서버는 성공했을 수 있으므로 5초 후 재시도
+        console.warn('첫 번째 요청 실패, 5초 후 재시도...', firstError);
+        await new Promise(r => setTimeout(r, 5000));
+        result = await fetchAnalysis();
+      }
       
       // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
@@ -162,8 +168,7 @@ export default function MainPage() {
         localStorage.setItem('anonAnalysisCount', String(count));
       }
     } catch (error) {
-      console.error(error);
-      // TODO: Add error handling for the user
+      console.error('분석 최종 실패:', error);
     } finally {
       setIsAnalyzing(false);
     }
