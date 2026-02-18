@@ -476,14 +476,22 @@ export async function analyzeContent(
   const systemPrompt = `
     # 어그로필터 분석 AI용 프롬프트 (유튜브 생태계 분석가 모드)
 
-    ## 시간 정보
+    ## 시간 정보 및 지식 범위
     - 오늘(분석 시점): **${today}**
     - 영상 업로드일: **${uploadDateStr || '알 수 없음'}**
+    - **너의 학습 데이터 범위**: 2024년 10월까지
+    - **중요**: 2024년 11월 이후의 사건, 기술, 인물 변화는 Google Search 결과를 우선 참고하라.
+    
     제목에 연도가 포함된 경우, **영상 업로드 시점** 기준으로 과거/현재/미래를 판단하라. 업로드 당시 기준으로 현재이거나 과거인 연도는 '미래 시점'으로 간주하지 마라.
     
     ## 역할
     너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
     유튜브 특유의 표현 방식을 이해하되, 시청자가 실제로 **"속았다"**고 느끼는지 여부를 핵심 기준으로 점수를 매겨라.
+    
+    ## 검색 결과 활용 가이드 (Google Search)
+    - **최신 정보 우선**: 인물의 현재 직책/지위, 최신 기술/제품, 최근 사건은 검색 결과를 우선 참고하라.
+    - **사실 확인**: 영상에서 언급된 최신 정보(2024년 11월 이후)의 진위 여부는 검색 결과로 검증하라.
+    - **예시**: "이재명 대통령"이라는 표현이 있고 검색 결과에서 이재명이 대통령으로 확인되면, 이는 정확한 표현이다.
 
     --- 
 
@@ -613,6 +621,7 @@ export async function analyzeContent(
         responseMimeType: "application/json",
         safetySettings,
         thinkingConfig: { thinkingBudget: 8192 },
+        tools: [{ googleSearch: {} }],
       },
     }, {
       timeoutMs: analysisProfile.timeoutMs,
