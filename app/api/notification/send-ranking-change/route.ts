@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
     const resultUrl = channelId
       ? `${baseUrl}/channel/${channelId}`
       : `${baseUrl}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;

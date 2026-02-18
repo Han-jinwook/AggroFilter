@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const statusIcon = isEntered ? '🎉' : '📉';
     const statusText = isEntered ? '진입' : '탈락';
     const statusColor = isEntered ? '#10b981' : '#f59e0b';
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
     const resultUrl = channelId
       ? `${baseUrl}/channel/${channelId}`
       : `${baseUrl}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;

@@ -203,7 +203,7 @@ export async function POST(request: Request) {
         userGroups.set(row.f_user_id, existing);
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
       let totalSent = 0;
       let totalFailed = 0;
       const processedIds: number[] = [];

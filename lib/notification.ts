@@ -61,7 +61,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
 
     if (currentRankings.rows.length === 0) return;
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
     const totalChannels = currentRankings.rows[0].total_count;
     const top10PercentThreshold = Math.ceil(totalChannels * 0.1);
 

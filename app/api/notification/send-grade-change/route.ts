@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const oldGradeInfo = gradeInfo[oldGrade] || gradeInfo['Yellow'];
     const newGradeInfo = gradeInfo[newGrade] || gradeInfo['Yellow'];
     
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
     const resultUrl = channelId
       ? `${baseUrl}/channel/${channelId}`
       : `${baseUrl}/p-ranking${categoryName ? `?category=${categoryName}` : ''}`;
