@@ -620,7 +620,6 @@ export async function analyzeContent(
       config: {
         temperature: 0.2,
         topP: 0.85,
-        responseMimeType: "application/json",
         safetySettings,
         thinkingConfig: { thinkingBudget: 8192 },
         tools: [{ googleSearch: {} }],
