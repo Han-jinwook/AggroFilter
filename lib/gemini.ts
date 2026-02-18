@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { pool } from '@/lib/db';
 import https from 'https';
 import { romanize } from '@/lib/hangul';
@@ -88,14 +88,15 @@ function getGeminiAnalysisProfile(params: {
 
 // Helper: Translate text to English (for embedding semantic consistency)
 export async function translateText(text: string, apiKey: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  // Using the fastest valid model for simple translation tasks
-  // Updated to gemini-2.5-flash-lite for speed and availability
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
-    const result = await model.generateContent(`Translate "${text}" to English. Output ONLY the English text, nothing else.`);
-    return result.response.text().trim();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: `Translate "${text}" to English. Output ONLY the English text, nothing else.`,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
+    return (response.text || '').trim();
   } catch (e) {
     console.error(`Translation failed for "${text}":`, e);
     return romanize(text); // Fallback to Romanization if translation fails
@@ -175,8 +176,8 @@ export async function getEmbedding(text: string, apiKey: string, titleOverride?:
 
 // Helper: Retry logic wrapper with exponential backoff + per-attempt timeout
 async function generateContentWithRetry(
-  model: any,
-  prompt: string | Array<string | any>,
+  ai: any,
+  params: { model: string; contents: any; config?: any },
   options?: { timeoutMs?: number; maxRetries?: number; baseDelayMs?: number }
 ) {
   let lastError;
@@ -210,7 +211,7 @@ async function generateContentWithRetry(
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`Gemini API timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs)
       );
-      return await Promise.race([model.generateContent(prompt), timeoutPromise]);
+      return await Promise.race([ai.models.generateContent(params), timeoutPromise]);
     } catch (error: any) {
       lastError = error;
 
@@ -376,8 +377,7 @@ function chunkTranscriptItems(
 }
 
 async function summarizeChunk(chunk: { startTime: string, text: string }, apiKey: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `Below is a part of a YouTube video transcript.
 Create a very short subtopic in Korean (1-4 words) that captures the main theme, then summarize the core content in exactly ONE concise Korean sentence.
@@ -389,8 +389,12 @@ Transcript:
 ${chunk.text}`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    });
+    const text = (result.text || '').trim();
     const processedText = text.replace(/\n/g, '|||'); // Use a unique separator
     // Always prepend the correct timestamp from chunk
     return `${chunk.startTime} - ${processedText}`;
@@ -422,7 +426,7 @@ export async function analyzeContent(
   }
 
   // Gemini API 클라이언트 초기화
-  const genAI = new GoogleGenerativeAI(apiKey);
+  const ai = new GoogleGenAI({ apiKey });
 
   const analysisProfile = getGeminiAnalysisProfile({
     durationIso: duration,
@@ -584,16 +588,6 @@ export async function analyzeContent(
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
     ];
 
-    const model = genAI.getGenerativeModel({ 
-      model: modelName,
-      safetySettings,
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.85,
-        responseMimeType: "application/json",
-      }
-    });
-    
     // Construct inputs: text prompt + thumbnail image (if available)
     const finalPrompt = `
       ${systemPrompt}
@@ -605,24 +599,33 @@ export async function analyzeContent(
       ${transcript}
     `;
 
-    const inputs: (string | any)[] = [finalPrompt];
+    const contents: any[] = [finalPrompt];
     if (thumbnailPart) {
-        inputs.push(thumbnailPart);
+        contents.push(thumbnailPart);
     }
     
-    const result = await generateContentWithRetry(model, inputs, {
+    const response = await generateContentWithRetry(ai, {
+      model: modelName,
+      contents,
+      config: {
+        temperature: 0.2,
+        topP: 0.85,
+        responseMimeType: "application/json",
+        safetySettings,
+        thinkingConfig: { thinkingBudget: 1024 },
+      },
+    }, {
       timeoutMs: analysisProfile.timeoutMs,
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
     
     // Validate response immediately to trigger fallback if blocked/empty
-    const response = await result.response;
-    const text = response.text();
+    const text = response.text;
     console.log("Raw AI Response:", text);
     if (!text) throw new Error("Empty response from AI (Likely Safety Block)");
     
-    return result;
+    return response;
   };
 
   try {
@@ -668,8 +671,7 @@ export async function analyzeContent(
       throw lastError;
     }
 
-    const response = await result.response;
-    const text = response.text();
+    const text = result.text;
     
     // JSON 파싱 (혹시 모를 마크다운 제거)
     let jsonString = text.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
