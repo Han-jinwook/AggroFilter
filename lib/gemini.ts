@@ -80,8 +80,8 @@ function getGeminiAnalysisProfile(params: {
 
   return {
     isShortForm,
-    timeoutMs: isShortForm ? 18000 : 23000,
-    retries: isShortForm ? 2 : 1,
+    timeoutMs: isShortForm ? 25000 : 30000,
+    retries: 2,
     baseDelayMs: 800,
   };
 }
