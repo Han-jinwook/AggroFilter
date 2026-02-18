@@ -622,8 +622,7 @@ export async function analyzeContent(
         topP: 0.85,
         safetySettings,
         thinkingConfig: { thinkingBudget: 8192 },
-        tools: [{ googleSearch: {} }],
-        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+        googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC' } },
       },
     }, {
       timeoutMs: analysisProfile.timeoutMs,
