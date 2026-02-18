@@ -1,18 +1,18 @@
 /* 어그로필터 크롬 확장팩 - Content Script 스타일 */
 
 .aggro-filter-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 2px solid #3b82f6;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  color: #1d4ed8;
-  font-size: 13px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.22);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1;
   white-space: nowrap;
@@ -20,10 +20,10 @@
 }
 
 .aggro-filter-btn:hover {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  border-color: #2563eb;
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.38);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
 }
 
 .aggro-filter-btn:active {
@@ -31,20 +31,80 @@
 }
 
 .aggro-filter-btn.analyzing {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-color: #f59e0b;
-  color: #92400e;
   cursor: wait;
 }
 
-.aggro-filter-btn.analyzing .aggro-spinner {
-  display: inline-block;
+.aggro-filter-btn.channel-action {
+  height: 36px;
+  width: auto;
+  min-width: unset;
+  padding: 0;
+  gap: 0;
+  border: none !important;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.aggro-filter-btn.channel-action:hover {
+  background: transparent !important;
+  transform: scale(1.05);
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.aggro-filter-btn.channel-action .aggro-logo {
+  width: auto;
+  height: 100%;
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* 텍스트 스타일 제거됨 (이미지 통합) */
+
+.aggro-filter-btn.channel-action .aggro-logo-image {
+  position: static;
+  width: auto;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  transform: scale(1.15);
+}
+
+.aggro-filter-btn.channel-action.is-loading {
+  /* border-color removed */
+}
+
+.aggro-filter-btn.channel-action.is-loading::after {
+  content: '';
+  position: absolute;
   width: 14px;
   height: 14px;
+  border-radius: 50%;
   border: 2px solid #f59e0b;
   border-top-color: transparent;
-  border-radius: 50%;
+  right: -6px;
+  top: 50%;
+  margin-top: -7px;
+  left: auto;
+  background: #fff;
   animation: aggro-spin 0.8s linear infinite;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.aggro-filter-btn.channel-action.is-success {
+  /* border-color removed */
+}
+
+.aggro-filter-btn.channel-action.is-error {
+  /* border-color removed */
 }
 
 @keyframes aggro-spin {
@@ -60,36 +120,25 @@
   margin: 8px 0;
 }
 
-/* 플레이어 하단 컨트롤(영상 화면 하단) 모드 */
-.aggro-filter-container.player-control {
+.aggro-filter-container.channel-action {
   display: inline-flex;
   margin: 0;
   align-items: center;
+  margin-left: 24px;
 }
 
-.aggro-filter-btn.player-control {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  padding: 0;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  background: rgba(15, 23, 42, 0.72);
-  color: #ffffff;
-  font-size: 16px;
-  line-height: 1;
-  box-shadow: none;
-  transform: none;
+/* Shorts 전용 스타일 */
+.aggro-filter-container.shorts-mode {
+  margin-left: 16px !important;
+  margin-bottom: 0;
+  transform: translateX(6px) scale(0.95);
+  transform-origin: left center;
+  z-index: 2000; /* 영상 오버레이 위로 */
+  display: inline-flex;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
-.aggro-filter-btn.player-control:hover {
-  background: rgba(59, 130, 246, 0.85);
-  border-color: rgba(147, 197, 253, 0.95);
-  box-shadow: none;
-  transform: none;
-}
-
-.aggro-filter-btn.player-control.analyzing {
-  background: rgba(245, 158, 11, 0.9);
-  color: #111827;
+.aggro-filter-container.shorts-mode .aggro-filter-btn.channel-action {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); /* 가독성 확보 */
 }

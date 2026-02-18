@@ -90,12 +90,16 @@ export async function getEmbedding(text: string, apiKey: string, titleOverride?:
 
 // StandardizeTopic 함수 및 관련 헬퍼 함수 제거 (v2.0 Native ID 체제 전환)
 
-// Helper: Retry logic wrapper with exponential backoff
-async function generateContentWithRetry(model: any, prompt: string | Array<string | any>, maxRetries = 3, baseDelay = 1000) {
+// Helper: Retry logic wrapper with exponential backoff + per-attempt timeout
+async function generateContentWithRetry(model: any, prompt: string | Array<string | any>, maxRetries = 1, baseDelay = 1000) {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await model.generateContent(prompt);
+      // 18초 타임아웃: Netlify 26초 제한 내에서 DB 저장 시간 확보
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini API timeout (18s)')), 18000)
+      );
+      return await Promise.race([model.generateContent(prompt), timeoutPromise]);
     } catch (error: any) {
       lastError = error;
       const isOverloaded = error.message?.includes('503') || error.message?.includes('overloaded');
@@ -106,7 +110,7 @@ async function generateContentWithRetry(model: any, prompt: string | Array<strin
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw error; // Throw non-retriable errors or if max retries reached
+      throw error;
     }
   }
   throw lastError;

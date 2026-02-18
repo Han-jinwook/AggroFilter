@@ -102,52 +102,76 @@
   }
 
   // Step 2: /youtubei/v1/get_transcript 호출 → 자막 텍스트 추출
-  async function fetchTranscript(videoId, params, cfg) {
-    console.log(TAG, 'Step 2: /get_transcript 호출...');
-
-    const resp = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${cfg.apiKey}&prettyPrint=false`, {
+  async function fetchTranscriptWithContext(params, clientName, clientNameHeader, clientVersion, apiKey, cfg) {
+    const context = {
+      client: {
+        hl: cfg.hl,
+        gl: cfg.gl,
+        clientName,
+        clientVersion,
+        ...(cfg.visitorData ? { visitorData: cfg.visitorData } : {}),
+      }
+    };
+    const resp = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
       method: 'POST',
       credentials: 'include',
       referrer: location.href,
       headers: {
         'Content-Type': 'application/json',
-        'X-YouTube-Client-Name': cfg.clientNameHeader,
-        'X-YouTube-Client-Version': cfg.clientVersion,
+        'X-YouTube-Client-Name': clientNameHeader,
+        'X-YouTube-Client-Version': clientVersion,
         ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
         'X-Youtube-Bootstrap-Logged-In': cfg.loggedIn ? 'true' : 'false',
       },
-      body: JSON.stringify({
-        context: buildContext(cfg),
-        externalVideoId: videoId,
-        params: params,
-      })
+      body: JSON.stringify({ context, params })
     });
+    return resp;
+  }
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.log(TAG, '/get_transcript API 실패:', resp.status, errText?.substring(0, 400));
-      return null;
-    }
-
-    const data = await resp.json();
-    
-    // 자막 세그먼트 추출
+  function parseTranscriptResponse(data) {
     const body = data?.actions?.[0]?.updateEngagementPanelAction?.content
       ?.transcriptRenderer?.body?.transcriptBodyRenderer;
-    
-    if (!body) {
-      console.log(TAG, 'transcriptBodyRenderer 없음, 전체 응답 키:', Object.keys(data || {}));
-      // 다른 경로 시도
-      const altBody = data?.actions?.[0]?.updateEngagementPanelAction?.content
-        ?.transcriptRenderer?.content?.transcriptSearchPanelRenderer?.body
-        ?.transcriptSegmentListRenderer;
-      if (altBody) {
-        return extractSegments(altBody);
+    if (body) return extractSegments(body);
+
+    const altBody = data?.actions?.[0]?.updateEngagementPanelAction?.content
+      ?.transcriptRenderer?.content?.transcriptSearchPanelRenderer?.body
+      ?.transcriptSegmentListRenderer;
+    if (altBody) return extractSegments(altBody);
+
+    return null;
+  }
+
+  async function fetchTranscript(videoId, params, cfg) {
+    const clientContexts = [
+      { name: 'WEB',     header: cfg.clientNameHeader, version: cfg.clientVersion },
+      { name: 'MWEB',    header: '2',                  version: '2.20240101.00.00' },
+      { name: 'ANDROID', header: '3',                  version: '19.09.37' },
+    ];
+
+    for (const ctx of clientContexts) {
+      try {
+        console.log(TAG, `Step 2: /get_transcript 호출 [${ctx.name}]...`);
+        const resp = await fetchTranscriptWithContext(params, ctx.name, ctx.header, ctx.version, cfg.apiKey, cfg);
+
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.log(TAG, `/get_transcript [${ctx.name}] 실패:`, resp.status, errText?.substring(0, 200));
+          continue;
+        }
+
+        const data = await resp.json();
+        const items = parseTranscriptResponse(data);
+        if (items && items.length > 0) {
+          console.log(TAG, `/get_transcript [${ctx.name}] 성공: ${items.length}개`);
+          return items;
+        }
+        console.log(TAG, `/get_transcript [${ctx.name}] 응답 파싱 실패, 응답 키:`, Object.keys(data || {}));
+      } catch (e) {
+        console.log(TAG, `/get_transcript [${ctx.name}] 예외:`, e?.message || e);
       }
-      return null;
     }
 
-    return extractSegments(body);
+    return null;
   }
 
   // 세그먼트 리스트에서 자막 아이템 추출
@@ -176,6 +200,350 @@
     return items.length > 0 ? items : null;
   }
 
+  function parseJsonSafely(raw) {
+    if (!raw) return null;
+    const cleaned = raw.replace(/^\)\]\}'\s*/, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      return null;
+    }
+  }
+
+  function decodeXmlEntities(text) {
+    if (!text) return '';
+    return text
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x27;/gi, "'")
+      .replace(/&#10;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function stripXmlTags(text) {
+    if (!text) return '';
+    return text.replace(/<[^>]+>/g, '');
+  }
+
+  function extractXmlSegmentsFromText(raw) {
+    if (!raw) return null;
+    const items = [];
+
+    // timedtext 기본 포맷: <text start=".." dur="..">...</text>
+    const textNodePattern = /<text\b([^>]*)>([\s\S]*?)<\/text>/gi;
+    let match;
+
+    while ((match = textNodePattern.exec(raw)) !== null) {
+      const attrs = match[1] || '';
+      const content = decodeXmlEntities(match[2] || '');
+      if (!content) continue;
+
+      const startMatch = attrs.match(/\bstart="([0-9.]+)"/i);
+      const durMatch = attrs.match(/\bdur="([0-9.]+)"/i);
+
+      items.push({
+        text: content,
+        start: Number(startMatch?.[1] || 0),
+        duration: Number(durMatch?.[1] || 0),
+      });
+    }
+
+    // srv3 포맷: <p t="1234" d="5678">...<s>...</s>...</p>
+    const pNodePattern = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi;
+    while ((match = pNodePattern.exec(raw)) !== null) {
+      const attrs = match[1] || '';
+      const plain = decodeXmlEntities(stripXmlTags(match[2] || ''));
+      if (!plain) continue;
+
+      const startMatch = attrs.match(/\bt="([0-9.]+)"/i);
+      const durMatch = attrs.match(/\bd="([0-9.]+)"/i);
+      const beginMatch = attrs.match(/\bbegin="([^"]+)"/i);
+      const endMatch = attrs.match(/\bend="([^"]+)"/i);
+
+      // srv3의 t/d는 밀리초 단위인 경우가 대부분
+      const startMs = Number(startMatch?.[1] || 0);
+      const durMs = Number(durMatch?.[1] || 0);
+
+      // TTML 포맷(begin/end)이면 초 단위 계산
+      if (beginMatch || endMatch) {
+        const startSec = parseSubtitleTime(beginMatch?.[1] || '0');
+        const endSec = parseSubtitleTime(endMatch?.[1] || '0');
+        items.push({
+          text: plain,
+          start: startSec,
+          duration: Math.max(0, endSec - startSec),
+        });
+        continue;
+      }
+
+      items.push({
+        text: plain,
+        start: startMs / 1000,
+        duration: durMs / 1000,
+      });
+    }
+
+    return items.length > 0 ? items : null;
+  }
+
+  function parseSubtitleTime(ts) {
+    // 00:01.234, 00:00:01.234, 00:00:01,234, 1.23s, 1234ms
+    if (!ts) return 0;
+    const t = ts.trim();
+
+    if (/ms$/i.test(t)) {
+      const ms = Number(t.replace(/ms$/i, ''));
+      return Number.isFinite(ms) ? ms / 1000 : 0;
+    }
+    if (/s$/i.test(t)) {
+      const sec = Number(t.replace(/s$/i, ''));
+      return Number.isFinite(sec) ? sec : 0;
+    }
+
+    const normalized = t.replace(',', '.');
+    const parts = normalized.split(':').map((p) => p.trim());
+    if (parts.length === 2) {
+      const mm = Number(parts[0]);
+      const ss = Number(parts[1]);
+      if (!Number.isFinite(mm) || !Number.isFinite(ss)) return 0;
+      return mm * 60 + ss;
+    }
+    if (parts.length === 3) {
+      const hh = Number(parts[0]);
+      const mm = Number(parts[1]);
+      const ss = Number(parts[2]);
+      if (!Number.isFinite(hh) || !Number.isFinite(mm) || !Number.isFinite(ss)) return 0;
+      return hh * 3600 + mm * 60 + ss;
+    }
+    return 0;
+  }
+
+  function extractVttSegments(raw) {
+    if (!raw || !/WEBVTT/i.test(raw)) return null;
+    const lines = raw.replace(/\r/g, '').split('\n');
+    const items = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      const timeMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?[\.,]\d{1,3})\s+-->\s+(\d{1,2}:\d{2}(?::\d{2})?[\.,]\d{1,3})/);
+      if (!timeMatch) {
+        i++;
+        continue;
+      }
+
+      const start = parseSubtitleTime(timeMatch[1]);
+      const end = parseSubtitleTime(timeMatch[2]);
+      i++;
+
+      const textLines = [];
+      while (i < lines.length && lines[i].trim() !== '') {
+        textLines.push(lines[i].replace(/<[^>]+>/g, ''));
+        i++;
+      }
+
+      const text = decodeXmlEntities(textLines.join(' ').replace(/\s+/g, ' ').trim());
+      if (text) {
+        items.push({
+          text,
+          start,
+          duration: Math.max(0, end - start),
+        });
+      }
+    }
+
+    return items.length > 0 ? items : null;
+  }
+
+  function normalizeCaptionTrackUrl(url, fmt) {
+    if (!url) return null;
+    try {
+      const u = new URL(url, location.origin);
+      if (fmt) {
+        u.searchParams.set('fmt', fmt);
+      }
+      return u.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  function buildCaptionTrackCandidates(tracks) {
+    if (!tracks || tracks.length === 0) return [];
+
+    const preferredTrack =
+      tracks.find((t) => t?.languageCode === 'ko' || (t?.vssId || '').includes('.ko')) ||
+      tracks[0];
+
+    const baseUrl = preferredTrack?.baseUrl;
+    const candidates = [
+      normalizeCaptionTrackUrl(baseUrl, null),   // 원본
+      normalizeCaptionTrackUrl(baseUrl, 'json3'),
+      normalizeCaptionTrackUrl(baseUrl, 'srv3'),
+      normalizeCaptionTrackUrl(baseUrl, 'vtt'),
+    ].filter(Boolean);
+
+    return [...new Set(candidates)];
+  }
+
+  async function fetchPlayerWithContext(videoId, clientName, clientNameHeader, clientVersion, cfg) {
+    const context = {
+      client: {
+        hl: cfg.hl,
+        gl: cfg.gl,
+        clientName,
+        clientVersion,
+        ...(cfg.visitorData ? { visitorData: cfg.visitorData } : {}),
+      }
+    };
+    const resp = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${cfg.apiKey}&prettyPrint=false`, {
+      method: 'POST',
+      credentials: 'include',
+      referrer: location.href,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-YouTube-Client-Name': clientNameHeader,
+        'X-YouTube-Client-Version': clientVersion,
+        ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
+        'X-Youtube-Bootstrap-Logged-In': cfg.loggedIn ? 'true' : 'false',
+      },
+      body: JSON.stringify({ context, videoId }),
+    });
+    if (!resp.ok) return null;
+    return resp.json();
+  }
+
+  async function fetchCaptionTracksFromPlayerApi(videoId, cfg) {
+    const clientContexts = [
+      { name: 'WEB',     header: cfg.clientNameHeader, version: cfg.clientVersion },
+      { name: 'MWEB',    header: '2',                  version: '2.20240101.00.00' },
+      { name: 'ANDROID', header: '3',                  version: '19.09.37' },
+    ];
+
+    for (const ctx of clientContexts) {
+      try {
+        console.log(TAG, `captionTracks /player 시도: clientName=${ctx.name}`);
+        const data = await fetchPlayerWithContext(videoId, ctx.name, ctx.header, ctx.version, cfg);
+        const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+        console.log(TAG, `captionTracks /player [${ctx.name}] 결과: ${tracks.length}개`);
+        if (tracks.length > 0) return tracks;
+      } catch (e) {
+        console.log(TAG, `captionTracks /player [${ctx.name}] 예외:`, e?.message || e);
+      }
+    }
+
+    return [];
+  }
+
+  async function extractCaptionTrackUrls(videoId, cfg) {
+    // SPA 전환 후 ytInitialPlayerResponse는 stale URL을 가질 수 있으므로
+    // 항상 /player API를 먼저 호출해 fresh captionTracks URL을 확보
+    const apiTracks = await fetchCaptionTracksFromPlayerApi(videoId, cfg);
+    if (apiTracks.length > 0) {
+      return buildCaptionTrackCandidates(apiTracks);
+    }
+
+    // /player API 실패 시에만 ytInitialPlayerResponse 폴백 사용
+    const initialTracks = window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+    if (initialTracks.length > 0) {
+      console.log(TAG, 'captionTracks: ytInitialPlayerResponse 폴백 사용 (stale 가능성 있음)');
+      return buildCaptionTrackCandidates(initialTracks);
+    }
+
+    return [];
+  }
+
+  function parseCaptionTrackPayload(raw) {
+    const parsed = parseJsonSafely(raw);
+    if (parsed) {
+      const jsonItems = extractJson3Segments(parsed);
+      if (jsonItems && jsonItems.length > 0) {
+        return { items: jsonItems, mode: 'json3' };
+      }
+    }
+
+    const xmlItems = extractXmlSegmentsFromText(raw);
+    if (xmlItems && xmlItems.length > 0) {
+      return { items: xmlItems, mode: 'xml/srv3' };
+    }
+
+    const vttItems = extractVttSegments(raw);
+    if (vttItems && vttItems.length > 0) {
+      return { items: vttItems, mode: 'vtt' };
+    }
+
+    return null;
+  }
+
+  function extractJson3Segments(data) {
+    const events = data?.events || [];
+    const items = [];
+
+    for (const ev of events) {
+      const text = ev?.segs?.map((s) => s?.utf8 || '').join('').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+
+      const startMs = Number(ev?.tStartMs || 0);
+      const durationMs = Number(ev?.dDurationMs || 0);
+      items.push({
+        text,
+        start: startMs / 1000,
+        duration: durationMs / 1000,
+      });
+    }
+
+    return items.length > 0 ? items : null;
+  }
+
+  async function fetchTranscriptFromCaptionTrackFallback(videoId, cfg) {
+    const trackUrls = await extractCaptionTrackUrls(videoId, cfg);
+    if (!trackUrls.length) {
+      console.log(TAG, 'captionTracks 없음 (fallback 실패)');
+      return null;
+    }
+
+    console.log(TAG, `Step 1 fallback: caption track 호출 시도 (${trackUrls.length}개 URL)`);
+
+    for (const trackUrl of trackUrls) {
+      try {
+        const resp = await fetch(trackUrl, {
+          method: 'GET',
+          credentials: 'include',
+          referrer: location.href,
+        });
+
+        if (!resp.ok) {
+          console.log(TAG, 'caption track 호출 실패:', resp.status, trackUrl.slice(0, 120));
+          continue;
+        }
+
+        const raw = await resp.text();
+        const contentType = resp.headers.get('content-type') || 'unknown';
+        const parsed = parseCaptionTrackPayload(raw);
+        if (parsed?.items?.length) {
+          console.log(TAG, `fallback(${parsed.mode}) 자막 세그먼트 ${parsed.items.length}개 추출`);
+          return parsed.items;
+        }
+
+        console.log(
+          TAG,
+          'caption 파싱 실패 샘플:',
+          `content-type=${contentType}, head=${raw.slice(0, 160).replace(/\s+/g, ' ')}`
+        );
+      } catch (e) {
+        console.log(TAG, 'caption track 호출 예외:', e?.message || e);
+      }
+    }
+
+    console.log(TAG, 'caption fallback 파싱 실패 (json3/xml/srv3/vtt)');
+
+    return null;
+  }
+
   // content script에서 요청이 오면 처리
   window.addEventListener('message', async (event) => {
     if (event.source !== window) return;
@@ -202,10 +570,17 @@
             const params = await getTranscriptParams(videoId, cfg);
             
             if (!params) {
-              result = { items: null, error: 'no transcript params' };
+              const fallbackItems = await fetchTranscriptFromCaptionTrackFallback(videoId, cfg);
+              result = { items: fallbackItems, error: fallbackItems ? null : 'no transcript params' };
             } else {
               // Step 2: 자막 가져오기
-              const items = await fetchTranscript(videoId, params, cfg);
+              let items = await fetchTranscript(videoId, params, cfg);
+
+              // get_transcript 결과가 비어있으면 caption track fallback 시도
+              if (!items || items.length === 0) {
+                items = await fetchTranscriptFromCaptionTrackFallback(videoId, cfg);
+              }
+
               result = { items: items, error: items ? null : 'no segments' };
             }
           }

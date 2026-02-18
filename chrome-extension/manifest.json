@@ -46,6 +46,18 @@
       "run_at": "document_start"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/traffic-light-character.png",
+        "icons/traffic-light-arms-only.png"
+      ],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ]
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
