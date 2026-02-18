@@ -56,6 +56,9 @@ export default function MainPage() {
     setUrl(urlParam)
     setAutoStarted(true)
 
+    // 분석 시작 후 URL 파라미터 제거 → 리마운트/새로고침 시 중복 트리거 방지
+    window.history.replaceState({}, '', window.location.pathname)
+
     if (from === 'chrome-extension') {
       // 확장팩에서 자막 데이터 가져오기 (externally_connectable)
       fetchTranscriptFromExtension().then((extData) => {
