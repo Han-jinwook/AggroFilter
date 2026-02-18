@@ -10,7 +10,21 @@ import { pool } from "@/lib/db";
  * 3. t_rankings_cache 테이블에 저장합니다.
  */
 export async function refreshRankingCache(f_category_id?: number) {
-  const client = await pool.connect();
+  const connectWithRetry = async () => {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await pool.connect();
+      } catch (e) {
+        lastError = e;
+        const delayMs = 250 * attempt;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw lastError;
+  };
+
+  const client = await connectWithRetry();
   try {
     await client.query("BEGIN");
 

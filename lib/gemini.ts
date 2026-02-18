@@ -3,6 +3,85 @@ import { pool } from '@/lib/db';
 import https from 'https';
 import { romanize } from '@/lib/hangul';
 
+async function fetchWithTimeout(url: string, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseIso8601DurationToSeconds(iso?: string): number | null {
+  if (!iso || typeof iso !== 'string') return null;
+  const match = iso.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return null;
+  const hours = match[1] ? Number(match[1]) : 0;
+  const minutes = match[2] ? Number(match[2]) : 0;
+  const seconds = match[3] ? Number(match[3]) : 0;
+  if ([hours, minutes, seconds].some((n) => Number.isNaN(n))) return null;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function getThumbnailFallbackUrls(url: string): string[] {
+  const urls: string[] = [];
+  if (url) urls.push(url);
+
+  const candidates = [
+    { from: '/maxresdefault.jpg', to: '/hqdefault.jpg' },
+    { from: '/maxresdefault.jpg', to: '/mqdefault.jpg' },
+    { from: '/sddefault.jpg', to: '/hqdefault.jpg' },
+  ];
+
+  for (const c of candidates) {
+    if (url.includes(c.from)) {
+      urls.push(url.replace(c.from, c.to));
+    }
+  }
+
+  return Array.from(new Set(urls));
+}
+
+function shouldSkipSmartSummary(params: {
+  durationIso?: string;
+  transcript?: string;
+  transcriptItems?: { text: string; start: number; duration: number }[];
+}) {
+  const durationSec = parseIso8601DurationToSeconds(params.durationIso);
+  if (typeof durationSec === 'number' && durationSec > 0 && durationSec <= 90) return true;
+
+  const itemsCount = Array.isArray(params.transcriptItems) ? params.transcriptItems.length : 0;
+  if (itemsCount > 0 && itemsCount <= 30) return true;
+
+  const transcriptLen = typeof params.transcript === 'string' ? params.transcript.length : 0;
+  if (transcriptLen > 0 && transcriptLen <= 1500) return true;
+
+  return false;
+}
+
+function getGeminiAnalysisProfile(params: {
+  durationIso?: string;
+  transcript?: string;
+  transcriptItems?: { text: string; start: number; duration: number }[];
+}) {
+  const durationSec = parseIso8601DurationToSeconds(params.durationIso);
+  const itemsCount = Array.isArray(params.transcriptItems) ? params.transcriptItems.length : 0;
+  const transcriptLen = typeof params.transcript === 'string' ? params.transcript.length : 0;
+
+  const isShortForm =
+    (typeof durationSec === 'number' && durationSec > 0 && durationSec <= 90) ||
+    (itemsCount > 0 && itemsCount <= 30) ||
+    (transcriptLen > 0 && transcriptLen <= 1500);
+
+  return {
+    isShortForm,
+    timeoutMs: isShortForm ? 18000 : 23000,
+    retries: isShortForm ? 2 : 1,
+    baseDelayMs: 800,
+  };
+}
+
 // Helper: Translate text to English (for embedding semantic consistency)
 export async function translateText(text: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -91,25 +170,52 @@ export async function getEmbedding(text: string, apiKey: string, titleOverride?:
 // StandardizeTopic 함수 및 관련 헬퍼 함수 제거 (v2.0 Native ID 체제 전환)
 
 // Helper: Retry logic wrapper with exponential backoff + per-attempt timeout
-async function generateContentWithRetry(model: any, prompt: string | Array<string | any>, maxRetries = 1, baseDelay = 1000) {
+async function generateContentWithRetry(
+  model: any,
+  prompt: string | Array<string | any>,
+  options?: { timeoutMs?: number; maxRetries?: number; baseDelayMs?: number }
+) {
   let lastError;
+
+  const timeoutMs = options?.timeoutMs ?? 18000;
+  const maxRetries = options?.maxRetries ?? 1;
+  const baseDelayMs = options?.baseDelayMs ?? 1000;
+
+  const isTransientError = (err: any) => {
+    const msg = String(err?.message || '');
+    const name = String(err?.name || '');
+    const code = String(err?.code || '');
+    return (
+      msg.includes('timeout') ||
+      msg.includes('429') ||
+      msg.toLowerCase().includes('quota') ||
+      msg.includes('503') ||
+      msg.toLowerCase().includes('overloaded') ||
+      name.includes('AbortError') ||
+      code === 'ETIMEDOUT' ||
+      code === 'ECONNRESET'
+    );
+  };
+
   for (let i = 0; i < maxRetries; i++) {
     try {
-      // 18초 타임아웃: Netlify 26초 제한 내에서 DB 저장 시간 확보
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini API timeout (18s)')), 18000)
+        setTimeout(() => reject(new Error(`Gemini API timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs)
       );
       return await Promise.race([model.generateContent(prompt), timeoutPromise]);
     } catch (error: any) {
       lastError = error;
-      const isOverloaded = error.message?.includes('503') || error.message?.includes('overloaded');
-      
-      if (isOverloaded && i < maxRetries - 1) {
-        const delay = baseDelay * Math.pow(2, i);
-        console.warn(`⚠️ Model overloaded (503). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+
+      if (isTransientError(error) && i < maxRetries - 1) {
+        const delay = baseDelayMs * Math.pow(2, i);
+        console.warn(
+          `⚠️ Gemini transient error. Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`,
+          { message: error?.message }
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
+
       throw error;
     }
   }
@@ -119,19 +225,28 @@ async function generateContentWithRetry(model: any, prompt: string | Array<strin
 // Helper: Fetch image from URL and convert to Generative Part
 async function urlToGenerativePart(url: string) {
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.warn(`Failed to fetch thumbnail: ${response.statusText}`);
-            return null;
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        return {
-            inlineData: {
+        const urlsToTry = getThumbnailFallbackUrls(url);
+        for (const candidateUrl of urlsToTry) {
+          try {
+            const response = await fetchWithTimeout(candidateUrl, 1500);
+            if (!response.ok) {
+              console.warn(`Failed to fetch thumbnail: ${response.statusText}`);
+              continue;
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            return {
+              inlineData: {
                 data: buffer.toString("base64"),
                 mimeType: response.headers.get("content-type") || "image/jpeg",
-            },
-        };
+              },
+            };
+          } catch (e) {
+            console.warn(`Thumbnail fetch failed for ${candidateUrl}:`, e);
+            continue;
+          }
+        }
+        return null;
     } catch (error) {
         console.error("Error processing thumbnail for AI:", error);
         return null;
@@ -296,6 +411,12 @@ export async function analyzeContent(
   // Gemini API 클라이언트 초기화
   const genAI = new GoogleGenerativeAI(apiKey);
 
+  const analysisProfile = getGeminiAnalysisProfile({
+    durationIso: duration,
+    transcript,
+    transcriptItems,
+  });
+
   // 썸네일 이미지 준비 (멀티모달 분석용)
   let thumbnailPart = null;
   if (thumbnailUrl) {
@@ -305,17 +426,25 @@ export async function analyzeContent(
 
   let subtitleSummaryOverride: string | null = null;
   try {
-    const rawChunks = (transcriptItems && transcriptItems.length > 0)
-      ? chunkTranscriptItems(transcriptItems)
-      : (transcript && transcript.trim() ? chunkTranscript(transcript) : []);
+    const skipSmartSummary = shouldSkipSmartSummary({
+      durationIso: duration,
+      transcript,
+      transcriptItems,
+    });
 
-    const chunks = coalesceChunks(rawChunks, 10);
+    if (!skipSmartSummary) {
+      const rawChunks = (transcriptItems && transcriptItems.length > 0)
+        ? chunkTranscriptItems(transcriptItems)
+        : (transcript && transcript.trim() ? chunkTranscript(transcript) : []);
 
-    if (chunks.length > 0) {
-      const summaries = await Promise.all(
-        chunks.map(chunk => summarizeChunk(chunk, apiKey))
-      );
-      subtitleSummaryOverride = summaries.join("\n");
+      const chunks = coalesceChunks(rawChunks, 10);
+
+      if (chunks.length > 0) {
+        const summaries = await Promise.all(
+          chunks.map(chunk => summarizeChunk(chunk, apiKey))
+        );
+        subtitleSummaryOverride = summaries.join("\n");
+      }
     }
   } catch (e) {
     console.error("Smart chunk subtitle summary failed:", e);
@@ -468,7 +597,11 @@ export async function analyzeContent(
         inputs.push(thumbnailPart);
     }
     
-    const result = await generateContentWithRetry(model, inputs);
+    const result = await generateContentWithRetry(model, inputs, {
+      timeoutMs: analysisProfile.timeoutMs,
+      maxRetries: analysisProfile.retries,
+      baseDelayMs: analysisProfile.baseDelayMs,
+    });
     
     // Validate response immediately to trigger fallback if blocked/empty
     const response = await result.response;
@@ -481,8 +614,8 @@ export async function analyzeContent(
 
   try {
     let result;
-    // Strategy: Fix to Gemini 2.5 Flash for consistent testing and production
-    const modelsToTry = ["gemini-2.5-flash"];
+    // Strategy: Primary model + safe fallback
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash"];
     
     let lastError;
     for (const modelName of modelsToTry) {
@@ -494,10 +627,17 @@ export async function analyzeContent(
         lastError = error;
         console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
         
-        // If it's a quota error (429), we might want to wait a bit before trying the next model
-        if (error.message?.includes('429') || error.message?.includes('quota')) {
-          console.log('Quota exceeded, trying next model or retrying...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+        // Small backoff before next model attempt on transient failures
+        const msg = String(error?.message || '');
+        const isTransient =
+          msg.includes('timeout') ||
+          msg.includes('429') ||
+          msg.toLowerCase().includes('quota') ||
+          msg.includes('503') ||
+          msg.toLowerCase().includes('overloaded');
+
+        if (isTransient) {
+          await new Promise((resolve) => setTimeout(resolve, 1200));
         }
       }
     }
@@ -540,17 +680,6 @@ export async function analyzeContent(
 
   } catch (error: any) {
     console.error("Gemini Analysis Error Full Details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    // 에러 시 기본값 반환으로 서비스 중단 방지
-    return {
-      topic: "분석 실패",
-      topic_en: "Analysis Failed",
-      accuracy: 0,
-      clickbait: 0,
-      reliability: 0,
-      subtitleSummary: `AI 분석 중 오류가 발생했습니다. (Error: ${error.message})`,
-      evaluationReason: "일시적인 오류로 분석을 완료할 수 없습니다.",
-      overallAssessment: "잠시 후 다시 시도해주세요.",
-      recommendedTitle: title
-    };
+    throw error;
   }
 }
