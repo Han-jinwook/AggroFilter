@@ -612,7 +612,7 @@ export async function analyzeContent(
         topP: 0.85,
         responseMimeType: "application/json",
         safetySettings,
-        thinkingConfig: { thinkingBudget: 1024 },
+        thinkingConfig: { thinkingBudget: 8192 },
       },
     }, {
       timeoutMs: analysisProfile.timeoutMs,
