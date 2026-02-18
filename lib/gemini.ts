@@ -49,7 +49,10 @@ function shouldSkipSmartSummary(params: {
   transcriptItems?: { text: string; start: number; duration: number }[];
 }) {
   const durationSec = parseIso8601DurationToSeconds(params.durationIso);
-  if (typeof durationSec === 'number' && durationSec > 0 && durationSec <= 90) return true;
+  // If duration is known, treat this as authoritative. Transcript length is NOT a reliable proxy.
+  if (typeof durationSec === 'number' && durationSec > 0) {
+    return durationSec <= 90;
+  }
 
   const itemsCount = Array.isArray(params.transcriptItems) ? params.transcriptItems.length : 0;
   if (itemsCount > 0 && itemsCount <= 30) return true;
@@ -69,10 +72,11 @@ function getGeminiAnalysisProfile(params: {
   const itemsCount = Array.isArray(params.transcriptItems) ? params.transcriptItems.length : 0;
   const transcriptLen = typeof params.transcript === 'string' ? params.transcript.length : 0;
 
-  const isShortForm =
-    (typeof durationSec === 'number' && durationSec > 0 && durationSec <= 90) ||
-    (itemsCount > 0 && itemsCount <= 30) ||
-    (transcriptLen > 0 && transcriptLen <= 1500);
+  // If duration is known, use it as the only signal for short/long profile.
+  // Short transcripts can happen on long videos (e.g., sparse captions) and should NOT downgrade timeouts.
+  const isShortForm = (typeof durationSec === 'number' && durationSec > 0)
+    ? durationSec <= 90
+    : ((itemsCount > 0 && itemsCount <= 30) || (transcriptLen > 0 && transcriptLen <= 1500));
 
   return {
     isShortForm,
@@ -187,14 +191,18 @@ async function generateContentWithRetry(
     const code = String(err?.code || '');
     return (
       msg.includes('timeout') ||
-      msg.includes('429') ||
-      msg.toLowerCase().includes('quota') ||
       msg.includes('503') ||
       msg.toLowerCase().includes('overloaded') ||
       name.includes('AbortError') ||
       code === 'ETIMEDOUT' ||
       code === 'ECONNRESET'
     );
+  };
+
+  const isQuotaError = (err: any) => {
+    const msg = String(err?.message || '');
+    const status = Number(err?.status);
+    return status === 429 || msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('resource exhausted');
   };
 
   for (let i = 0; i < maxRetries; i++) {
@@ -205,6 +213,11 @@ async function generateContentWithRetry(
       return await Promise.race([model.generateContent(prompt), timeoutPromise]);
     } catch (error: any) {
       lastError = error;
+
+      // Quota errors should NOT be retried here; it will just burn more requests.
+      if (isQuotaError(error)) {
+        throw error;
+      }
 
       if (isTransientError(error) && i < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, i);
@@ -626,13 +639,22 @@ export async function analyzeContent(
       } catch (error: any) {
         lastError = error;
         console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
-        
-        // Small backoff before next model attempt on transient failures
+
+        // If quota is exhausted, don't try other models; they share the same quota.
+        const status = Number(error?.status);
         const msg = String(error?.message || '');
-        const isTransient =
-          msg.includes('timeout') ||
+        if (
+          status === 429 ||
           msg.includes('429') ||
           msg.toLowerCase().includes('quota') ||
+          msg.toLowerCase().includes('resource exhausted')
+        ) {
+          break;
+        }
+
+        // Small backoff before next model attempt on transient failures
+        const isTransient =
+          msg.includes('timeout') ||
           msg.includes('503') ||
           msg.toLowerCase().includes('overloaded');
 
