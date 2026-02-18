@@ -72,6 +72,8 @@ function normalizeEvaluationReasonScores(
 }
 
 export async function POST(request: Request) {
+  let lockClient: any = null;
+  let lockedVideoId: string | null = null;
   try {
     const body = await request.json();
     const { url, userId: userIdFromBody, forceRecheck, isRecheck, clientTranscript, clientTranscriptItems } = body;
@@ -130,42 +132,53 @@ export async function POST(request: Request) {
       }
     }
 
+      // ── 동시 요청 중복 분석 방지 (Advisory Lock) ──
       try {
-        const checkClient = await pool.connect();
-        try {
-          const existingAnalysis = await checkClient.query(`
-            SELECT f_id, f_reliability_score 
-            FROM t_analyses 
-            WHERE f_video_id = $1 
-            ORDER BY f_created_at DESC 
-            LIMIT 1
-          `, [videoId]);
+        lockClient = await pool.connect();
+        await lockClient.query(`SELECT pg_advisory_lock(hashtext($1))`, [videoId]);
+        lockedVideoId = videoId;
 
-          if (existingAnalysis.rows.length > 0) {
-            const row = existingAnalysis.rows[0];
-            if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
-              console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
-              
-              await checkClient.query(`
-                UPDATE t_analyses 
-                SET f_request_count = COALESCE(f_request_count, 0) + 1,
-                    f_view_count = COALESCE(f_view_count, 0) + 1,
-                    f_last_action_at = NOW()
-                WHERE f_id = $1
-              `, [row.f_id]);
+        const existingAnalysis = await lockClient.query(`
+          SELECT f_id, f_reliability_score 
+          FROM t_analyses 
+          WHERE f_video_id = $1 
+          ORDER BY f_created_at DESC 
+          LIMIT 1
+        `, [videoId]);
 
-              return NextResponse.json({ 
-                message: '이미 분석된 영상입니다.',
-                analysisId: row.f_id
-              }, { headers: corsHeaders });
-            }
+        if (existingAnalysis.rows.length > 0) {
+          const row = existingAnalysis.rows[0];
+          if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
+            console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
+            
+            await lockClient.query(`
+              UPDATE t_analyses 
+              SET f_request_count = COALESCE(f_request_count, 0) + 1,
+                  f_view_count = COALESCE(f_view_count, 0) + 1,
+                  f_last_action_at = NOW()
+              WHERE f_id = $1
+            `, [row.f_id]);
+
+            await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+            lockClient.release();
+            lockClient = null;
+            lockedVideoId = null;
+
+            return NextResponse.json({ 
+              message: '이미 분석된 영상입니다.',
+              analysisId: row.f_id
+            }, { headers: corsHeaders });
           }
-        } finally {
-          checkClient.release();
         }
-      } catch (dbError) {
-        console.error('Database connection error during check:', dbError);
-        // Continue to fresh analysis if check fails
+      } catch (lockError) {
+        console.error('Advisory lock/check error:', lockError);
+        if (lockClient) {
+          await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]).catch(() => {});
+          lockClient.release();
+          lockClient = null;
+          lockedVideoId = null;
+        }
+        // Continue to fresh analysis if lock/check fails
       }
 
     // 2. YouTube API로 영상 정보 가져오기
@@ -609,6 +622,14 @@ export async function POST(request: Request) {
       client.release();
     }
 
+    // Release advisory lock after DB save
+    if (lockClient && lockedVideoId) {
+      await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockedVideoId]).catch(() => {});
+      lockClient.release();
+      lockClient = null;
+      lockedVideoId = null;
+    }
+
     const finalAnalysisId = shouldKeepParentOnDecrease && recheckParentAnalysisId ? recheckParentAnalysisId : analysisId;
 
     return NextResponse.json({ 
@@ -620,6 +641,12 @@ export async function POST(request: Request) {
     }, { headers: corsHeaders });
 
   } catch (error) {
+    if (lockClient && lockedVideoId) {
+      await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockedVideoId]).catch(() => {});
+      lockClient.release();
+      lockClient = null;
+      lockedVideoId = null;
+    }
     console.error('분석 요청 오류:', error);
     const statusCode = typeof (error as any)?.statusCode === 'number' ? (error as any).statusCode : 500;
     return NextResponse.json({ 
