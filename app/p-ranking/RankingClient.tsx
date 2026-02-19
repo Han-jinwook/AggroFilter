@@ -41,6 +41,18 @@ interface TRankingApiResponse {
     totalCount: number
     topPercentile: number | null
   }
+  locale?: {
+    language: string
+    displayName: string
+    icon: string
+  }
+}
+
+interface ActiveLanguage {
+  language: string
+  channelCount: number
+  displayName: string
+  icon: string
 }
 
 export default function RankingClient() {
@@ -50,11 +62,18 @@ export default function RankingClient() {
   
   const currentCategoryId = searchParams.get("category") || ""
   const focusChannelId = searchParams.get("channel") || ""
+  const urlLang = searchParams.get("lang") || ""
   const currentCategoryName = currentCategoryId ? (YOUTUBE_CATEGORIES[Number.parseInt(currentCategoryId)] || "전체") : "전체"
   
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false)
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
   const [availableCategories, setAvailableCategories] = useState<{id: number, count: number}[]>([])
+  
+  // 언어 관련 상태 (URL 파라미터 우선)
+  const [currentLanguage, setCurrentLanguage] = useState<string>(urlLang || 'korean')
+  const [availableLanguages, setAvailableLanguages] = useState<ActiveLanguage[]>([])
+  const [localeInfo, setLocaleInfo] = useState<{language: string, displayName: string, icon: string} | null>(null)
   
   const [channels, setChannels] = useState<TChannel[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -65,10 +84,54 @@ export default function RankingClient() {
 
   const focusRef = useRef<HTMLDivElement | null>(null)
 
+  // URL의 lang 파라미터와 상태 동기화
+  useEffect(() => {
+    if (urlLang && urlLang !== currentLanguage) {
+      setCurrentLanguage(urlLang)
+    }
+  }, [urlLang])
+
+  // 브라우저 언어 감지 (초기 로드 시에만)
+  useEffect(() => {
+    if (urlLang) return // URL에 lang이 있으면 브라우저 감지 스킵
+    
+    const navLang = navigator.language // 'ko-KR', 'en-US'
+    const langMap: Record<string, string> = {
+      ko: 'korean',
+      en: 'english',
+      ja: 'japanese',
+      zh: 'chinese',
+      es: 'spanish',
+      fr: 'french',
+      de: 'german',
+      ru: 'russian',
+    }
+    const code = navLang.split('-')[0].toLowerCase()
+    const detected = langMap[code] || 'korean'
+    setCurrentLanguage(detected)
+    console.log('[Language Detection] Browser language:', detected)
+  }, [])
+
+  // Active Languages 로드
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const res = await fetch('/api/ranking/locales')
+        if (res.ok) {
+          const data = await res.json()
+          setAvailableLanguages(data.languages || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch languages:', error)
+      }
+    }
+    fetchLanguages()
+  }, [])
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/topics')
+        const res = await fetch(`/api/topics?lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
           const dbCategories = data.categories || []
@@ -100,7 +163,7 @@ export default function RankingClient() {
       }
     }
     fetchCategories()
-  }, [])
+  }, [currentLanguage])
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -108,7 +171,8 @@ export default function RankingClient() {
       setLoadError(null)
       try {
         const channelQs = focusChannelId ? `&channelId=${encodeURIComponent(focusChannelId)}` : ''
-        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=1000&offset=0${channelQs}`)
+        const langQs = `&lang=${currentLanguage}`
+        const res = await fetch(`/api/ranking?category=${currentCategoryId}&limit=1000&offset=0${channelQs}${langQs}`)
         if (!res.ok) {
           const bodyText = await res.text().catch(() => '')
           console.error('[RankingClient] /api/ranking failed', {
@@ -120,6 +184,7 @@ export default function RankingClient() {
           setChannels([])
           setTotalCount(0)
           setFocusRank(null)
+          setLocaleInfo(null)
           return
         }
         const data = (await res.json()) as TRankingApiResponse
@@ -136,6 +201,7 @@ export default function RankingClient() {
         setChannels(formatted)
         setTotalCount(data.totalCount || 0)
         setFocusRank(data.focusRank)
+        setLocaleInfo(data.locale || null)
       } catch (error) {
         console.error("Failed to fetch ranking:", error)
       } finally {
@@ -144,7 +210,7 @@ export default function RankingClient() {
     }
 
     fetchChannels()
-  }, [currentCategoryId, focusChannelId])
+  }, [currentCategoryId, focusChannelId, currentLanguage])
 
 
   // Sticky My-Rank bar visibility
@@ -181,12 +247,25 @@ export default function RankingClient() {
 
   const handleTopicDropdownToggle = () => {
     setIsTopicDropdownOpen(!isTopicDropdownOpen)
+    setIsLanguageDropdownOpen(false)
+  }
+
+  const handleLanguageDropdownToggle = () => {
+    setIsLanguageDropdownOpen(!isLanguageDropdownOpen)
+    setIsTopicDropdownOpen(false)
   }
 
   const handleCategoryClick = (categoryId: string) => {
     const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
     router.push(`/p-ranking?category=${categoryId}${channelParam}`)
     setIsTopicDropdownOpen(false)
+  }
+
+  const handleLanguageClick = (language: string) => {
+    setIsLanguageDropdownOpen(false)
+    // 언어 변경 시 카테고리를 전체로 리셋하고 lang 파라미터 추가
+    const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
+    router.push(`/p-ranking?category=&lang=${language}${channelParam}`)
   }
 
   const renderChannelRow = (channel: TChannel) => {
@@ -308,9 +387,53 @@ export default function RankingClient() {
                 <span className="text-base font-bold text-pink-500">#</span>
                 <span className="flex-1 text-base font-bold text-gray-800 truncate">
                   {currentCategoryName}
+                  {localeInfo && (
+                    <span className="ml-2 text-xs font-normal text-gray-500">
+                      ({localeInfo.displayName})
+                    </span>
+                  )}
                 </span>
               </div>
-              <div className="relative flex-shrink-0">
+              <div className="relative flex items-center gap-2 flex-shrink-0">
+                {/* 언어 선택 드롭다운 */}
+                <button
+                  onClick={handleLanguageDropdownToggle}
+                  className="flex h-8 px-3 items-center justify-center gap-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-medium"
+                >
+                  <span>{localeInfo?.displayName || '언어'}</span>
+                  <svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {isLanguageDropdownOpen && (
+                  <div className="absolute right-10 top-full z-30 mt-2 w-48 rounded-2xl bg-indigo-600 p-3 shadow-xl">
+                    <h3 className="text-xs font-bold text-white mb-2 pb-2 border-b border-indigo-500">
+                      언어 선택
+                    </h3>
+                    <div className="space-y-1">
+                      {availableLanguages.map((lang) => (
+                        <button
+                          key={lang.language}
+                          onClick={() => handleLanguageClick(lang.language)}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                            currentLanguage === lang.language
+                              ? 'bg-indigo-700 text-white font-bold'
+                              : 'text-white hover:bg-indigo-700'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{lang.icon}</span>
+                            <span>{lang.displayName}</span>
+                          </span>
+                          <span className="text-xs text-indigo-300">({lang.channelCount})</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 bg-indigo-600"></div>
+                  </div>
+                )}
+                
+                {/* 카테고리 선택 드롭다운 */}
                 <button
                   onClick={handleTopicDropdownToggle}
                   className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white hover:bg-slate-700"
@@ -477,11 +600,16 @@ export default function RankingClient() {
           <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors">
             <div className="flex items-center gap-3">
               <div className="bg-indigo-600 px-3 py-1 rounded-full text-sm font-bold">▶</div>
-              <div className="text-sm font-bold">
-                {focusRank.rank.toLocaleString()}위
-                {focusRank.topPercentile !== null ? (
-                  <span className="ml-2 text-slate-300 text-xs font-medium">(상위 {focusRank.topPercentile}%)</span>
-                ) : null}
+              <div className="flex flex-col">
+                <div className="text-sm font-bold">
+                  {focusRank.rank.toLocaleString()}위
+                  {focusRank.topPercentile !== null ? (
+                    <span className="ml-2 text-slate-300 text-xs font-medium">(상위 {focusRank.topPercentile}%)</span>
+                  ) : null}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  {currentCategoryName}
+                </div>
               </div>
             </div>
             <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest">Jump</div>

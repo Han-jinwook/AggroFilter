@@ -4,6 +4,7 @@ import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube'
 import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto, checkRankingChangesAndNotify } from '@/lib/notification';
+import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
 
@@ -257,6 +258,27 @@ export async function POST(request: Request) {
     const f_official_category_id = videoInfo.officialCategoryId;
     console.log(`[Youtube Native] Category ID: ${f_official_category_id}`);
     
+    // [v3.1 Global Ranking] 3단계 언어 감지 Fallback
+    let finalLanguage = videoInfo.language; // Step 1: YouTube API
+    let languageSource = videoInfo.languageSource || 'unknown';
+    
+    // Step 2: 자막 기반 언어 감지 (Plan B - 핵심 무기)
+    if (!finalLanguage && hasTranscript && transcriptItems.length > 0) {
+      const firstText = transcriptItems[0].text;
+      finalLanguage = detectLanguageFromText(firstText);
+      languageSource = 'transcript';
+      console.log(`[Language Detection] Step 2 (Transcript): ${finalLanguage}`);
+    }
+    
+    // Step 3: 기본값 (Plan C)
+    if (!finalLanguage) {
+      finalLanguage = 'ko'; // 기본값
+      languageSource = 'user';
+      console.log(`[Language Detection] Step 3 (Default): ${finalLanguage}`);
+    }
+    
+    console.log(`[Language Detection] Final: ${finalLanguage} (source: ${languageSource})`);
+    
     // 자막 가져오기 실패시 고지
     if (!hasTranscript) {
       transcript = '[자막 가져오기 실패] 자막을 불러오는 중 오류가 발생했습니다.';
@@ -379,19 +401,22 @@ export async function POST(request: Request) {
           f_title,
           f_thumbnail_url,
           f_official_category_id,
-          f_subscriber_count
-        ) VALUES ($1, $2, NULLIF($3, ''), $4, $5)
+          f_subscriber_count,
+          f_language
+        ) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
         ON CONFLICT (f_channel_id) DO UPDATE SET
           f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
           f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
           f_official_category_id = EXCLUDED.f_official_category_id,
-          f_subscriber_count = EXCLUDED.f_subscriber_count
+          f_subscriber_count = EXCLUDED.f_subscriber_count,
+          f_language = COALESCE(EXCLUDED.f_language, t_channels.f_language)
       `, [
         videoInfo.channelId, 
         videoInfo.channelName, 
         videoInfo.channelThumbnailUrl, 
         videoInfo.officialCategoryId,
-        videoInfo.subscriberCount
+        videoInfo.subscriberCount,
+        finalLanguage
       ]);
 
       if (!shouldKeepParentOnDecrease) {
@@ -470,9 +495,11 @@ export async function POST(request: Request) {
             f_evaluation_reason,
             f_thumbnail_url,
             f_published_at,
+            f_language,
+            f_language_source,
             f_created_at,
             f_updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
           ON CONFLICT (f_video_id) DO UPDATE SET
             f_channel_id = EXCLUDED.f_channel_id,
             f_title = EXCLUDED.f_title,
@@ -498,7 +525,9 @@ export async function POST(request: Request) {
           analysisResult.subtitleSummary,
           analysisResult.evaluationReason,
           videoInfo.thumbnailUrl,
-          videoInfo.publishedAt || null
+          videoInfo.publishedAt || null,
+          finalLanguage,
+          languageSource
         ]);
       }
 

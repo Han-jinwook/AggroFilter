@@ -13,6 +13,8 @@ export interface VideoInfo {
   officialCategoryId: number; // 추가: 유튜브 공식 카테고리 ID
   duration?: string; // 추가: 영상 길이 (ISO 8601 형식)
   publishedAt?: string; // 영상 업로드 날짜 (ISO 8601)
+  language?: string; // 언어 코드 (ISO 639-1: ko, en, ja, etc.)
+  languageSource?: 'api' | 'unknown'; // 언어 감지 소스
 }
 
 export interface TranscriptItem {
@@ -91,6 +93,29 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   const officialCategoryId = parseInt(snippet.categoryId || '0', 10);
   const duration = contentDetails?.duration || '';
 
+  // Extract language information from YouTube API metadata
+  const defaultLanguage = snippet.defaultLanguage || snippet.defaultAudioLanguage;
+  let language: string | undefined;
+  let languageSource: 'youtube_api' | 'transcript' | 'user' = 'youtube_api';
+
+  if (defaultLanguage) {
+    const code = defaultLanguage.toLowerCase().split('-')[0];
+    const langMap: Record<string, string> = {
+      ko: 'korean',
+      en: 'english',
+      ja: 'japanese',
+      zh: 'chinese',
+      es: 'spanish',
+      fr: 'french',
+      de: 'german',
+      ru: 'russian',
+      pt: 'portuguese',
+      it: 'italian',
+    };
+    language = langMap[code] || 'english';
+    languageSource = 'youtube_api';
+  }
+
   // 2. 채널 정보 가져오기 (프로필 이미지, 핸들, 구독자 수)
   let channelThumbnailUrl = '';
   let channelHandle = '';
@@ -127,6 +152,8 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     officialCategoryId,
     duration,
     publishedAt: snippet.publishedAt || '',
+    language,
+    languageSource,
   };
 }
 

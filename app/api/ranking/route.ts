@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { getLanguageDisplayName, getLanguageIcon } from '@/lib/language-detection';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const lang = searchParams.get('lang') || 'korean';
   const categoryId = searchParams.get('category');
   const limit = Number.parseInt(searchParams.get('limit') || '20', 10);
   const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
@@ -12,53 +14,98 @@ export async function GET(request: Request) {
 
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 10000) : 1000;
   const safeOffset = Number.isFinite(offset) ? Math.max(offset, 0) : 0;
+  
+  // Ranking Key 생성: lang_categoryId 또는 언어 전체
+  const hasCategory = categoryId && categoryId !== '' && categoryId !== 'all';
+  const rankingKey = hasCategory ? `${lang}_${categoryId}` : null;
 
   try {
     const client = await pool.connect();
     try {
-      const whereClause = categoryId && categoryId !== 'all' ? `WHERE cs.f_official_category_id = $1` : ``;
-      const whereValues: any[] = [];
-      if (whereClause) {
-        whereValues.push(Number.parseInt(categoryId as string, 10));
+      // t_rankings_cache에서 조회
+      let query: string;
+      let queryParams: any[];
+      
+      if (rankingKey) {
+        // 특정 카테고리만 조회
+        query = `
+          SELECT 
+            rc.f_channel_id as id,
+            rc.f_rank as rank,
+            c.f_title as name,
+            c.f_thumbnail_url as avatar,
+            cs.f_avg_reliability as score,
+            rc.f_total_count as total_count,
+            rc.f_top_percentile as top_percentile,
+            (
+              SELECT COUNT(*)::int FROM t_analyses a
+              WHERE a.f_channel_id = rc.f_channel_id
+                AND a.f_is_latest = TRUE
+            ) as analysis_count
+          FROM t_rankings_cache rc
+          JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
+          LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+          WHERE rc.f_ranking_key = $1
+          ORDER BY rc.f_rank ASC
+          LIMIT $2 OFFSET $3
+        `;
+        queryParams = [rankingKey, safeLimit, safeOffset];
+      } else {
+        // 언어별 전체 조회 (채널별 최고 점수 기준)
+        query = `
+          WITH ChannelBestScores AS (
+            SELECT DISTINCT ON (rc.f_channel_id)
+              rc.f_channel_id,
+              c.f_title,
+              c.f_thumbnail_url,
+              cs.f_avg_reliability,
+              rc.f_language
+            FROM t_rankings_cache rc
+            JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
+            LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+            WHERE rc.f_language = $1
+            ORDER BY rc.f_channel_id, cs.f_avg_reliability DESC NULLS LAST
+          ),
+          RankedByLanguage AS (
+            SELECT 
+              f_channel_id,
+              f_title,
+              f_thumbnail_url,
+              f_avg_reliability,
+              ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC NULLS LAST) as overall_rank,
+              COUNT(*) OVER () as total_count
+            FROM ChannelBestScores
+          )
+          SELECT 
+            f_channel_id as id,
+            overall_rank as rank,
+            f_title as name,
+            f_thumbnail_url as avatar,
+            f_avg_reliability as score,
+            total_count,
+            ROUND((overall_rank::decimal / total_count::decimal) * 100, 2) as top_percentile,
+            (
+              SELECT COUNT(*)::int FROM t_analyses a
+              WHERE a.f_channel_id = RankedByLanguage.f_channel_id
+                AND a.f_is_latest = TRUE
+            ) as analysis_count
+          FROM RankedByLanguage
+          ORDER BY overall_rank ASC
+          LIMIT $2 OFFSET $3
+        `;
+        queryParams = [lang, safeLimit, safeOffset];
       }
+      
+      const res = await client.query(query, queryParams);
+      const totalCount = res.rows[0]?.total_count || 0;
 
-      const countRes = await client.query(
-        `SELECT COUNT(*)::int AS total_count FROM t_channel_stats cs ${whereClause}`,
-        whereValues,
-      );
-      const totalCount = countRes.rows?.[0]?.total_count ?? 0;
-
-      const pageSql = `
-        SELECT 
-          cs.f_channel_id as id,
-          cs.f_official_category_id as category_id,
-          cs.f_avg_reliability as score,
-          c.f_title as name,
-          c.f_thumbnail_url as avatar,
-          (
-            SELECT COUNT(*)::int FROM t_analyses a
-            WHERE a.f_channel_id = cs.f_channel_id
-              AND a.f_is_latest = TRUE
-              AND a.f_official_category_id = cs.f_official_category_id
-          ) as analysis_count
-        FROM t_channel_stats cs
-        JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
-        ${whereClause}
-        ORDER BY cs.f_avg_reliability DESC, cs.f_channel_id ASC
-        LIMIT $${whereValues.length + 1}
-        OFFSET $${whereValues.length + 2}
-      `;
-
-      const pageValues = [...whereValues, safeLimit, safeOffset];
-      const res = await client.query(pageSql, pageValues);
-
-      const rankedChannels = res.rows.map((row, index) => ({
+      const rankedChannels = res.rows.map((row) => ({
         id: row.id,
-        rank: safeOffset + index + 1,
+        rank: row.rank, // 캐시에서 가져온 rank 사용
         name: row.name,
         avatar: row.avatar,
-        score: Number.parseFloat(row.score),
-        categoryId: row.category_id,
+        score: Number.parseFloat(row.score || 0),
+        categoryId: categoryId ? Number.parseInt(categoryId, 10) : 0,
         analysisCount: row.analysis_count || 0,
       }));
 
@@ -68,45 +115,59 @@ export async function GET(request: Request) {
 
       if (focusChannelId) {
         try {
-          const frValues: any[] = [];
-          let frWhere = '';
-          if (categoryId && categoryId !== 'all') {
-            frWhere = 'WHERE cs.f_official_category_id = $1';
-            frValues.push(Number.parseInt(categoryId, 10));
+          let focusQuery: string;
+          let focusParams: any[];
+          
+          if (rankingKey) {
+            focusQuery = `
+              SELECT 
+                rc.f_channel_id as id,
+                rc.f_rank as rank,
+                c.f_title as name,
+                c.f_thumbnail_url as avatar,
+                cs.f_avg_reliability as score,
+                rc.f_total_count as total_count,
+                rc.f_top_percentile as top_percentile
+              FROM t_rankings_cache rc
+              JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
+              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+              WHERE rc.f_channel_id = $1 AND rc.f_ranking_key = $2
+              LIMIT 1
+            `;
+            focusParams = [focusChannelId, rankingKey];
+          } else {
+            focusQuery = `
+              SELECT 
+                rc.f_channel_id as id,
+                rc.f_rank as rank,
+                c.f_title as name,
+                c.f_thumbnail_url as avatar,
+                cs.f_avg_reliability as score,
+                rc.f_total_count as total_count,
+                rc.f_top_percentile as top_percentile
+              FROM t_rankings_cache rc
+              JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
+              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+              WHERE rc.f_channel_id = $1 AND rc.f_language = $2
+              ORDER BY rc.f_rank ASC
+              LIMIT 1
+            `;
+            focusParams = [focusChannelId, lang];
           }
-          frValues.push(focusChannelId);
-          const chParamIdx = frValues.length;
-
-          const frSql = `
-            WITH Ranked AS (
-              SELECT cs.f_channel_id, cs.f_official_category_id, cs.f_avg_reliability,
-                ROW_NUMBER() OVER (ORDER BY cs.f_avg_reliability DESC, cs.f_channel_id ASC) AS rank,
-                COUNT(*) OVER () AS total_count
-              FROM t_channel_stats cs
-              ${frWhere}
-            )
-            SELECT r.f_channel_id AS id, r.f_official_category_id AS category_id,
-              r.f_avg_reliability AS score, r.rank, r.total_count,
-              c.f_title AS name, c.f_thumbnail_url AS avatar
-            FROM Ranked r
-            JOIN t_channels c ON c.f_channel_id = r.f_channel_id
-            WHERE r.f_channel_id = $${chParamIdx}
-            LIMIT 1
-          `;
-
-          const frRes = await client.query(frSql, frValues);
-          if (frRes.rows.length > 0) {
-            const row = frRes.rows[0];
-            const topPercentile = row.total_count > 0 ? Math.round((Number(row.rank) / Number(row.total_count)) * 100) : null;
+          
+          const focusRes = await client.query(focusQuery, focusParams);
+          
+          if (focusRes.rows.length > 0) {
+            const row = focusRes.rows[0];
             focusRank = {
               id: row.id,
               rank: Number(row.rank),
               name: row.name,
               avatar: row.avatar,
-              score: Number.parseFloat(row.score),
-              categoryId: row.category_id,
+              score: Number.parseFloat(row.score || 0),
+              categoryId: categoryId ? Number.parseInt(categoryId, 10) : 0,
               totalCount: Number(row.total_count),
-              topPercentile,
+              topPercentile: Number(row.top_percentile),
             };
           }
         } catch (e) {
@@ -119,6 +180,11 @@ export async function GET(request: Request) {
         totalCount,
         nextOffset,
         focusRank,
+        locale: {
+          language: lang,
+          displayName: getLanguageDisplayName(lang),
+          icon: getLanguageIcon(lang),
+        },
       });
     } finally {
       client.release();
