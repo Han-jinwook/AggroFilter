@@ -104,7 +104,7 @@
       setTimeout(() => {
         window.removeEventListener('message', handler);
         resolve(null);
-      }, 10000);
+      }, 30000);
     });
   }
 
