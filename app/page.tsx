@@ -152,10 +152,30 @@ export default function MainPage() {
       try {
         result = await fetchAnalysis();
       } catch (firstError) {
-        // Netlify CDN 게이트웨이 타임아웃 대비: 서버는 성공했을 수 있으므로 5초 후 재시도
-        console.warn('첫 번째 요청 실패, 5초 후 재시도...', firstError);
-        await new Promise(r => setTimeout(r, 5000));
-        result = await fetchAnalysis();
+        // 504 등 게이트웨이 타임아웃: 서버는 분석 중일 수 있으므로 결과 폴링
+        console.warn('첫 번째 요청 실패, 결과 폴링 시작...', firstError);
+        const pollUrl = `/api/analysis/status?url=${encodeURIComponent(analysisUrl)}`;
+        let polled = false;
+        for (let i = 0; i < 12; i++) {
+          await new Promise(r => setTimeout(r, 5000));
+          try {
+            const statusRes = await fetch(pollUrl);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.status === 'completed' && statusData.analysisId) {
+                console.log('폴링으로 결과 확인:', statusData.analysisId);
+                result = { analysisId: statusData.analysisId };
+                polled = true;
+                break;
+              }
+            }
+          } catch (pollErr) {
+            console.warn('폴링 실패:', pollErr);
+          }
+        }
+        if (!polled) {
+          throw new Error('분석 결과를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
       }
       
       // Analysis is saved in DB with user_id, no localStorage needed
