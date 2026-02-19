@@ -703,10 +703,61 @@ export async function analyzeContent(
     try {
       analysisData = JSON.parse(jsonString);
     } catch (parseError) {
-      console.error("JSON Parse Error:", parseError);
-      console.error("Raw Text (first 500 chars):", text?.substring(0, 500));
-      console.error("Extracted jsonString (first 500 chars):", jsonString?.substring(0, 500));
-      throw new Error("Failed to parse AI response");
+      console.warn("JSON Parse Error (attempting repair):", (parseError as Error).message);
+      
+      // Repair attempt 1: Fix unescaped control characters inside string values
+      let repaired = jsonString
+        .replace(/[\x00-\x1F\x7F]/g, (ch) => {
+          if (ch === '\n') return '\\n';
+          if (ch === '\r') return '\\r';
+          if (ch === '\t') return '\\t';
+          return '';
+        });
+      
+      try {
+        analysisData = JSON.parse(repaired);
+        console.log("JSON repair (control chars) succeeded");
+      } catch {
+        // Repair attempt 2: Extract field-by-field using regex
+        console.warn("Control char repair failed, trying regex extraction");
+        try {
+          const getNum = (key: string) => {
+            const m = repaired.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`));
+            return m ? parseInt(m[1], 10) : null;
+          };
+          const getStr = (key: string) => {
+            const m = repaired.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+            return m ? m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : null;
+          };
+          // For long string fields, use a greedy approach between keys
+          const getLongStr = (key: string, nextKey: string) => {
+            const pattern = new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*,\\s*"${nextKey}"`);
+            const m = repaired.match(pattern);
+            return m ? m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : null;
+          };
+
+          analysisData = {
+            accuracy: getNum('accuracy'),
+            clickbait: getNum('clickbait'),
+            reliability: getNum('reliability'),
+            clickbaitTierLabel: getStr('clickbaitTierLabel'),
+            subtitleSummary: getLongStr('subtitleSummary', 'evaluationReason') || getStr('subtitleSummary'),
+            evaluationReason: getLongStr('evaluationReason', 'overallAssessment') || getStr('evaluationReason'),
+            overallAssessment: getLongStr('overallAssessment', 'recommendedTitle') || getStr('overallAssessment'),
+            recommendedTitle: getStr('recommendedTitle'),
+          };
+
+          if (analysisData.accuracy === null || analysisData.clickbait === null) {
+            throw new Error("Regex extraction failed: missing required numeric fields");
+          }
+          console.log("JSON repair (regex extraction) succeeded");
+        } catch (regexError) {
+          console.error("All JSON repair attempts failed");
+          console.error("Raw Text (first 500 chars):", text?.substring(0, 500));
+          console.error("Extracted jsonString (first 500 chars):", jsonString?.substring(0, 500));
+          throw new Error("Failed to parse AI response");
+        }
+      }
     }
 
     if (subtitleSummaryOverride) {
