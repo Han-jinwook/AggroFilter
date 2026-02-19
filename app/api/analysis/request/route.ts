@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-import { extractVideoId, getVideoInfo, getTranscript, getTranscriptItems } from '@/lib/youtube';
+import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto, checkRankingChangesAndNotify } from '@/lib/notification';
@@ -235,20 +235,18 @@ export async function POST(request: Request) {
       hasTranscript = true;
       console.log(`클라이언트 자막 사용: ${transcript.length}자, items: ${transcriptItems.length}`);
     } else {
-      // 서버에서 자막 추출 시도
+      // 서버에서 자막 추출 시도 (1회)
       try {
         const items = await getTranscriptItems(videoId);
         if (items.length > 0) {
           transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
           transcript = items.map((it) => it.text).join(' ');
-        } else {
-          transcript = await getTranscript(videoId);
         }
 
         hasTranscript = transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다');
-        console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '실패');
+        console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '자막 없음');
       } catch (e) {
-        console.error('자막 추출 중 치명적 에러:', e);
+        console.error('자막 추출 중 에러:', e);
         hasTranscript = false;
       }
     }
