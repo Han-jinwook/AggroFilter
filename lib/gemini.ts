@@ -681,6 +681,12 @@ export async function analyzeContent(
     }
 
     const text = result.text;
+    console.log("Parsing AI response, text length:", text?.length ?? 'null');
+    
+    if (!text || text.trim().length === 0) {
+      console.error("Empty text from result object. Candidates:", JSON.stringify(result.candidates?.map((c: any) => ({ finishReason: c.finishReason, contentParts: c.content?.parts?.length }))));
+      throw new Error("Empty response from AI");
+    }
     
     // JSON 파싱 (혹시 모를 마크다운 제거)
     let jsonString = text.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
@@ -697,7 +703,9 @@ export async function analyzeContent(
     try {
       analysisData = JSON.parse(jsonString);
     } catch (parseError) {
-      console.error("JSON Parse Error:", parseError, "Raw Text:", text);
+      console.error("JSON Parse Error:", parseError);
+      console.error("Raw Text (first 500 chars):", text?.substring(0, 500));
+      console.error("Extracted jsonString (first 500 chars):", jsonString?.substring(0, 500));
       throw new Error("Failed to parse AI response");
     }
 
