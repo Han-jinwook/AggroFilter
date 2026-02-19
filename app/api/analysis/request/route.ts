@@ -293,12 +293,9 @@ export async function POST(request: Request) {
       throw new Error(`AI 분석 중 오류가 발생했습니다: ${aiError.message}`);
     }
     
-    // 자막 가져오기 실패시 점수를 null로 표시
-    if (!hasTranscript) {
-      analysisResult.accuracy = null as any;
-      analysisResult.clickbait = null as any;
-      analysisResult.reliability = null as any;
-      analysisResult.subtitleSummary = '자막 가져오기에 실패하여 분석이 불가능합니다.';
+    // 자막 없는 영상: AI가 제목+썸네일로 분석한 점수는 유지, 자막 요약만 표시 변경
+    if (!hasTranscript && !analysisResult.subtitleSummary?.includes('자막 없음')) {
+      analysisResult.subtitleSummary = '자막 없음 - 제목 및 썸네일 기반 분석';
     }
 
     const accuracyNum = typeof analysisResult?.accuracy === 'number' ? analysisResult.accuracy : null;
@@ -316,7 +313,7 @@ export async function POST(request: Request) {
           trust: analysisResult.reliability,
         }) ?? analysisResult.evaluationReason;
     }
-    console.log('AI 분석 완료:', hasTranscript ? analysisResult.reliability : '자막없음');
+    console.log('AI 분석 완료:', analysisResult.reliability, hasTranscript ? '' : '(자막없음-제목/썸네일 기반)');
 
     const shouldKeepParentOnDecrease =
       Boolean(isRecheck) &&
