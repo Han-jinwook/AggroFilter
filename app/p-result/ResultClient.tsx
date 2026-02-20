@@ -901,7 +901,7 @@ ${content}
             </div>
           )}
           <div
-            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}`)}
+            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
             className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
           >
             <div className="mb-2 flex items-center justify-between">
@@ -928,6 +928,15 @@ ${content}
                 </div>
               </div>
               <div className="flex items-baseline gap-2">
+                {analysisData.channelLanguage && (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-600 border border-blue-200">
+                    {analysisData.channelLanguage === 'korean' ? '한국어' : 
+                     analysisData.channelLanguage === 'english' ? 'English' :
+                     analysisData.channelLanguage === 'japanese' ? '日本語' :
+                     analysisData.channelLanguage === 'chinese' ? '中文' :
+                     analysisData.channelLanguage.charAt(0).toUpperCase() + analysisData.channelLanguage.slice(1)}
+                  </span>
+                )}
                 <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-600 border border-indigo-200">#{getCategoryName(analysisData.officialCategoryId)}</span>
                 <span className="text-base font-bold text-indigo-600">상위 {topPercentileText}</span>
                 <span className="text-sm font-medium text-gray-500">({channelRankText} / {totalChannelsText})</span>

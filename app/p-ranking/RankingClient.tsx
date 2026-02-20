@@ -257,7 +257,8 @@ export default function RankingClient() {
 
   const handleCategoryClick = (categoryId: string) => {
     const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
-    router.push(`/p-ranking?category=${categoryId}${channelParam}`)
+    const langParam = currentLanguage ? `&lang=${currentLanguage}` : ''
+    router.push(`/p-ranking?category=${categoryId}${langParam}${channelParam}`)
     setIsTopicDropdownOpen(false)
   }
 
@@ -265,7 +266,8 @@ export default function RankingClient() {
     setIsLanguageDropdownOpen(false)
     // 언어 변경 시 카테고리를 전체로 리셋하고 lang 파라미터 추가
     const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
-    router.push(`/p-ranking?category=&lang=${language}${channelParam}`)
+    const categoryParam = currentCategoryId ? `category=${currentCategoryId}` : 'category='
+    router.push(`/p-ranking?${categoryParam}&lang=${language}${channelParam}`)
   }
 
   const renderChannelRow = (channel: TChannel) => {
@@ -355,16 +357,16 @@ export default function RankingClient() {
                     router.back()
                   }
                 }}
-                className="flex items-center justify-center text-black transition-colors hover:text-gray-700"
+                className="hidden md:flex items-center justify-center text-black transition-colors hover:text-gray-700"
                 aria-label="뒤로 가기"
               >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div className="relative flex w-[140px] flex-shrink-0 items-center gap-1 rounded-2xl bg-blue-200 px-4 py-1">
-                <h2 className="whitespace-nowrap text-lg font-bold text-pink-500">채널 랭킹</h2>
-                <div className="relative -mt-2">
+              <div className="relative flex w-auto md:w-[140px] flex-shrink-0 items-center gap-1 rounded-2xl bg-blue-200 px-2 md:px-4 py-1">
+                <h2 className="whitespace-nowrap text-sm md:text-lg font-bold text-pink-500">채널 랭킹</h2>
+                <div className="relative -mt-2 hidden md:block">
                   <button
                     onMouseEnter={() => setActiveTooltip("ranking")}
                     onMouseLeave={() => setActiveTooltip(null)}
@@ -383,16 +385,16 @@ export default function RankingClient() {
                   )}
                 </div>
               </div>
-              <div className="relative flex min-w-0 flex-1 items-center gap-2 rounded-full border-2 border-pink-400 bg-white px-4 py-1.5">
-                <span className="text-base font-bold text-pink-500">#</span>
-                <span className="flex-1 text-base font-bold text-gray-800 truncate">
+              <div className="relative flex min-w-0 flex-1 items-center gap-1 md:gap-2 rounded-full border-2 border-pink-400 bg-white px-2 md:px-4 py-1.5">
+                <span className="text-sm md:text-base font-bold text-pink-500">#</span>
+                <span className="flex-1 text-sm md:text-base font-bold text-gray-800 truncate">
                   {currentCategoryName}
-                  {localeInfo && (
-                    <span className="ml-2 text-xs font-normal text-gray-500">
-                      ({localeInfo.displayName})
-                    </span>
-                  )}
                 </span>
+                {localeInfo && (
+                  <span className="text-[10px] md:text-xs font-normal text-gray-500 flex-shrink-0">
+                    ({localeInfo.displayName})
+                  </span>
+                )}
               </div>
               <div className="relative flex items-center gap-2 flex-shrink-0">
                 {/* 언어 선택 드롭다운 */}
@@ -508,8 +510,8 @@ export default function RankingClient() {
                   {channels.find(c => c.rank === 1) && (
                     <Link href={`/channel/${channels.find(c => c.rank === 1)!.id}`} className="flex flex-col items-center w-full group">
                       <div className="relative w-24 h-24 mb-2">
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-3xl animate-bounce drop-shadow-md filter">👑</div>
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-xs font-bold px-3 py-0.5 rounded-full z-10 shadow-sm ring-2 ring-white whitespace-nowrap">1위</div>
+                        <div className="absolute -top-3 md:-top-7 left-1/2 -translate-x-1/2 text-lg md:text-3xl drop-shadow-md filter">👑</div>
+                        <div className="absolute -top-1 md:-top-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-0.5 rounded-full z-10 shadow-sm ring-2 ring-white whitespace-nowrap">1위</div>
                         <Image
                           src={channels.find(c => c.rank === 1)!.avatar || "/placeholder.svg"}
                           alt="1st"

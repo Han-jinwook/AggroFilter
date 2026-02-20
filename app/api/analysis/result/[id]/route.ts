@@ -69,7 +69,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
         SELECT a.*,
                c.f_title as f_channel_name,
                c.f_thumbnail_url as f_channel_thumbnail,
-               c.f_subscriber_count as f_subscriber_count
+               c.f_subscriber_count as f_subscriber_count,
+               c.f_language as f_channel_language
         FROM t_analyses a 
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_id = $1
@@ -118,22 +119,28 @@ export async function GET(request: Request, { params }: { params: { id: string }
       };
 
       try {
+        // Get channel language for ranking calculation
+        const channelLanguage = analysis.f_channel_language || 'korean';
+        
         // Real-time ranking from t_channel_stats (same source as /api/ranking)
+        // Filter by both language AND category for accurate ranking
         const rankingRes = await client.query(`
           WITH Ranked AS (
             SELECT 
-              f_channel_id,
-              f_avg_reliability,
-              RANK() OVER (ORDER BY f_avg_reliability DESC) as rank,
+              cs.f_channel_id,
+              cs.f_avg_reliability,
+              RANK() OVER (ORDER BY cs.f_avg_reliability DESC) as rank,
               COUNT(*) OVER () as total_count
-            FROM t_channel_stats
-            WHERE f_official_category_id = $2
+            FROM t_channel_stats cs
+            JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
+            WHERE cs.f_official_category_id = $2
+              AND c.f_language = $3
           )
           SELECT rank, total_count,
             ROUND((rank::numeric / total_count) * 100) as top_percentile
           FROM Ranked
           WHERE f_channel_id = $1
-        `, [analysis.f_channel_id, analysis.f_official_category_id]);
+        `, [analysis.f_channel_id, analysis.f_official_category_id, channelLanguage]);
 
         if (rankingRes.rows.length > 0) {
           const rankData = rankingRes.rows[0];
@@ -335,6 +342,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           parentAnalysisId: parentAnalysisId,
           recheckParentScores,
           officialCategoryId: analysis.f_official_category_id,
+          channelLanguage: analysis.f_channel_language || 'korean',
           channelStats: channelStats,
           summary: analysis.f_summary,
           evaluationReason: normalizeEvaluationReasonScores(analysis.f_evaluation_reason, {
