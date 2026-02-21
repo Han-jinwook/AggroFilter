@@ -13,33 +13,32 @@ export async function GET(request: Request) {
 
     const client = await pool.connect();
     try {
-      let orderByClause = 'ORDER BY avg_reliability DESC';
+      let orderByClause = 'ORDER BY cs.f_avg_reliability DESC';
 
       if (filter === 'trust') {
         orderByClause = direction === 'asc' 
-          ? 'ORDER BY avg_reliability ASC' 
-          : 'ORDER BY avg_reliability DESC';
+          ? 'ORDER BY cs.f_avg_reliability ASC' 
+          : 'ORDER BY cs.f_avg_reliability DESC';
       } else if (filter === 'controversy') {
         orderByClause = direction === 'asc'
-          ? 'ORDER BY avg_clickbait ASC'
-          : 'ORDER BY avg_clickbait DESC';
+          ? 'ORDER BY cs.f_avg_clickbait ASC'
+          : 'ORDER BY cs.f_avg_clickbait DESC';
       }
 
-      // [v2.2 Optimization] Use f_is_latest = true
+      // Use t_channel_stats for ranking data
       const query = `
         SELECT 
           c.f_channel_id as id,
           c.f_title as name,
           c.f_thumbnail_url as "channelIcon",
-          c.f_official_category_id as category_id,
-          AVG(a.f_reliability_score) as avg_reliability,
-          AVG(a.f_clickbait_score) as avg_clickbait
-        FROM t_channels c
-        JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
-        WHERE a.f_is_latest = TRUE
-          AND a.f_created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url, c.f_official_category_id
-        HAVING COUNT(a.f_id) > 0
+          cs.f_official_category_id as category_id,
+          cs.f_avg_reliability,
+          cs.f_avg_clickbait,
+          cs.f_last_updated
+        FROM t_channel_stats cs
+        JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
+        WHERE cs.f_last_updated >= NOW() - INTERVAL '7 days'
+          AND cs.f_avg_reliability IS NOT NULL
         ${orderByClause}
         LIMIT 3
       `;
