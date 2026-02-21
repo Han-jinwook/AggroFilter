@@ -13,6 +13,7 @@ interface TAnalysisHeaderProps {
   onBack: () => void
   onChannelClick: () => void
   onHeaderClick?: () => void
+  channelLanguage?: string
 }
 
 export function AnalysisHeader({ 
@@ -23,7 +24,8 @@ export function AnalysisHeader({
   date, 
   onBack, 
   onChannelClick,
-  onHeaderClick 
+  onHeaderClick,
+  channelLanguage 
 }: TAnalysisHeaderProps) {
   return (
     <div className="space-y-2">

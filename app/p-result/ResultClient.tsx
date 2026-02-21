@@ -792,8 +792,9 @@ ${content}
               videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
-              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}`)}
+              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
               onHeaderClick={() => setShowPlayer(!showPlayer)}
+              channelLanguage={analysisData.channelLanguage}
             />
             {/* YouTube Embed Player - Conditional and Non-Sticky */}
             {showPlayer && (

@@ -35,6 +35,7 @@ export async function GET(request: Request) {
             c.f_title as name,
             c.f_thumbnail_url as avatar,
             cs.f_avg_reliability as score,
+            cs.f_avg_clickbait as clickbait_score,
             rc.f_total_count as total_count,
             rc.f_top_percentile as top_percentile,
             (
@@ -59,6 +60,7 @@ export async function GET(request: Request) {
               c.f_title,
               c.f_thumbnail_url,
               cs.f_avg_reliability,
+              cs.f_avg_clickbait,
               rc.f_language
             FROM t_rankings_cache rc
             JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
@@ -72,6 +74,7 @@ export async function GET(request: Request) {
               f_title,
               f_thumbnail_url,
               f_avg_reliability,
+              f_avg_clickbait,
               ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC NULLS LAST) as overall_rank,
               COUNT(*) OVER () as total_count
             FROM ChannelBestScores
@@ -82,6 +85,7 @@ export async function GET(request: Request) {
             f_title as name,
             f_thumbnail_url as avatar,
             f_avg_reliability as score,
+            f_avg_clickbait as clickbait_score,
             total_count,
             ROUND((overall_rank::decimal / total_count::decimal) * 100, 2) as top_percentile,
             (
@@ -105,6 +109,7 @@ export async function GET(request: Request) {
         name: row.name,
         avatar: row.avatar,
         score: Number.parseFloat(row.score || 0),
+        clickbaitScore: Number.parseFloat(row.clickbait_score || 0),
         categoryId: categoryId ? Number.parseInt(categoryId, 10) : 0,
         analysisCount: row.analysis_count || 0,
       }));

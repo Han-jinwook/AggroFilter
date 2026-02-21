@@ -14,6 +14,7 @@ interface TChannel {
   name: string
   avatar: string
   score: number
+  clickbaitScore?: number
   color: string
   highlight?: boolean
   analysisCount?: number
@@ -81,6 +82,7 @@ export default function RankingClient() {
   const [totalCount, setTotalCount] = useState<number>(0)
   const [focusRank, setFocusRank] = useState<TRankingApiResponse['focusRank']>(null)
   const [showSticky, setShowSticky] = useState(false)
+  const [sortBy, setSortBy] = useState<'reliability' | 'clickbait'>('reliability')
 
   const focusRef = useRef<HTMLDivElement | null>(null)
 
@@ -188,16 +190,25 @@ export default function RankingClient() {
           return
         }
         const data = (await res.json()) as TRankingApiResponse
-        const formatted = (data.channels || []).map((c) => ({
+        let formatted = (data.channels || []).map((c) => ({
           id: c.id,
           rank: c.rank,
           name: c.name,
           avatar: c.avatar,
           score: c.score,
+          clickbaitScore: c.clickbaitScore || 0,
           color: c.score >= 70 ? "text-green-500" : c.score >= 50 ? "text-orange-500" : "text-red-500",
           highlight: false,
           analysisCount: c.analysisCount || 0,
         }))
+        
+        // 클라이언트 사이드 정렬
+        if (sortBy === 'clickbait') {
+          formatted = formatted.sort((a, b) => (b.clickbaitScore || 0) - (a.clickbaitScore || 0))
+        } else {
+          formatted = formatted.sort((a, b) => b.score - a.score)
+        }
+        
         setChannels(formatted)
         setTotalCount(data.totalCount || 0)
         setFocusRank(data.focusRank)
@@ -210,7 +221,7 @@ export default function RankingClient() {
     }
 
     fetchChannels()
-  }, [currentCategoryId, focusChannelId, currentLanguage])
+  }, [currentCategoryId, focusChannelId, currentLanguage, sortBy])
 
 
   // Sticky My-Rank bar visibility
@@ -323,10 +334,10 @@ export default function RankingClient() {
               {channel.analysisCount || 0}개
             </span>
           </div>
-          {/* PC: 신뢰도 점수 별도 컬럼 */}
+          {/* PC: 신뢰도/어그로 점수 별도 컬럼 */}
           <div className="hidden md:flex items-center justify-end gap-2 pr-2">
             <span className={`text-base font-bold ${isFocus ? "text-indigo-700" : "text-gray-800"}`}>
-              {channel.score}
+              {sortBy === 'clickbait' ? (channel.clickbaitScore || 0) : channel.score}
             </span>
             <span className={`text-xl ${channel.color}`}>●</span>
           </div>
@@ -559,7 +570,15 @@ export default function RankingClient() {
                 <div className="text-sm font-bold text-gray-800 pl-1">채널명 {!isLoading && totalCount > 0 && <span className="text-xs font-medium text-gray-500">(총 {totalCount.toLocaleString()}개)</span>}</div>
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap pr-1 md:hidden">분석 영상</div>
                 <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
-                <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도 점수</div>
+                <div 
+                  className="hidden md:flex items-center justify-center gap-1 text-xs font-bold text-gray-800 whitespace-nowrap cursor-pointer hover:text-blue-600"
+                  onClick={() => setSortBy(sortBy === 'reliability' ? 'clickbait' : 'reliability')}
+                >
+                  {sortBy === 'reliability' ? '🔵 신뢰도' : '🔴 어그로'}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
 
