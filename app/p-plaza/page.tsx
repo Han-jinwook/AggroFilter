@@ -98,6 +98,7 @@ export default function PlazaPage() {
   const [searchSort, setSearchSort] = useState<"clean" | "toxic">("clean")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   // 언어 관련 상태
   const [currentLanguage, setCurrentLanguage] = useState<string>('korean')
