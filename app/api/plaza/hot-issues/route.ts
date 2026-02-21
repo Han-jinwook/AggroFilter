@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const sort = searchParams.get('sort') || 'trust';
     const direction = searchParams.get('direction') || 'desc';
+    const lang = searchParams.get('lang') || 'korean';
 
     const client = await pool.connect();
     try {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
           : 'ORDER BY a.f_clickbait_score DESC';
       }
 
-      // [v2.2 Optimization] Use f_is_latest = true
+      // [v2.2 Optimization] Use f_is_latest = true + language filter
       const query = `
         SELECT 
           a.f_id as id,
@@ -41,11 +42,12 @@ export async function GET(request: Request) {
         WHERE a.f_is_latest = TRUE
           AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
           AND a.f_reliability_score IS NOT NULL
+          AND COALESCE(c.f_language, 'korean') = $1
         ${orderByClause}
         LIMIT 3
       `;
 
-      const result = await client.query(query);
+      const result = await client.query(query, [lang]);
 
       const hotIssues = result.rows.map((row, index) => {
         let score = row.reliability_score;

@@ -98,7 +98,45 @@ export default function PlazaPage() {
   const [searchSort, setSearchSort] = useState<"clean" | "toxic">("clean")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
+
+  // 언어 관련 상태
+  const [currentLanguage, setCurrentLanguage] = useState<string>('korean')
+  const [availableLanguages, setAvailableLanguages] = useState<{language: string, displayName: string, channelCount: number}[]>([])
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+
+  // 브라우저 언어 감지 (초기 로드 시에만)
+  useEffect(() => {
+    const navLang = navigator.language // 'ko-KR', 'en-US'
+    const langMap: Record<string, string> = {
+      ko: 'korean',
+      en: 'english',
+      ja: 'japanese',
+      zh: 'chinese',
+      es: 'spanish',
+      fr: 'french',
+      de: 'german',
+      ru: 'russian',
+    }
+    const code = navLang.split('-')[0].toLowerCase()
+    const detected = langMap[code] || 'korean'
+    setCurrentLanguage(detected)
+  }, [])
+
+  // Active Languages 로드
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const res = await fetch('/api/ranking/locales')
+        if (res.ok) {
+          const data = await res.json()
+          setAvailableLanguages(data.languages || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch languages:', error)
+      }
+    }
+    fetchLanguages()
+  }, [])
 
   const [allAnalyzedVideos, setAllAnalyzedVideos] = useState<TVideoData[]>([])
   const [filteredVideos, setFilteredVideos] = useState<TVideoData[]>([])
@@ -213,7 +251,7 @@ export default function PlazaPage() {
       try {
         let sort = hotFilter === 'trust' ? 'trust' : 'aggro'
         let direction = sortDirection === 'best' ? 'desc' : 'asc'
-        const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}`)
+        const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}&lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
           setHotIssues(data.hotIssues || [])
@@ -225,7 +263,7 @@ export default function PlazaPage() {
       }
     }
     fetchHotIssues()
-  }, [hotFilter, sortDirection])
+  }, [hotFilter, sortDirection, currentLanguage])
 
   useEffect(() => {
     const fetchHotChannels = async () => {
@@ -285,7 +323,38 @@ export default function PlazaPage() {
                 <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
               <h2 className="text-base sm:text-xl font-bold text-slate-800">원데이 핫이슈 3</h2>
-              <Clock className="ml-auto h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
+              <div className="ml-auto relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-medium"
+                >
+                  <span>{availableLanguages.find(l => l.language === currentLanguage)?.displayName || 'Korean'}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 top-full z-30 mt-2 w-40 rounded-xl bg-indigo-600 p-2 shadow-xl">
+                    <div className="space-y-1">
+                      {availableLanguages.map((lang) => (
+                        <button
+                          key={lang.language}
+                          onClick={() => {
+                            setCurrentLanguage(lang.language)
+                            setShowLanguageDropdown(false)
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
+                            currentLanguage === lang.language
+                              ? 'bg-indigo-700 text-white font-bold'
+                              : 'text-white hover:bg-indigo-700'
+                          }`}
+                        >
+                          <span>{lang.displayName}</span>
+                          <span className="text-[10px] text-indigo-300">({lang.channelCount})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
               <button
