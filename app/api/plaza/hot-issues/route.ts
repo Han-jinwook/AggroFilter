@@ -13,7 +13,8 @@ export async function GET(request: Request) {
 
     const client = await pool.connect();
     try {
-      // Base query condition: Activity within last 24 hours
+      // Base query condition: 최근 24시간 내 분석된 영상
+      // TODO: f_last_action_at 기능 추가 후 f_created_at 대신 사용 (분석 + 조회 활동 포함)
       let orderByClause = 'ORDER BY a.f_reliability_score DESC';
 
       if (sort === 'trust') {
@@ -39,35 +40,13 @@ export async function GET(request: Request) {
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
-          AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
+          AND a.f_created_at >= NOW() - INTERVAL '24 hours'
           AND a.f_reliability_score IS NOT NULL
         ${orderByClause}
         LIMIT 3
       `;
 
-      let result = await client.query(query);
-
-      // Fail-safe: If no results found in last 24 hours, fallback to last 7 days
-      if (result.rows.length === 0) {
-        const fallbackQuery = `
-          SELECT 
-            a.f_id as id,
-            a.f_title as title,
-            c.f_title as channel,
-            c.f_thumbnail_url as "channelIcon",
-            a.f_official_category_id as category_id,
-            a.f_reliability_score as reliability_score,
-            a.f_clickbait_score as clickbait_score
-          FROM t_analyses a
-          LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
-          WHERE a.f_is_latest = TRUE
-            AND a.f_created_at >= NOW() - INTERVAL '7 days'
-            AND a.f_reliability_score IS NOT NULL
-          ${orderByClause}
-          LIMIT 3
-        `;
-        result = await client.query(fallbackQuery);
-      }
+      const result = await client.query(query);
 
       const hotIssues = result.rows.map((row, index) => {
         let score = row.reliability_score;

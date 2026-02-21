@@ -108,7 +108,7 @@ export default function PlazaPage() {
   const observerTarget = useRef<HTMLDivElement>(null)
 
   const [videoSortConfig, setVideoSortConfig] = useState<{
-    key: "date" | "score"
+    key: "date" | "score" | "clickbait"
     direction: "asc" | "desc"
   }>({ key: "date", direction: "desc" })
 
@@ -122,7 +122,7 @@ export default function PlazaPage() {
   const [analyzedChannels, setAnalyzedChannels] = useState<TAnalyzedChannelData[]>([])
   const [isLoadingAnalyzedChannels, setIsLoadingAnalyzedChannels] = useState(true)
 
-  const handleVideoSort = (key: "date" | "score") => {
+  const handleVideoSort = (key: "date" | "score" | "clickbait") => {
     setVideoSortConfig((current) => ({
       key,
       direction: current.key === key && current.direction === "desc" ? "asc" : "desc",

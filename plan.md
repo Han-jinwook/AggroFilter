@@ -253,6 +253,13 @@ const systemPrompt = `
 ## 10. 향후 논의 사항 (Backlog)
 - **확장프로그램 별도 구축 (Mission 4)**: 현재 앱 서비스 완성 후, 데이터 수집 효율화를 위한 전용 확장프로그램 개발 논의 예정.
 
+## 10.1 TODO 리스트
+- [ ] **f_last_action_at 기능 구현**: 원데이 핫이슈 기준을 "분석일(f_created_at)"에서 "마지막 활동(f_last_action_at)"으로 변경
+  - 현재: 분석일 기준 (f_created_at)
+  - 목표: 분석 + 조회 활동 포함하는 f_last_action_at 컬럼 활용
+  - 영향 범위: `/api/plaza/hot-issues`, 분석 API, 조회 API
+  - 우선순위: 중
+
 Instruction for Developer:
 현재는 **Phase 1 (유튜브)**에만 집중하십시오.
 쇼핑이나 뉴스 관련 로직은 구조상 자리를 비워두되, 실제 구현은 하지 마십시오.

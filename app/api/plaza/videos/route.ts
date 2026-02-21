@@ -26,6 +26,8 @@ export async function GET(request: Request) {
         let orderBy = 'a.f_created_at DESC';
         if (sort === 'score') {
           orderBy = `a.f_reliability_score ${direction === 'asc' ? 'ASC' : 'DESC'}`;
+        } else if (sort === 'clickbait') {
+          orderBy = `a.f_clickbait_score ${direction === 'asc' ? 'ASC' : 'DESC'}`;
         } else if (sort === 'date') {
           orderBy = `a.f_created_at ${direction === 'asc' ? 'ASC' : 'DESC'}`;
         }
