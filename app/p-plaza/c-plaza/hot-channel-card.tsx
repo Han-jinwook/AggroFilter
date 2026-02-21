@@ -91,7 +91,7 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
           <span className="font-medium text-slate-400">{item.topic}</span>
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="text-center">
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[9px] font-bold text-slate-400 leading-none">영상수</span>
