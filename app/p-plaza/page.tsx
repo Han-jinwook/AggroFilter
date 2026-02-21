@@ -420,14 +420,14 @@ export default function PlazaPage() {
                 </span>
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {isLoadingHotIssues ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
+                <div className="flex items-center justify-center py-6">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                 </div>
               ) : hotIssues.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  최근 24시간 내 분석된 영상이 없습니다
+                <div className="flex items-center justify-center py-6 text-sm text-slate-400">
+                  데이터가 없습니다
                 </div>
               ) : (
                 hotIssues.map((item) => {

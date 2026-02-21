@@ -57,10 +57,10 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
   return (
     <Link
       href={`/p-result?id=${item.id}`}
-      className="group flex items-center gap-2.5 rounded-2xl border-2 border-slate-100 bg-white p-2.5 transition-all hover:-translate-y-1 hover:border-slate-200 hover:shadow-lg active:scale-[0.99]"
+      className="group flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-2 transition-all hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-md active:scale-[0.99]"
     >
       <div
-        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-base font-black text-white shadow-md ${
+        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-black text-white shadow-sm ${
           item.rank === 1
             ? "bg-gradient-to-br from-orange-400 to-red-500 ring-2 ring-orange-100"
             : item.rank === 2
@@ -71,41 +71,41 @@ export function HotIssueCard({ item, type }: THotIssueCardProps) {
         {item.rank}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="line-clamp-1 text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+        <h3 className="line-clamp-1 text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight">
           {item.title}
         </h3>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
           <span className="font-medium text-slate-600">{item.channel}</span>
           {item.topic && (
             <>
-              <span className="h-3 w-[1px] bg-slate-200" />
+              <span className="h-2.5 w-[1px] bg-slate-200" />
               <span className="text-slate-400">{item.topic}</span>
             </>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <div className="text-right">
           {type === "views" && (
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">분석수</span>
-              <span className="text-base font-black text-slate-800 leading-none">{item.analysis_count || 0}</span>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 leading-none">분석수</span>
+              <span className="text-sm font-black text-slate-800 leading-none">{item.analysis_count || 0}</span>
             </div>
           )}
           {(type === "trust" || type === "aggro") && (
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-slate-400 leading-none mb-0.5">{type === "trust" ? "신뢰도" : "어그로"}</span>
-              <span className={`text-base font-black leading-none ${getScoreColor()}`}>{item.score}</span>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 leading-none">{type === "trust" ? "신뢰도" : "어그로"}</span>
+              <span className={`text-sm font-black leading-none ${getScoreColor()}`}>{item.score}</span>
             </div>
           )}
         </div>
         <div
           role="button"
           onClick={handleShare}
-          className={`p-1.5 rounded-full transition-all cursor-pointer ${copied ? 'text-green-500 bg-green-50 opacity-100' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100'}`}
+          className={`p-1 rounded-full transition-all cursor-pointer ${copied ? 'text-green-500 bg-green-50 opacity-100' : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100'}`}
           title={copied ? "복사됨" : "공유하기"}
         >
-          {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
         </div>
       </div>
     </Link>
