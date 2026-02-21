@@ -172,7 +172,7 @@ export default function PlazaPage() {
     const fetchVideos = async () => {
       setIsLoadingVideos(true)
       try {
-        const res = await fetch(`/api/plaza/videos?sort=${videoSortConfig.key}&direction=${videoSortConfig.direction}`)
+        const res = await fetch(`/api/plaza/videos?sort=${videoSortConfig.key}&direction=${videoSortConfig.direction}&lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
           setAllAnalyzedVideos(data.videos || [])
@@ -184,7 +184,7 @@ export default function PlazaPage() {
       }
     }
     fetchVideos()
-  }, [videoSortConfig])
+  }, [videoSortConfig, currentLanguage])
 
   useEffect(() => {
     const fetchAnalyzedChannels = async () => {
@@ -719,12 +719,12 @@ export default function PlazaPage() {
         ) :
         /* 3. 탭별 콘텐츠 */
         activeTab === "video" ? (
-          <div className="rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
-            <div className="mb-4">
+          <div className="rounded-2xl sm:rounded-[2rem] bg-white p-3 sm:p-4 shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div className="mb-2.5">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 영상 <span className="text-sm font-normal text-slate-400 ml-1">{allAnalyzedVideos.length}개 영상</span></h2>
             </div>
 
-            <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
+            <div className="mb-2.5 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-slate-500">
               <div
                 className="w-10 sm:w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 sm:gap-1 hover:text-slate-800"
                 onClick={() => handleVideoSort("date")}
@@ -763,10 +763,10 @@ export default function PlazaPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {isLoadingVideos ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-purple-500"></div>
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-200 border-t-purple-500"></div>
                   <p className="text-sm text-slate-400 font-medium">영상을 불러오는 중입니다...</p>
                 </div>
               ) : allAnalyzedVideos.length === 0 ? (

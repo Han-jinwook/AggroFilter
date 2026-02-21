@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const period = searchParams.get('period') || '';
     const sort = searchParams.get('sort') || 'date';
     const direction = searchParams.get('direction') || 'desc';
+    const lang = searchParams.get('lang') || 'korean';
 
     let timeCondition = "TRUE";
     
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
         }
 
       // First, try with the strict time condition
-      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
+      // [v2.2 Optimization] Use f_is_latest = true instead of CTE + language filter
       let query = `
         SELECT 
           a.f_id as id,
@@ -48,11 +49,12 @@ export async function GET(request: Request) {
         WHERE a.f_is_latest = TRUE
           AND ${timeCondition}
           AND a.f_reliability_score IS NOT NULL
+          AND COALESCE(c.f_language, 'korean') = $1
         ORDER BY ${orderBy}
         LIMIT 200
       `;
 
-      let result = await client.query(query);
+      let result = await client.query(query, [lang]);
 
       const videos = result.rows.map(row => {
         return {
