@@ -450,9 +450,40 @@ export default function PlazaPage() {
             <div className="mb-2 flex items-center gap-2">
               <Activity className="h-5 w-5 text-purple-600" />
               <h2 className="text-base font-bold text-slate-800">주간 핫채널 3</h2>
-              <Clock className="ml-auto h-4 w-4 text-slate-400" />
+              <div className="ml-auto relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-medium"
+                >
+                  <span>{availableLanguages.find(l => l.language === currentLanguage)?.displayName || 'Korean'}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 top-full z-30 mt-2 w-40 rounded-xl bg-indigo-600 p-2 shadow-xl">
+                    <div className="space-y-1">
+                      {availableLanguages.map((lang) => (
+                        <button
+                          key={lang.language}
+                          onClick={() => {
+                            setCurrentLanguage(lang.language)
+                            setShowLanguageDropdown(false)
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
+                            currentLanguage === lang.language
+                              ? 'bg-indigo-700 text-white font-bold'
+                              : 'text-white hover:bg-indigo-700'
+                          }`}
+                        >
+                          <span>{lang.displayName}</span>
+                          <span className="text-[10px] text-indigo-300">({lang.channelCount})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-1.5 sm:gap-2 mb-2 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
               <button
                 onClick={() => {
                   if (channelHotFilter === "trust") {
@@ -462,17 +493,23 @@ export default function PlazaPage() {
                     setChannelSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   channelHotFilter === "trust"
-                    ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900 ring-offset-1"
-                    : "bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-slate-200"
+                    ? channelSortDirection === "worst"
+                      ? "bg-white text-red-600 shadow-md ring-1 ring-black/5"
+                      : "bg-white text-green-600 shadow-md ring-1 ring-black/5"
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <span className="flex items-center gap-0.5">
-                  <span className={channelHotFilter === "trust" ? (channelSortDirection === "best" ? "text-green-400" : "text-red-400") : ""}>
-                    {channelHotFilter === "trust" ? (channelSortDirection === "best" ? "신뢰도 TOP 3" : "신뢰도 WORST 3") : "신뢰도"}
+                <span className="flex items-center gap-1">
+                  <span>
+                    {channelHotFilter === "trust"
+                      ? channelSortDirection === "best"
+                        ? "신뢰도 TOP 3"
+                        : "신뢰도 WORST 3"
+                      : "신뢰도"}
                   </span>
-                  {channelHotFilter === "trust" && <ArrowUpDown className="h-3 w-3 opacity-80" />}
+                  {channelHotFilter === "trust" && <ArrowUpDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-80" />}
                 </span>
               </button>
               <button
@@ -484,17 +521,28 @@ export default function PlazaPage() {
                     setChannelSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   channelHotFilter === "controversy"
-                    ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900 ring-offset-1"
-                    : "bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-slate-200"
+                    ? channelSortDirection === "worst"
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-200"
+                      : "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-200"
+                    : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <span className="flex items-center gap-0.5">
-                  <span className={channelHotFilter === "controversy" ? (channelSortDirection === "worst" ? "text-green-400" : "text-red-400") : ""}>
-                    {channelHotFilter === "controversy" ? (channelSortDirection === "best" ? "어그로 TOP 3" : "어그로 LOWEST 3") : "어그로"}
+                <span className="flex items-center gap-1">
+                  <span>
+                    {channelHotFilter === "controversy" ? (
+                      <>
+                        어그로{" "}
+                        <span className={channelSortDirection === "worst" ? "text-xs tracking-tighter" : ""}>
+                          {channelSortDirection === "best" ? "TOP 3" : "LOWEST 3"}
+                        </span>
+                      </>
+                    ) : (
+                      "어그로"
+                    )}
                   </span>
-                  {channelHotFilter === "controversy" && <ArrowUpDown className="h-3 w-3 opacity-80" />}
+                  {channelHotFilter === "controversy" && <ArrowUpDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-80" />}
                 </span>
               </button>
             </div>
