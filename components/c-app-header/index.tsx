@@ -195,18 +195,18 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   }
 
   return (
-    <header className="relative border-b border-slate-200 bg-white/80 backdrop-blur-xl h-24 flex items-center">
-      <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-1.5 cursor-pointer group no-underline">
+    <header className="relative border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center py-0">
+      <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4 py-0">
+        <Link href="/" className="flex items-center gap-1.5 cursor-pointer group no-underline py-0">
           <Image
             src="/images/character-logo.png"
             alt="AggroFilter"
             width={240}
             height={120}
-            className="h-20 w-auto object-contain transition-transform group-hover:scale-105"
+            className="h-[4.75rem] w-auto object-contain transition-transform group-hover:scale-105"
             priority
           />
-          <div className="flex flex-col items-center justify-center h-20 text-slate-500 font-bold text-base leading-tight tracking-wider opacity-80">
+          <div className="flex flex-col items-center justify-center h-[4.75rem] text-slate-500 font-bold text-base leading-tight tracking-wider opacity-80">
             <span className="font-bold text-slate-600">유</span>
             <span className="font-bold text-slate-600">튜</span>
             <span className="font-bold text-slate-600">브</span>
