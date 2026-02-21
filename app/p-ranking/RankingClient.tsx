@@ -190,6 +190,14 @@ export default function RankingClient() {
           return
         }
         const data = (await res.json()) as TRankingApiResponse
+        
+        // 카테고리 필터가 있는데 결과가 0개이면 → 전체로 fallback
+        if ((data.channels || []).length === 0 && currentCategoryId) {
+          const channelParam = focusChannelId ? `&channel=${focusChannelId}` : ''
+          router.replace(`/p-ranking?category=&lang=${currentLanguage}${channelParam}`)
+          return
+        }
+        
         let formatted = (data.channels || []).map((c) => ({
           id: c.id,
           rank: c.rank,
