@@ -668,7 +668,17 @@ export default function PlazaPage() {
                 />
               </div>
               <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
-              <div className="w-12 sm:w-14 text-center text-red-500">어그로</div>
+              <div
+                className="w-12 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 text-red-500 hover:text-red-600"
+                onClick={() => handleVideoSort("clickbait")}
+              >
+                <span className="whitespace-nowrap">어그로</span>
+                <ChevronDown
+                  className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
+                    videoSortConfig.key === "clickbait" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
               <div
                 className="w-12 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 text-green-500 hover:text-green-600 ml-0.5 sm:ml-1"
                 onClick={() => handleVideoSort("score")}
