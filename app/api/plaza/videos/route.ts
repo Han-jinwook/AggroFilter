@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { getCached, setCache } from '@/lib/plaza-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,12 @@ export async function GET(request: Request) {
     const sort = searchParams.get('sort') || 'date';
     const direction = searchParams.get('direction') || 'desc';
     const lang = searchParams.get('lang') || 'korean';
+
+    const cacheKey = `videos:${period}:${sort}:${direction}:${lang}`;
+    const cached = getCached<{ videos: any[] }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     let timeCondition = "TRUE";
     
@@ -69,7 +76,9 @@ export async function GET(request: Request) {
         };
       });
 
-      return NextResponse.json({ videos });
+      const responseData = { videos };
+      setCache(cacheKey, responseData);
+      return NextResponse.json(responseData);
     } finally {
       client.release();
     }

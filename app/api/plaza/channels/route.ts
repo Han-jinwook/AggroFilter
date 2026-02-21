@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 import { getCategoryName } from '@/lib/categoryMap'
+import { getCached, setCache } from '@/lib/plaza-cache'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
+    const cacheKey = 'channels:all'
+    const cached = getCached<{ channels: any[] }>(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
+
     const client = await pool.connect()
     try {
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE
@@ -45,7 +52,9 @@ export async function GET(request: Request) {
         }
       })
 
-      return NextResponse.json({ channels })
+      const responseData = { channels }
+      setCache(cacheKey, responseData)
+      return NextResponse.json(responseData)
     } finally {
       client.release()
     }

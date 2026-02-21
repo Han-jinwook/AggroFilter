@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { getCategoryName } from '@/lib/categoryMap';
+import { getCached, setCache } from '@/lib/plaza-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,12 @@ export async function GET(request: Request) {
     const filter = searchParams.get('filter') || 'trust'; // trust, controversy
     const direction = searchParams.get('direction') || 'desc';
     const lang = searchParams.get('lang') || 'korean';
+
+    const cacheKey = `hot-channels:${filter}:${direction}:${lang}`;
+    const cached = getCached<{ hotChannels: any[] }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     const client = await pool.connect();
     try {
@@ -79,7 +86,9 @@ export async function GET(request: Request) {
         };
       });
 
-      return NextResponse.json({ hotChannels });
+      const responseData = { hotChannels };
+      setCache(cacheKey, responseData);
+      return NextResponse.json(responseData);
     } finally {
       client.release();
     }
