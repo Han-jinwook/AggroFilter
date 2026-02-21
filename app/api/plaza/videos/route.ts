@@ -24,9 +24,7 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     try {
         let orderBy = 'a.f_created_at DESC';
-        if (sort === 'views') {
-          orderBy = `(COALESCE(a.f_view_count, 0) + COALESCE(a.f_request_count, 0)) ${direction === 'asc' ? 'ASC' : 'DESC'}`;
-        } else if (sort === 'score') {
+        if (sort === 'score') {
           orderBy = `a.f_reliability_score ${direction === 'asc' ? 'ASC' : 'DESC'}`;
         } else if (sort === 'date') {
           orderBy = `a.f_created_at ${direction === 'asc' ? 'ASC' : 'DESC'}`;
@@ -41,8 +39,7 @@ export async function GET(request: Request) {
           a.f_title as title,
           c.f_title as channel,
           c.f_thumbnail_url as "channelIcon",
-          a.f_request_count as views,
-          a.f_view_count as f_view_count,
+          a.f_clickbait_score as clickbait,
           a.f_reliability_score as score
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
@@ -56,18 +53,13 @@ export async function GET(request: Request) {
       let result = await client.query(query);
 
       const videos = result.rows.map(row => {
-        // Combine analysis_count and view_count
-        const totalEngagement = (row.views || 0) + (row.f_view_count || 0);
-        
         return {
           id: row.id,
           date: new Date(row.date).toISOString(),
           title: row.title,
           channel: row.channel || '알 수 없는 채널',
           channelIcon: row.channelIcon || '/placeholder.svg',
-          analysis_count: row.views || 0,
-          view_count: row.f_view_count || 0,
-          views: totalEngagement.toLocaleString(),
+          clickbait: row.clickbait || 0,
           score: row.score,
           color: row.score >= 70 ? 'green' : 'red'
         };

@@ -7,12 +7,12 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter') || 'views'; // views, trust, controversy
+    const filter = searchParams.get('filter') || 'trust'; // trust, controversy
     const direction = searchParams.get('direction') || 'desc';
 
     const client = await pool.connect();
     try {
-      let orderByClause = 'ORDER BY analysis_count DESC, view_count DESC';
+      let orderByClause = 'ORDER BY avg_reliability DESC';
 
       if (filter === 'trust') {
         orderByClause = direction === 'asc' 
@@ -30,8 +30,6 @@ export async function GET(request: Request) {
           c.f_channel_id as id,
           c.f_title as name,
           c.f_thumbnail_url as "channelIcon",
-          COUNT(a.f_id) as analysis_count,
-          SUM(COALESCE(a.f_view_count, 0)) as view_count,
           AVG(a.f_reliability_score) as avg_reliability,
           AVG(a.f_clickbait_score) as avg_clickbait
         FROM t_channels c
@@ -47,12 +45,10 @@ export async function GET(request: Request) {
       const result = await client.query(query);
 
       const hotChannels = result.rows.map((row, index) => {
-        let value = row.analysis_count;
         let score = Math.round(row.avg_reliability || 0);
+        let value = score;
         
-        if (filter === 'trust') {
-          value = score;
-        } else if (filter === 'controversy') {
+        if (filter === 'controversy') {
           score = Math.round(row.avg_clickbait || 0);
           value = score;
         }

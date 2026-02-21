@@ -33,8 +33,6 @@ export async function GET(request: Request) {
           a.f_accuracy_score as accuracy,
           a.f_clickbait_score as clickbait,
           a.f_reliability_score as reliability,
-          a.f_request_count as request_count,
-          a.f_view_count as view_count,
           c.f_title as channel,
           c.f_thumbnail_url as channel_icon,
           c.f_channel_id as channel_id
@@ -61,7 +59,6 @@ export async function GET(request: Request) {
         accuracy: row.accuracy,
         clickbait: row.clickbait,
         reliability: row.reliability,
-        views: ((row.request_count || 0) + (row.view_count || 0)).toLocaleString(),
         channel: row.channel || '알 수 없는 채널',
         channelIcon: row.channel_icon || '/placeholder.svg',
         channelId: row.channel_id,

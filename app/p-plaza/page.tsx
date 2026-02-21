@@ -88,10 +88,10 @@ export default function PlazaPage() {
   }
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
-  const [hotFilter, setHotFilter] = useState<"views" | "trust" | "aggro">("views")
+  const [hotFilter, setHotFilter] = useState<"trust" | "aggro">("trust")
   const [sortDirection, setSortDirection] = useState<"best" | "worst">("best")
 
-  const [channelHotFilter, setChannelHotFilter] = useState<"views" | "trust" | "controversy">("views")
+  const [channelHotFilter, setChannelHotFilter] = useState<"trust" | "controversy">("trust")
   const [channelSortDirection, setChannelSortDirection] = useState<"best" | "worst">("best")
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -108,7 +108,7 @@ export default function PlazaPage() {
   const observerTarget = useRef<HTMLDivElement>(null)
 
   const [videoSortConfig, setVideoSortConfig] = useState<{
-    key: "date" | "views" | "score"
+    key: "date" | "score"
     direction: "asc" | "desc"
   }>({ key: "date", direction: "desc" })
 
@@ -122,7 +122,7 @@ export default function PlazaPage() {
   const [analyzedChannels, setAnalyzedChannels] = useState<TAnalyzedChannelData[]>([])
   const [isLoadingAnalyzedChannels, setIsLoadingAnalyzedChannels] = useState(true)
 
-  const handleVideoSort = (key: "date" | "views" | "score") => {
+  const handleVideoSort = (key: "date" | "score") => {
     setVideoSortConfig((current) => ({
       key,
       direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
@@ -211,15 +211,8 @@ export default function PlazaPage() {
     const fetchHotIssues = async () => {
       setIsLoadingHotIssues(true)
       try {
-        let sort = 'views'
-        let direction = 'desc'
-        if (hotFilter === 'trust') {
-          sort = 'trust'
-          direction = sortDirection === 'best' ? 'desc' : 'asc'
-        } else if (hotFilter === 'aggro') {
-          sort = 'aggro'
-          direction = sortDirection === 'best' ? 'desc' : 'asc'
-        }
+        let sort = hotFilter === 'trust' ? 'trust' : 'aggro'
+        let direction = sortDirection === 'best' ? 'desc' : 'asc'
         const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}`)
         if (res.ok) {
           const data = await res.json()
@@ -295,19 +288,6 @@ export default function PlazaPage() {
               <Clock className="ml-auto h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
             </div>
             <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
-              <button
-                onClick={() => {
-                  setHotFilter("views")
-                  setSortDirection("best")
-                }}
-                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all ${
-                  hotFilter === "views"
-                    ? "bg-white text-slate-900 shadow-md ring-1 ring-black/5"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                분석수
-              </button>
               <button
                 onClick={() => {
                   if (hotFilter === "trust") {
@@ -386,7 +366,7 @@ export default function PlazaPage() {
                     <HotIssueCard 
                       key={item.id} 
                       item={{ ...item, color }} 
-                      type={hotFilter === 'views' ? 'views' : hotFilter === 'trust' ? 'trust' : 'aggro'}
+                      type={hotFilter === 'trust' ? 'trust' : 'aggro'}
                       label={hotFilter === 'aggro' ? '어그로' : undefined}
                       onClick={() => router.push(`/p-result?id=${item.id}`)}
                     />
@@ -403,19 +383,6 @@ export default function PlazaPage() {
               <Clock className="ml-auto h-4 w-4 text-slate-400" />
             </div>
             <div className="flex gap-2 mb-2.5">
-              <button
-                onClick={() => {
-                  setChannelHotFilter("views")
-                  setChannelSortDirection("best")
-                }}
-                className={`flex-1 rounded-xl py-1.5 text-sm font-bold transition-all ${
-                  channelHotFilter === "views"
-                    ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900 ring-offset-1"
-                    : "bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-slate-200"
-                }`}
-              >
-                분석수
-              </button>
               <button
                 onClick={() => {
                   if (channelHotFilter === "trust") {
@@ -611,8 +578,8 @@ export default function PlazaPage() {
             <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
               <div className="w-10 sm:w-12 text-center">날짜</div>
               <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
-              <div className="w-12 sm:w-14 text-center">어그로</div>
-              <div className="w-10 sm:w-12 text-center ml-0.5 sm:ml-1">신뢰도</div>
+              <div className="w-12 sm:w-14 text-center">🔴 어그로</div>
+              <div className="w-12 sm:w-14 text-center ml-0.5 sm:ml-1">🔵 신뢰도</div>
             </div>
 
             <div className="space-y-3">
@@ -701,24 +668,13 @@ export default function PlazaPage() {
                 />
               </div>
               <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
+              <div className="w-12 sm:w-14 text-center">🔴 어그로</div>
               <div
-                className="w-10 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800"
-                onClick={() => handleVideoSort("views")}
-              >
-                <span className="whitespace-nowrap hidden sm:inline">조회수</span>
-                <span className="whitespace-nowrap sm:hidden">조회</span>
-                <ChevronDown
-                  className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
-                    videoSortConfig.key === "views" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
-                  }`}
-                />
-              </div>
-              <div
-                className="w-10 sm:w-12 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-0.5 sm:ml-1"
+                className="w-12 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-0.5 sm:ml-1"
                 onClick={() => handleVideoSort("score")}
               >
-                <span className="whitespace-nowrap hidden sm:inline">신뢰도</span>
-                <span className="whitespace-nowrap sm:hidden">점수</span>
+                <span className="whitespace-nowrap hidden sm:inline">🔵 신뢰도</span>
+                <span className="whitespace-nowrap sm:hidden">🔵 점수</span>
                 <ChevronDown
                   className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
                     videoSortConfig.key === "score" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
@@ -765,14 +721,22 @@ export default function PlazaPage() {
                           <span className="truncate">{item.channel}</span>
                         </div>
                       </div>
-                      <div className="w-10 sm:w-14 flex-shrink-0 flex justify-center">
-                        <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-1 sm:py-2 border border-blue-100/30">
-                          <span className="text-xs sm:text-base font-black text-blue-600 tabular-nums tracking-tight leading-none">
-                            {item.views}
+                      <div className="w-12 sm:w-14 flex-shrink-0 flex justify-center">
+                        <div className={`flex flex-col items-center w-full rounded-lg py-1 sm:py-2 border ${
+                          item.clickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                          item.clickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                          'bg-rose-50/50 border-rose-100/30'
+                        }`}>
+                          <span className={`text-xs sm:text-sm font-black tabular-nums tracking-tight leading-none ${
+                            item.clickbait <= 20 ? 'text-emerald-600' :
+                            item.clickbait <= 40 ? 'text-amber-600' :
+                            'text-rose-600'
+                          }`}>
+                            {item.clickbait}
                           </span>
                         </div>
                       </div>
-                      <div className="w-10 sm:w-12 flex-shrink-0 flex justify-center">
+                      <div className="w-12 sm:w-14 flex-shrink-0 flex justify-center">
                         <div className={`text-base sm:text-lg font-black tracking-tighter tabular-nums leading-none ${item.color === "green" ? "text-green-500" : "text-red-500"}`}>
                           {item.score}
                         </div>
@@ -807,8 +771,8 @@ export default function PlazaPage() {
               <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
                 <div className="w-8 text-center"></div>
                 <div className="ml-2 flex-1">채널명 / 주제</div>
-                <div className="w-20 text-center">분석수</div>
-                <div className="w-16 text-center">신뢰도</div>
+                <div className="w-20 text-center">🔴 어그로</div>
+                <div className="w-20 text-center">🔵 신뢰도</div>
               </div>
 
               <div className="space-y-3">
@@ -845,13 +809,21 @@ export default function PlazaPage() {
                           <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
                         </div>
                         <div className="w-20 flex-shrink-0 flex justify-center">
-                          <div className="flex flex-col items-center w-full bg-blue-50/50 rounded-lg py-2 border border-blue-100/30">
-                            <span className="text-sm font-black text-blue-600 tabular-nums tracking-tight leading-none">
-                              {item.count}
+                          <div className={`flex flex-col items-center w-full rounded-lg py-2 border ${
+                            item.avgClickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                            item.avgClickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                            'bg-rose-50/50 border-rose-100/30'
+                          }`}>
+                            <span className={`text-sm font-black tabular-nums tracking-tight leading-none ${
+                              item.avgClickbait <= 20 ? 'text-emerald-600' :
+                              item.avgClickbait <= 40 ? 'text-amber-600' :
+                              'text-rose-600'
+                            }`}>
+                              {item.avgClickbait}
                             </span>
                           </div>
                         </div>
-                        <div className="w-16 flex-shrink-0 flex justify-center">
+                        <div className="w-20 flex-shrink-0 flex justify-center">
                           <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
                             {item.score}
                           </div>

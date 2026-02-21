@@ -17,7 +17,8 @@ export async function GET(request: Request) {
           c.f_thumbnail_url as "channelIcon",
           c.f_official_category_id as category_id,
           COUNT(a.f_id)::int as analysis_count,
-          ROUND(AVG(a.f_reliability_score))::int as avg_reliability
+          ROUND(AVG(a.f_reliability_score))::int as avg_reliability,
+          ROUND(AVG(a.f_clickbait_score))::int as avg_clickbait
         FROM t_channels c
         JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
           channelIcon: row.channelIcon || '/placeholder.svg',
           topic: getCategoryName(row.category_id),
           count: Number(row.analysis_count) || 0,
+          avgClickbait: Number(row.avg_clickbait) || 0,
           score,
           color: score >= 70 ? 'green' : 'red',
         }

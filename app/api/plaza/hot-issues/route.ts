@@ -8,13 +8,13 @@ export const revalidate = 3600; // Cache for 1 hour
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const sort = searchParams.get('sort') || 'views';
+    const sort = searchParams.get('sort') || 'trust';
     const direction = searchParams.get('direction') || 'desc';
 
     const client = await pool.connect();
     try {
       // Base query condition: Activity within last 24 hours
-      let orderByClause = 'ORDER BY a.f_request_count DESC, a.f_view_count DESC';
+      let orderByClause = 'ORDER BY a.f_reliability_score DESC';
 
       if (sort === 'trust') {
         orderByClause = direction === 'asc' 
@@ -35,9 +35,7 @@ export async function GET(request: Request) {
           c.f_thumbnail_url as "channelIcon",
           a.f_official_category_id as category_id,
           a.f_reliability_score as reliability_score,
-          a.f_clickbait_score as clickbait_score,
-          a.f_request_count as analysis_count,
-          a.f_view_count as view_count
+          a.f_clickbait_score as clickbait_score
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
@@ -59,9 +57,7 @@ export async function GET(request: Request) {
             c.f_thumbnail_url as "channelIcon",
             a.f_official_category_id as category_id,
             a.f_reliability_score as reliability_score,
-            a.f_clickbait_score as clickbait_score,
-            a.f_request_count as analysis_count,
-            a.f_view_count as view_count
+            a.f_clickbait_score as clickbait_score
           FROM t_analyses a
           LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
           WHERE a.f_is_latest = TRUE
@@ -79,9 +75,6 @@ export async function GET(request: Request) {
             score = row.clickbait_score;
         }
 
-        // Combine analysis_count and view_count for a total "engagement" view count
-        const totalEngagement = (row.analysis_count || 0) + (row.view_count || 0);
-
         return {
           id: row.id,
           rank: index + 1,
@@ -89,9 +82,6 @@ export async function GET(request: Request) {
           channel: row.channel || '알 수 없는 채널',
           channelIcon: row.channelIcon || '/placeholder.svg',
           category_id: row.category_id,
-          analysis_count: row.analysis_count || 0,
-          view_count: row.view_count || 0,
-          views: totalEngagement.toLocaleString(),
           score: score
         };
       });
