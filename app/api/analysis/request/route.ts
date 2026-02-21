@@ -474,6 +474,7 @@ export async function POST(request: Request) {
       console.log('5-4. 채널 통계 갱신 시작 (언어별 분리)...');
       if (hasTranscript) {
         // [v3.0] 언어별 통계 분리: 채널+카테고리+언어 3차원 관리
+        // t_analyses에 f_language 컬럼이 없으므로 t_channels JOIN으로 언어 참조
         await client.query(`
           INSERT INTO t_channel_stats (
             f_channel_id, f_official_category_id, f_language, f_video_count, 
@@ -481,19 +482,18 @@ export async function POST(request: Request) {
             f_last_updated
           )
           SELECT 
-            f_channel_id, f_official_category_id, COALESCE(f_language, 'korean') as language,
+            a.f_channel_id, a.f_official_category_id, $3::varchar as language,
             COUNT(*)::integer, 
-            ROUND(AVG(f_accuracy_score), 2), 
-            ROUND(AVG(f_clickbait_score), 2), 
-            ROUND(AVG(f_reliability_score), 2),
+            ROUND(AVG(a.f_accuracy_score), 2), 
+            ROUND(AVG(a.f_clickbait_score), 2), 
+            ROUND(AVG(a.f_reliability_score), 2),
             NOW()
-          FROM t_analyses
-          WHERE f_channel_id = $1 
-            AND f_official_category_id = $2 
-            AND COALESCE(f_language, 'korean') = $3
-            AND f_reliability_score IS NOT NULL
-            AND f_is_latest = TRUE
-          GROUP BY f_channel_id, f_official_category_id, COALESCE(f_language, 'korean')
+          FROM t_analyses a
+          WHERE a.f_channel_id = $1 
+            AND a.f_official_category_id = $2 
+            AND a.f_reliability_score IS NOT NULL
+            AND a.f_is_latest = TRUE
+          GROUP BY a.f_channel_id, a.f_official_category_id
           ON CONFLICT (f_channel_id, f_official_category_id, f_language) 
           DO UPDATE SET 
             f_video_count = EXCLUDED.f_video_count,
