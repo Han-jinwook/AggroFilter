@@ -14,6 +14,7 @@ interface THotChannelItem {
   value?: string | number
   score?: number
   views?: string
+  videoCount?: number
   color?: string
 }
 
@@ -88,6 +89,9 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
         </h3>
         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
           <span className="font-medium text-slate-400">{item.topic}</span>
+          {item.videoCount !== undefined && (
+            <span className="text-[10px] font-bold text-slate-400">· 영상수 {item.videoCount}</span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1.5">

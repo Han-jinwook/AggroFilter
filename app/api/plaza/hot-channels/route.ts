@@ -34,13 +34,15 @@ export async function GET(request: Request) {
           c.f_thumbnail_url as "channelIcon",
           cs.f_official_category_id as category_id,
           cs.f_avg_reliability as max_reliability,
-          cs.f_avg_clickbait as max_clickbait
+          cs.f_avg_clickbait as max_clickbait,
+          cs.f_video_count as video_count
         FROM (
           SELECT 
             f_channel_id,
             f_official_category_id,
             f_avg_reliability,
             f_avg_clickbait,
+            f_video_count,
             ROW_NUMBER() OVER (PARTITION BY f_channel_id ORDER BY f_avg_reliability DESC) as rn
           FROM t_channel_stats
           WHERE f_language = $1
@@ -72,6 +74,7 @@ export async function GET(request: Request) {
           topic: getCategoryName(row.category_id),
           value: value.toString(),
           score: score,
+          videoCount: row.video_count || 0,
           color: score >= 70 ? 'green' : (score <= 40 ? 'red' : 'blue')
         };
       });
