@@ -209,6 +209,12 @@ export default function RankingClient() {
           formatted = formatted.sort((a, b) => b.score - a.score)
         }
         
+        // 정렬 후 순위 재계산
+        formatted = formatted.map((channel, index) => ({
+          ...channel,
+          rank: index + 1
+        }))
+        
         setChannels(formatted)
         setTotalCount(data.totalCount || 0)
         setFocusRank(data.focusRank)
