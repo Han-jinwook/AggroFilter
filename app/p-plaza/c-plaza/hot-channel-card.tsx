@@ -89,12 +89,17 @@ export function HotChannelCard({ item, type, label }: THotChannelCardProps) {
         </h3>
         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
           <span className="font-medium text-slate-400">{item.topic}</span>
-          {item.videoCount !== undefined && (
-            <span className="text-[10px] font-bold text-slate-400">· 영상수 {item.videoCount}</span>
-          )}
         </div>
       </div>
       <div className="flex items-center gap-1.5">
+        <div className="text-center">
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-[9px] font-bold text-slate-400 leading-none">영상수</span>
+            <span className="text-xs font-bold text-slate-600 leading-none tabular-nums">
+              {item.videoCount ?? 0}
+            </span>
+          </div>
+        </div>
         <div className="text-right">
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-[9px] font-bold text-slate-400 leading-none">
