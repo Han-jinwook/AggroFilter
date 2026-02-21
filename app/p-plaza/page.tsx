@@ -578,8 +578,8 @@ export default function PlazaPage() {
             <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs font-bold text-slate-500">
               <div className="w-10 sm:w-12 text-center">날짜</div>
               <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
-              <div className="w-12 sm:w-14 text-center">🔴 어그로</div>
-              <div className="w-12 sm:w-14 text-center ml-0.5 sm:ml-1">🔵 신뢰도</div>
+              <div className="w-12 sm:w-14 text-center text-red-500">어그로</div>
+              <div className="w-12 sm:w-14 text-center ml-0.5 sm:ml-1 text-green-500">신뢰도</div>
             </div>
 
             <div className="space-y-3">
@@ -668,13 +668,13 @@ export default function PlazaPage() {
                 />
               </div>
               <div className="ml-1 sm:ml-2 flex-1 min-w-0">제목 / 채널</div>
-              <div className="w-12 sm:w-14 text-center">🔴 어그로</div>
+              <div className="w-12 sm:w-14 text-center text-red-500">어그로</div>
               <div
-                className="w-12 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 hover:text-slate-800 ml-0.5 sm:ml-1"
+                className="w-12 sm:w-14 text-center cursor-pointer flex items-center justify-center gap-0.5 text-green-500 hover:text-green-600 ml-0.5 sm:ml-1"
                 onClick={() => handleVideoSort("score")}
               >
-                <span className="whitespace-nowrap hidden sm:inline">🔵 신뢰도</span>
-                <span className="whitespace-nowrap sm:hidden">🔵 점수</span>
+                <span className="whitespace-nowrap hidden sm:inline">신뢰도</span>
+                <span className="whitespace-nowrap sm:hidden">점수</span>
                 <ChevronDown
                   className={`h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 transition-transform ${
                     videoSortConfig.key === "score" && videoSortConfig.direction === "asc" ? "rotate-180" : ""
@@ -771,8 +771,8 @@ export default function PlazaPage() {
               <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
                 <div className="w-8 text-center"></div>
                 <div className="ml-2 flex-1">채널명 / 주제</div>
-                <div className="w-20 text-center">🔴 어그로</div>
-                <div className="w-20 text-center">🔵 신뢰도</div>
+                <div className="w-20 text-center text-red-500">어그로</div>
+                <div className="w-20 text-center text-green-500">신뢰도</div>
               </div>
 
               <div className="space-y-3">
