@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { Share2, MessageSquare } from "lucide-react"
 import { calculateReliability, calculateGap, calculateTier, type TierInfo } from "@/lib/prediction-grading"
+import { getUserId } from "@/lib/anon"
 
 interface PredictionComparisonProps {
   analysisId: string
@@ -40,7 +41,7 @@ export function PredictionComparison({ analysisId, actualReliability }: Predicti
             predictedAccuracy: data.accuracy,
             predictedClickbait: data.clickbait,
             actualReliability,
-            userEmail: typeof window !== 'undefined' ? localStorage.getItem('userEmail') || undefined : undefined,
+            userEmail: typeof window !== 'undefined' ? getUserId() || undefined : undefined,
           }),
         })
 

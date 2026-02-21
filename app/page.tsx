@@ -126,6 +126,7 @@ export default function MainPage() {
 
   const startAnalysis = async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
     setIsAnalyzing(true)
+    const quizMinEndTime = Date.now() + 8000 // 촉퀴즈 최소 표시 시간 8초
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
@@ -178,6 +179,12 @@ export default function MainPage() {
         }
       }
       
+      // 촉퀴즈 최소 표시 시간 보장: API가 빨리 응답해도 퀴즈 풀 시간 확보
+      const remaining = quizMinEndTime - Date.now()
+      if (remaining > 0) {
+        await new Promise(r => setTimeout(r, remaining))
+      }
+
       // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
