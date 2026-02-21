@@ -317,9 +317,9 @@ export default function PlazaPage() {
       <main className="container mx-auto max-w-[var(--app-max-width)] px-3 sm:px-4 py-4 sm:py-6 md:px-6">
         {/* 1. 탭에 따라 변경되는 상단 섹션 */}
         {activeTab === 'video' ? (
-          <div className="mb-4 sm:mb-6 rounded-2xl sm:rounded-[2rem] bg-white p-4 sm:p-6 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] border border-slate-100 relative overflow-hidden">
+          <div className="mb-3 sm:mb-4 rounded-2xl sm:rounded-[2rem] bg-white p-3 sm:p-4 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] border border-slate-100 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 sm:h-1.5 bg-gradient-to-r from-orange-400 via-red-500 to-pink-500" />
-            <div className="mb-3 sm:mb-4 flex items-center gap-2">
+            <div className="mb-2 sm:mb-2.5 flex items-center gap-2">
               <div className="p-1.5 sm:p-2 rounded-full bg-orange-50 text-orange-600">
                 <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
@@ -357,7 +357,7 @@ export default function PlazaPage() {
                 )}
               </div>
             </div>
-            <div className="flex gap-1.5 sm:gap-2 mb-3 sm:mb-4 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
+            <div className="flex gap-1.5 sm:gap-2 mb-2 sm:mb-2.5 p-1 bg-slate-50 rounded-xl sm:rounded-2xl">
               <button
                 onClick={() => {
                   if (hotFilter === "trust") {
@@ -367,7 +367,7 @@ export default function PlazaPage() {
                     setSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   hotFilter === "trust"
                     ? sortDirection === "worst"
                       ? "bg-white text-red-600 shadow-md ring-1 ring-black/5"
@@ -395,7 +395,7 @@ export default function PlazaPage() {
                     setSortDirection("best")
                   }
                 }}
-                className={`flex-1 rounded-lg sm:rounded-xl py-2 sm:py-2.5 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
+                className={`flex-1 rounded-lg sm:rounded-xl py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold transition-all flex items-center justify-center gap-0.5 sm:gap-1 ${
                   hotFilter === "aggro"
                     ? sortDirection === "worst"
                       ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-200"
@@ -522,7 +522,7 @@ export default function PlazaPage() {
         )}
 
         {/* 2. 네비게이션 탭 */}
-        <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+        <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => {
               setActiveTab('video')
@@ -532,7 +532,7 @@ export default function PlazaPage() {
               activeTab === "video"
                 ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white border-transparent shadow-md shadow-purple-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-            } ${isSearchExpanded ? "px-2 py-2.5 opacity-50 sm:px-3 sm:py-3 md:px-6 md:py-3.5" : "px-3 py-3 sm:px-4 sm:py-3.5 md:px-6 md:py-4"}`}
+            } ${isSearchExpanded ? "px-2 py-1.5 opacity-50 sm:px-3 sm:py-2 md:px-6 md:py-2.5" : "px-3 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3"}`}
           >
             <span className={isSearchExpanded ? "md:hidden" : ""}>{isSearchExpanded ? "영상" : "영상 트렌드"}</span>
             <span className={isSearchExpanded ? "hidden md:inline" : "hidden"}>영상 트렌드</span>
@@ -589,7 +589,7 @@ export default function PlazaPage() {
               activeTab === "channel"
                 ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-200 transform scale-[1.02]"
                 : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-            } ${isSearchExpanded ? "px-2 py-2.5 opacity-50 sm:px-3 sm:py-3 md:px-6 md:py-3.5" : "px-3 py-3 sm:px-4 sm:py-3.5 md:px-6 md:py-4"}`}
+            } ${isSearchExpanded ? "px-2 py-1.5 opacity-50 sm:px-3 sm:py-2 md:px-6 md:py-2.5" : "px-3 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3"}`}
           >
             <span className={isSearchExpanded ? "md:hidden" : ""}>{isSearchExpanded ? "채널" : "채널 트렌드"}</span>
             <span className={isSearchExpanded ? "hidden md:inline" : "hidden"}>채널 트렌드</span>
