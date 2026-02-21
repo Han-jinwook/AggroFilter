@@ -10,47 +10,57 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'trust'; // trust, controversy
     const direction = searchParams.get('direction') || 'desc';
+    const lang = searchParams.get('lang') || 'korean';
 
     const client = await pool.connect();
     try {
-      let orderByClause = 'ORDER BY cs.f_avg_reliability DESC';
+      let orderByClause = 'ORDER BY max_reliability DESC';
 
       if (filter === 'trust') {
         orderByClause = direction === 'asc' 
-          ? 'ORDER BY cs.f_avg_reliability ASC' 
-          : 'ORDER BY cs.f_avg_reliability DESC';
+          ? 'ORDER BY max_reliability ASC' 
+          : 'ORDER BY max_reliability DESC';
       } else if (filter === 'controversy') {
         orderByClause = direction === 'asc'
-          ? 'ORDER BY cs.f_avg_clickbait ASC'
-          : 'ORDER BY cs.f_avg_clickbait DESC';
+          ? 'ORDER BY max_clickbait ASC'
+          : 'ORDER BY max_clickbait DESC';
       }
 
-      // Use t_channel_stats for ranking data
+      // Use t_channel_stats with language filter and channel deduplication
       const query = `
         SELECT 
           c.f_channel_id as id,
           c.f_title as name,
           c.f_thumbnail_url as "channelIcon",
           cs.f_official_category_id as category_id,
-          cs.f_avg_reliability,
-          cs.f_avg_clickbait,
-          cs.f_last_updated
-        FROM t_channel_stats cs
+          cs.f_avg_reliability as max_reliability,
+          cs.f_avg_clickbait as max_clickbait
+        FROM (
+          SELECT 
+            f_channel_id,
+            f_official_category_id,
+            f_avg_reliability,
+            f_avg_clickbait,
+            ROW_NUMBER() OVER (PARTITION BY f_channel_id ORDER BY f_avg_reliability DESC) as rn
+          FROM t_channel_stats
+          WHERE f_language = $1
+            AND f_last_updated >= NOW() - INTERVAL '7 days'
+            AND f_avg_reliability IS NOT NULL
+        ) cs
         JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
-        WHERE cs.f_last_updated >= NOW() - INTERVAL '7 days'
-          AND cs.f_avg_reliability IS NOT NULL
+        WHERE cs.rn = 1
         ${orderByClause}
         LIMIT 3
       `;
 
-      const result = await client.query(query);
+      const result = await client.query(query, [lang]);
 
       const hotChannels = result.rows.map((row, index) => {
-        let score = Math.round(row.avg_reliability || 0);
+        let score = Math.round(row.max_reliability || 0);
         let value = score;
         
         if (filter === 'controversy') {
-          score = Math.round(row.avg_clickbait || 0);
+          score = Math.round(row.max_clickbait || 0);
           value = score;
         }
 

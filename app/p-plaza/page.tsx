@@ -270,7 +270,7 @@ export default function PlazaPage() {
     const fetchHotChannels = async () => {
       setIsLoadingHotChannels(true)
       try {
-        const res = await fetch(`/api/plaza/hot-channels?filter=${channelHotFilter}&direction=${channelSortDirection}`)
+        const res = await fetch(`/api/plaza/hot-channels?filter=${channelHotFilter}&direction=${channelSortDirection}&lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
           setHotChannels(data.hotChannels || [])
@@ -282,7 +282,7 @@ export default function PlazaPage() {
       }
     }
     fetchHotChannels()
-  }, [channelHotFilter, channelSortDirection])
+  }, [channelHotFilter, channelSortDirection, currentLanguage])
 
 
   useEffect(() => {
