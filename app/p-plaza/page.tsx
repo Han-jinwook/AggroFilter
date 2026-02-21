@@ -971,20 +971,20 @@ export default function PlazaPage() {
                       className="block rounded-xl px-2 py-2 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
                       aria-label={`${item.name} 채널 리포트로 이동`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 flex-shrink-0 text-center">
+                      <div className="flex items-center">
+                        <div className="w-8 text-center">
                           <span className="text-sm font-bold text-slate-400">{idx + 1}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="ml-2 flex-1 min-w-0">
                           <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
                           <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
                         </div>
-                        <div className="w-16 flex-shrink-0 text-center">
+                        <div className="w-16 text-center">
                           <span className="text-sm font-bold text-slate-600 tabular-nums">
                             {item.count}
                           </span>
                         </div>
-                        <div className="w-16 flex-shrink-0 flex justify-center">
+                        <div className="w-16 flex justify-center">
                           <div className={`flex flex-col items-center w-full rounded-lg py-2 border ${
                             item.avgClickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
                             item.avgClickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
@@ -999,7 +999,7 @@ export default function PlazaPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="w-16 flex-shrink-0 flex justify-center">
+                        <div className="w-16 text-center">
                           <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
                             {item.score}
                           </div>
