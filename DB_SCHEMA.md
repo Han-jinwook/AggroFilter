@@ -1,5 +1,5 @@
 # AggroFilter Database Schema
-작성일: 2026-02-21 13:35
+작성일: 2026-02-22 00:06
 
 > **Note**: 이 파일은 프로젝트의 실제 DB 스키마를 기록하는 단일 문서입니다.  
 > Supabase 대시보드에서 스키마를 확인한 후 아래에 업데이트해주세요.
@@ -7,7 +7,6 @@
 ---
 
 ## 📋 테이블 목록
-
 | table_name              | column_name                  | data_type                   | is_nullable |
 | ----------------------- | ---------------------------- | --------------------------- | ----------- |
 | t_analyses              | f_id                         | uuid                        | NO          |
@@ -35,6 +34,7 @@
 | t_analyses              | f_is_recheck                 | boolean                     | YES         |
 | t_analyses              | f_recheck_parent_analysis_id | text                        | YES         |
 | t_analyses              | f_recheck_at                 | timestamp without time zone | YES         |
+| t_analyses              | f_language                   | character varying           | YES         |
 | t_cafe24_tokens         | f_mall_id                    | text                        | NO          |
 | t_cafe24_tokens         | f_access_token               | text                        | NO          |
 | t_cafe24_tokens         | f_refresh_token              | text                        | YES         |
@@ -50,12 +50,13 @@
 | t_categories            | f_is_garbage                 | boolean                     | YES         |
 | t_categories            | f_created_at                 | timestamp without time zone | YES         |
 | t_channel_stats         | f_channel_id                 | text                        | NO          |
+| t_channel_stats         | f_official_category_id       | integer                     | NO          |
+| t_channel_stats         | f_language                   | character varying           | NO          |
 | t_channel_stats         | f_video_count                | integer                     | YES         |
 | t_channel_stats         | f_avg_accuracy               | numeric                     | YES         |
 | t_channel_stats         | f_avg_clickbait              | numeric                     | YES         |
 | t_channel_stats         | f_avg_reliability            | numeric                     | YES         |
 | t_channel_stats         | f_last_updated               | timestamp with time zone    | YES         |
-| t_channel_stats         | f_official_category_id       | integer                     | NO          |
 | t_channel_subscriptions | f_id                         | bigint                      | NO          |
 | t_channel_subscriptions | f_user_id                    | text                        | NO          |
 | t_channel_subscriptions | f_channel_id                 | text                        | NO          |

@@ -438,12 +438,12 @@ export async function POST(request: Request) {
             f_ai_title_recommendation, f_user_id, f_official_category_id,
             f_request_count, f_view_count, f_created_at, f_last_action_at,
             f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
-            f_is_latest
+            f_is_latest, f_language
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, 1, NOW(), NOW(),
             $17, $18, $19,
-            TRUE
+            TRUE, $20
           )
         `, [
           analysisId,
@@ -464,7 +464,8 @@ export async function POST(request: Request) {
           videoInfo.officialCategoryId,
           Boolean(isRecheck),
           isRecheck ? recheckParentAnalysisId : null,
-          isRecheck ? new Date() : null
+          isRecheck ? new Date() : null,
+          finalLanguage
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
@@ -474,7 +475,6 @@ export async function POST(request: Request) {
       console.log('5-4. 채널 통계 갱신 시작 (언어별 분리)...');
       if (hasTranscript) {
         // [v3.0] 언어별 통계 분리: 채널+카테고리+언어 3차원 관리
-        // t_analyses에 f_language 컬럼이 없으므로 t_channels JOIN으로 언어 참조
         await client.query(`
           INSERT INTO t_channel_stats (
             f_channel_id, f_official_category_id, f_language, f_video_count, 
@@ -482,7 +482,7 @@ export async function POST(request: Request) {
             f_last_updated
           )
           SELECT 
-            a.f_channel_id, a.f_official_category_id, $3::varchar as language,
+            a.f_channel_id, a.f_official_category_id, COALESCE(a.f_language, 'korean') as language,
             COUNT(*)::integer, 
             ROUND(AVG(a.f_accuracy_score), 2), 
             ROUND(AVG(a.f_clickbait_score), 2), 
@@ -491,9 +491,10 @@ export async function POST(request: Request) {
           FROM t_analyses a
           WHERE a.f_channel_id = $1 
             AND a.f_official_category_id = $2 
+            AND COALESCE(a.f_language, 'korean') = $3
             AND a.f_reliability_score IS NOT NULL
             AND a.f_is_latest = TRUE
-          GROUP BY a.f_channel_id, a.f_official_category_id
+          GROUP BY a.f_channel_id, a.f_official_category_id, COALESCE(a.f_language, 'korean')
           ON CONFLICT (f_channel_id, f_official_category_id, f_language) 
           DO UPDATE SET 
             f_video_count = EXCLUDED.f_video_count,
