@@ -446,13 +446,13 @@ export default function PlazaPage() {
             </div>
           </div>
         ) : (
-          <div className="mb-4 rounded-2xl bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-t-4 border-purple-500 relative">
-            <div className="mb-2.5 flex items-center gap-2">
+          <div className="mb-3 sm:mb-4 rounded-2xl bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-t-4 border-purple-500 relative">
+            <div className="mb-2 flex items-center gap-2">
               <Activity className="h-5 w-5 text-purple-600" />
               <h2 className="text-base font-bold text-slate-800">주간 핫채널 3</h2>
               <Clock className="ml-auto h-4 w-4 text-slate-400" />
             </div>
-            <div className="flex gap-2 mb-2.5">
+            <div className="flex gap-2 mb-2">
               <button
                 onClick={() => {
                   if (channelHotFilter === "trust") {
@@ -498,13 +498,13 @@ export default function PlazaPage() {
                 </span>
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {isLoadingHotChannels ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
+                <div className="flex items-center justify-center py-6">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                 </div>
               ) : hotChannels.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
+                <div className="text-center py-6 text-slate-400 text-sm">
                   최근 7일간 분석된 채널이 없습니다
                 </div>
               ) : (
@@ -843,29 +843,29 @@ export default function PlazaPage() {
         ) : (
           <>
             {/* 전체 분석 채널 섹션 */}
-            <div className="rounded-2xl bg-white p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold text-slate-800">전체 분석 채널 <span className="text-sm font-normal text-slate-400 ml-1">{analyzedChannels.length}개 채널</span></h2>
+            <div className="rounded-2xl sm:rounded-[2rem] bg-white p-3 sm:p-4 shadow-xl shadow-slate-200/50 border border-slate-100">
+              <div className="mb-2.5">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-800">전체 분석 채널 <span className="text-sm font-normal text-slate-400 ml-1">{analyzedChannels.length}개 채널</span></h2>
               </div>
 
-              <div className="mb-4 flex items-center rounded-lg bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
+              <div className="mb-2.5 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-slate-500">
                 <div className="w-8 text-center"></div>
                 <div className="ml-2 flex-1">채널명 / 주제</div>
                 <div className="w-20 text-center text-red-500">어그로</div>
                 <div className="w-20 text-center text-green-500">신뢰도</div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {isLoadingAnalyzedChannels ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
+                  <div className="flex items-center justify-center py-6">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-purple-500"></div>
                   </div>
                 ) : analyzedChannels.filter(ch => {
                   if (!searchQuery.trim()) return true
                   const q = searchQuery.toLowerCase()
                   return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
                 }).length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-sm">
+                  <div className="text-center py-6 text-slate-400 text-sm">
                     {searchQuery.trim() ? `"${searchQuery}"에 대한 채널이 없습니다` : '분석된 채널이 없습니다'}
                   </div>
                 ) : (
