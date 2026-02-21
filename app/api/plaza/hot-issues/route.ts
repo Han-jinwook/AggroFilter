@@ -13,8 +13,7 @@ export async function GET(request: Request) {
 
     const client = await pool.connect();
     try {
-      // Base query condition: 최근 24시간 내 분석된 영상
-      // TODO: f_last_action_at 기능 추가 후 f_created_at 대신 사용 (분석 + 조회 활동 포함)
+      // Base query condition: 최근 24시간 내 활동(분석 + 조회)이 있는 영상
       let orderByClause = 'ORDER BY a.f_reliability_score DESC';
 
       if (sort === 'trust') {
@@ -40,7 +39,7 @@ export async function GET(request: Request) {
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
-          AND a.f_created_at >= NOW() - INTERVAL '24 hours'
+          AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
           AND a.f_reliability_score IS NOT NULL
         ${orderByClause}
         LIMIT 3
