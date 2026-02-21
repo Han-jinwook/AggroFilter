@@ -201,12 +201,12 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <Image
             src="/images/character-logo.png"
             alt="AggroFilter"
-            width={160}
-            height={80}
-            className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
+            width={200}
+            height={100}
+            className="h-[4.5rem] w-auto object-contain transition-transform group-hover:scale-105"
             priority
           />
-          <div className="flex flex-col items-center justify-center h-14 text-slate-500 font-bold text-[10px] leading-tight tracking-wider opacity-80">
+          <div className="flex flex-col items-center justify-center h-[4.5rem] text-slate-500 font-bold text-sm leading-tight tracking-wider opacity-80">
             <span className="font-bold text-slate-600">유</span>
             <span className="font-bold text-slate-600">튜</span>
             <span className="font-bold text-slate-600">브</span>
