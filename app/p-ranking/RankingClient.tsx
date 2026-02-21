@@ -318,13 +318,13 @@ export default function RankingClient() {
               {channel.name}
             </span>
           </div>
-          {/* Mobile: 분석영상+신뢰도 합침 */}
+          {/* Mobile: 분석영상+신뢰도/어그로 합침 */}
           <div className="flex md:hidden items-center gap-1.5 flex-shrink-0 pl-2">
             <span className={`text-xs font-medium ${isFocus ? "text-indigo-400" : "text-gray-400"}`}>
               {channel.analysisCount || 0}개
             </span>
             <span className={`text-sm font-bold ${isFocus ? "text-indigo-700" : "text-gray-800"}`}>
-              {channel.score}
+              {sortBy === 'clickbait' ? (channel.clickbaitScore || 0) : channel.score}
             </span>
             <span className={`text-base ${channel.color}`}>●</span>
           </div>
