@@ -2,13 +2,22 @@ import { pool } from "@/lib/db";
 import { getLanguageDisplayName, getLanguageIcon } from "@/lib/language-detection";
 
 /**
- * 랭킹 캐시 갱신 엔진 v3.1 (Language-Only)
+ * 랭킹 캐시 갱신 엔진 v3.3 (Language-Only + t_analyses 기반)
  * 
  * 1. 각 채널의 언어(f_language)만을 기반으로 Ranking Key를 생성합니다.
  *    - 국가(f_country) 구분 제거: 모든 언어를 국가 구분 없이 통합
- *    - Ranking Key 형식: [Language]_[Category ID] (예: ko_10, en_25)
+ *    - Ranking Key 형식: [Language]_[Category ID] (예: korean_10, english_25)
  * 2. 해당 Key 내에서 순위를 매기고 상위 % (백분위)를 계산합니다.
  * 3. t_rankings_cache 테이블에 저장합니다.
+ * 
+ * [v3.2 변경사항]
+ * - t_videos 의존성 제거 → t_analyses 기반으로 전환
+ * - 재분석 중복 제거: 동일 video_id의 최신 분석만 사용 (ROW_NUMBER)
+ * 
+ * [v3.3 변경사항]
+ * - t_channel_stats에 f_language 컬럼 추가 (PK: channel_id + category_id + language)
+ * - t_channels JOIN 제거 → t_channel_stats에서 직접 f_language 조회
+ * - 채널+카테고리+언어 3차원 통계 관리로 언어별 랭킹 완전 분리
  */
 export async function refreshRankingCache(f_category_id?: number) {
   const connectWithRetry = async () => {
@@ -37,23 +46,23 @@ export async function refreshRankingCache(f_category_id?: number) {
     }
 
     // 2. 랭킹 계산 및 삽입 쿼리 (Language-Only Strategy)
+    // [v3.3] t_channel_stats에 f_language 추가되어 JOIN 불필요
     const rankingQuery = `
       INSERT INTO t_rankings_cache (
         f_channel_id, f_category_id, f_language, f_ranking_key, f_rank, f_total_count, f_top_percentile
       )
       WITH ChannelStats AS (
         SELECT 
-          cs.f_channel_id,
-          cs.f_official_category_id as category_id,
-          COALESCE(c.f_language, 'korean') as language,
+          f_channel_id,
+          f_official_category_id as category_id,
+          COALESCE(f_language, 'korean') as language,
           -- Ranking Key: language_categoryId (예: korean_10, english_25)
-          COALESCE(c.f_language, 'korean') || '_' || cs.f_official_category_id::text as ranking_key,
-          cs.f_avg_reliability as avg_score,
-          cs.f_video_count as video_count
-        FROM t_channel_stats cs
-        JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
-        WHERE cs.f_avg_reliability IS NOT NULL
-          AND cs.f_official_category_id IS NOT NULL
+          COALESCE(f_language, 'korean') || '_' || f_official_category_id::text as ranking_key,
+          f_avg_reliability as avg_score,
+          f_video_count as video_count
+        FROM t_channel_stats
+        WHERE f_avg_reliability IS NOT NULL
+          AND f_official_category_id IS NOT NULL
       ),
       RankedChannels AS (
         SELECT 
@@ -82,6 +91,7 @@ export async function refreshRankingCache(f_category_id?: number) {
     await client.query(rankingQuery, params);
 
     // 3. t_channels 테이블의 f_trust_score, f_trust_grade 등 기본 정보도 업데이트
+    // [v3.2] t_analyses 기반으로 변경 (재분석 중복 제거: 최신본만 사용)
     await client.query(`
       UPDATE t_channels c
       SET 
@@ -93,18 +103,32 @@ export async function refreshRankingCache(f_category_id?: number) {
           ELSE 'red'
         END
       FROM (
-        SELECT f_channel_id, AVG(f_trust_score) as avg_score, COUNT(*) as video_count
-        FROM t_videos
+        WITH LatestAnalyses AS (
+          SELECT 
+            f_channel_id,
+            f_video_id,
+            f_reliability_score,
+            ROW_NUMBER() OVER (PARTITION BY f_video_id ORDER BY f_created_at DESC) as rn
+          FROM t_analyses
+          WHERE f_channel_id IS NOT NULL
+            AND f_reliability_score IS NOT NULL
+        )
+        SELECT 
+          f_channel_id, 
+          AVG(f_reliability_score)::INT as avg_score, 
+          COUNT(*) as video_count
+        FROM LatestAnalyses
+        WHERE rn = 1
         GROUP BY f_channel_id
       ) sub
       WHERE c.f_channel_id = sub.f_channel_id
     `);
 
     await client.query("COMMIT");
-    console.log(`[Ranking v3.1] Language-only cache refreshed successfully ${f_category_id ? `for category ${f_category_id}` : "for all"}`);
+    console.log(`[Ranking v3.3] Language-only cache refreshed successfully ${f_category_id ? `for category ${f_category_id}` : "for all"}`);
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("[Ranking v3.1] Cache refresh failed:", error);
+    console.error("[Ranking v3.3] Cache refresh failed:", error);
     throw error;
   } finally {
     client.release();

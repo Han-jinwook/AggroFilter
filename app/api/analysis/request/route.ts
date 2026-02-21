@@ -467,82 +467,21 @@ export async function POST(request: Request) {
           isRecheck ? new Date() : null
         ]);
 
-        console.log('5-3. 비디오 인덱스 저장 (t_videos)...');
-        // Ensure v2 columns exist on t_videos (safe no-op if already migrated)
-        await client.query(`
-          ALTER TABLE t_videos
-          ADD COLUMN IF NOT EXISTS f_official_category_id INT,
-          ADD COLUMN IF NOT EXISTS f_custom_category_id INT,
-          ADD COLUMN IF NOT EXISTS f_accuracy_score INT,
-          ADD COLUMN IF NOT EXISTS f_clickbait_score INT,
-          ADD COLUMN IF NOT EXISTS f_trust_score INT,
-          ADD COLUMN IF NOT EXISTS f_ai_recommended_title TEXT,
-          ADD COLUMN IF NOT EXISTS f_summary TEXT,
-          ADD COLUMN IF NOT EXISTS f_evaluation_reason TEXT,
-          ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMPTZ;
-        `);
-        await client.query(`
-          INSERT INTO t_videos (
-            f_video_id,
-            f_channel_id,
-            f_title,
-            f_official_category_id,
-            f_accuracy_score,
-            f_clickbait_score,
-            f_trust_score,
-            f_ai_recommended_title,
-            f_summary,
-            f_evaluation_reason,
-            f_thumbnail_url,
-            f_published_at,
-            f_language,
-            f_language_source,
-            f_created_at,
-            f_updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
-          ON CONFLICT (f_video_id) DO UPDATE SET
-            f_channel_id = EXCLUDED.f_channel_id,
-            f_title = EXCLUDED.f_title,
-            f_official_category_id = EXCLUDED.f_official_category_id,
-            f_accuracy_score = EXCLUDED.f_accuracy_score,
-            f_clickbait_score = EXCLUDED.f_clickbait_score,
-            f_trust_score = EXCLUDED.f_trust_score,
-            f_ai_recommended_title = EXCLUDED.f_ai_recommended_title,
-            f_summary = EXCLUDED.f_summary,
-            f_evaluation_reason = EXCLUDED.f_evaluation_reason,
-            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_videos.f_thumbnail_url),
-            f_published_at = COALESCE(EXCLUDED.f_published_at, t_videos.f_published_at),
-            f_updated_at = NOW()
-        `, [
-          videoId,
-          videoInfo.channelId,
-          videoInfo.title,
-          f_official_category_id,
-          analysisResult.accuracy,
-          analysisResult.clickbait,
-          analysisResult.reliability,
-          analysisResult.recommendedTitle,
-          analysisResult.subtitleSummary,
-          analysisResult.evaluationReason,
-          videoInfo.thumbnailUrl,
-          videoInfo.publishedAt || null,
-          finalLanguage,
-          languageSource
-        ]);
+        // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
       }
 
-      // 5-4. 채널 통계 갱신 (카테고리별)
-      console.log('5-4. 채널 통계 갱신 시작...');
+      // 5-4. 채널 통계 갱신 (카테고리별 + 언어별)
+      console.log('5-4. 채널 통계 갱신 시작 (언어별 분리)...');
       if (hasTranscript) {
-        // [v2.2 Optimization] Use f_is_latest = true instead of complex CTE
+        // [v3.0] 언어별 통계 분리: 채널+카테고리+언어 3차원 관리
         await client.query(`
           INSERT INTO t_channel_stats (
-            f_channel_id, f_official_category_id, f_video_count, 
+            f_channel_id, f_official_category_id, f_language, f_video_count, 
             f_avg_accuracy, f_avg_clickbait, f_avg_reliability, 
             f_last_updated
           )
           SELECT 
-            f_channel_id, f_official_category_id,
+            f_channel_id, f_official_category_id, COALESCE(f_language, 'korean') as language,
             COUNT(*)::integer, 
             ROUND(AVG(f_accuracy_score), 2), 
             ROUND(AVG(f_clickbait_score), 2), 
@@ -551,17 +490,18 @@ export async function POST(request: Request) {
           FROM t_analyses
           WHERE f_channel_id = $1 
             AND f_official_category_id = $2 
+            AND COALESCE(f_language, 'korean') = $3
             AND f_reliability_score IS NOT NULL
             AND f_is_latest = TRUE
-          GROUP BY f_channel_id, f_official_category_id
-          ON CONFLICT (f_channel_id, f_official_category_id) 
+          GROUP BY f_channel_id, f_official_category_id, COALESCE(f_language, 'korean')
+          ON CONFLICT (f_channel_id, f_official_category_id, f_language) 
           DO UPDATE SET 
             f_video_count = EXCLUDED.f_video_count,
             f_avg_accuracy = EXCLUDED.f_avg_accuracy,
             f_avg_clickbait = EXCLUDED.f_avg_clickbait,
             f_avg_reliability = EXCLUDED.f_avg_reliability,
             f_last_updated = NOW()
-        `, [videoInfo.channelId, videoInfo.officialCategoryId]);
+        `, [videoInfo.channelId, videoInfo.officialCategoryId, finalLanguage]);
       }
 
       if (isRecheck) {

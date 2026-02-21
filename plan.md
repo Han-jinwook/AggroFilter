@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-02-20 05:20 KST
+Last Updated: 2026-02-21 15:33 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -262,7 +262,25 @@ Instruction for Developer:
 
 ## 11. 최근 주요 업데이트 (Recent Updates)
 
-### 11.1 2026-02-20 업데이트 (글로벌 랭킹 시스템 v3.1 완성 🌍)
+### 11.1 2026-02-21 업데이트 (데이터베이스 구조 개선 v3.3 🗄️✅)
+- **t_channel_stats 스키마 변경**: 언어별 통계 완전 분리
+  - PK 변경: `(channel_id, category_id)` → `(channel_id, category_id, language)`
+  - 채널+카테고리+언어 3차원 통계 관리로 언어별 랭킹 완전 독립
+- **데이터 흐름 최적화**:
+  - `t_channels`: 채널 메타정보 (f_language = 채널 대표 언어)
+  - `t_analyses`: 영상별 분석 결과 (영상 개별 언어 저장 안 함, 카테고리별 저장)
+  - `t_channel_stats`: 채널+카테고리+언어 조합별 통계 집계
+- **t_videos 테이블 의존성 제거**: 
+  - 분석 API에서 t_videos INSERT 로직 제거
+  - 랭킹 계산을 t_analyses 기반으로 전환 (재분석 중복 제거 로직 포함)
+  - lib/ranking_v2.ts v3.3: t_channels JOIN 제거, 성능 최적화
+- **불필요한 파일 정리**: collector.js, collect-and-analyze-videos 삭제
+- **실전 검증 완료**: 
+  - 53개 채널 마이그레이션 (Korean 51개, English 2개)
+  - 언어별 랭킹 캐시 재생성 성공
+  - NBC News(영어)와 MBCNEWS(한국어)가 각각 독립된 랭킹에 정상 진입
+
+### 11.2 2026-02-20 업데이트 (글로벌 랭킹 시스템 v3.1 완성 + 실전 테스트 완료 🌍✅)
 - **언어 단일 체계 전환**: 국가 코드 제거, 언어 기반 랭킹으로 단순화 (`korean`, `english` 등)
 - **DB 언어 코드 표준화**: `ko` → `korean`, `en` → `english` (영어 표준 사용)
 - **3단계 언어 감지 로직**: YouTube API → Transcript 분석 → 기본값 (모든 신규 분석에 적용)
@@ -272,6 +290,21 @@ Instruction for Developer:
 - **URL 기반 언어 전환**: `/p-ranking?category=&lang=english` - 상태 동기화 완벽 구현
 - **채널 중복 제거**: 언어별 전체 조회 시 채널별 최고 점수 기준으로 정렬
 - **Backfill 완료**: 기존 NULL 언어 값 → `korean` 업데이트, 영어 채널 1개 확인
+- **실전 테스트 완료 (2026-02-20 22:30)**: NBC News(영어) 분석 → 언어별 랭킹 정상 분리 확인
+  - 분석 결과 페이지: 언어 뱃지 표시 (`English`), 영어/뉴스 카테고리 내 1위/1개 정확히 표시
+  - 랭킹 페이지: 언어 파라미터 전달 정상, 한국어/영어 채널 완전 분리
+  - 언어 드롭다운: 채널 수 정확 표시 (Korean 51개, English 2개)
+  - 언어/카테고리 전환 시 URL 파라미터 유지 및 상태 동기화 완벽 작동
+- **디버깅 도구 추가**: `scripts/debug_language_ranking.cjs`, `scripts/refresh_ranking_cache.cjs`
+
+### 11.2 2026-02-20 업데이트 (채널 랭킹 페이지 모바일 UI 최적화 📱)
+- **공간 최적화**: 모바일에서 뒤로가기 버튼, ? 버튼 숨김 처리 (PC에서는 유지)
+- **헤더 레이아웃 개선**: 
+  - 채널 랭킹 배지 크기 축소 (`text-sm`, `px-2`)
+  - 카테고리명과 언어 표시 분리 배치 (가독성 향상)
+  - 1위 왕관 크기 및 위치 조정 (모바일: `text-lg`, `-top-3` / PC: `text-3xl`, `-top-7`)
+- **반응형 텍스트 크기**: 모바일 `text-sm`, PC `text-base/lg` 적용
+- **결과**: 모바일에서 헤더가 콘텐츠를 가리지 않고, 모든 정보가 명확히 표시됨
 
 ### 11.2 2026-02-20 업데이트 (AI 분석 고도화)
 - **Google Search grounding 정상 작동**: 최신 정보 기반 팩트체크 (예: "2026년 2월 현재 틱톡 1000만뷰" 검증)
