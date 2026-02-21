@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const cacheKey = 'channels:all'
+    const { searchParams } = new URL(request.url)
+    const lang = searchParams.get('lang') || 'korean'
+
+    const cacheKey = `channels:${lang}`
     const cached = getCached<{ channels: any[] }>(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -29,12 +32,13 @@ export async function GET(request: Request) {
         FROM t_channels c
         JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
+          AND COALESCE(c.f_language, 'korean') = $1
         GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url, c.f_official_category_id
         ORDER BY analysis_count DESC, avg_reliability DESC
         LIMIT 100
       `
 
-      const result = await client.query(query)
+      const result = await client.query(query, [lang])
 
       const channels = result.rows.map((row, index) => {
         const score = Number(row.avg_reliability) || 0

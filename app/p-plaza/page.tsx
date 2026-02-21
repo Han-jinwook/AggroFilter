@@ -192,7 +192,7 @@ export default function PlazaPage() {
     const fetchAnalyzedChannels = async () => {
       setIsLoadingAnalyzedChannels(true)
       try {
-        const res = await fetch(`/api/plaza/channels`)
+        const res = await fetch(`/api/plaza/channels?lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
           setAnalyzedChannels(data.channels || [])
@@ -204,7 +204,7 @@ export default function PlazaPage() {
       }
     }
     fetchAnalyzedChannels()
-  }, [])
+  }, [currentLanguage])
 
   const executeSearch = useCallback(async (query: string, sort: "clean" | "toxic") => {
     if (!query.trim()) {
