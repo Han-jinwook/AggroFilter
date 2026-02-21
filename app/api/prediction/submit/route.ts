@@ -91,11 +91,13 @@ export async function POST(request: NextRequest) {
           actualReliability: 50 + avgGap
         })
 
+        // UPSERT: 로그인/익명 모두 누적 통계 저장
         await client.query(
-          `UPDATE t_users 
-           SET current_tier = $1, current_tier_label = $2, tier_emoji = $3, 
-               total_predictions = $4, avg_gap = $5
-           WHERE f_email = $6`,
+          `INSERT INTO t_users (f_id, f_email, total_predictions, avg_gap, current_tier, current_tier_label, tier_emoji, f_created_at)
+           VALUES ($6, $6, $4, $5, $1, $2, $3, NOW())
+           ON CONFLICT (f_email) DO UPDATE SET
+             current_tier = $1, current_tier_label = $2, tier_emoji = $3,
+             total_predictions = $4, avg_gap = $5`,
           [
             bestTierInfo.tier,
             bestTierInfo.label,
