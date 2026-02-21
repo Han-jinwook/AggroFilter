@@ -979,10 +979,10 @@ export default function PlazaPage() {
                           <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
                           <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
                         </div>
-                        <div className="w-16 flex-shrink-0 flex justify-center">
-                          <div className="text-sm font-bold text-slate-600 tabular-nums">
+                        <div className="w-16 flex-shrink-0 text-center">
+                          <span className="text-sm font-bold text-slate-600 tabular-nums">
                             {item.count}
-                          </div>
+                          </span>
                         </div>
                         <div className="w-16 flex-shrink-0 flex justify-center">
                           <div className={`flex flex-col items-center w-full rounded-lg py-2 border ${
