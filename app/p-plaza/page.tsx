@@ -94,7 +94,7 @@ export default function PlazaPage() {
   const [channelHotFilter, setChannelHotFilter] = useState<"trust" | "controversy">("trust")
   const [channelSortDirection, setChannelSortDirection] = useState<"best" | "worst">("best")
 
-  const [channelSortConfig, setChannelSortConfig] = useState<{ key: "score" | "clickbait"; direction: "asc" | "desc" }>({ key: "score", direction: "desc" })
+  const [channelSortConfig, setChannelSortConfig] = useState<{ key: "score" | "clickbait" | "count"; direction: "asc" | "desc" }>({ key: "score", direction: "desc" })
 
   const [searchQuery, setSearchQuery] = useState("")
   const [searchSort, setSearchSort] = useState<"clean" | "toxic">("clean")
@@ -902,7 +902,19 @@ export default function PlazaPage() {
                 <div className="w-8 text-center"></div>
                 <div className="ml-2 flex-1">채널명 / 주제</div>
                 <div 
-                  className="w-20 text-center text-red-500 cursor-pointer hover:text-red-600 flex items-center justify-center gap-0.5"
+                  className="w-16 text-center text-slate-500 cursor-pointer hover:text-slate-700 flex items-center justify-center gap-0.5"
+                  onClick={() => setChannelSortConfig(prev => ({
+                    key: "count",
+                    direction: prev.key === "count" && prev.direction === "desc" ? "asc" : "desc"
+                  }))}
+                >
+                  <span>영상수</span>
+                  <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${
+                    channelSortConfig.key === "count" && channelSortConfig.direction === "asc" ? "rotate-180" : ""
+                  }`} />
+                </div>
+                <div 
+                  className="w-16 text-center text-red-500 cursor-pointer hover:text-red-600 flex items-center justify-center gap-0.5"
                   onClick={() => setChannelSortConfig(prev => ({
                     key: "clickbait",
                     direction: prev.key === "clickbait" && prev.direction === "desc" ? "asc" : "desc"
@@ -914,7 +926,7 @@ export default function PlazaPage() {
                   }`} />
                 </div>
                 <div 
-                  className="w-20 text-center text-green-500 cursor-pointer hover:text-green-600 flex items-center justify-center gap-0.5"
+                  className="w-16 text-center text-green-500 cursor-pointer hover:text-green-600 flex items-center justify-center gap-0.5"
                   onClick={() => setChannelSortConfig(prev => ({
                     key: "score",
                     direction: prev.key === "score" && prev.direction === "desc" ? "asc" : "desc"
@@ -948,8 +960,8 @@ export default function PlazaPage() {
                       return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
                     })
                     .sort((a, b) => {
-                      const aVal = channelSortConfig.key === "score" ? a.score : a.avgClickbait
-                      const bVal = channelSortConfig.key === "score" ? b.score : b.avgClickbait
+                      const aVal = channelSortConfig.key === "score" ? a.score : channelSortConfig.key === "clickbait" ? a.avgClickbait : a.count
+                      const bVal = channelSortConfig.key === "score" ? b.score : channelSortConfig.key === "clickbait" ? b.avgClickbait : b.count
                       return channelSortConfig.direction === "desc" ? bVal - aVal : aVal - bVal
                     })
                     .map((item, idx) => (
@@ -967,7 +979,12 @@ export default function PlazaPage() {
                           <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
                           <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
                         </div>
-                        <div className="w-20 flex-shrink-0 flex justify-center">
+                        <div className="w-16 flex-shrink-0 flex justify-center">
+                          <div className="text-sm font-bold text-slate-600 tabular-nums">
+                            {item.count}
+                          </div>
+                        </div>
+                        <div className="w-16 flex-shrink-0 flex justify-center">
                           <div className={`flex flex-col items-center w-full rounded-lg py-2 border ${
                             item.avgClickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
                             item.avgClickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
@@ -982,7 +999,7 @@ export default function PlazaPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="w-20 flex-shrink-0 flex justify-center">
+                        <div className="w-16 flex-shrink-0 flex justify-center">
                           <div className={`text-xl font-black tracking-tighter tabular-nums leading-none ${item.color === 'green' ? 'text-green-500' : 'text-red-500'}`}>
                             {item.score}
                           </div>
