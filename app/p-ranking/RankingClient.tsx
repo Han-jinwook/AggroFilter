@@ -572,9 +572,7 @@ export default function RankingClient() {
                 <div className="text-sm font-bold text-gray-800 pl-1">채널명 {!isLoading && totalCount > 0 && <span className="text-xs font-medium text-gray-500">(총 {totalCount.toLocaleString()}개)</span>}</div>
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap pr-1 md:hidden">분석 영상</div>
                 <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
-                <div className="hidden md:flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap text-gray-800">
-                  신뢰도
-                </div>
+                <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">신뢰도</div>
               </div>
             </div>
 
