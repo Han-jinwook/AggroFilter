@@ -94,6 +94,8 @@ export default function PlazaPage() {
   const [channelHotFilter, setChannelHotFilter] = useState<"trust" | "controversy">("trust")
   const [channelSortDirection, setChannelSortDirection] = useState<"best" | "worst">("best")
 
+  const [channelSortConfig, setChannelSortConfig] = useState<{ key: "score" | "clickbait"; direction: "asc" | "desc" }>({ key: "score", direction: "desc" })
+
   const [searchQuery, setSearchQuery] = useState("")
   const [searchSort, setSearchSort] = useState<"clean" | "toxic">("clean")
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -899,8 +901,30 @@ export default function PlazaPage() {
               <div className="mb-2.5 flex items-center rounded-lg bg-slate-50 px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-slate-500">
                 <div className="w-8 text-center"></div>
                 <div className="ml-2 flex-1">채널명 / 주제</div>
-                <div className="w-20 text-center text-red-500">어그로</div>
-                <div className="w-20 text-center text-green-500">신뢰도</div>
+                <div 
+                  className="w-20 text-center text-red-500 cursor-pointer hover:text-red-600 flex items-center justify-center gap-0.5"
+                  onClick={() => setChannelSortConfig(prev => ({
+                    key: "clickbait",
+                    direction: prev.key === "clickbait" && prev.direction === "desc" ? "asc" : "desc"
+                  }))}
+                >
+                  <span>어그로</span>
+                  <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${
+                    channelSortConfig.key === "clickbait" && channelSortConfig.direction === "asc" ? "rotate-180" : ""
+                  }`} />
+                </div>
+                <div 
+                  className="w-20 text-center text-green-500 cursor-pointer hover:text-green-600 flex items-center justify-center gap-0.5"
+                  onClick={() => setChannelSortConfig(prev => ({
+                    key: "score",
+                    direction: prev.key === "score" && prev.direction === "desc" ? "asc" : "desc"
+                  }))}
+                >
+                  <span>신뢰도</span>
+                  <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform ${
+                    channelSortConfig.key === "score" && channelSortConfig.direction === "asc" ? "rotate-180" : ""
+                  }`} />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -917,11 +941,18 @@ export default function PlazaPage() {
                     {searchQuery.trim() ? `"${searchQuery}"에 대한 채널이 없습니다` : '분석된 채널이 없습니다'}
                   </div>
                 ) : (
-                  analyzedChannels.filter(ch => {
-                    if (!searchQuery.trim()) return true
-                    const q = searchQuery.toLowerCase()
-                    return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
-                  }).map((item, idx) => (
+                  analyzedChannels
+                    .filter(ch => {
+                      if (!searchQuery.trim()) return true
+                      const q = searchQuery.toLowerCase()
+                      return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
+                    })
+                    .sort((a, b) => {
+                      const aVal = channelSortConfig.key === "score" ? a.score : a.avgClickbait
+                      const bVal = channelSortConfig.key === "score" ? b.score : b.avgClickbait
+                      return channelSortConfig.direction === "desc" ? bVal - aVal : aVal - bVal
+                    })
+                    .map((item, idx) => (
                     <Link
                       key={item.id}
                       href={`/channel/${item.id}`}
