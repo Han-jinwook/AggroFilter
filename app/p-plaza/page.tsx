@@ -828,18 +828,16 @@ export default function PlazaPage() {
                   const dateObj = new Date(item.date);
                   const formattedDate = `${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
                   return (
-                    <div key={item.id || idx} className="flex items-center gap-2 sm:gap-4">
+                    <Link key={item.id || idx} href={`/p-result?id=${item.id}`} className="group flex items-center gap-2 sm:gap-4 rounded-xl px-2 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:bg-white border border-transparent hover:border-slate-200 cursor-pointer">
                       <div className="w-10 sm:w-12 flex-shrink-0 text-center">
                         <span className="text-[9px] sm:text-[11px] font-bold text-slate-400 tabular-nums leading-none">
                           {formattedDate}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <Link href={`/p-result?id=${item.id}`} className="group/title block">
-                          <h3 className="line-clamp-1 text-[11px] sm:text-[13px] font-bold text-slate-800 transition-colors group-hover/title:text-blue-600">
-                            {item.title}
-                          </h3>
-                        </Link>
+                        <h3 className="line-clamp-1 text-[11px] sm:text-[13px] font-bold text-slate-800 transition-colors group-hover:text-blue-600">
+                          {item.title}
+                        </h3>
                         <div className="mt-0.5 sm:mt-1 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500">
                           <Image
                             src={item.channelIcon || "/placeholder.svg?height=12&width=12"}
@@ -871,7 +869,7 @@ export default function PlazaPage() {
                           {item.score}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })
               )}
@@ -968,7 +966,7 @@ export default function PlazaPage() {
                     <Link
                       key={item.id}
                       href={`/channel/${item.id}`}
-                      className="block rounded-xl px-2 py-2 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                      className="group block rounded-xl px-2 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:bg-white hover:border-slate-200 border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
                       aria-label={`${item.name} 채널 리포트로 이동`}
                     >
                       <div className="flex items-center">
@@ -976,7 +974,7 @@ export default function PlazaPage() {
                           <span className="text-sm font-bold text-slate-400">{idx + 1}</span>
                         </div>
                         <div className="ml-2 flex-1 min-w-0">
-                          <h3 className="text-sm font-bold text-slate-800">{item.name}</h3>
+                          <h3 className="text-sm font-bold text-slate-800 transition-colors group-hover:text-blue-600">{item.name}</h3>
                           <div className="mt-1 text-xs text-slate-500">{item.topic}</div>
                         </div>
                         <div className="w-16 text-center">
