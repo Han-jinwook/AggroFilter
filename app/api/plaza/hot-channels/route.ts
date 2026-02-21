@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { getCategoryName } from '@/lib/categoryMap';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,13 +31,14 @@ export async function GET(request: Request) {
           c.f_channel_id as id,
           c.f_title as name,
           c.f_thumbnail_url as "channelIcon",
+          c.f_official_category_id as category_id,
           AVG(a.f_reliability_score) as avg_reliability,
           AVG(a.f_clickbait_score) as avg_clickbait
         FROM t_channels c
         JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
           AND a.f_created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url
+        GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url, c.f_official_category_id
         HAVING COUNT(a.f_id) > 0
         ${orderByClause}
         LIMIT 3
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
           rank: index + 1,
           name: row.name,
           channelIcon: row.channelIcon || '/placeholder.svg',
+          topic: getCategoryName(row.category_id),
           value: value.toString(),
           score: score,
           color: score >= 70 ? 'green' : (score <= 40 ? 'red' : 'blue')
