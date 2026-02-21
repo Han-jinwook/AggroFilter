@@ -577,10 +577,12 @@ export default function RankingClient() {
                 <div className="text-center text-xs font-bold text-gray-800 whitespace-nowrap pr-1 md:hidden">분석 영상</div>
                 <div className="hidden md:block text-center text-xs font-bold text-gray-800 whitespace-nowrap">분석 영상</div>
                 <div 
-                  className="hidden md:flex items-center justify-center gap-1 text-xs font-bold text-gray-800 whitespace-nowrap cursor-pointer hover:text-blue-600"
+                  className={`hidden md:flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${
+                    sortBy === 'reliability' ? 'text-green-500 hover:text-green-600' : 'text-red-500 hover:text-red-600'
+                  }`}
                   onClick={() => setSortBy(sortBy === 'reliability' ? 'clickbait' : 'reliability')}
                 >
-                  {sortBy === 'reliability' ? '🔵 신뢰도' : '🔴 어그로'}
+                  {sortBy === 'reliability' ? '신뢰도' : '어그로'}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
