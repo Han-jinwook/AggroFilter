@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-02-21 15:33 KST
+Last Updated: 2026-02-22 02:22 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -256,13 +256,51 @@ const systemPrompt = `
 
 ## 11. 최근 주요 업데이트 (Recent Updates)
 
+### 11.0 2026-02-22 업데이트 (Plaza 최적화 + 촉퀴즈/촉점수 시스템 보강 🎯✅)
+
+#### Plaza API 인메모리 캐싱 (서버 부하 최소화)
+- **1시간 TTL 인메모리 캐시** 적용: `lib/plaza-cache.ts` 유틸리티 생성
+- 적용 대상: `/api/plaza/hot-channels`, `/api/plaza/videos`, `/api/plaza/channels`
+- 캐시 키에 언어 포함 → 언어별 독립 캐시 (`channels:korean`, `channels:english`)
+
+#### Plaza 언어 필터링
+- **전체 분석 채널** 섹션에 언어 필터 추가 (`/api/plaza/channels?lang=korean`)
+- `COALESCE(c.f_language, 'korean') = $1` 쿼리 적용
+- `page.tsx`에서 `currentLanguage` 파라미터 전달 및 `useEffect` 의존성 추가
+
+#### DB 스키마: t_analyses에 f_language 컬럼 추가
+- **문제**: 분석 저장 시 `f_language` 컬럼 부재로 채널 통계 갱신 쿼리 실패
+- **해결**: `ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_language VARCHAR`
+- 기존 데이터 backfill: `t_channels.f_language` → `t_analyses.f_language`
+- 분석 저장 INSERT에 `f_language` 값 추가 (`finalLanguage` 파라미터)
+- 채널 통계 갱신 쿼리 복원: `COALESCE(a.f_language, 'korean')` 정상 사용
+
+#### 채널 랭킹: 언어 변경 시 카테고리 자동 fallback
+- **문제**: 한국어/게임 → 영어 전환 시 영어/게임에 데이터 없으면 빈 화면
+- **해결**: API 응답 0개 + 카테고리 지정 시 → 자동으로 `category=` (전체)로 `router.replace`
+
+#### 촉퀴즈 최소 표시 시간 (8초)
+- **문제**: DB 캐시 히트 시 API 즉시 반환 → 촉퀴즈가 0.2초만에 사라짐
+- **해결**: `startAnalysis()`에 `quizMinEndTime = Date.now() + 8000` 추가
+- API 응답 후 남은 시간만큼 대기 → 퀴즈 풀 시간 보장
+
+#### 촉점수 유저별 완전 분리 (익명 포함)
+- **문제 1**: `c-prediction-comparison.tsx`에서 익명유저가 `'anonymous'`로 통합 저장
+  - **해결**: `getUserId()` 사용으로 고유 `anon_uuid` 저장
+- **문제 2**: 익명유저 누적 촉점수 통계가 `t_users`에 저장 안 됨
+  - **해결**: `prediction/submit` API에서 `UPDATE` → `INSERT ... ON CONFLICT DO UPDATE` UPSERT 변경
+
+#### 기타
+- **Hydration 에러 수정**: `layout.tsx` `<body>` 태그에 `suppressHydrationWarning` 추가
+- **헤더 로고 확대**: 내부 패딩 제거(`py-0`), 로고 `h-[4.75rem]`, 유튜브 글자 `text-base`
+
 ### 11.1 2026-02-21 업데이트 (데이터베이스 구조 개선 v3.3 🗄️✅)
 - **t_channel_stats 스키마 변경**: 언어별 통계 완전 분리
   - PK 변경: `(channel_id, category_id)` → `(channel_id, category_id, language)`
   - 채널+카테고리+언어 3차원 통계 관리로 언어별 랭킹 완전 독립
 - **데이터 흐름 최적화**:
   - `t_channels`: 채널 메타정보 (f_language = 채널 대표 언어)
-  - `t_analyses`: 영상별 분석 결과 (영상 개별 언어 저장 안 함, 카테고리별 저장)
+  - `t_analyses`: 영상별 분석 결과 (f_language 컬럼 추가 완료)
   - `t_channel_stats`: 채널+카테고리+언어 조합별 통계 집계
 - **t_videos 테이블 의존성 제거**: 
   - 분석 API에서 t_videos INSERT 로직 제거
