@@ -78,7 +78,7 @@ export async function POST(request: Request) {
             SELECT f_channel_id FROM t_channel_subscriptions WHERE f_user_id = $1
           )
       `, [emailUserId, anonUserId]);
-      await client.query('DELETE FROM t_channel_subscriptions WHERE f_user_id = $2', [emailUserId, anonUserId]);
+      await client.query('DELETE FROM t_channel_subscriptions WHERE f_user_id = $1', [anonUserId]);
 
       // 3b. t_notifications
       await client.query('UPDATE t_notifications SET f_user_id = $1 WHERE f_user_id = $2', [emailUserId, anonUserId]);
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
             SELECT f_analysis_id FROM t_interactions WHERE f_user_id = $1
           )
       `, [emailUserId, anonUserId]);
-      await client.query('DELETE FROM t_interactions WHERE f_user_id = $2', [emailUserId, anonUserId]);
+      await client.query('DELETE FROM t_interactions WHERE f_user_id = $1', [anonUserId]);
 
       // 3d. t_comments
       await client.query('UPDATE t_comments SET f_user_id = $1 WHERE f_user_id = $2', [emailUserId, anonUserId]);
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
             SELECT f_comment_id FROM t_comment_interactions WHERE f_user_id = $1
           )
       `, [emailUserId, anonUserId]);
-      await client.query('DELETE FROM t_comment_interactions WHERE f_user_id = $2', [emailUserId, anonUserId]);
+      await client.query('DELETE FROM t_comment_interactions WHERE f_user_id = $1', [anonUserId]);
 
       // 3f. t_analyses
       await client.query('UPDATE t_analyses SET f_user_id = $1 WHERE f_user_id = $2', [emailUserId, anonUserId]);
