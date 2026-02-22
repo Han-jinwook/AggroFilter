@@ -583,6 +583,17 @@ export async function analyzeContent(
     ];
 
     // Construct inputs: text prompt + thumbnail image (if available)
+    // 긴 자막은 앞/중간/끝 균등 샘플링으로 타임아웃 방지
+    const MAX_TRANSCRIPT_CHARS = 8000;
+    const trimmedTranscript = (() => {
+      if (!transcript || transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
+      const third = Math.floor(MAX_TRANSCRIPT_CHARS / 3);
+      const start = transcript.substring(0, third);
+      const mid = transcript.substring(Math.floor(transcript.length / 2) - Math.floor(third / 2), Math.floor(transcript.length / 2) + Math.floor(third / 2));
+      const end = transcript.substring(transcript.length - third);
+      return `${start}\n...(중략)...\n${mid}\n...(중략)...\n${end}`;
+    })();
+
     const finalPrompt = `
       ${systemPrompt}
       
@@ -590,7 +601,7 @@ export async function analyzeContent(
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${transcript}
+      ${trimmedTranscript}
     `;
 
     const contents: any[] = [finalPrompt];
