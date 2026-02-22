@@ -583,16 +583,6 @@ export async function analyzeContent(
     ];
 
     // Construct inputs: text prompt + thumbnail image (if available)
-    const MAX_TRANSCRIPT_CHARS = 8000;
-    const trimmedTranscript = (() => {
-      if (!transcript || transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
-      const third = Math.floor(MAX_TRANSCRIPT_CHARS / 3);
-      const start = transcript.substring(0, third);
-      const mid = transcript.substring(Math.floor(transcript.length / 2) - Math.floor(third / 2), Math.floor(transcript.length / 2) + Math.floor(third / 2));
-      const end = transcript.substring(transcript.length - third);
-      return `${start}\n...(중략)...\n${mid}\n...(중략)...\n${end}`;
-    })();
-
     const finalPrompt = `
       ${systemPrompt}
       
@@ -600,7 +590,7 @@ export async function analyzeContent(
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${trimmedTranscript}
+      ${transcript}
     `;
 
     const contents: any[] = [finalPrompt];
@@ -635,7 +625,7 @@ export async function analyzeContent(
   try {
     let result;
     // Strategy: Primary model + safe fallback
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    const modelsToTry = ["gemini-2.5-flash"];
     
     let lastError;
     for (const modelName of modelsToTry) {
