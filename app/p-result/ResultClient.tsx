@@ -424,7 +424,7 @@ export default function ResultClient() {
           analysisId: analysisData.id,
           text: newComment,
           nickname,
-          email: getUserId(),
+          userId: getUserId(),
           profileImage: profileImg
         })
       });
@@ -455,7 +455,7 @@ export default function ResultClient() {
           text: replyText,
           nickname,
           parentId: commentId,
-          email: getUserId(),
+          userId: getUserId(),
           profileImage: profileImg
         })
       });
@@ -489,7 +489,7 @@ export default function ResultClient() {
       const response = await fetch('/api/comments/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'like', email: uid })
+        body: JSON.stringify({ commentId, type: 'like', userId: uid })
       })
       if (!response.ok) throw new Error('Failed to like comment')
       const data = await response.json()
@@ -512,7 +512,7 @@ export default function ResultClient() {
       const response = await fetch('/api/comments/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'dislike', email: uid })
+        body: JSON.stringify({ commentId, type: 'dislike', userId: uid })
       })
       if (!response.ok) throw new Error('Failed to dislike comment')
       const data = await response.json()
@@ -1127,7 +1127,7 @@ ${content}
                                     const response = await fetch('/api/comments/delete', {
                                       method: 'DELETE',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ commentId: comment.id, email: delUid })
+                                      body: JSON.stringify({ commentId: comment.id, userId: delUid })
                                     })
                                     if (response.ok) {
                                       setComments(comments.filter(c => c.id !== comment.id))
@@ -1268,7 +1268,7 @@ ${content}
                                               const response = await fetch('/api/comments/delete', {
                                                 method: 'DELETE',
                                                 headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ commentId: reply.id, email: delReplyUid })
+                                                body: JSON.stringify({ commentId: reply.id, userId: delReplyUid })
                                               })
                                               if (response.ok) {
                                                 setComments(comments.map(c => ({

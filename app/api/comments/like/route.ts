@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         await client.query(
           `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
            VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-          [userId, isAnon ? userId : null, nickname, null]
+          [userId, null, nickname, null]
         );
       }
 
