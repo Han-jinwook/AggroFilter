@@ -197,7 +197,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             COUNT(CASE WHEN ci.f_type = 'like' THEN 1 END)::int as like_count,
             COUNT(CASE WHEN ci.f_type = 'dislike' THEN 1 END)::int as dislike_count
           FROM t_comments c
-          JOIN t_users u ON c.f_user_id = u.f_id
+          LEFT JOIN t_users u ON c.f_user_id = u.f_id
           LEFT JOIN t_comment_interactions ci ON ci.f_comment_id = c.f_id::text
           WHERE c.f_analysis_id = $1
           GROUP BY c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
