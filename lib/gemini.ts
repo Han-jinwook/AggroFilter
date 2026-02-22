@@ -80,7 +80,7 @@ function getGeminiAnalysisProfile(params: {
 
   return {
     isShortForm,
-    timeoutMs: isShortForm ? 50000 : 55000,
+    timeoutMs: isShortForm ? 35000 : 45000,
     retries: 1,
     baseDelayMs: 800,
   };
@@ -625,7 +625,7 @@ export async function analyzeContent(
   try {
     let result;
     // Strategy: Primary model + safe fallback
-    const modelsToTry = ["gemini-2.5-flash"];
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash-001"];
     
     let lastError;
     for (const modelName of modelsToTry) {
