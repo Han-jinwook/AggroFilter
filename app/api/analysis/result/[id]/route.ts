@@ -179,13 +179,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
       };
       
       const { searchParams } = new URL(request.url);
-      const emailFromQuery = searchParams.get('email');
-      let email = emailFromQuery;
-      if (!email) {
+      const userIdFromQuery = searchParams.get('userId');
+      let userId = userIdFromQuery;
+      if (!userId) {
         try {
           const supabase = createClient();
           const { data } = await supabase.auth.getUser();
-          email = data?.user?.email ?? null;
+          userId = data?.user?.id ?? null;
         } catch {
         }
       }
@@ -255,17 +255,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
         interaction.likeCount = parseInt(likeCountRes.rows[0].count, 10);
         interaction.dislikeCount = parseInt(dislikeCountRes.rows[0].count, 10);
 
-        if (email) {
-          const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
-          if (userRes.rows.length > 0) {
-            const userId = userRes.rows[0].f_id;
-            const userInteractionRes = await client.query(
-              'SELECT f_type FROM t_interactions WHERE f_analysis_id = $1 AND f_user_id = $2',
-              [analysisId, userId]
-            );
-            if (userInteractionRes.rows.length > 0) {
-              interaction.userInteraction = userInteractionRes.rows[0].f_type;
-            }
+        if (userId) {
+          const userInteractionRes = await client.query(
+            'SELECT f_type FROM t_interactions WHERE f_analysis_id = $1 AND f_user_id = $2',
+            [analysisId, userId]
+          );
+          if (userInteractionRes.rows.length > 0) {
+            interaction.userInteraction = userInteractionRes.rows[0].f_type;
           }
         }
       }
@@ -273,12 +269,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       // Fetch user's cumulative prediction stats + this video's prediction
       let userPredictionStats = null;
       let videoPrediction = null;
-      if (email) {
+      if (userId) {
         try {
           const userStatsRes = await client.query(
             `SELECT total_predictions, avg_gap, current_tier, current_tier_label, tier_emoji
-             FROM t_users WHERE f_email = $1`,
-            [email]
+             FROM t_users WHERE f_id = $1`,
+            [userId]
           );
           if (userStatsRes.rows.length > 0) {
             const u = userStatsRes.rows[0];
@@ -298,8 +294,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
         try {
           const vpRes = await client.query(
             `SELECT predicted_reliability, actual_reliability, gap, tier, tier_label, tier_emoji
-             FROM t_prediction_quiz WHERE user_email = $1 AND analysis_id = $2`,
-            [email, id]
+             FROM t_prediction_quiz WHERE f_user_id = $1 AND analysis_id = $2`,
+            [userId, id]
           );
           if (vpRes.rows.length > 0) {
             const vp = vpRes.rows[0];

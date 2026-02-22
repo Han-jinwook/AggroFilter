@@ -35,9 +35,10 @@ export default function SettingsPage() {
     return () => window.removeEventListener('openLoginModal', handleOpenLoginModal)
   }, [])
 
-  const handleLoginSuccess = async (loginEmail: string) => {
+  const handleLoginSuccess = async (loginEmail: string, userId: string) => {
     localStorage.setItem('userEmail', loginEmail)
-    await mergeAnonToEmail(loginEmail)
+    if (userId) localStorage.setItem('userId', userId)
+    await mergeAnonToEmail(userId, loginEmail)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)
@@ -52,52 +53,72 @@ export default function SettingsPage() {
 
     if (storedEmail && !anon) {
       setEmail(storedEmail)
-      // DB에서 프로필 정보 fetch (source of truth)
-      fetch(`/api/user/profile?email=${encodeURIComponent(storedEmail)}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.user) {
-            const dbNickname = data.user.nickname || storedEmail.split('@')[0]
-            const dbImage = data.user.image || ''
-            setNickname(dbNickname)
-            setProfileImage(dbImage)
-            localStorage.setItem('userNickname', dbNickname)
-            localStorage.setItem('userProfileImage', dbImage)
-            window.dispatchEvent(new Event('profileUpdated'))
-          }
-        })
-        .catch(() => {
-          const savedNickname = localStorage.getItem('userNickname')
-          const savedProfileImage = localStorage.getItem('userProfileImage')
-          if (savedNickname) setNickname(savedNickname)
-          if (savedProfileImage) setProfileImage(savedProfileImage)
-        })
 
-      // Fetch notification settings
-      fetch(`/api/subscription/notifications?email=${encodeURIComponent(storedEmail)}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) setNotifySettings({
-            f_notify_grade_change: data.f_notify_grade_change ?? true,
-            f_notify_ranking_change: data.f_notify_ranking_change ?? true,
-            f_notify_top10_change: data.f_notify_top10_change ?? true,
+      const loadUserData = async () => {
+        let uid = localStorage.getItem('userId') || ''
+        if (!uid) {
+          try {
+            const meRes = await fetch('/api/auth/me')
+            if (meRes.ok) {
+              const meData = await meRes.json()
+              if (meData?.user?.id) {
+                uid = meData.user.id
+                localStorage.setItem('userId', uid)
+              }
+            }
+          } catch {}
+        }
+        if (!uid) return
+
+        // 프로필 fetch
+        fetch(`/api/user/profile?id=${encodeURIComponent(uid)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.user) {
+              const dbNickname = data.user.nickname || storedEmail.split('@')[0]
+              const dbImage = data.user.image || ''
+              setNickname(dbNickname)
+              setProfileImage(dbImage)
+              localStorage.setItem('userNickname', dbNickname)
+              localStorage.setItem('userProfileImage', dbImage)
+              window.dispatchEvent(new Event('profileUpdated'))
+            }
           })
-        })
-        .catch(() => {})
+          .catch(() => {
+            const savedNickname = localStorage.getItem('userNickname')
+            const savedProfileImage = localStorage.getItem('userProfileImage')
+            if (savedNickname) setNickname(savedNickname)
+            if (savedProfileImage) setProfileImage(savedProfileImage)
+          })
 
-      // Fetch user prediction stats
-      fetch(`/api/prediction/stats?email=${encodeURIComponent(storedEmail)}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            setPredictionStats({
-              currentTier: data.currentTier || 'B',
-              avgGap: data.avgGap || 0,
-              totalPredictions: data.totalPredictions || 0,
+        // 알림 설정 fetch
+        fetch(`/api/subscription/notifications?id=${encodeURIComponent(uid)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data) setNotifySettings({
+              f_notify_grade_change: data.f_notify_grade_change ?? true,
+              f_notify_ranking_change: data.f_notify_ranking_change ?? true,
+              f_notify_top10_change: data.f_notify_top10_change ?? true,
             })
-          }
-        })
-        .catch(() => {})
+          })
+          .catch(() => {})
+
+        // 예측 통계 fetch
+        fetch(`/api/prediction/stats?id=${encodeURIComponent(uid)}`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data) {
+              setPredictionStats({
+                currentTier: data.currentTier || 'B',
+                avgGap: data.avgGap || 0,
+                totalPredictions: data.totalPredictions || 0,
+              })
+            }
+          })
+          .catch(() => {})
+      }
+
+      loadUserData()
     } else {
       // 익명 사용자: localStorage에 저장된 커스텀 값 우선, 없으면 기본값
       const savedNickname = localStorage.getItem('userNickname')
@@ -120,12 +141,13 @@ export default function SettingsPage() {
       
       if (storedEmail && !isAnon) {
         try {
+          const uid = localStorage.getItem('userId') || ''
           // DB에 먼저 저장 (source of truth)
           const response = await fetch('/api/user/profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: storedEmail,
+              id: uid,
               nickname: tempNickname,
               profileImage: tempProfileImage || null
             })
@@ -207,15 +229,15 @@ export default function SettingsPage() {
   }
 
   const handleToggleNotify = async (key: keyof typeof notifySettings) => {
-    const email = localStorage.getItem('userEmail')
-    if (!email) return
+    const uid = localStorage.getItem('userId')
+    if (!uid) return
 
     setTogglingKey(key)
     try {
       const res = await fetch('/api/subscription/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, key, enabled: !notifySettings[key] })
+        body: JSON.stringify({ id: uid, key, enabled: !notifySettings[key] })
       })
       if (res.ok) {
         setNotifySettings(prev => ({ ...prev, [key]: !prev[key] }))

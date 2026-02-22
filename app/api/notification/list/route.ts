@@ -9,16 +9,11 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const emailFromQuery = searchParams.get('email')
-    let email = emailFromQuery
-    if (!email) {
-      try {
-        const supabase = createClient()
-        const { data } = await supabase.auth.getUser()
-        email = data?.user?.email ?? null
-      } catch {}
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
-    if (!email) return NextResponse.json({ notifications: [] })
 
     const client = await pool.connect()
     try {
@@ -28,24 +23,24 @@ export async function GET(request: Request) {
          WHERE f_user_id = $1
          ORDER BY f_created_at DESC
          LIMIT 100`,
-        [email]
+        [userId]
       )
       return NextResponse.json({ notifications: res.rows })
     } finally {
       client.release()
     }
-  } catch (e) {
-    console.error('[notification/list] error:', e)
-    return NextResponse.json({ notifications: [] })
+  } catch (error) {
+    console.error('Notifications GET Error:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
 
-// 읽음 처리
-export async function POST(request: Request) {
+export async function PUT(request: Request) {
   try {
-    const { email, ids } = await request.json()
-    if (!email || !ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    const { userId, ids } = await request.json()
+
+    if (!userId || !ids || !Array.isArray(ids)) {
+      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 
     const client = await pool.connect()
@@ -53,14 +48,14 @@ export async function POST(request: Request) {
       const placeholders = ids.map((_: any, i: number) => `$${i + 2}`).join(',')
       await client.query(
         `UPDATE t_notifications SET f_is_read = TRUE WHERE f_user_id = $1 AND f_id IN (${placeholders})`,
-        [email, ...ids]
+        [userId, ...ids]
       )
       return NextResponse.json({ success: true })
     } finally {
       client.release()
     }
-  } catch (e) {
-    console.error('[notification/mark-read] error:', e)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  } catch (error) {
+    console.error('Notifications PUT Error:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

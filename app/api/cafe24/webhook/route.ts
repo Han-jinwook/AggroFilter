@@ -65,13 +65,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'no_credit_items', orderId }, { status: 422 })
     }
 
-        const userFoundAndCredited = await addCreditsByEmail({ email, amount: credits })
+    const { success: userFoundAndCredited, userId } = await addCreditsByEmail({ email, amount: credits })
 
     if (!userFoundAndCredited) {
       // User not found, log as an unclaimed payment
       await logUnclaimedPayment(orderData);
       return NextResponse.json({ ok: true, status: 'unclaimed_payment_logged', orderId, email });
     }
+
+    // Log successful payment
+    const { logPayment } = await import('@/lib/cafe24');
+    await logPayment({
+      orderId,
+      userId: userId || null,
+      email,
+      amount: parseFloat(orderData?.order?.actual_order_amount) || 0,
+      credits,
+      data: orderData
+    });
 
     return NextResponse.json({ ok: true, status: 'credits_added', orderId, email, credits })
   } catch (e) {

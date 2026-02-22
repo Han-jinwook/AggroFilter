@@ -8,17 +8,19 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { commentId, type, email: emailFromBody } = body;
+    const { commentId, type, userId: userIdFromBody } = body;
 
-    let email = emailFromBody as string | undefined;
-    try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.email) email = data.user.email;
-    } catch {
+    let userId = userIdFromBody as string | undefined;
+    if (!userId) {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) userId = data.user.id;
+      } catch {
+      }
     }
 
-    if (!commentId || !type || !email) {
+    if (!commentId || !type || !userId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -29,19 +31,15 @@ export async function POST(request: Request) {
     const client = await pool.connect();
     
     try {
-      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
-      let userId: string;
-      if (userRes.rows.length > 0) {
-        userId = userRes.rows[0].f_id;
-      } else {
-        // Auto-create user (supports anon_id and email)
-        userId = uuidv4();
-        const isAnon = typeof email === 'string' && email.startsWith('anon_');
-        const nickname = isAnon ? '익명사용자' : (email || '').split('@')[0];
+      // 1. Ensure user exists (supports anon_id)
+      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [userId]);
+      if (userRes.rows.length === 0) {
+        const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
+        const nickname = isAnon ? '익명사용자' : '사용자';
         await client.query(
           `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
            VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-          [userId, email, nickname, null]
+          [userId, isAnon ? userId : null, nickname, null]
         );
       }
 

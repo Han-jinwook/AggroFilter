@@ -6,35 +6,18 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { channelIds, email: emailFromBody } = await request.json();
-
-    let email = emailFromBody as string | undefined;
-    if (!email) {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.email) email = data.user.email;
-      } catch {
-      }
-    }
+    const { channelIds, userId } = await request.json();
 
     if (!channelIds || !Array.isArray(channelIds) || channelIds.length === 0) {
       return NextResponse.json({ error: 'Invalid channel IDs' }, { status: 400 });
     }
-    if (!email) {
-      return NextResponse.json({ error: 'User email is required' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 401 });
     }
 
     const client = await pool.connect();
     try {
-      const userRes = await client.query('SELECT f_email FROM t_users WHERE f_email = $1', [email]);
-
-      if (userRes.rows.length === 0) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
-      const userId = email;
-
-      // 1. t_channel_subscriptions에서 구독 삭제 (테이블이 있는 경우)
+      // 1. t_channel_subscriptions에서 구독 삭제
       let subDeletedCount = 0;
       try {
         const subResult = await client.query(`
@@ -44,7 +27,6 @@ export async function POST(request: Request) {
         `, [channelIds, userId]);
         subDeletedCount = subResult.rowCount || 0;
       } catch {
-        // 테이블이 없거나 에러 시 무시
       }
 
       // 2. t_analyses에서 해당 유저의 해당 채널 분석 기록 삭제
@@ -54,6 +36,7 @@ export async function POST(request: Request) {
         RETURNING f_id
       `, [channelIds, userId]);
       const analysisDeletedCount = analysisResult.rowCount || 0;
+
 
       return NextResponse.json({ 
         success: true, 

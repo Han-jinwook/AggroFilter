@@ -26,17 +26,17 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const userEmail = searchParams.get('email');
+    const id = searchParams.get('id');
 
-    if (!userEmail) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
     const client = await pool.connect();
     try {
       const res = await client.query(
-        'SELECT f_id, f_email, f_nickname, COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_email = $1',
-        [userEmail]
+        'SELECT f_id, f_email, f_nickname, COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_id = $1',
+        [id]
       );
 
       if (res.rows.length === 0) {
@@ -60,9 +60,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { email, amount, reason } = await request.json();
+    const { id, amount, reason } = await request.json();
 
-    if (!email || typeof amount !== 'number') {
+    if (!id || typeof amount !== 'number') {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
     }
 
@@ -70,20 +70,19 @@ export async function POST(request: Request) {
     try {
       await client.query('BEGIN');
 
-      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
-      if (userRes.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
-
       const updateRes = await client.query(
         `UPDATE t_users 
          SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1,
              f_updated_at = NOW()
-         WHERE f_email = $2
+         WHERE f_id = $2
          RETURNING f_recheck_credits`,
-        [amount, email]
+        [amount, id]
       );
+
+      if (updateRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
 
       // TODO: Log this admin action to a separate table if needed (t_admin_logs)
 

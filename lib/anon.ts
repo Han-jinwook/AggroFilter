@@ -92,7 +92,7 @@ export function isAnonymousUser(): boolean {
 
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';
-  const email = localStorage.getItem('userEmail');
-  if (email && email.length > 0) return email;
+  const uid = localStorage.getItem('userId');
+  if (uid && uid.length > 0) return uid;
   return getOrCreateAnonId();
 }

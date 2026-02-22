@@ -5,7 +5,7 @@
 
 const ANON_ID_KEY = 'anonId';
 
-export async function mergeAnonToEmail(email: string): Promise<{ merged: boolean; error?: string }> {
+export async function mergeAnonToEmail(userId: string, email?: string): Promise<{ merged: boolean; error?: string }> {
   try {
     const anonId = localStorage.getItem(ANON_ID_KEY);
     if (!anonId || !anonId.startsWith('anon_')) {
@@ -15,7 +15,7 @@ export async function mergeAnonToEmail(email: string): Promise<{ merged: boolean
     const res = await fetch('/api/user/merge', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ anonId, email }),
+      body: JSON.stringify({ anonId, userId, email }),
     });
 
     const data = await res.json();
@@ -26,10 +26,9 @@ export async function mergeAnonToEmail(email: string): Promise<{ merged: boolean
     }
 
     if (data.merged) {
-      // merge 성공 시 anon_id 제거 (이제 email 계정 사용)
       localStorage.removeItem(ANON_ID_KEY);
       localStorage.removeItem('anonAnimalIndex');
-      console.log(`[merge] Successfully merged ${anonId} → ${email}`);
+      console.log(`[merge] Successfully merged ${anonId} → userId: ${userId}`);
     }
 
     return { merged: data.merged };

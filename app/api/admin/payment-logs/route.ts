@@ -27,10 +27,6 @@ export async function GET(request: Request) {
 
     const client = await pool.connect();
     try {
-      // Note: This assumes we have a table or log for payments.
-      // If t_payment_logs doesn't exist, we might need to check t_users credit update history
-      // For now, let's try to query a hypothetical t_payment_logs or just returning an empty array if not exists
-      
       const tableCheck = await client.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
@@ -42,7 +38,22 @@ export async function GET(request: Request) {
         return NextResponse.json({ logs: [] });
       }
 
-      const res = await client.query('SELECT * FROM t_payment_logs ORDER BY f_created_at DESC LIMIT 50');
+      const res = await client.query(`
+        SELECT 
+          l.f_id as id,
+          l.f_cafe24_order_id as order_id,
+          l.f_user_id as user_id,
+          u.f_email as user_email,
+          l.f_buyer_email as buyer_email,
+          l.f_amount_paid as amount_paid,
+          l.f_credits_added as credits_added,
+          l.f_status as status,
+          l.f_created_at as created_at
+        FROM t_payment_logs l
+        LEFT JOIN t_users u ON l.f_user_id = u.f_id
+        ORDER BY l.f_created_at DESC 
+        LIMIT 50
+      `);
       return NextResponse.json({ logs: res.rows });
     } finally {
       client.release();

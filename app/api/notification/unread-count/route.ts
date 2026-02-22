@@ -9,17 +9,17 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const emailFromQuery = searchParams.get('email')
-    let email = emailFromQuery
-    if (!email) {
+    let userId = searchParams.get('userId')
+
+    if (!userId) {
       try {
         const supabase = createClient()
         const { data } = await supabase.auth.getUser()
-        email = data?.user?.email ?? null
+        if (data?.user?.id) userId = data.user.id
       } catch {
       }
     }
-    if (!email) return NextResponse.json({ unreadCount: 0 })
+    if (!userId) return NextResponse.json({ unreadCount: 0 })
 
     const client = await pool.connect()
     try {
@@ -42,10 +42,11 @@ export async function GET(request: Request) {
         `SELECT COUNT(*)::int AS unread_count
          FROM t_notifications
          WHERE f_user_id = $1 AND f_is_read = FALSE`,
-        [email]
+        [userId]
       )
 
       return NextResponse.json({ unreadCount: res.rows?.[0]?.unread_count ?? 0 })
+
     } finally {
       client.release()
     }

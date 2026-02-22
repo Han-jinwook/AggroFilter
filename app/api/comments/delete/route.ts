@@ -3,19 +3,18 @@ import { pool } from '@/lib/db'
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { commentId, email } = await request.json()
+    const { commentId, userId } = await request.json()
 
-    if (!commentId || !email) {
-      return NextResponse.json({ error: 'Missing commentId or email' }, { status: 400 })
+    if (!commentId || !userId) {
+      return NextResponse.json({ error: 'Missing commentId or userId' }, { status: 400 })
     }
 
     // Verify the user owns this comment
     const checkRes = await pool.query(
-      `SELECT c.f_id 
-       FROM t_comments c
-       JOIN t_users u ON c.f_user_id = u.f_id
-       WHERE c.f_id = $1 AND u.f_email = $2`,
-      [commentId, email]
+      `SELECT f_id 
+       FROM t_comments
+       WHERE f_id = $1 AND f_user_id = $2`,
+      [commentId, userId]
     )
 
     if (checkRes.rows.length === 0) {

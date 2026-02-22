@@ -12,10 +12,10 @@ const VALID_KEYS = ['f_notify_grade_change', 'f_notify_ranking_change', 'f_notif
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
+    const id = searchParams.get('id');
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     const client = await pool.connect();
@@ -30,8 +30,8 @@ export async function GET(request: Request) {
           COALESCE(f_notify_ranking_change, TRUE) as f_notify_ranking_change,
           COALESCE(f_notify_top10_change, TRUE) as f_notify_top10_change
         FROM t_users
-        WHERE f_email = $1
-      `, [email]);
+        WHERE f_id = $1
+      `, [id]);
 
       if (result.rows.length === 0) {
         return NextResponse.json({
@@ -58,9 +58,9 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const { email, key, enabled } = await request.json();
+    const { id, key, enabled } = await request.json();
 
-    if (!email || !key || typeof enabled !== 'boolean') {
+    if (!id || !key || typeof enabled !== 'boolean') {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -73,9 +73,9 @@ export async function PUT(request: Request) {
       const result = await client.query(`
         UPDATE t_users
         SET ${key} = $1
-        WHERE f_email = $2
+        WHERE f_id = $2
         RETURNING ${key}
-      `, [enabled, email]);
+      `, [enabled, id]);
 
       if (result.rows.length === 0) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });

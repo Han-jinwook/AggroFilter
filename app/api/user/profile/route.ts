@@ -3,23 +3,23 @@ import { pool } from '@/lib/db';
 
 export async function PUT(request: NextRequest) {
   try {
-    const { email, nickname, profileImage } = await request.json();
+    const { id, nickname, profileImage } = await request.json();
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     const updateQuery = `
-      UPDATE t_users 
+      UPDATE t_users
       SET 
         f_nickname = COALESCE($1, f_nickname),
         f_image = COALESCE($2, f_image),
         f_updated_at = NOW()
-      WHERE f_email = $3
+      WHERE f_id = $3
       RETURNING f_id, f_email, f_nickname, f_image
     `;
 
-    const result = await pool.query(updateQuery, [nickname, profileImage, email]);
+    const result = await pool.query(updateQuery, [nickname, profileImage, id]);
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -45,14 +45,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
+    const id = searchParams.get('id');
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!email && !id) {
+      return NextResponse.json({ error: 'Email or ID is required' }, { status: 400 });
     }
 
     const result = await pool.query(
-      'SELECT f_id, f_email, f_nickname, f_image FROM t_users WHERE f_email = $1',
-      [email]
+      'SELECT f_id, f_email, f_nickname, f_image FROM t_users WHERE f_id = $1',
+      [id]
     );
 
     if (result.rows.length === 0) {

@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-02-22 02:22 KST
+Last Updated: 2026-02-23 01:53 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -256,6 +256,41 @@ const systemPrompt = `
 
 ## 11. 최근 주요 업데이트 (Recent Updates)
 
+### 11.0 2026-02-23 업데이트 (UUID 정공법 전면 리팩토링 🔑✅)
+
+#### 배경
+- 이메일/UUID 혼용 하이브리드 로직으로 인한 기술 부채 및 데이터 불일치 위험 제거
+- 익명 사용자(anon_xxx) 지원을 위한 UUID 단일 식별 체계 확립
+
+#### 수정된 백엔드 API (이메일 → UUID 전용)
+- `app/api/analysis/request/route.ts`: `user.email` → `user.id` 변경, 이메일 기반 닉네임 추론 제거
+- `app/api/analysis/result/[id]/route.ts`: 인터랙션/퀴즈 조회 UUID 전용
+- `app/api/user/merge/route.ts`: **핵심 버그 수정** — anon 유저 조회를 `f_email` → `f_id`로 수정, `userId` 파라미터 추가
+- `app/api/admin/unclaimed-payments/route.ts`: UUID 기반 수동 지급
+- `app/api/admin/credits/route.ts`: UUID 기반 크레딧 조회/수정
+- `app/api/comments/route.ts`, `like/route.ts`, `delete/route.ts`: UUID 전용
+- `app/api/interaction/route.ts`: UUID 전용
+- `app/api/notification/*/route.ts` (4개): UUID 전용
+- `app/api/mypage/videos/route.ts`: UUID 전용
+- `app/api/payment/callback/route.ts`: UUID 전용
+- `app/api/auth/verify-code/route.ts`: `uuidv4` import 추가
+
+#### 수정된 라이브러리
+- `lib/merge.ts`: 함수 시그니처 `(email)` → `(userId, email?)` 변경
+- `lib/notification.ts`: UUID 기반 알림 발송
+- `lib/cafe24.ts`: UUID 기반 크레딧 충전
+
+#### 수정된 프론트엔드
+- `components/c-login-modal/index.tsx`: `verifyOtp` 후 `user.id` 추출 → `onLoginSuccess(email, userId)` 콜백 전달
+- `components/c-app-header/index.tsx`: `syncSession`에서 `userId` localStorage 저장
+- `app/page.tsx`, `p-result/ResultClient.tsx`, `p-settings/page.tsx`, `p-notification/page.tsx`, `p-my-page/MyPageClient.tsx`: `handleLoginSuccess(email, userId)` 시그니처 통일
+
+#### 관리자 API 이메일 사용 (정상 — 제거 불필요)
+- `getAdminEmail()` 함수: 관리자 **권한 체크**용 (사용자 데이터 식별 아님)
+- 관리자 로그 표시용 `u.f_email` JOIN: 읽기 전용 표시
+
+---
+
 ### 11.0 2026-02-22 업데이트 (Plaza 최적화 + 촉퀴즈/촉점수 시스템 보강 🎯✅)
 
 #### Plaza API 인메모리 캐싱 (서버 부하 최소화)
@@ -345,6 +380,12 @@ const systemPrompt = `
 - **자막 없는 영상 분석 가능**: 제목+썸네일 기반 점수 정상 표시 (기존: 0점)
 - **프롬프트 유연화**: '경험 제공' 하드코딩 제거, Gemini 자율 판단 (팩트 vs 주제적 일관성)
 
+### 11.3 2026-02-23 업데이트 (세션 2)
+- **로그인 방식 전환**: `LoginModal`의 `supabase.auth.signInWithOtp` → 자체 `/api/auth/send-code` + `/api/auth/verify-code` API로 전환 (Supabase OTP 발송 실패 문제 해결)
+- **p-settings UUID 전환**: `/api/user/profile`, `/api/subscription/notifications`, `/api/prediction/stats` 호출 시 `?email=` → `?id=` (UUID) 파라미터로 전환. 알림 토글 PUT, 프로필 저장 PUT도 동일하게 수정
+- **credits/route.ts 빌드 에러 수정**: `searchParams` 선언 누락 및 `const id` → `let id` 재할당 오류 수정
+- **전수 검사**: `const` 재할당 패턴 전체 API 파일 검사 완료 (credits 외 정상)
+
 ### 11.2 2026-02-14 업데이트
 - **알림 페이지 구현**: placeholder → 실제 알림 목록 표시 (타입별 아이콘/색상, 읽음처리, 모두읽음)
 - **알림 클릭 → 채널 통합 리포트**: 알림 링크를 `/p-ranking` → `/channel/[id]`로 변경
@@ -380,7 +421,7 @@ const systemPrompt = `
 | 10 | 알림 설정 토글 → 서버(f_notification_enabled) 동기화 | 대기 |
 | 11 | 모닝 리포트 Vercel Cron 설정 | 대기 |
 | 12 | Resend 커스텀 도메인 설정 (스팸 방지) | 대기 |
-| 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | 대기 |
+| 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | ✅ 완료 (2026-02-23) |
 | 14 | 비로그인 분석 데이터 정리 정책 수립 | 대기 |
 | 15 | Admin 통계: 고유 분석 사용자 수 표시 | 대기 |
 | 16 | 모바일 반응형 최종 점검 | 대기 |

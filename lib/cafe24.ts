@@ -75,12 +75,50 @@ export async function ensureCafe24Tables(client: any) {
       f_amount_paid NUMERIC,
       f_payment_data JSONB,
       f_status TEXT DEFAULT 'PENDING',
-      f_created_at TIMESTAMP DEFAULT NOW(),
-      f_updated_at TIMESTAMP DEFAULT NOW()
+      f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      f_updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS t_payment_logs (
+      f_id BIGSERIAL PRIMARY KEY,
+      f_cafe24_order_id VARCHAR(255) UNIQUE NOT NULL,
+      f_user_id TEXT, -- UUID
+      f_buyer_email VARCHAR(255),
+      f_amount_paid NUMERIC,
+      f_credits_added INTEGER,
+      f_payment_data JSONB,
+      f_status TEXT DEFAULT 'COMPLETED',
+      f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
   `)
 
   await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`)
+}
+
+export async function logPayment(params: {
+  orderId: string;
+  userId: string | null;
+  email: string | null;
+  amount: number;
+  credits: number;
+  data: any;
+}) {
+  const client = await pool.connect();
+  try {
+    await ensureCafe24Tables(client);
+    await client.query(
+      `INSERT INTO t_payment_logs (f_cafe24_order_id, f_user_id, f_buyer_email, f_amount_paid, f_credits_added, f_payment_data)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (f_cafe24_order_id) DO NOTHING`,
+      [params.orderId, params.userId, params.email, params.amount, params.credits, params.data]
+    );
+  } catch (e) {
+    console.error('Failed to log payment:', e);
+  } finally {
+    client.release();
+  }
 }
 
 export async function saveCafe24Tokens(params: {
@@ -265,26 +303,26 @@ export async function markWebhookEventOnce(params: { id: string; eventType: stri
   }
 }
 
-export async function addCreditsByEmail(params: { email: string; amount: number }): Promise<boolean> {
+export async function addCreditsByEmail(params: { email: string; amount: number }): Promise<{ success: boolean; userId?: string }> {
   const client = await pool.connect();
   try {
-    await ensureCafe24Tables(client);
-
-    // First, check if the user exists
+    // 1. Resolve email to UUID (Standard Approach)
     const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [params.email]);
     if (userRes.rowCount === 0) {
-      return false; // User not found
+      return { success: false }; // User not found
     }
 
-    // If user exists, update credits
+    const userId = userRes.rows[0].f_id;
+
+    // 2. Update credits using UUID only
     await client.query(
       `UPDATE t_users
        SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1,
            f_updated_at = NOW()
-       WHERE f_email = $2`,
-      [params.amount, params.email]
+       WHERE f_id = $2`,
+      [params.amount, userId]
     );
-    return true; // Success
+    return { success: true, userId };
   } finally {
     client.release();
   }

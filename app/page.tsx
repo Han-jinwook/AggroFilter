@@ -206,12 +206,13 @@ export default function MainPage() {
     await startAnalysis(url);
   }
 
-  const handleLoginSuccess = async (email: string) => {
+  const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
+    if (userId) localStorage.setItem("userId", userId)
     setUserEmail(email)
 
     // 익명 데이터 → 이메일 계정으로 병합
-    await mergeAnonToEmail(email)
+    await mergeAnonToEmail(userId, email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {

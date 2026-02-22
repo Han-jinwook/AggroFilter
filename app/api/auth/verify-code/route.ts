@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
@@ -37,12 +38,25 @@ export async function POST(request: Request) {
         WHERE f_id = $1
       `, [res.rows[0].f_id]);
       
-      // 3. Ensure user exists in User table? 
-      // Current logic doesn't strictly require a User table row for "analysis" usage 
-      // but if you have a users table, you might want to upsert here.
-      // For now, we just return success so the frontend logs them in.
+      // 3. Ensure user exists in User table
+      const userRes = await client.query(
+        'SELECT f_id FROM t_users WHERE f_email = $1',
+        [email]
+      );
 
-      return NextResponse.json({ success: true, message: 'Verified successfully' });
+      let userId;
+      if (userRes.rows.length === 0) {
+        userId = uuidv4();
+        await client.query(
+          `INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
+           VALUES ($1, $2, $3, NOW(), NOW())`,
+          [userId, email, email.split('@')[0]]
+        );
+      } else {
+        userId = userRes.rows[0].f_id;
+      }
+
+      return NextResponse.json({ success: true, message: 'Verified successfully', userId, email });
 
     } finally {
       client.release();

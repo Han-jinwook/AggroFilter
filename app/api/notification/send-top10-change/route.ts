@@ -5,9 +5,9 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { email, channelName, channelId, channelThumbnail, isEntered, categoryName } = await request.json();
+    const { userId, channelName, channelId, channelThumbnail, isEntered, categoryName } = await request.json();
 
-    if (!email || !channelName || isEntered === undefined) {
+    if (!userId || !channelName || isEntered === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -36,14 +36,13 @@ export async function POST(request: Request) {
         `CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON t_notifications (f_user_id, f_is_read);`
       );
       await client.query(
-        `INSERT INTO t_notifications (f_user_id, f_type, f_message, f_link, f_is_read, f_email_sent, f_email_data, f_created_at)
-         VALUES ($1, $2, $3, $4, FALSE, FALSE, $5, NOW())`,
+        `INSERT INTO t_notifications (f_user_id, f_type, f_message, f_link, f_is_read, f_created_at)
+         VALUES ($1, $2, $3, $4, FALSE, NOW())`,
         [
-          email,
+          userId,
           'top10_change',
           `${channelName} 채널이 상위 10%에 ${statusText}했습니다`,
-          channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`,
-          JSON.stringify({ channelName, channelId, channelThumbnail, isEntered, categoryName }),
+          channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`
         ]
       );
     } finally {

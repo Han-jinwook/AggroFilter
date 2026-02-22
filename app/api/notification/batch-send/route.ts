@@ -182,9 +182,9 @@ export async function POST(request: Request) {
 
       // Fetch all unsent notifications grouped by user
       const pendingResult = await client.query<NotificationRow>(`
-        SELECT n.f_id, n.f_user_id, n.f_type, n.f_message, n.f_link, n.f_email_data, n.f_created_at
+        SELECT n.f_id, n.f_user_id, n.f_type, n.f_message, n.f_link, n.f_email_data, n.f_created_at, u.f_email as user_email
         FROM t_notifications n
-        JOIN t_users u ON n.f_user_id = u.f_email
+        JOIN t_users u ON n.f_user_id = u.f_id
         WHERE n.f_email_sent = FALSE
           AND u.f_email IS NOT NULL
           AND u.f_email LIKE '%@%'
@@ -195,12 +195,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: 'No pending notifications', sent: 0 });
       }
 
-      // Group by user
+      // Group by user (using email for sending)
       const userGroups = new Map<string, NotificationRow[]>();
       for (const row of pendingResult.rows) {
-        const existing = userGroups.get(row.f_user_id) || [];
+        const email = (row as any).user_email;
+        const existing = userGroups.get(email) || [];
         existing.push(row);
-        userGroups.set(row.f_user_id, existing);
+        userGroups.set(email, existing);
       }
 
       const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';

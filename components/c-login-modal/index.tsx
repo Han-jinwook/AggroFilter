@@ -6,12 +6,11 @@ import { useState } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/c-dialog"
-import { createClient } from "@/utils/supabase/client"
 
 interface TLoginModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onLoginSuccess: (email: string) => void
+  onLoginSuccess: (email: string, userId: string) => void
 }
 
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalProps) {
@@ -27,15 +26,13 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-        },
+      const res = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       })
-
-      if (error) throw error
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send code')
 
       setStep("code")
     } catch (error) {
@@ -77,17 +74,17 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: verificationCode,
-        type: 'email',
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: verificationCode }),
       })
-
-      if (error) throw error
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Invalid code')
 
       // Success
-      onLoginSuccess(email)
+      const userId = data.userId ?? ''
+      onLoginSuccess(email, userId)
       onOpenChange(false)
       // Reset state
       setStep("email")
@@ -97,8 +94,6 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     } catch (error) {
       console.error(error);
       alert('인증번호가 올바르지 않거나 만료되었습니다.');
-      // Clear code input on failure?
-      // setCode(["", "", "", "", "", ""])
     } finally {
       setIsLoading(false)
     }
@@ -108,14 +103,13 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     if (!email) return;
     
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-        },
+      const res = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       })
-      if (error) throw error
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
 
       alert("인증코드가 재발송되었습니다.");
     } catch (error) {

@@ -7,28 +7,30 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { email: emailFromBody } = await request.json();
+    const { userId: userIdFromBody } = await request.json();
 
-    let email = emailFromBody as string | undefined;
-    if (!email) {
+    let userId = userIdFromBody as string | undefined;
+    console.log('[mypage/videos] userIdFromBody:', userIdFromBody);
+    if (!userId) {
       try {
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
-        if (data?.user?.email) email = data.user.email;
-      } catch {
+        console.log('[mypage/videos] supabase user:', data?.user?.id, data?.user?.email);
+        if (data?.user?.id) userId = data.user.id;
+      } catch (e) {
+        console.error('[mypage/videos] supabase error:', e);
       }
     }
+    console.log('[mypage/videos] resolved userId:', userId);
 
-    if (!email) {
+    if (!userId) {
       return NextResponse.json({ videos: [] });
     }
 
     const client = await pool.connect();
 
     try {
-      // Query user's analyses directly from DB using email
-      // No localStorage dependency - pure DB-based approach
-      
+      // UUID를 사용하여 분석 내역 조회
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE
       const refinedQuery = `
       SELECT 
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
       ORDER BY a.f_created_at DESC
     `;
 
-    const res = await client.query(refinedQuery, [email]);
+    const res = await client.query(refinedQuery, [userId]);
       
       const videos = res.rows.map(row => ({
         id: row.id,

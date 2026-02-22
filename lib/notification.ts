@@ -38,7 +38,7 @@ export async function subscribeChannelAuto(userId: string, channelId: string) {
  * - 순위 변동 (10% 이상) → send-ranking-change
  * - TOP 10% 진입/탈락 → send-top10-change
  */
-export async function checkRankingChangesAndNotify(categoryId: number) {
+export async function checkRankingChangesAndNotify(categoryId: number, language: string = 'korean') {
   const client = await pool.connect();
   try {
     const tableExistsRes = await client.query(
@@ -47,17 +47,20 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
     const tableExists = tableExistsRes.rows?.[0]?.exists === true;
     if (!tableExists) return;
 
-    // 1. 현재 랭킹 조회 (해당 카테고리)
+    // 1. 현재 랭킹 및 통계 조회 (캐시 테이블 사용)
     const currentRankings = await client.query(`
       SELECT 
-        f_channel_id,
-        f_avg_reliability,
-        ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC)::int as current_rank,
-        COUNT(*) OVER ()::int as total_count
-      FROM t_channel_stats
-      WHERE f_official_category_id = $1
-      ORDER BY f_avg_reliability DESC
-    `, [categoryId]);
+        rc.f_channel_id,
+        cs.f_avg_reliability as f_avg_reliability,
+        rc.f_rank as current_rank,
+        rc.f_total_count as total_count,
+        rc.f_top_percentile
+      FROM t_rankings_cache rc
+      JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id 
+        AND rc.f_category_id = cs.f_official_category_id
+        AND rc.f_language = cs.f_language
+      WHERE rc.f_category_id = $1 AND rc.f_language = $2
+    `, [categoryId, language]);
 
     if (currentRankings.rows.length === 0) return;
 
@@ -78,12 +81,11 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
       // 구독자 조회 (알림 활성화된 사용자만 + 사용자별 알림 설정)
       const subscribers = await client.query(`
         SELECT 
-          s.f_user_id,
+          s.f_user_id as user_id,
           s.f_last_rank,
           s.f_last_reliability_grade,
           s.f_last_reliability_score,
           s.f_last_top10_percent_status,
-          u.f_email,
           u.f_nickname,
           c.f_title as channel_name,
           c.f_thumbnail_url as channel_thumbnail,
@@ -91,7 +93,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
           COALESCE(u.f_notify_ranking_change, TRUE) as notify_ranking,
           COALESCE(u.f_notify_top10_change, TRUE) as notify_top10
         FROM t_channel_subscriptions s
-        JOIN t_users u ON s.f_user_id = u.f_email
+        JOIN t_users u ON s.f_user_id = u.f_id
         JOIN t_channels c ON s.f_channel_id = c.f_channel_id
         WHERE s.f_channel_id = $1 
           AND s.f_notification_enabled = TRUE
@@ -110,7 +112,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: sub.f_email,
+              userId: sub.user_id,
               channelName: sub.channel_name,
               channelId: f_channel_id,
               channelThumbnail: sub.channel_thumbnail,
@@ -131,7 +133,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: sub.f_email,
+              userId: sub.user_id,
               channelName: sub.channel_name,
               channelId: f_channel_id,
               channelThumbnail: sub.channel_thumbnail,
@@ -152,7 +154,7 @@ export async function checkRankingChangesAndNotify(categoryId: number) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: sub.f_email,
+              userId: sub.user_id,
               channelName: sub.channel_name,
               channelId: f_channel_id,
               channelThumbnail: sub.channel_thumbnail,

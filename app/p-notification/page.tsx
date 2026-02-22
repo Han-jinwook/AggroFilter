@@ -127,9 +127,10 @@ export default function Page() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  const handleLoginSuccess = async (loginEmail: string) => {
+  const handleLoginSuccess = async (loginEmail: string, userId: string) => {
     localStorage.setItem('userEmail', loginEmail)
-    await mergeAnonToEmail(loginEmail)
+    if (userId) localStorage.setItem('userId', userId)
+    await mergeAnonToEmail(userId, loginEmail)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)

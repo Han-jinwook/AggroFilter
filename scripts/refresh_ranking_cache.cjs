@@ -27,23 +27,22 @@ async function refreshRankingCache() {
     console.log(`   Deleted ${deleteRes.rowCount} rows\n`);
 
     // 2. Regenerate cache with language-based ranking
-    console.log('2️⃣  Regenerating cache with language separation...');
+    console.log('2️⃣  Regenerating cache with language separation (v3.3)...');
     const insertQuery = `
       INSERT INTO t_rankings_cache (
         f_channel_id, f_category_id, f_language, f_ranking_key, f_rank, f_total_count, f_top_percentile
       )
       WITH ChannelStats AS (
         SELECT 
-          cs.f_channel_id,
-          cs.f_official_category_id as category_id,
-          COALESCE(c.f_language, 'korean') as language,
-          COALESCE(c.f_language, 'korean') || '_' || cs.f_official_category_id::text as ranking_key,
-          cs.f_avg_reliability as avg_score,
-          cs.f_video_count as video_count
-        FROM t_channel_stats cs
-        JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
-        WHERE cs.f_avg_reliability IS NOT NULL
-          AND cs.f_official_category_id IS NOT NULL
+          f_channel_id,
+          f_official_category_id as category_id,
+          COALESCE(f_language, 'korean') as language,
+          COALESCE(f_language, 'korean') || '_' || f_official_category_id::text as ranking_key,
+          f_avg_reliability as avg_score,
+          f_video_count as video_count
+        FROM t_channel_stats
+        WHERE f_avg_reliability IS NOT NULL
+          AND f_official_category_id IS NOT NULL
       ),
       RankedChannels AS (
         SELECT 
@@ -70,10 +69,37 @@ async function refreshRankingCache() {
     const insertRes = await client.query(insertQuery);
     console.log(`   Inserted ${insertRes.rowCount} ranking entries\n`);
 
+    // 3. Update t_channels basic stats (score, grade, count)
+    console.log('3️⃣  Syncing t_channels basic stats...');
+    const syncChannelsQuery = `
+      UPDATE t_channels c
+      SET 
+        f_trust_score = sub.avg_score,
+        f_video_count = sub.video_count,
+        f_trust_grade = CASE 
+          WHEN sub.avg_score >= 70 THEN 'green'
+          WHEN sub.avg_score >= 50 THEN 'yellow'
+          ELSE 'red'
+        END
+      FROM (
+        SELECT 
+          f_channel_id, 
+          AVG(f_reliability_score)::INT as avg_score, 
+          COUNT(*) as video_count
+        FROM t_analyses
+        WHERE f_is_latest = TRUE
+          AND f_reliability_score IS NOT NULL
+        GROUP BY f_channel_id
+      ) sub
+      WHERE c.f_channel_id = sub.f_channel_id
+    `;
+    const syncRes = await client.query(syncChannelsQuery);
+    console.log(`   Updated ${syncRes.rowCount} channels\n`);
+
     await client.query('COMMIT');
 
-    // 3. Verify results
-    console.log('3️⃣  Verification:\n');
+    // 4. Verify results
+    console.log('4️⃣  Verification:\n');
     
     const langStats = await client.query(`
       SELECT 

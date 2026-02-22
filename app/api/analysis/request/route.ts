@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     try {
       const supabase = createClient();
       const { data } = await supabase.auth.getUser();
-      if (data?.user?.email) userId = data.user.email;
+      if (data?.user?.id) userId = data.user.id;
     } catch {
     }
 
@@ -110,18 +110,8 @@ export async function POST(request: Request) {
       try {
         await creditClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
 
-        const userRes = await creditClient.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
-        if (userRes.rows.length === 0) {
-          const newUserId = uuidv4();
-          await creditClient.query(
-            `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-             VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-            [newUserId, userId, userId.split('@')[0], null]
-          );
-        }
-
         const creditRes = await creditClient.query(
-          'SELECT COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_email = $1',
+          'SELECT COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_id = $1',
           [userId]
         );
         const credits = creditRes.rows.length > 0 ? Number(creditRes.rows[0].credits) : 0;
@@ -358,36 +348,22 @@ export async function POST(request: Request) {
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
 
-      // 5-0. User lookup/creation (if userId/email provided)
-      // Supports both email users and anonymous (anon_*) users
-      let actualUserId = null;
-      const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
-      if (userId) {
-        console.log('5-0. User 확인 중...', userId, isAnon ? '(익명)' : '(이메일)');
-        if (isAnon) {
-          // 익명 사용자: t_users에 anon_id로 저장
-          const anonRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
-          if (anonRes.rows.length === 0) {
-            const newUserId = uuidv4();
-            await client.query(`
-              INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-              VALUES ($1, $2, $3, $4, NOW(), NOW())
-            `, [newUserId, userId, '익명사용자', null]);
-            console.log('익명 유저 생성:', newUserId);
-          }
-          actualUserId = userId;
-        } else {
-          // 이메일 사용자
-          const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [userId]);
-          if (userRes.rows.length === 0) {
-            const newUserId = uuidv4();
-            await client.query(`
-              INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-              VALUES ($1, $2, $3, $4, NOW(), NOW())
-            `, [newUserId, userId, userId.split('@')[0], null]);
-            console.log('새 유저 생성:', newUserId);
-          }
-          actualUserId = userId;
+      // 5-0. User lookup/creation (if userId provided)
+      let actualUserId = userId || null;
+      if (actualUserId) {
+        console.log('5-0. User 확인 중...', actualUserId);
+        const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [actualUserId]);
+        if (userRes.rows.length === 0) {
+          // If the user doesn't exist in t_users, they might be an anonymous user from local storage
+          // In the clean UUID approach, we should have the user in t_users.
+          // However, for safety with existing anonId, we can still upsert if it looks like a valid ID.
+          const isAnon = typeof actualUserId === 'string' && actualUserId.startsWith('anon_');
+          const nickname = isAnon ? '익명사용자' : '사용자';
+          await client.query(`
+            INSERT INTO t_users (f_id, f_nickname, f_image, f_created_at, f_updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (f_id) DO NOTHING
+          `, [actualUserId, nickname, null]);
         }
       }
 
@@ -513,7 +489,7 @@ export async function POST(request: Request) {
           `UPDATE t_users
            SET f_recheck_credits = COALESCE(f_recheck_credits, 0) - 1,
                f_updated_at = NOW()
-           WHERE f_email = $1 AND COALESCE(f_recheck_credits, 0) > 0
+           WHERE f_id = $1 AND COALESCE(f_recheck_credits, 0) > 0
            RETURNING f_recheck_credits`,
           [actualUserId]
         );
@@ -573,7 +549,7 @@ export async function POST(request: Request) {
       refreshRankingCache(videoInfo.officialCategoryId)
         .then(() => {
           if (actualUserId && hasTranscript) {
-            return checkRankingChangesAndNotify(videoInfo.officialCategoryId);
+            return checkRankingChangesAndNotify(videoInfo.officialCategoryId, finalLanguage);
           }
         })
         .catch(err => {

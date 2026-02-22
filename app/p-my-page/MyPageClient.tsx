@@ -186,11 +186,24 @@ export default function MyPageClient() {
   const fetchVideos = useCallback(async () => {
     try {
       setIsLoadingVideos(true);
-      const uid = getUserId();
+      let uid = getUserId();
+      if (!uid || uid.startsWith('anon_')) {
+        try {
+          const meRes = await fetch('/api/auth/me');
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData?.user?.id) {
+              uid = meData.user.id;
+              localStorage.setItem('userId', uid);
+            }
+          }
+        } catch {}
+      }
+      const resolvedUid = (uid && !uid.startsWith('anon_')) ? uid : null;
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: uid })
+        body: JSON.stringify({ userId: resolvedUid })
       });
 
       if (res.ok) {
@@ -258,11 +271,12 @@ export default function MyPageClient() {
     }
   }, [activeTab])
 
-  const handleLoginSuccess = async (email: string) => {
+  const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
+    if (userId) localStorage.setItem("userId", userId)
 
     // 익명 데이터 → 이메일 계정으로 병합
-    await mergeAnonToEmail(email)
+    await mergeAnonToEmail(userId, email)
 
     const nickname = email.split("@")[0]
     localStorage.setItem("userNickname", nickname)

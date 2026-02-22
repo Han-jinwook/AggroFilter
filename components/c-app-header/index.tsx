@@ -71,6 +71,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
         if (!res.ok) return
         const data = await res.json()
         const email = String(data?.user?.email || '')
+        const uid = String(data?.user?.id || '')
         if (!email) return
 
         const nicknameFromEmail = (email.split('@')[0] || '').trim()
@@ -78,6 +79,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
         const currentEmail = localStorage.getItem('userEmail') || ''
 
         if (currentEmail !== email) localStorage.setItem('userEmail', email)
+        if (uid && !localStorage.getItem('userId')) localStorage.setItem('userId', uid)
         if (!currentNickname) localStorage.setItem('userNickname', nicknameFromEmail)
         if (isMounted) {
           if (!currentNickname) setNickname(nicknameFromEmail)

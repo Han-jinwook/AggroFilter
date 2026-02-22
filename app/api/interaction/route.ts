@@ -5,36 +5,37 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
-async function getOrCreateUserId(client: any, email: string) {
-  const userRes = await client.query('SELECT f_id FROM t_users WHERE f_email = $1', [email]);
+async function getOrCreateUserId(client: any, userId: string) {
+  const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [userId]);
   if (userRes.rows.length > 0) {
     return userRes.rows[0].f_id;
   }
-  // Auto-create user (supports anon_id and email)
-  const newId = uuidv4();
-  const isAnon = email.startsWith('anon_');
-  const nickname = isAnon ? '익명사용자' : email.split('@')[0];
+  // Auto-create user (supports anon_id)
+  const isAnon = userId.startsWith('anon_');
+  const nickname = isAnon ? '익명사용자' : '사용자';
   await client.query(
     `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
      VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-    [newId, email, nickname, null]
+    [userId, isAnon ? userId : null, nickname, null]
   );
-  return newId;
+  return userId;
 }
 
 
 export async function POST(request: Request) {
-  const { analysisId, type, email: emailFromBody } = await request.json();
+  const { analysisId, type, userId: userIdFromBody } = await request.json();
 
-  let email = emailFromBody as string | undefined;
-  try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    if (data?.user?.email) email = data.user.email;
-  } catch {
+  let userId = userIdFromBody as string | undefined;
+  if (!userId) {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.id) userId = data.user.id;
+    } catch {
+    }
   }
 
-  if (!type || !email) {
+  if (!type || !userId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -50,11 +51,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing analysisId' }, { status: 400 });
     }
 
-    const userId = await getOrCreateUserId(client, email);
+    const userIdFinal = await getOrCreateUserId(client, userId);
 
     const existingInteraction = await client.query(
       'SELECT f_id, f_type FROM t_interactions WHERE f_user_id = $1 AND f_analysis_id = $2',
-      [userId, analysisId]
+      [userIdFinal, analysisId]
     );
 
     if (existingInteraction.rows.length > 0) {
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       // New interaction: insert it
       await client.query(
         'INSERT INTO t_interactions (f_user_id, f_analysis_id, f_type) VALUES ($1, $2, $3)',
-        [userId, analysisId, type]
+        [userIdFinal, analysisId, type]
       );
     }
 

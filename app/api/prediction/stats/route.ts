@@ -6,18 +6,18 @@ export const runtime = 'nodejs'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const email = searchParams.get('email')
+    const id = searchParams.get('id')
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    if (!id) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
     const client = await pool.connect()
     try {
       const res = await client.query(
         `SELECT total_predictions, avg_gap, current_tier, current_tier_label, tier_emoji
-         FROM t_users WHERE f_email = $1`,
-        [email]
+         FROM t_users WHERE f_id = $1`,
+        [id]
       )
 
       if (res.rows.length === 0) {
