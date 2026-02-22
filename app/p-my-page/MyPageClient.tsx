@@ -187,7 +187,9 @@ export default function MyPageClient() {
     try {
       setIsLoadingVideos(true);
       let uid = getUserId();
-      if (!uid || uid.startsWith('anon_')) {
+      if (uid && !uid.startsWith('anon_')) {
+        // 로그인 유저: localStorage.userId가 없으면 세션에서 확보
+      } else if (!uid || uid.startsWith('anon_')) {
         try {
           const meRes = await fetch('/api/auth/me');
           if (meRes.ok) {
@@ -199,7 +201,8 @@ export default function MyPageClient() {
           }
         } catch {}
       }
-      const resolvedUid = (uid && !uid.startsWith('anon_')) ? uid : null;
+      // 익명 유저도 anonId로 조회 허용
+      const resolvedUid = uid || null;
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
