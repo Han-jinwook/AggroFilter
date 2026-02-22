@@ -110,7 +110,7 @@ export default function ResultClient() {
       try {
         setLoading(true)
         const uid = getUserId()
-        const response = await fetch(`/api/analysis/result/${id}${uid ? `?email=${encodeURIComponent(uid)}` : ''}`, {
+        const response = await fetch(`/api/analysis/result/${id}${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`, {
           cache: 'no-store'
         })
         
@@ -1108,7 +1108,7 @@ ${content}
                       <div className="mb-1 flex items-center gap-2">
                         <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
                         <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
-                        {comment.authorEmail === getUserId() && (
+                        {comment.authorId === getUserId() && (
                           <>
                             <button 
                               onClick={() => {
@@ -1249,7 +1249,7 @@ ${content}
                                 <div className="mb-1 flex items-center gap-2">
                                   <span className="text-xs font-semibold text-gray-900">{reply.author}</span>
                                   <span className="text-xs text-gray-500">{reply.date} {reply.time}</span>
-                                  {reply.authorEmail === getUserId() && (
+                                  {reply.authorId === getUserId() && (
                                     <>
                                       <button 
                                         onClick={() => {
