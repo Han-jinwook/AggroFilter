@@ -587,11 +587,16 @@ export async function analyzeContent(
     const MAX_TRANSCRIPT_CHARS = 8000;
     const trimmedTranscript = (() => {
       if (!transcript || transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
-      const third = Math.floor(MAX_TRANSCRIPT_CHARS / 3);
-      const start = transcript.substring(0, third);
-      const mid = transcript.substring(Math.floor(transcript.length / 2) - Math.floor(third / 2), Math.floor(transcript.length / 2) + Math.floor(third / 2));
-      const end = transcript.substring(transcript.length - third);
-      return `${start}\n...(중략)...\n${mid}\n...(중략)...\n${end}`;
+      const s1 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.4); // 앞 40%
+      const s2 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.2); // 중간1 20%
+      const s3 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.2); // 중간2 20%
+      const s4 = MAX_TRANSCRIPT_CHARS - s1 - s2 - s3;    // 끝 20%
+      const len = transcript.length;
+      const start = transcript.substring(0, s1);
+      const mid1 = transcript.substring(Math.floor(len * 0.33), Math.floor(len * 0.33) + s2);
+      const mid2 = transcript.substring(Math.floor(len * 0.66), Math.floor(len * 0.66) + s3);
+      const end = transcript.substring(len - s4);
+      return `${start}\n...(중략)...\n${mid1}\n...(중략)...\n${mid2}\n...(중략)...\n${end}`;
     })();
 
     const finalPrompt = `
