@@ -91,7 +91,7 @@ export default function ResultClient() {
     } else {
       // 익명 사용자: localStorage에 저장된 커스텀 값 우선
       setUserNickname(localStorage.getItem('userNickname') || getAnonNickname())
-      setUserProfileImage(localStorage.getItem('userProfileImage') || null)
+      setUserProfileImage(localStorage.getItem('userProfileImage') || getAnonEmoji())
     }
   }, [])
 
@@ -1047,7 +1047,7 @@ ${content}
           <div className="rounded-3xl border-4 border-gray-300 bg-white p-5">
             <h3 className="mb-4 text-lg font-bold">{comments.length}개의 댓글</h3>
             <div className="mb-6 flex items-start gap-3">
-              {userProfileImage ? (
+              {userProfileImage && !userProfileImage.match(/^\p{Emoji}/u) ? (
                 <Image
                   src={userProfileImage}
                   alt="Profile"
@@ -1056,8 +1056,8 @@ ${content}
                   className="h-[30px] w-[30px] flex-shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-bold">
-                  {userNickname ? userNickname[0].toUpperCase() : 'U'}
+                <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-lg">
+                  {userProfileImage || (userNickname ? userNickname[0].toUpperCase() : 'U')}
                 </div>
               )}
               <div className="flex-1 flex items-end gap-2">
