@@ -415,7 +415,7 @@ export default function ResultClient() {
     if (!newComment.trim()) return
     if (!analysisData) return
     const nickname = localStorage.getItem("userNickname") || getAnonNickname()
-    const profileImg = localStorage.getItem("userProfileImage") || ''
+    const profileImg = localStorage.getItem("userProfileImage") || getAnonEmoji()
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -445,7 +445,7 @@ export default function ResultClient() {
     if (!replyText.trim()) return
     if (!analysisData) return
     const nickname = localStorage.getItem("userNickname") || getAnonNickname()
-    const profileImg = localStorage.getItem("userProfileImage") || ''
+    const profileImg = localStorage.getItem("userProfileImage") || getAnonEmoji()
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -1093,15 +1093,15 @@ ${content}
               {comments.map((comment) => (
                 <div key={comment.id} className="space-y-2">
                   <div className="flex items-start gap-3">
-                    {comment.authorImage ? (
+                    {comment.authorImage && !comment.authorImage.match(/^\p{Emoji}/u) ? (
                       <img
                         src={comment.authorImage}
                         alt={comment.author}
                         className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-400 text-white text-sm font-bold">
-                        {comment.author[0]}
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-2xl">
+                        {comment.authorImage || comment.author[0]}
                       </div>
                     )}
                     <div className="flex-1">
@@ -1234,15 +1234,15 @@ ${content}
                         <div className="mt-3 space-y-2">
                           {comment.replies.map((reply: any) => (
                             <div key={reply.id} className="flex items-start gap-2 pl-4 border-l-2 border-gray-200">
-                              {reply.authorImage ? (
+                              {reply.authorImage && !reply.authorImage.match(/^\p{Emoji}/u) ? (
                                 <img
                                   src={reply.authorImage}
                                   alt={reply.author}
                                   className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-300 text-white text-xs font-bold">
-                                  {reply.author[0]}
+                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-xl">
+                                  {reply.authorImage || reply.author[0]}
                                 </div>
                               )}
                               <div className="flex-1">
