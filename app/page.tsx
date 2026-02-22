@@ -10,7 +10,7 @@ import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { UrlDisplayBox } from "@/components/c-url-display-box"
 import { Disclaimer } from "@/app/c-home/disclaimer"
-import { getUserId, isAnonymousUser } from "@/lib/anon"
+import { getUserId, getOrCreateAnonId, isAnonymousUser } from "@/lib/anon"
 import { mergeAnonToEmail } from "@/lib/merge"
 
 export default function MainPage() {
@@ -130,9 +130,18 @@ export default function MainPage() {
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
+      const currentEmail = userEmail || localStorage.getItem('userEmail')
+      let analysisUserId: string
+      if (currentEmail) {
+        // 로그인 유저: UUID 사용
+        analysisUserId = localStorage.getItem('userId') || getUserId()
+      } else {
+        // 익명 유저: anonId 명시적 생성/저장 (merge를 위해 localStorage.anonId 보장)
+        analysisUserId = getOrCreateAnonId()
+      }
       const body: any = { 
         url: analysisUrl,
-        userId: userEmail || localStorage.getItem('userEmail') || getUserId()
+        userId: analysisUserId
       }
       if (clientTranscript) {
         body.clientTranscript = clientTranscript
