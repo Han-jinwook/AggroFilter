@@ -418,12 +418,14 @@ const systemPrompt = `
 ### HIGH — 수익화 & 핵심 기능
 | # | 항목 | 상태 |
 |---|------|------|
-| 1 | 카페24 환경변수 세팅 (Netlify) | ✅ 완료 (6개 변수, CREDIT_PRODUCT_MAP 제외) |
+| 1 | 카페24 환경변수 세팅 (Netlify) | ✅ 완료 (7개 변수, CREDIT_PRODUCT_MAP 포함) |
 | 2 | 카페24 앱 설치 → OAuth 토큰 발급 | ✅ 완료 (2026-02-23) |
 | 3 | 카페24 Webhook URL 등록 | ⏳ 심사 승인 대기 중 (2026-02-23 심사 요청) |
-| 4 | 크레딧 상품 등록 + CREDIT_PRODUCT_MAP 매핑 | 대기 |
-| 5 | Mock → 실결제 전환 (충전 버튼 URL 변경) | 대기 |
+| 4 | 크레딧 상품 등록 + CREDIT_PRODUCT_MAP 매핑 | ✅ 완료 (상품 18/19/20 → 1/5/10 크레딧) |
+| 5 | Mock → 실결제 전환 (충전 버튼 URL 변경) | ✅ 완료 (2026-02-23) |
 | 6 | 알림 트리거 연결 (분석 완료 → checkRankingChangesAndNotify 호출) | ❌ 폐기 (2026-02-23) — 분석 즉시 결과 확인 UX와 충돌, 불필요 |
+| 7 | aggrofilter.com 도메인 구매 + DNS + HTTPS | ✅ 완료 (2026-02-23) |
+| 8 | 매직링크 로그인 구현 | ✅ 완료 (2026-02-24) |
 
 ### MEDIUM — 품질 & 운영
 | # | 항목 | 상태 |
@@ -433,7 +435,7 @@ const systemPrompt = `
 | 9 | t_payment_logs에 실제 결제 기록 저장 | 대기 |
 | 10 | 알림 설정 토글 → 서버(f_notification_enabled) 동기화 | 대기 |
 | 11 | 모닝 리포트 Vercel Cron 설정 | 대기 |
-| 12 | Resend 커스텀 도메인 설정 (스팸 방지) | 대기 |
+| 12 | Resend 커스텀 도메인 설정 (스팸 방지) | ⏳ DNS 레코드 등록 완료, 전파 대기 중 — 완료 후 RESEND_FROM_EMAIL 환경변수 추가 필요 |
 | 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | ✅ 완료 (2026-02-23) |
 | 14 | 비로그인 분석 데이터 정리 정책 수립 | 대기 |
 | 15 | Admin 통계: 고유 분석 사용자 수 표시 | 대기 |
