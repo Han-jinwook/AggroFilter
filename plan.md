@@ -380,6 +380,14 @@ const systemPrompt = `
 - **자막 없는 영상 분석 가능**: 제목+썸네일 기반 점수 정상 표시 (기존: 0점)
 - **프롬프트 유연화**: '경험 제공' 하드코딩 제거, Gemini 자율 판단 (팩트 vs 주제적 일관성)
 
+### 11.4 2026-02-23 업데이트 (세션 3)
+- **카페24 Client ID 확인**: `IlIvZtcsP9di8m1yxe9vxF` — 개발자센터 App 관리에서 기존 앱 확인
+- **카페24 OAuth 토큰 발급 완료**: `/api/cafe24/oauth/start` 호출 → 콜백 정상 처리, DB 저장 확인
+- **카페24 앱 심사 요청 완료** (2026-02-23): 심사중 상태 — 승인 후 주문완료 웹훅 등록 가능
+- **카페24 웹훅 일회성 등록 API 추가**: `/api/cafe24/webhook/register` (CAFE24_WEBHOOK_SECRET으로 보호)
+- **새 브라우저 로그인 시 프로필 이미지 미표시 버그 수정**: `syncSession`에서 `userProfileImage` 없을 때 DB fetch 추가
+- **알림 페이지 API 파라미터 버그 수정**: `email` → `userId` 파라미터로 수정 (`p-notification/page.tsx`)
+
 ### 11.3 2026-02-23 업데이트 (세션 2)
 - **로그인 방식 전환**: `LoginModal`의 `supabase.auth.signInWithOtp` → 자체 `/api/auth/send-code` + `/api/auth/verify-code` API로 전환 (Supabase OTP 발송 실패 문제 해결)
 - **p-settings UUID 전환**: `/api/user/profile`, `/api/subscription/notifications`, `/api/prediction/stats` 호출 시 `?email=` → `?id=` (UUID) 파라미터로 전환. 알림 토글 PUT, 프로필 저장 PUT도 동일하게 수정
@@ -406,8 +414,8 @@ const systemPrompt = `
 | # | 항목 | 상태 |
 |---|------|------|
 | 1 | 카페24 환경변수 세팅 (Netlify) | ✅ 완료 (6개 변수, CREDIT_PRODUCT_MAP 제외) |
-| 2 | 카페24 앱 설치 → OAuth 토큰 발급 | 🔧 진행중 (개발자계정 신규 생성 완료) |
-| 3 | 카페24 Webhook URL 등록 | 대기 |
+| 2 | 카페24 앱 설치 → OAuth 토큰 발급 | ✅ 완료 (2026-02-23) |
+| 3 | 카페24 Webhook URL 등록 | ⏳ 심사 승인 대기 중 (2026-02-23 심사 요청) |
 | 4 | 크레딧 상품 등록 + CREDIT_PRODUCT_MAP 매핑 | 대기 |
 | 5 | Mock → 실결제 전환 (충전 버튼 URL 변경) | 대기 |
 | 6 | 알림 트리거 연결 (분석 완료 → checkRankingChangesAndNotify 호출) | 대기 |
