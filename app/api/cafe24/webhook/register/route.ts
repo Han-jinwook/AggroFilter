@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     const base = getCafe24ApiBaseUrl().replace(/\/$/, '')
     const token = await getCafe24AccessToken()
 
-    const webhookUrl = `https://aggrofilter.netlify.app/api/cafe24/webhook?secret=${webhookSecret}`
+    const baseUrl = (process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.com').replace(/\/$/, '')
+    const webhookUrl = `${baseUrl}/api/cafe24/webhook?secret=${webhookSecret}`
 
     const res = await fetch(`${base}/admin/webhooks`, {
       method: 'POST',
