@@ -14,9 +14,8 @@ interface TLoginModalProps {
 }
 
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalProps) {
-  const [step, setStep] = useState<"email" | "code">("email")
+  const [step, setStep] = useState<"email" | "sent">("email")
   const [email, setEmail] = useState("")
-  const [code, setCode] = useState(["", "", "", "", "", ""])
   const [isLoading, setIsLoading] = useState(false)
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -24,97 +23,40 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     if (!email) return
 
     setIsLoading(true)
-    
     try {
-      const res = await fetch('/api/auth/send-code', {
+      const res = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send code')
-
-      setStep("code")
+      if (!res.ok) throw new Error(data.error || 'Failed to send link')
+      setStep("sent")
     } catch (error) {
       console.error(error);
-      alert('인증코드 발송에 실패했습니다. 이메일을 확인해주세요.');
+      alert('링크 발송에 실패했습니다. 이메일을 확인해주세요.');
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleCodeChange = (index: number, value: string) => {
-    // 숫자만 입력 가능
-    if (value && !/^\d$/.test(value)) return
-
-    const newCode = [...code]
-    newCode[index] = value
-    setCode(newCode)
-
-    // 자동 다음 칸 포커스
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`code-${index + 1}`)
-      nextInput?.focus()
-    }
-
-    // 6자리 모두 입력되면 자동 로그인
-    if (newCode.every((digit) => digit !== "") && newCode.join("").length === 6) {
-      handleLogin(newCode.join(""))
-    }
-  }
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
-      const prevInput = document.getElementById(`code-${index - 1}`)
-      prevInput?.focus()
-    }
-  }
-
-  const handleLogin = async (verificationCode: string) => {
-    setIsLoading(true)
-    
-    try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: verificationCode }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Invalid code')
-
-      // Success
-      const userId = data.userId ?? ''
-      onLoginSuccess(email, userId)
-      onOpenChange(false)
-      // Reset state
-      setStep("email")
-      setEmail("")
-      setCode(["", "", "", "", "", ""])
-      
-    } catch (error) {
-      console.error(error);
-      alert('인증번호가 올바르지 않거나 만료되었습니다.');
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleResendCode = async () => {
+  const handleResend = async () => {
     if (!email) return;
-    
+    setIsLoading(true)
     try {
-      const res = await fetch('/api/auth/send-code', {
+      const res = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
-
-      alert("인증코드가 재발송되었습니다.");
+      alert('링크가 재발송되었습니다.')
     } catch (error) {
       console.error(error);
-      alert('인증코드 재발송에 실패했습니다.');
+      alert('재발송에 실패했습니다.');
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -147,49 +89,38 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
               </div>
 
               <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-                {isLoading ? "발송 중..." : "인증코드 받기"}
+                {isLoading ? "발송 중..." : "로그인 링크 받기"}
               </Button>
             </form>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 text-center">
+              <div className="text-4xl">📧</div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">인증코드 입력</label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStep("email")}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    이메일 변경
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">{email}로 발송된 6자리 코드를 입력하세요</p>
+                <p className="font-semibold text-slate-800">이메일을 확인해주세요</p>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-blue-600">{email}</span>로<br />
+                  로그인 링크를 발송했습니다.<br />
+                  링크를 클릭하면 바로 로그인됩니다.
+                </p>
               </div>
-
-              <div className="flex gap-2 justify-center">
-                {code.map((digit, index) => (
-                  <Input
-                    key={index}
-                    id={`code-${index}`}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleCodeChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="h-14 w-12 text-center text-xl font-semibold"
-                  />
-                ))}
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="ghost"
+                  className="w-full text-sm text-muted-foreground hover:text-foreground"
+                  onClick={handleResend}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "발송 중..." : "링크 재발송"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setStep("email"); setEmail("") }}
+                  className="text-xs text-muted-foreground"
+                >
+                  이메일 변경
+                </Button>
               </div>
-
-              <Button
-                variant="ghost"
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
-                onClick={handleResendCode}
-              >
-                인증코드 재전송
-              </Button>
             </div>
           )}
 

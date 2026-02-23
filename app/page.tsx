@@ -45,6 +45,28 @@ export default function MainPage() {
     }
   }, [])
 
+  // 매직링크 콜백 처리
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const magicLogin = params.get('magic_login')
+    const magicEmail = params.get('email')
+    const magicUserId = params.get('userId')
+    const loginError = params.get('login_error')
+
+    if (magicLogin === 'success' && magicEmail && magicUserId) {
+      localStorage.setItem('userEmail', magicEmail)
+      localStorage.setItem('userId', magicUserId)
+      const nickname = magicEmail.split('@')[0]
+      if (!localStorage.getItem('userNickname')) localStorage.setItem('userNickname', nickname)
+      setUserEmail(magicEmail)
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (loginError) {
+      const msg = loginError === 'expired_token' ? '링크가 만료되었습니다. 다시 로그인해주세요.' : '유효하지 않은 링크입니다.'
+      alert(msg)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   // 크롬 확장팩에서 진입 시 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
