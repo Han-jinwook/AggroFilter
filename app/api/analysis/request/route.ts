@@ -3,7 +3,7 @@ import { pool } from '@/lib/db';
 import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
 import { refreshRankingCache } from '@/lib/ranking_v2';
-import { subscribeChannelAuto, checkRankingChangesAndNotify } from '@/lib/notification';
+import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
@@ -545,15 +545,9 @@ export async function POST(request: Request) {
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
 
-      // [v2.0] 분석 완료 후 백그라운드에서 랭킹 캐시 갱신 → 변동 감지 (순서 보장)
       refreshRankingCache(videoInfo.officialCategoryId)
-        .then(() => {
-          if (actualUserId && hasTranscript) {
-            return checkRankingChangesAndNotify(videoInfo.officialCategoryId, finalLanguage);
-          }
-        })
         .catch(err => {
-          console.error('랭킹 캐시 갱신/변동 감지 실패:', err);
+          console.error('랭킹 캐시 갱신 실패:', err);
         });
 
     } catch (error) {

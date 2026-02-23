@@ -387,6 +387,8 @@ const systemPrompt = `
 - **카페24 웹훅 일회성 등록 API 추가**: `/api/cafe24/webhook/register` (CAFE24_WEBHOOK_SECRET으로 보호)
 - **새 브라우저 로그인 시 프로필 이미지 미표시 버그 수정**: `syncSession`에서 `userProfileImage` 없을 때 DB fetch 추가
 - **알림 페이지 API 파라미터 버그 수정**: `email` → `userId` 파라미터로 수정 (`p-notification/page.tsx`)
+- **Mock → 실결제 전환**: 충전 모달에서 1/5/10 크레딧 선택 → 카페24 상품 페이지(`product_no` 18/19/20)로 직접 이동
+- **알림 트리거 폐기**: 분석 완료 후 `checkRankingChangesAndNotify` 호출 제거 — 40초 대기 후 즉시 결과 확인하는 UX와 충돌, 랭킹 변동 알림은 모닝 리포트 cron으로만 운영
 
 ### 11.3 2026-02-23 업데이트 (세션 2)
 - **로그인 방식 전환**: `LoginModal`의 `supabase.auth.signInWithOtp` → 자체 `/api/auth/send-code` + `/api/auth/verify-code` API로 전환 (Supabase OTP 발송 실패 문제 해결)
@@ -418,7 +420,7 @@ const systemPrompt = `
 | 3 | 카페24 Webhook URL 등록 | ⏳ 심사 승인 대기 중 (2026-02-23 심사 요청) |
 | 4 | 크레딧 상품 등록 + CREDIT_PRODUCT_MAP 매핑 | 대기 |
 | 5 | Mock → 실결제 전환 (충전 버튼 URL 변경) | 대기 |
-| 6 | 알림 트리거 연결 (분석 완료 → checkRankingChangesAndNotify 호출) | 대기 |
+| 6 | 알림 트리거 연결 (분석 완료 → checkRankingChangesAndNotify 호출) | ❌ 폐기 (2026-02-23) — 분석 즉시 결과 확인 UX와 충돌, 불필요 |
 
 ### MEDIUM — 품질 & 운영
 | # | 항목 | 상태 |
