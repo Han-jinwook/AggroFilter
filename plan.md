@@ -219,7 +219,7 @@ const systemPrompt = `
 - **Mock 결제**: `payment/mock/page.tsx` — 테스트용 결제 페이지
 
 ### 8.2 남은 세팅 작업
-1. **환경변수 등록** (Vercel): `CAFE24_MALL_ID`, `CAFE24_CLIENT_ID`, `CAFE24_CLIENT_SECRET`, `CAFE24_REDIRECT_URI`, `CAFE24_OAUTH_SCOPE`, `CAFE24_WEBHOOK_SECRET`, `CAFE24_CREDIT_PRODUCT_MAP`
+1. **환경변수 등록** (Netlify): `CAFE24_MALL_ID`, `CAFE24_CLIENT_ID`, `CAFE24_CLIENT_SECRET`, `CAFE24_REDIRECT_URI`, `CAFE24_OAUTH_SCOPE`, `CAFE24_WEBHOOK_SECRET`, `CAFE24_CREDIT_PRODUCT_MAP`
 2. **카페24 앱 설치**: 쇼핑몰에서 앱 설치 후 `/api/cafe24/oauth/start` 1회 호출하여 토큰 발급
 3. **Webhook URL 등록**: 카페24 개발자센터 → 주문완료 이벤트 → `https://도메인/api/cafe24/webhook?secret=xxx`
 4. **크레딧 상품 등록**: 카페24 쇼핑몰에 1/5/10 크레딧 상품 등록 → `CAFE24_CREDIT_PRODUCT_MAP` JSON 매핑
@@ -405,8 +405,8 @@ const systemPrompt = `
 ### HIGH — 수익화 & 핵심 기능
 | # | 항목 | 상태 |
 |---|------|------|
-| 1 | 카페24 환경변수 세팅 (Vercel) | 대기 |
-| 2 | 카페24 앱 설치 → OAuth 토큰 발급 | 대기 |
+| 1 | 카페24 환경변수 세팅 (Netlify) | ✅ 완료 (6개 변수, CREDIT_PRODUCT_MAP 제외) |
+| 2 | 카페24 앱 설치 → OAuth 토큰 발급 | 🔧 진행중 (개발자계정 신규 생성 완료) |
 | 3 | 카페24 Webhook URL 등록 | 대기 |
 | 4 | 크레딧 상품 등록 + CREDIT_PRODUCT_MAP 매핑 | 대기 |
 | 5 | Mock → 실결제 전환 (충전 버튼 URL 변경) | 대기 |
