@@ -389,6 +389,9 @@ const systemPrompt = `
 - **알림 페이지 API 파라미터 버그 수정**: `email` → `userId` 파라미터로 수정 (`p-notification/page.tsx`)
 - **Mock → 실결제 전환**: 충전 모달에서 1/5/10 크레딧 선택 → 카페24 상품 페이지(`product_no` 18/19/20)로 직접 이동
 - **알림 트리거 폐기**: 분석 완료 후 `checkRankingChangesAndNotify` 호출 제거 — 40초 대기 후 즉시 결과 확인하는 UX와 충돌, 랭킹 변동 알림은 모닝 리포트 cron으로만 운영
+- **도메인 구매 및 연결** (2026-02-23): `aggrofilter.com` 카페24에서 구매 → Netlify 커스텀 도메인 추가, A레코드(`75.2.60.5`), CNAME(`www` → `aggrofilter.netlify.app`) 설정 완료 → DNS 전파 대기 중
+- **환경변수 도메인 업데이트**: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_BASE_URL`, `CAFE24_REDIRECT_URI` → `https://aggrofilter.com` 으로 변경
+- **카페24 App URL / Redirect URI 변경**: `https://aggrofilter.netlify.app` → `https://aggrofilter.com`
 
 ### 11.3 2026-02-23 업데이트 (세션 2)
 - **로그인 방식 전환**: `LoginModal`의 `supabase.auth.signInWithOtp` → 자체 `/api/auth/send-code` + `/api/auth/verify-code` API로 전환 (Supabase OTP 발송 실패 문제 해결)
