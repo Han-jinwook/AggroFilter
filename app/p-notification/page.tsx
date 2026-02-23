@@ -61,6 +61,7 @@ export default function Page() {
 
   const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
   const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : ''
 
   // 익명 사용자가 알림 페이지 접근 시 로그인 모달 표시
   useEffect(() => {
@@ -68,9 +69,9 @@ export default function Page() {
   }, [isAnon])
 
   const fetchNotifications = useCallback(async () => {
-    if (!email) { setIsLoading(false); return }
+    if (!userId) { setIsLoading(false); return }
     try {
-      const res = await fetch(`/api/notification/list?email=${encodeURIComponent(email)}`)
+      const res = await fetch(`/api/notification/list?userId=${encodeURIComponent(userId)}`)
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
@@ -80,7 +81,7 @@ export default function Page() {
     } finally {
       setIsLoading(false)
     }
-  }, [email])
+  }, [userId])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
 
@@ -104,12 +105,12 @@ export default function Page() {
   }, [settings])
 
   const markAsRead = async (ids: number[]) => {
-    if (!email || ids.length === 0) return
+    if (!userId || ids.length === 0) return
     try {
       await fetch('/api/notification/list', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, ids })
+        body: JSON.stringify({ userId, ids })
       })
       setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, is_read: true } : n))
     } catch (e) { console.error(e) }
