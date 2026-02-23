@@ -77,10 +77,32 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
         const nicknameFromEmail = (email.split('@')[0] || '').trim()
         const currentNickname = localStorage.getItem('userNickname') || ''
         const currentEmail = localStorage.getItem('userEmail') || ''
+        const currentProfileImage = localStorage.getItem('userProfileImage') || ''
 
         if (currentEmail !== email) localStorage.setItem('userEmail', email)
         if (uid && !localStorage.getItem('userId')) localStorage.setItem('userId', uid)
         if (!currentNickname) localStorage.setItem('userNickname', nicknameFromEmail)
+
+        // 프로필 이미지가 없으면 DB에서 fetch
+        if (!currentProfileImage) {
+          try {
+            const profileRes = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`, { cache: 'no-store' })
+            if (profileRes.ok) {
+              const profileData = await profileRes.json()
+              if (profileData?.user) {
+                const dbNickname = profileData.user.nickname || nicknameFromEmail
+                const dbImage = profileData.user.image || ''
+                localStorage.setItem('userNickname', dbNickname)
+                localStorage.setItem('userProfileImage', dbImage)
+                if (isMounted) {
+                  setNickname(dbNickname)
+                  setProfileImage(dbImage)
+                }
+              }
+            }
+          } catch {}
+        }
+
         if (isMounted) {
           if (!currentNickname) setNickname(nicknameFromEmail)
           const localPart = nicknameFromEmail.toLowerCase()
