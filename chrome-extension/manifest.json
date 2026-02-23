@@ -12,7 +12,7 @@
     "https://www.youtube.com/*",
     "https://m.youtube.com/*",
     "https://youtu.be/*",
-    "https://aggrofilter.netlify.app/*",
+    "https://aggrofilter.com/*",
     "http://localhost:3000/*"
   ],
   "background": {
@@ -39,7 +39,7 @@
     },
     {
       "matches": [
-        "https://aggrofilter.netlify.app/*",
+        "https://aggrofilter.com/*",
         "http://localhost:3000/*"
       ],
       "js": ["inject-transcript.js"],
@@ -68,7 +68,7 @@
   },
   "externally_connectable": {
     "matches": [
-      "https://aggrofilter.netlify.app/*",
+      "https://aggrofilter.com/*",
       "http://localhost:3000/*"
     ]
   },
