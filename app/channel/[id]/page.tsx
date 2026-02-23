@@ -199,13 +199,14 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     setModalStep('intro')
   }
 
-  const goToMockPayment = () => {
-    if (!channelId) {
-      alert('채널 정보를 찾을 수 없습니다.')
-      return
-    }
-    const redirectUrl = `/channel/${channelId}`
-    router.push(`/payment/mock?redirectUrl=${encodeURIComponent(redirectUrl)}`)
+  const CAFE24_PRODUCTS = [
+    { credits: 1, productNo: 18, label: '1크레딧', price: '1,000원' },
+    { credits: 5, productNo: 19, label: '5크레딧', price: '4,500원' },
+    { credits: 10, productNo: 20, label: '10크레딧', price: '8,000원' },
+  ]
+
+  const goToCafe24Payment = (productNo: number) => {
+    window.open(`https://nwjddus96.cafe24.com/product/detail.html?product_no=${productNo}`, '_blank')
   }
 
   const closeModal = () => setModalStep(null)
@@ -243,17 +244,24 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
           )}
 
           {modalStep === 'charge' && (
-            <div className="mt-3 text-sm text-slate-700 whitespace-pre-line leading-relaxed">
-              {typeof credits === 'number' && credits > 0
-                ? `재분석 1회 요청 시 1 크레딧이 차감됩니다.
-
-- 현재 보유 크레딧: ${credits}
-- 추가 결제를 원하시면 충전 페이지로 이동할 수 있습니다.`
-                : `재분석 1회 요청 시 1 크레딧이 차감됩니다.
-보유 크레딧이 부족하여 충전 페이지로 이동합니다.
-
-- 1 크레딧 = 약 1,000원 (VAT 별도)
-- 결제 완료 시 자동으로 크레딧이 충전되며 재분석이 시작됩니다.`}
+            <div className="mt-3 text-sm text-slate-700 leading-relaxed">
+              <p>재분석 1회 요청 시 1 크레딧이 차감됩니다.</p>
+              {typeof credits === 'number' && credits > 0 && (
+                <p className="mt-1">현재 보유 크레딧: <span className="font-black text-indigo-600">{credits}</span></p>
+              )}
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {CAFE24_PRODUCTS.map((p) => (
+                  <button
+                    key={p.productNo}
+                    type="button"
+                    onClick={() => { closeModal(); goToCafe24Payment(p.productNo) }}
+                    className="flex flex-col items-center rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-3 hover:bg-indigo-100 transition-colors"
+                  >
+                    <span className="text-base font-black text-indigo-700">{p.label}</span>
+                    <span className="mt-1 text-xs text-slate-500">{p.price}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -290,51 +298,13 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
             )}
 
             {modalStep === 'charge' && (
-              <>
-                {typeof credits === 'number' && credits > 0 ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeModal()
-                      }}
-                      className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                    >
-                      확인 (영상 선택)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeModal()
-                        goToMockPayment()
-                      }}
-                      className="flex-1 rounded-xl border border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700"
-                    >
-                      크레딧 추가 충전
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeModal()
-                        goToMockPayment()
-                      }}
-                      className="flex-1 rounded-xl border border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700"
-                    >
-                      충전하러 가기
-                    </button>
-                  </>
-                )}
-              </>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                {typeof credits === 'number' && credits > 0 ? '확인 (영상 선택)' : '취소'}
+              </button>
             )}
           </div>
         </div>
