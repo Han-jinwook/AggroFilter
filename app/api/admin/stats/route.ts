@@ -44,12 +44,44 @@ export async function GET(request: Request) {
         FROM t_analyses
         WHERE f_created_at > NOW() - INTERVAL '30 days'
         GROUP BY DATE(f_created_at)
-        ORDER BY DATE(f_created_at) DESC
+        ORDER BY DATE(f_created_at) ASC
+      `);
+
+      // 3. Score distribution (reliability buckets)
+      const scoreDist = await client.query(`
+        SELECT
+          COUNT(CASE WHEN f_score >= 70 THEN 1 END) as green,
+          COUNT(CASE WHEN f_score >= 40 AND f_score < 70 THEN 1 END) as yellow,
+          COUNT(CASE WHEN f_score < 40 THEN 1 END) as red
+        FROM t_analyses
+        WHERE f_score IS NOT NULL
+      `);
+
+      // 4. Recheck vs new
+      const recheckStats = await client.query(`
+        SELECT
+          COUNT(CASE WHEN f_is_recheck = true THEN 1 END) as recheck_count,
+          COUNT(CASE WHEN f_is_recheck = false OR f_is_recheck IS NULL THEN 1 END) as new_count
+        FROM t_analyses
+      `);
+
+      // 5. Language distribution
+      const langStats = await client.query(`
+        SELECT
+          COALESCE(f_language, 'unknown') as language,
+          COUNT(*) as count
+        FROM t_analyses
+        GROUP BY COALESCE(f_language, 'unknown')
+        ORDER BY count DESC
+        LIMIT 10
       `);
 
       return NextResponse.json({
         summary: totalStats.rows[0],
-        daily: dailyStats.rows
+        daily: dailyStats.rows,
+        scoreDist: scoreDist.rows[0],
+        recheckStats: recheckStats.rows[0],
+        langStats: langStats.rows,
       });
     } finally {
       client.release();

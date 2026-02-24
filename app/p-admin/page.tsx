@@ -411,45 +411,181 @@ export default function AdminPage() {
         <div>
           {/* === STATS TAB === */}
           {activeTab === 'stats' && stats && (
-            <div className="space-y-6">
+            <div className="space-y-5">
+              {/* 요약 카드 */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 text-gray-500 mb-2">
-                    <Users className="w-4 h-4" /> <span className="text-xs font-bold">전체 유저</span>
+                {[
+                  { icon: <Users className="w-4 h-4" />, label: '전체 유저', value: stats.summary.total_users, color: 'text-gray-500', valColor: 'text-gray-900' },
+                  { icon: <Activity className="w-4 h-4" />, label: '분석 사용자', value: stats.summary.unique_analysts, color: 'text-indigo-500', valColor: 'text-indigo-600' },
+                  { icon: <Video className="w-4 h-4" />, label: '전체 분석', value: stats.summary.total_analyses, color: 'text-gray-500', valColor: 'text-gray-900' },
+                  { icon: <TrendingUp className="w-4 h-4" />, label: '전체 채널', value: stats.summary.total_channels, color: 'text-gray-500', valColor: 'text-gray-900' },
+                ].map(({ icon, label, value, color, valColor }) => (
+                  <div key={label} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                    <div className={`flex items-center gap-2 ${color} mb-2`}>
+                      {icon} <span className="text-xs font-bold">{label}</span>
+                    </div>
+                    <div className={`text-3xl font-black ${valColor}`}>{Number(value).toLocaleString()}</div>
                   </div>
-                  <div className="text-3xl font-black text-gray-900">{stats.summary.total_users}</div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 text-indigo-500 mb-2">
-                    <Activity className="w-4 h-4" /> <span className="text-xs font-bold">분석 사용자</span>
-                  </div>
-                  <div className="text-3xl font-black text-indigo-600">{stats.summary.unique_analysts}</div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 text-gray-500 mb-2">
-                    <Video className="w-4 h-4" /> <span className="text-xs font-bold">전체 분석</span>
-                  </div>
-                  <div className="text-3xl font-black text-gray-900">{stats.summary.total_analyses}</div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 text-gray-500 mb-2">
-                    <TrendingUp className="w-4 h-4" /> <span className="text-xs font-bold">전체 채널</span>
-                  </div>
-                  <div className="text-3xl font-black text-gray-900">{stats.summary.total_channels}</div>
-                </div>
+                ))}
               </div>
+
+              {/* 일별 분석 SVG 바차트 */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-700 mb-4">일별 분석 추이 (최근 30일)</h3>
-                <div className="space-y-2">
-                  {stats.daily.map((day: any) => (
-                    <div key={day.date} className="flex items-center gap-3">
-                      <div className="text-xs text-gray-500 w-24">{new Date(day.date).toLocaleDateString()}</div>
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, (day.count / (Math.max(...stats.daily.map((d: any) => d.count)) || 1)) * 100)}%` }} />
-                      </div>
-                      <div className="text-xs font-bold text-gray-700 w-8">{day.count}</div>
+                {(() => {
+                  const daily: { date: string; count: number }[] = stats.daily;
+                  const maxVal = Math.max(...daily.map(d => Number(d.count)), 1);
+                  const W = 700, H = 120, PAD = 28, BAR_GAP = 2;
+                  const barW = daily.length > 0 ? Math.max(4, (W - PAD * 2) / daily.length - BAR_GAP) : 8;
+                  const step = (W - PAD * 2) / Math.max(daily.length, 1);
+                  return (
+                    <div className="overflow-x-auto">
+                      <svg viewBox={`0 0 ${W} ${H + 24}`} className="w-full" style={{ minWidth: 320 }}>
+                        {/* Y grid lines */}
+                        {[0, 0.25, 0.5, 0.75, 1].map(r => (
+                          <line key={r} x1={PAD} y1={H - H * r + 4} x2={W - PAD} y2={H - H * r + 4} stroke="#f1f5f9" strokeWidth="1" />
+                        ))}
+                        {/* Bars */}
+                        {daily.map((d, i) => {
+                          const h = Math.max(2, (Number(d.count) / maxVal) * (H - 8));
+                          const x = PAD + i * step + (step - barW) / 2;
+                          const y = H - h + 4;
+                          return (
+                            <g key={d.date}>
+                              <rect x={x} y={y} width={barW} height={h} rx="3" fill="#6366f1" opacity="0.85" />
+                              {Number(d.count) === maxVal && (
+                                <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="#6366f1" fontWeight="bold">{d.count}</text>
+                              )}
+                            </g>
+                          );
+                        })}
+                        {/* X labels — show every ~5 days */}
+                        {daily.map((d, i) => {
+                          if (i % Math.ceil(daily.length / 6) !== 0 && i !== daily.length - 1) return null;
+                          const x = PAD + i * step + step / 2;
+                          const label = new Date(d.date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+                          return <text key={d.date} x={x} y={H + 18} textAnchor="middle" fontSize="9" fill="#94a3b8">{label}</text>;
+                        })}
+                      </svg>
                     </div>
-                  ))}
+                  );
+                })()}
+              </div>
+
+              {/* 하단 3개 차트 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                {/* 신뢰도 분포 도넛 */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4">신뢰도 분포</h3>
+                  {(() => {
+                    const g = Number(stats.scoreDist?.green || 0);
+                    const y = Number(stats.scoreDist?.yellow || 0);
+                    const r = Number(stats.scoreDist?.red || 0);
+                    const total = g + y + r || 1;
+                    const pct = (v: number) => Math.round(v / total * 100);
+                    const segments = [
+                      { val: g, color: '#10b981', label: '🟢 Green', pct: pct(g) },
+                      { val: y, color: '#f59e0b', label: '🟡 Yellow', pct: pct(y) },
+                      { val: r, color: '#ef4444', label: '🔴 Red', pct: pct(r) },
+                    ];
+                    // SVG donut
+                    const cx = 60, cy = 60, R = 46, r2 = 28;
+                    let startAngle = -Math.PI / 2;
+                    const arcs = segments.map(s => {
+                      const angle = (s.val / total) * 2 * Math.PI;
+                      const x1 = cx + R * Math.cos(startAngle), y1 = cy + R * Math.sin(startAngle);
+                      const x2 = cx + R * Math.cos(startAngle + angle), y2 = cy + R * Math.sin(startAngle + angle);
+                      const xi1 = cx + r2 * Math.cos(startAngle + angle), yi1 = cy + r2 * Math.sin(startAngle + angle);
+                      const xi2 = cx + r2 * Math.cos(startAngle), yi2 = cy + r2 * Math.sin(startAngle);
+                      const large = angle > Math.PI ? 1 : 0;
+                      const path = `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${r2} ${r2} 0 ${large} 0 ${xi2} ${yi2} Z`;
+                      startAngle += angle;
+                      return { ...s, path };
+                    });
+                    return (
+                      <div className="flex items-center gap-4">
+                        <svg viewBox="0 0 120 120" className="w-24 h-24 flex-shrink-0">
+                          {arcs.map(a => <path key={a.label} d={a.path} fill={a.color} opacity="0.9" />)}
+                          <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#1e293b">{total.toLocaleString()}</text>
+                          <text x={cx} y={cy + 15} textAnchor="middle" fontSize="8" fill="#94a3b8">총 분석</text>
+                        </svg>
+                        <div className="space-y-1.5 flex-1">
+                          {segments.map(s => (
+                            <div key={s.label} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600">{s.label}</span>
+                              <span className="font-bold text-gray-900">{s.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 신규 vs 재분석 */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4">신규 vs 재분석</h3>
+                  {(() => {
+                    const nw = Number(stats.recheckStats?.new_count || 0);
+                    const rc = Number(stats.recheckStats?.recheck_count || 0);
+                    const total = nw + rc || 1;
+                    const nwPct = Math.round(nw / total * 100);
+                    const rcPct = 100 - nwPct;
+                    return (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600 font-bold">신규 분석</span>
+                            <span className="font-black text-indigo-600">{nwPct}% <span className="text-gray-400 font-normal">({nw.toLocaleString()})</span></span>
+                          </div>
+                          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${nwPct}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600 font-bold">재분석</span>
+                            <span className="font-black text-violet-600">{rcPct}% <span className="text-gray-400 font-normal">({rc.toLocaleString()})</span></span>
+                          </div>
+                          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-violet-400 rounded-full transition-all" style={{ width: `${rcPct}%` }} />
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-gray-100 text-xs text-gray-400 text-center">
+                          총 {total.toLocaleString()}건
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 언어별 분포 */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4">언어별 분석</h3>
+                  {(() => {
+                    const langs: { language: string; count: number }[] = stats.langStats || [];
+                    const total = langs.reduce((s, l) => s + Number(l.count), 0) || 1;
+                    const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+                    return (
+                      <div className="space-y-2">
+                        {langs.map((l, i) => {
+                          const pct = Math.round(Number(l.count) / total * 100);
+                          return (
+                            <div key={l.language}>
+                              <div className="flex justify-between text-xs mb-0.5">
+                                <span className="text-gray-600 font-bold capitalize">{l.language}</span>
+                                <span className="font-black text-gray-700">{pct}% <span className="text-gray-400 font-normal">({Number(l.count).toLocaleString()})</span></span>
+                              </div>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: colors[i % colors.length] }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

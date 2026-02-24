@@ -466,11 +466,12 @@ const systemPrompt = `
 | 8 | Admin: 미매칭 결제(t_unclaimed_payments) 관리 UI | 대기 |
 | 9 | t_payment_logs에 실제 결제 기록 저장 | 대기 |
 | 10 | 알림 설정 토글 → 서버(f_notification_enabled) 동기화 | 대기 |
-| 11 | 배치 알림 Cron 설정 (Netlify scheduled function, 12:00/19:00) | 대기 |
+| 11 | 배치 알림 Cron 설정 (Netlify scheduled function, 12:00/19:00) | ✅ 완료 (동작 확인됨) |
 | 12 | Resend 커스텀 도메인 설정 (스팸 방지) | ⏳ DNS 레코드 등록 완료, 전파 대기 중 — 완료 후 RESEND_FROM_EMAIL 환경변수 추가 필요 |
 | 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | ✅ 완료 (2026-02-23) |
 | 14 | 비로그인 분석 데이터 정리 정책 수립 | 대기 |
 | 15 | Admin 통계: 고유 분석 사용자 수 표시 | 대기 |
+| 22 | 광고 세팅 (SideWingAds 실제 콘텐츠 연결) | 대기 |
 | 16 | 모바일 반응형 최종 점검 | 대기 |
 
 ### LOW — 개선 & 스케일
