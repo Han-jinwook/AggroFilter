@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppHeader } from '@/components/c-app-header';
-import { 
-  Users, 
-  BarChart3, 
-  History, 
-  CreditCard, 
-  Search, 
-  Plus, 
+import {
+  Users,
+  BarChart3,
+  History,
+  CreditCard,
+  Search,
+  Plus,
   Minus,
   TrendingUp,
   Video,
@@ -21,6 +21,186 @@ function isAllowedAdminEmail(email: string | null | undefined) {
 }
 
 type TabType = 'credits' | 'analysis' | 'stats' | 'payments';
+
+type ColDef = { key: string; label: string; width: number; fixed?: boolean };
+
+const DEFAULT_COLUMNS: ColDef[] = [
+  { key: 'checkbox',   label: '',          width: 36,  fixed: true },
+  { key: 'created_at', label: '일시',       width: 110 },
+  { key: 'user_email', label: '사용자',     width: 100 },
+  { key: 'channel',    label: '채널',       width: 110 },
+  { key: 'title',      label: '영상 제목',  width: 200 },
+  { key: 'score',      label: '신뢰도',     width: 68 },
+  { key: 'accuracy',   label: '정확도',     width: 68 },
+  { key: 'clickbait',  label: '어그로',     width: 68 },
+  { key: 'grounding',  label: '검색',       width: 80 },
+  { key: 'type',       label: '구분',       width: 68 },
+];
+const COL_STORAGE_KEY = 'admin_analysis_cols_v2';
+
+function loadCols(): ColDef[] {
+  if (typeof window === 'undefined') return DEFAULT_COLUMNS;
+  try {
+    const saved = localStorage.getItem(COL_STORAGE_KEY);
+    if (!saved) return DEFAULT_COLUMNS;
+    const parsed: { key: string; width: number }[] = JSON.parse(saved);
+    const ordered = parsed
+      .map(s => { const d = DEFAULT_COLUMNS.find(c => c.key === s.key); return d ? { ...d, width: s.width } : null; })
+      .filter(Boolean) as ColDef[];
+    DEFAULT_COLUMNS.forEach(c => { if (!ordered.find(o => o.key === c.key)) ordered.push({ ...c }); });
+    return ordered;
+  } catch { return DEFAULT_COLUMNS; }
+}
+
+function saveCols(cols: ColDef[]) {
+  localStorage.setItem(COL_STORAGE_KEY, JSON.stringify(cols.map(c => ({ key: c.key, width: c.width }))));
+}
+
+function AnalysisTable({ logs, selectedLogIds, toggleLogSelection, toggleAllLogs, isChiu3 }: {
+  logs: any[];
+  selectedLogIds: Set<string>;
+  toggleLogSelection: (id: string) => void;
+  toggleAllLogs: () => void;
+  isChiu3: boolean;
+}) {
+  const [cols, setCols] = useState<ColDef[]>(loadCols);
+  const dragColIdx = useRef<number | null>(null);
+  const dragOverIdx = useRef<number | null>(null);
+  const resizeIdx = useRef<number | null>(null);
+  const resizeStartX = useRef(0);
+  const resizeStartW = useRef(0);
+
+  const onResizeDown = (e: React.MouseEvent, idx: number) => {
+    if (!isChiu3) return;
+    e.preventDefault();
+    resizeIdx.current = idx;
+    resizeStartX.current = e.clientX;
+    resizeStartW.current = cols[idx].width;
+    const onMove = (me: MouseEvent) => {
+      if (resizeIdx.current === null) return;
+      const delta = me.clientX - resizeStartX.current;
+      setCols(prev => {
+        const next = prev.map((c, i) => i === resizeIdx.current ? { ...c, width: Math.max(40, resizeStartW.current + delta) } : c);
+        saveCols(next);
+        return next;
+      });
+    };
+    const onUp = () => { resizeIdx.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const onDragStart = (e: React.DragEvent, idx: number) => {
+    if (!isChiu3 || cols[idx].fixed) { e.preventDefault(); return; }
+    dragColIdx.current = idx;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const onDragOver = (e: React.DragEvent, idx: number) => {
+    if (!isChiu3) return;
+    e.preventDefault();
+    dragOverIdx.current = idx;
+  };
+  const onDrop = (e: React.DragEvent, idx: number) => {
+    if (!isChiu3) return;
+    e.preventDefault();
+    if (dragColIdx.current === null || dragColIdx.current === idx) return;
+    const from = dragColIdx.current;
+    setCols(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(idx, 0, moved);
+      saveCols(next);
+      return next;
+    });
+    dragColIdx.current = null;
+  };
+
+  const renderCell = (col: ColDef, log: any) => {
+    switch (col.key) {
+      case 'checkbox': return <input type="checkbox" checked={selectedLogIds.has(log.id)} onChange={() => toggleLogSelection(log.id)} className="rounded" />;
+      case 'created_at': return <span className="text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>;
+      case 'user_email': return log.user_email
+        ? <span className="text-gray-900 font-medium truncate block">{log.user_email.split('@')[0]}</span>
+        : log.user_id?.startsWith('anon_')
+          ? <span className="text-orange-400 italic">익명</span>
+          : <span className="text-gray-400 italic">-</span>;
+      case 'channel': return <span className="text-gray-600 truncate block">{log.channel_name}</span>;
+      case 'title': return <span className="text-gray-900 truncate block" title={log.title}>{log.title}</span>;
+      case 'score': return <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
+        log.score >= 70 ? 'bg-emerald-50 text-emerald-600' : log.score >= 40 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
+      }`}>{log.score}</span>;
+      case 'accuracy': return <span className="text-gray-600">{log.accuracy ?? '-'}</span>;
+      case 'clickbait': return <span className="text-gray-600">{log.clickbait ?? '-'}</span>;
+      case 'grounding': return log.grounding_used
+        ? <span title={(log.grounding_queries || []).join(', ')} className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 cursor-help">🔍 검색</span>
+        : <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">💭 추론</span>;
+      case 'type': return log.is_recheck
+        ? <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600">재분석</span>
+        : <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">신규</span>;
+      default: return null;
+    }
+  };
+
+  const totalWidth = cols.reduce((s, c) => s + c.width, 0);
+
+  return (
+    <div className="border border-gray-200 rounded-xl bg-white" style={{ display: 'flex', flexDirection: 'column', maxHeight: '72vh' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+        <table style={{ width: totalWidth, tableLayout: 'fixed', borderCollapse: 'collapse' }} className="text-xs">
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+            <tr style={{ background: '#f8fafc' }}>
+              {cols.map((col, idx) => (
+                <th
+                  key={col.key}
+                  style={{ width: col.width, minWidth: col.width, maxWidth: col.width, position: 'relative', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', padding: '10px 8px' }}
+                  className="text-left font-bold text-gray-500 select-none"
+                  draggable={isChiu3 && !col.fixed}
+                  onDragStart={e => onDragStart(e, idx)}
+                  onDragOver={e => onDragOver(e, idx)}
+                  onDrop={e => onDrop(e, idx)}
+                >
+                  {col.key === 'checkbox'
+                    ? <input type="checkbox" checked={logs.length > 0 && selectedLogIds.size === logs.length} onChange={toggleAllLogs} className="rounded" />
+                    : <span className={isChiu3 ? 'cursor-grab' : ''}>{col.label}</span>
+                  }
+                  {isChiu3 && !col.fixed && (
+                    <span
+                      onMouseDown={e => onResizeDown(e, idx)}
+                      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 5, cursor: 'col-resize', zIndex: 1 }}
+                      className="hover:bg-blue-400 opacity-0 hover:opacity-60 transition-opacity"
+                    />
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((log, ri) => (
+              <tr
+                key={log.id}
+                style={{ background: selectedLogIds.has(log.id) ? '#eef2ff' : ri % 2 === 0 ? '#ffffff' : '#f9fafb' }}
+                className="hover:bg-blue-50 transition-colors"
+              >
+                {cols.map(col => (
+                  <td
+                    key={col.key}
+                    style={{ width: col.width, minWidth: col.width, maxWidth: col.width, borderBottom: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', overflow: 'hidden', padding: '8px 8px' }}
+                    className="text-center align-middle"
+                  >
+                    {renderCell(col, log)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {logs.length === 0 && (
+              <tr><td colSpan={cols.length} className="py-12 text-center text-gray-400">분석 로그가 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
@@ -356,71 +536,13 @@ export default function AdminPage() {
                   </button>
                 </div>
               )}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-                <table className="w-full text-left min-w-[900px]">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="pl-4 pr-2 py-4 w-8">
-                        <input type="checkbox" checked={analysisLogs.length > 0 && selectedLogIds.size === analysisLogs.length} onChange={toggleAllLogs} className="rounded" />
-                      </th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">일시</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">사용자</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">채널</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">영상 제목</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">신뢰도</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">정확도</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">어그로</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">검색</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">구분</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {analysisLogs.map((log) => (
-                      <tr key={log.id} className={`hover:bg-gray-50 transition-colors ${selectedLogIds.has(log.id) ? 'bg-indigo-50' : ''}`}>
-                        <td className="pl-4 pr-2 py-3">
-                          <input type="checkbox" checked={selectedLogIds.has(log.id)} onChange={() => toggleLogSelection(log.id)} className="rounded" />
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                        <td className="px-3 py-3 text-xs font-medium max-w-[120px] truncate">
-                          {log.user_email ? (
-                            <span className="text-gray-900">{log.user_email.split('@')[0]}</span>
-                          ) : log.user_id?.startsWith('anon_') ? (
-                            <span className="text-orange-400 italic">익명</span>
-                          ) : (
-                            <span className="text-gray-400 italic">-</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 max-w-[100px] truncate">{log.channel_name}</td>
-                        <td className="px-3 py-3 text-xs text-gray-900 max-w-[180px] truncate" title={log.title}>{log.title}</td>
-                        <td className="px-3 py-3">
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${log.score >= 70 ? 'bg-emerald-50 text-emerald-600' : log.score >= 40 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
-                            {log.score}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 text-center">{log.accuracy ?? '-'}</td>
-                        <td className="px-3 py-3 text-xs text-gray-600 text-center">{log.clickbait ?? '-'}</td>
-                        <td className="px-3 py-3 text-center">
-                          {log.grounding_used ? (
-                            <span title={(log.grounding_queries || []).join(', ')} className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 cursor-help">🔍 검색</span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">💭 추론</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          {log.is_recheck ? (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600">재분석</span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">신규</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {analysisLogs.length === 0 && (
-                  <div className="p-12 text-center text-gray-400 text-sm">분석 로그가 없습니다.</div>
-                )}
-              </div>
+              <AnalysisTable
+                logs={analysisLogs}
+                selectedLogIds={selectedLogIds}
+                toggleLogSelection={toggleLogSelection}
+                toggleAllLogs={toggleAllLogs}
+                isChiu3={isAllowedAdminEmail(typeof window !== 'undefined' ? localStorage.getItem('userEmail') : '')}
+              />
             </div>
           )}
 
