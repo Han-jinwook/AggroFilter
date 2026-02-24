@@ -7,6 +7,7 @@ import "./globals.css"
 import { BottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
+import { ToastContainer } from "@/components/c-toast"
 
 interface TRootLayoutProps {
   children: React.ReactNode
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <GlobalLoginModal />
+          <ToastContainer />
           <SideWingAds />
           <BottomBanner />
           <Analytics />

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppHeader } from '@/components/c-app-header';
+import { toast } from '@/components/c-toast';
 import {
   Users,
   BarChart3,
@@ -294,7 +295,7 @@ export default function AdminPage() {
         const data = await res.json();
         setFoundUser(data.user);
       } else {
-        alert('사용자를 찾을 수 없습니다.');
+        toast.error('사용자를 찾을 수 없습니다.');
         setFoundUser(null);
       }
     } catch (e) { console.error(e); }
@@ -311,7 +312,7 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setFoundUser({ ...foundUser, credits: data.newCredits });
-        alert(`${amount > 0 ? '지급' : '차감'} 완료`);
+        toast.success(`${amount > 0 ? '지급' : '차감'} 완료`);
       }
     } catch (e) { console.error(e); }
   };
@@ -327,7 +328,7 @@ export default function AdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`${data.deleted}건 삭제 완료`);
+        toast.success(`${data.deleted}건 삭제 완료`);
         setSelectedLogIds(new Set());
         fetchAnalysisLogs();
         fetchStats();
