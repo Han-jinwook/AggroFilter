@@ -41,7 +41,8 @@ export async function POST(request: Request) {
         COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
         COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
         a.f_official_category_id as category_id,
-        a.f_channel_id as channel_id
+        a.f_channel_id as channel_id,
+        c.f_language as channel_language
       FROM t_analyses a
       LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
       WHERE a.f_user_id = $1
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         channel: row.channel_name || '알 수 없음',
         channelId: row.channel_id,
         channelIcon: row.channel_icon,
+        channelLanguage: row.channel_language || 'korean',
         score: row.score,
         category: getCategoryName(row.category_id),
         categoryId: row.category_id,

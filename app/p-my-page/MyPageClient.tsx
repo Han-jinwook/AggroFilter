@@ -18,6 +18,7 @@ interface TAnalysisVideo {
   channel: string
   channelId: string
   channelIcon: string
+  channelLanguage?: string
   score: number
   rank: number | string
   totalRank: number | string
@@ -35,6 +36,7 @@ interface TSubscribedChannel {
   categoryId: number
   videoCount: number
   rankScore: number
+  language?: string
 }
 
 type TSortOption = "date" | "trust"
@@ -142,7 +144,8 @@ export default function MyPageClient() {
           topic: v.category || "기타",
           categoryId: v.categoryId,
           videoCount: 1,
-          rankScore: v.score
+          rankScore: v.score,
+          language: v.channelLanguage || 'korean'
         });
       } else {
         if (v.date > existing.date) existing.date = v.date;
@@ -311,12 +314,13 @@ export default function MyPageClient() {
     }
   }
 
-  const handleChannelPressStart = (channelId: string, categoryId?: number) => {
+  const handleChannelPressStart = (channelId: string, categoryId?: number, language?: string) => {
     isLongPressRef.current = false
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true
       const categoryParam = categoryId ? `category=${categoryId}&` : ''
-      router.push(`/p-ranking?${categoryParam}channel=${channelId}`)
+      const langParam = language && language !== 'korean' ? `&lang=${language}` : ''
+      router.push(`/p-ranking?${categoryParam}channel=${channelId}${langParam}`)
     }, 500)
   }
 
@@ -844,10 +848,10 @@ export default function MyPageClient() {
                   return (
                     <div key={channel.id} className="relative group">
                       <button
-                        onMouseDown={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId)}
+                        onMouseDown={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId, channel.language)}
                         onMouseUp={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
                         onMouseLeave={isManageMode ? undefined : handleChannelPressCancel}
-                        onTouchStart={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId)}
+                        onTouchStart={isManageMode ? undefined : () => handleChannelPressStart(channel.channelId, channel.categoryId, channel.language)}
                         onTouchEnd={isManageMode ? undefined : () => handleChannelPressEnd(channel.id)}
                         onTouchCancel={isManageMode ? undefined : handleChannelPressCancel}
                         onClick={isManageMode ? () => {
