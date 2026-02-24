@@ -409,7 +409,7 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
-        </div>
+            </div>
 
             {/* 알림 설정 */}
             <div className="bg-card border rounded-xl p-6 shadow-sm">
