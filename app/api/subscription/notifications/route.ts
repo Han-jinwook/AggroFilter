@@ -23,12 +23,15 @@ export async function GET(request: Request) {
       await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_grade_change BOOLEAN DEFAULT TRUE`);
       await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_ranking_change BOOLEAN DEFAULT TRUE`);
       await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_notify_top10_change BOOLEAN DEFAULT TRUE`);
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ranking_threshold INTEGER DEFAULT 10`);
+      await client.query(`ALTER TABLE t_channel_subscriptions ADD COLUMN IF NOT EXISTS f_top10_notified_at TIMESTAMPTZ`);
 
       const result = await client.query(`
         SELECT
           COALESCE(f_notify_grade_change, TRUE) as f_notify_grade_change,
           COALESCE(f_notify_ranking_change, TRUE) as f_notify_ranking_change,
-          COALESCE(f_notify_top10_change, TRUE) as f_notify_top10_change
+          COALESCE(f_notify_top10_change, TRUE) as f_notify_top10_change,
+          COALESCE(f_ranking_threshold, 10) as f_ranking_threshold
         FROM t_users
         WHERE f_id = $1
       `, [id]);
@@ -38,6 +41,7 @@ export async function GET(request: Request) {
           f_notify_grade_change: true,
           f_notify_ranking_change: true,
           f_notify_top10_change: true,
+          f_ranking_threshold: 10,
         });
       }
 
@@ -58,18 +62,33 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const { id, key, enabled } = await request.json();
+    const body = await request.json();
+    const { id, key, enabled, rankingThreshold } = body;
 
-    if (!id || !key || typeof enabled !== 'boolean') {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (!VALID_KEYS.includes(key)) {
-      return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     const client = await pool.connect();
     try {
+      // rankingThreshold 업데이트
+      if (rankingThreshold !== undefined) {
+        const v = Number(rankingThreshold);
+        if (![10, 20, 30].includes(v)) {
+          return NextResponse.json({ error: 'Invalid rankingThreshold' }, { status: 400 });
+        }
+        await client.query(`UPDATE t_users SET f_ranking_threshold = $1 WHERE f_id = $2`, [v, id]);
+        return NextResponse.json({ success: true, f_ranking_threshold: v });
+      }
+
+      // 토글 ON/OFF 업데이트
+      if (!key || typeof enabled !== 'boolean') {
+        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+      if (!VALID_KEYS.includes(key)) {
+        return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
+      }
+
       const result = await client.query(`
         UPDATE t_users
         SET ${key} = $1

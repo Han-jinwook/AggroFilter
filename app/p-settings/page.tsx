@@ -47,13 +47,6 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    const storedThreshold = localStorage.getItem('rankingThreshold')
-    if (storedThreshold === '20' || storedThreshold === '30') {
-      setRankingThreshold(storedThreshold as unknown as 10 | 20 | 30)
-    }
-  }, [])
-
-  useEffect(() => {
     const storedEmail = localStorage.getItem('userEmail')
     const anon = isAnonymousUser()
     setIsAnon(anon)
@@ -103,11 +96,15 @@ export default function SettingsPage() {
         fetch(`/api/subscription/notifications?id=${encodeURIComponent(uid)}`)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
-            if (data) setNotifySettings({
-              f_notify_grade_change: data.f_notify_grade_change ?? true,
-              f_notify_ranking_change: data.f_notify_ranking_change ?? true,
-              f_notify_top10_change: data.f_notify_top10_change ?? true,
-            })
+            if (data) {
+              setNotifySettings({
+                f_notify_grade_change: data.f_notify_grade_change ?? true,
+                f_notify_ranking_change: data.f_notify_ranking_change ?? true,
+                f_notify_top10_change: data.f_notify_top10_change ?? true,
+              })
+              const t = Number(data.f_ranking_threshold)
+              if (t === 10 || t === 20 || t === 30) setRankingThreshold(t)
+            }
           })
           .catch(() => {})
 
@@ -234,6 +231,21 @@ export default function SettingsPage() {
   const getFirstChar = (text: string) => {
     if (!text || text.length === 0) return 'U'
     return text.charAt(0).toUpperCase()
+  }
+
+  const handleThresholdChange = async (v: 10 | 20 | 30) => {
+    const uid = localStorage.getItem('userId')
+    if (!uid) return
+    setRankingThreshold(v)
+    try {
+      await fetch('/api/subscription/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: uid, rankingThreshold: v })
+      })
+    } catch (e) {
+      console.error('Threshold update error:', e)
+    }
   }
 
   const handleToggleNotify = async (key: keyof typeof notifySettings) => {
@@ -452,10 +464,7 @@ export default function SettingsPage() {
                       {([10, 20, 30] as const).map((v) => (
                         <button
                           key={v}
-                          onClick={() => {
-                            setRankingThreshold(v)
-                            localStorage.setItem('rankingThreshold', String(v))
-                          }}
+                          onClick={() => handleThresholdChange(v)}
                           className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
                             rankingThreshold === v
                               ? 'bg-blue-500 text-white'

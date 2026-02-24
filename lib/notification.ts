@@ -4,7 +4,7 @@ import { pool } from './db';
  * 신뢰도 점수를 그레이드로 변환
  */
 function getReliabilityGrade(score: number): string {
-  if (score >= 70) return 'Blue';
+  if (score >= 70) return 'Green';
   if (score >= 40) return 'Yellow';
   return 'Red';
 }
@@ -86,12 +86,14 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
           s.f_last_reliability_grade,
           s.f_last_reliability_score,
           s.f_last_top10_percent_status,
+          s.f_top10_notified_at,
           u.f_nickname,
           c.f_title as channel_name,
           c.f_thumbnail_url as channel_thumbnail,
           COALESCE(u.f_notify_grade_change, TRUE) as notify_grade,
           COALESCE(u.f_notify_ranking_change, TRUE) as notify_ranking,
-          COALESCE(u.f_notify_top10_change, TRUE) as notify_top10
+          COALESCE(u.f_notify_top10_change, TRUE) as notify_top10,
+          COALESCE(u.f_ranking_threshold, 10) as ranking_threshold
         FROM t_channel_subscriptions s
         JOIN t_users u ON s.f_user_id = u.f_id
         JOIN t_channels c ON s.f_channel_id = c.f_channel_id
@@ -125,8 +127,9 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
           });
         }
 
-        // 순위 변동 감지 (10% 이상 변동) → send-ranking-change
-        if (sub.notify_ranking && oldRank && Math.abs(current_rank - oldRank) >= Math.max(1, Math.ceil(totalChannels * 0.1))) {
+        // 순위 변동 감지 (유저별 threshold% 이상 변동) → send-ranking-change
+        const userThreshold = Math.max(1, Math.ceil(totalChannels * (sub.ranking_threshold / 100)));
+        if (sub.notify_ranking && oldRank && Math.abs(current_rank - oldRank) >= userThreshold) {
           console.log(`[알림] 순위 변동: ${sub.channel_name} (${oldRank}위 → ${current_rank}위)`);
           
           fetch(`${baseUrl}/api/notification/send-ranking-change`, {
@@ -146,8 +149,10 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
           });
         }
 
-        // 상위 10% 진입/탈락 감지 → send-top10-change
-        if (sub.notify_top10 && oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
+        // 상위 10% 진입/탈락 감지 → send-top10-change (7일 쿨다운)
+        const top10CooldownOk = !sub.f_top10_notified_at ||
+          (Date.now() - new Date(sub.f_top10_notified_at).getTime()) > 7 * 24 * 60 * 60 * 1000;
+        if (sub.notify_top10 && top10CooldownOk && oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
           console.log(`[알림] 상위 10%: ${sub.channel_name} (${oldTop10PercentStatus ? '탈락' : '진입'})`);
           
           fetch(`${baseUrl}/api/notification/send-top10-change`, {
@@ -164,6 +169,12 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
           }).catch(err => {
             console.error('[알림] 상위 10% 변화 알림 발송 실패:', err);
           });
+          // 쿨다운 타임스탬프 업데이트
+          await client.query(`
+            UPDATE t_channel_subscriptions
+            SET f_top10_notified_at = NOW()
+            WHERE f_user_id = $1 AND f_channel_id = $2
+          `, [sub.user_id, f_channel_id]);
         }
       }
 
