@@ -32,14 +32,21 @@ export async function GET(request: Request) {
           a.f_id as id,
           a.f_title as title,
           a.f_reliability_score as score,
+          a.f_accuracy_score as accuracy,
+          a.f_clickbait_score as clickbait,
           a.f_created_at as created_at,
+          a.f_is_recheck as is_recheck,
+          a.f_language as language,
+          a.f_grounding_used as grounding_used,
+          a.f_grounding_queries as grounding_queries,
           u.f_email as user_email,
+          u.f_id as user_id,
           COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         LEFT JOIN t_users u ON a.f_user_id = u.f_id
         ORDER BY a.f_created_at DESC
-        LIMIT 50
+        LIMIT 100
       `);
 
       return NextResponse.json({ logs: res.rows });

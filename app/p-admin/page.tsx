@@ -356,8 +356,8 @@ export default function AdminPage() {
                   </button>
                 </div>
               )}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+                <table className="w-full text-left min-w-[900px]">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="pl-4 pr-2 py-4 w-8">
@@ -367,7 +367,11 @@ export default function AdminPage() {
                       <th className="px-3 py-4 text-xs font-bold text-gray-500">사용자</th>
                       <th className="px-3 py-4 text-xs font-bold text-gray-500">채널</th>
                       <th className="px-3 py-4 text-xs font-bold text-gray-500">영상 제목</th>
-                      <th className="px-3 py-4 text-xs font-bold text-gray-500">점수</th>
+                      <th className="px-3 py-4 text-xs font-bold text-gray-500">신뢰도</th>
+                      <th className="px-3 py-4 text-xs font-bold text-gray-500">정확도</th>
+                      <th className="px-3 py-4 text-xs font-bold text-gray-500">어그로</th>
+                      <th className="px-3 py-4 text-xs font-bold text-gray-500">검색</th>
+                      <th className="px-3 py-4 text-xs font-bold text-gray-500">구분</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -376,20 +380,38 @@ export default function AdminPage() {
                         <td className="pl-4 pr-2 py-3">
                           <input type="checkbox" checked={selectedLogIds.has(log.id)} onChange={() => toggleLogSelection(log.id)} className="rounded" />
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>
-                        <td className="px-3 py-3 text-xs font-medium">
+                        <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="px-3 py-3 text-xs font-medium max-w-[120px] truncate">
                           {log.user_email ? (
-                            <span className="text-gray-900">{log.user_email}</span>
+                            <span className="text-gray-900">{log.user_email.split('@')[0]}</span>
+                          ) : log.user_id?.startsWith('anon_') ? (
+                            <span className="text-orange-400 italic">익명</span>
                           ) : (
-                            <span className="text-orange-500 italic">비로그인</span>
+                            <span className="text-gray-400 italic">-</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 max-w-[120px] truncate">{log.channel_name}</td>
-                        <td className="px-3 py-3 text-xs text-gray-900 max-w-[200px] truncate">{log.title}</td>
+                        <td className="px-3 py-3 text-xs text-gray-600 max-w-[100px] truncate">{log.channel_name}</td>
+                        <td className="px-3 py-3 text-xs text-gray-900 max-w-[180px] truncate" title={log.title}>{log.title}</td>
                         <td className="px-3 py-3">
-                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${log.score >= 70 ? 'bg-emerald-50 text-emerald-600' : log.score >= 50 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold ${log.score >= 70 ? 'bg-emerald-50 text-emerald-600' : log.score >= 40 ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
                             {log.score}
                           </span>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-gray-600 text-center">{log.accuracy ?? '-'}</td>
+                        <td className="px-3 py-3 text-xs text-gray-600 text-center">{log.clickbait ?? '-'}</td>
+                        <td className="px-3 py-3 text-center">
+                          {log.grounding_used ? (
+                            <span title={(log.grounding_queries || []).join(', ')} className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 cursor-help">🔍 검색</span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">💭 추론</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {log.is_recheck ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600">재분석</span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">신규</span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -769,7 +769,13 @@ export async function analyzeContent(
     // standardizeTopic 호출 및 관련 로직 제거
     // -----------------------------------
 
-    return analysisData;
+    // grounding 사용 여부 감지
+    const groundingMetadata = result?.candidates?.[0]?.groundingMetadata
+    const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? []
+    const groundingUsed = groundingQueries.length > 0
+    console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`)
+
+    return { ...analysisData, groundingUsed, groundingQueries };
 
   } catch (error: any) {
     console.error("Gemini Analysis Error Full Details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));

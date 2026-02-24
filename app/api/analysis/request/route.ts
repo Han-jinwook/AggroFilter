@@ -414,12 +414,14 @@ export async function POST(request: Request) {
             f_ai_title_recommendation, f_user_id, f_official_category_id,
             f_request_count, f_view_count, f_created_at, f_last_action_at,
             f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
-            f_is_latest, f_language
+            f_is_latest, f_language,
+            f_grounding_used, f_grounding_queries
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, 1, NOW(), NOW(),
             $17, $18, $19,
-            TRUE, $20
+            TRUE, $20,
+            $21, $22
           )
         `, [
           analysisId,
@@ -441,7 +443,9 @@ export async function POST(request: Request) {
           Boolean(isRecheck),
           isRecheck ? recheckParentAnalysisId : null,
           isRecheck ? new Date() : null,
-          finalLanguage
+          finalLanguage,
+          Boolean(analysisResult.groundingUsed),
+          analysisResult.groundingQueries?.length > 0 ? analysisResult.groundingQueries : null
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
