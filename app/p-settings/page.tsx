@@ -26,6 +26,7 @@ export default function SettingsPage() {
     f_notify_top10_change: true,
   })
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
+  const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [anonEmoji, setAnonEmoji] = useState('')
 
@@ -44,6 +45,13 @@ export default function SettingsPage() {
     setShowLoginModal(false)
     window.location.reload()
   }
+
+  useEffect(() => {
+    const storedThreshold = localStorage.getItem('rankingThreshold')
+    if (storedThreshold === '20' || storedThreshold === '30') {
+      setRankingThreshold(storedThreshold as unknown as 10 | 20 | 30)
+    }
+  }, [])
 
   useEffect(() => {
     const storedEmail = localStorage.getItem('userEmail')
@@ -390,16 +398,16 @@ export default function SettingsPage() {
 
             {/* 알림 설정 */}
             <div className="bg-card border rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
                 <Bell className="h-5 w-5" />
                 알림 설정
               </h2>
+              <p className="text-xs text-muted-foreground mb-4">알림은 하루 2회(오전 8시 · 오후 6시) 모아서 발송됩니다.</p>
               <div className="space-y-3">
                 {([
-                  { key: 'f_notify_grade_change' as const, label: '등급 변화 알림', desc: '구독 채널의 신뢰도 등급(Red/Yellow/Blue)이 변경될 때' },
-                  { key: 'f_notify_ranking_change' as const, label: '순위 변동 알림', desc: '구독 채널의 카테고리 내 순위가 크게 변동될 때' },
-                  { key: 'f_notify_top10_change' as const, label: 'TOP 10% 알림', desc: '구독 채널이 상위 10%에 진입하거나 탈락할 때' },
-                ]).map(({ key, label, desc }) => (
+                  { key: 'f_notify_grade_change' as const, label: '등급 변화 알림', desc: '구독 채널의 신뢰도 등급(Red / Yellow / Green)이 변경될 때' },
+                  { key: 'f_notify_top10_change' as const, label: 'TOP 10% 알림', desc: '구독 채널이 상위 10%에 진입하거나 탈락할 때 (동일 채널 7일 내 재알림 없음)' },
+                ] as { key: keyof typeof notifySettings; label: string; desc: string }[]).map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{label}</p>
@@ -418,6 +426,48 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 ))}
+
+                {/* 순위 변동 알림 — 임계값 선택 포함 */}
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">순위 변동 알림</p>
+                      <p className="text-xs text-muted-foreground">순위가 <span className="font-semibold text-foreground">{rankingThreshold}%</span> 이상 변동될 때</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleNotify('f_notify_ranking_change')}
+                      disabled={togglingKey === 'f_notify_ranking_change'}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${
+                        notifySettings.f_notify_ranking_change ? 'bg-blue-500' : 'bg-gray-300'
+                      } ${togglingKey === 'f_notify_ranking_change' ? 'opacity-50' : ''}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        notifySettings.f_notify_ranking_change ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                  {notifySettings.f_notify_ranking_change && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground mr-1">변동 기준:</span>
+                      {([10, 20, 30] as const).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => {
+                            setRankingThreshold(v)
+                            localStorage.setItem('rankingThreshold', String(v))
+                          }}
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                            rankingThreshold === v
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          {v}%
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
