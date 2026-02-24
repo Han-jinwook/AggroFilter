@@ -221,18 +221,22 @@ export default function SettingsPage() {
   const getUid = async (): Promise<string | null> => {
     let uid = localStorage.getItem('userId') || ''
     if (uid) return uid
-    try {
-      const res = await fetch('/api/auth/me')
-      if (res.ok) {
-        const data = await res.json()
-        if (data?.user?.id) {
-          uid = data.user.id
-          localStorage.setItem('userId', uid)
-          setUserId(uid)
-          return uid
+    // email로 DB에서 userId 조회 (배포 환경 fallback)
+    const storedEmail = localStorage.getItem('userEmail')
+    if (storedEmail) {
+      try {
+        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(storedEmail)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.user?.id) {
+            uid = data.user.id
+            localStorage.setItem('userId', uid)
+            setUserId(uid)
+            return uid
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
     return null
   }
 

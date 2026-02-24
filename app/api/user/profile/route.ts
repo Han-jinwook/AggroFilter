@@ -52,8 +52,10 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await pool.query(
-      'SELECT f_id, f_email, f_nickname, f_image FROM t_users WHERE f_id = $1',
-      [id]
+      id
+        ? 'SELECT f_id, f_email, f_nickname, f_image FROM t_users WHERE f_id = $1'
+        : 'SELECT f_id, f_email, f_nickname, f_image FROM t_users WHERE f_email = $1',
+      [id || email]
     );
 
     if (result.rows.length === 0) {
