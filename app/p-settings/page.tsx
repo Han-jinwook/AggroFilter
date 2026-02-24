@@ -414,7 +414,7 @@ export default function SettingsPage() {
                 <Bell className="h-5 w-5" />
                 알림 설정
               </h2>
-              <p className="text-xs text-muted-foreground mb-4">알림은 하루 2회(오전 8시 · 오후 6시) 모아서 발송됩니다.</p>
+              <p className="text-xs text-muted-foreground mb-4">알림은 하루 2회(자정 12시 · 오후 7시) 모아서 발송됩니다.</p>
               <div className="space-y-3">
                 {([
                   { key: 'f_notify_grade_change' as const, label: '등급 변화 알림', desc: '구독 채널의 신뢰도 등급(Red / Yellow / Green)이 변경될 때' },
