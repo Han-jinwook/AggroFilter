@@ -146,13 +146,13 @@ export default function ResultClient() {
                         predictedAccuracy: parsed.accuracy,
                         predictedClickbait: parsed.clickbait,
                         actualReliability: data.analysisData?.scores?.trust,
-                        userEmail: predUid,
+                        userId: predUid,
                       }),
                     })
                       .then(res => {
                         if (res.ok) {
                           // Re-fetch cumulative stats after successful save
-                          return fetch(`/api/prediction/stats?email=${encodeURIComponent(predUid)}`)
+                          return fetch(`/api/prediction/stats?id=${encodeURIComponent(predUid)}`)
                         }
                         return null
                       })
