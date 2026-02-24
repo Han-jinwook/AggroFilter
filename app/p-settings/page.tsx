@@ -23,7 +23,6 @@ export default function SettingsPage() {
     f_notify_ranking_change: true,
     f_notify_top10_change: true,
   })
-  const [togglingKey, setTogglingKey] = useState<string | null>(null)
   const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
   const [anonEmoji, setAnonEmoji] = useState('')
 
@@ -218,25 +217,20 @@ export default function SettingsPage() {
     }
   }
 
-  const handleToggleNotify = async (key: keyof typeof notifySettings) => {
+  const handleToggleNotify = (key: keyof typeof notifySettings) => {
     const uid = getUserId()
     if (!uid) return
 
-    setTogglingKey(key)
-    try {
-      const res = await fetch('/api/subscription/notifications', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: uid, key, enabled: !notifySettings[key] })
-      })
-      if (res.ok) {
-        setNotifySettings(prev => ({ ...prev, [key]: !prev[key] }))
-      }
-    } catch (e) {
-      console.error('Toggle notification error:', e)
-    } finally {
-      setTogglingKey(null)
-    }
+    const newValue = !notifySettings[key]
+    setNotifySettings(prev => ({ ...prev, [key]: newValue }))
+
+    fetch('/api/subscription/notifications', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: uid, key, enabled: newValue })
+    }).catch(() => {
+      setNotifySettings(prev => ({ ...prev, [key]: !newValue }))
+    })
   }
 
   return (
@@ -397,10 +391,9 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={() => handleToggleNotify(key)}
-                      disabled={togglingKey === key}
                       className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${
                         notifySettings[key] ? 'bg-blue-500' : 'bg-gray-300'
-                      } ${togglingKey === key ? 'opacity-50' : ''}`}
+                      }`}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
                         notifySettings[key] ? 'translate-x-5' : 'translate-x-0'
@@ -418,10 +411,9 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={() => handleToggleNotify('f_notify_ranking_change')}
-                      disabled={togglingKey === 'f_notify_ranking_change'}
                       className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${
                         notifySettings.f_notify_ranking_change ? 'bg-blue-500' : 'bg-gray-300'
-                      } ${togglingKey === 'f_notify_ranking_change' ? 'opacity-50' : ''}`}
+                      }`}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
                         notifySettings.f_notify_ranking_change ? 'translate-x-5' : 'translate-x-0'
