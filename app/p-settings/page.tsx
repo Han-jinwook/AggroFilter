@@ -218,8 +218,26 @@ export default function SettingsPage() {
     return text.charAt(0).toUpperCase()
   }
 
+  const getUid = async (): Promise<string | null> => {
+    let uid = localStorage.getItem('userId') || ''
+    if (uid) return uid
+    try {
+      const res = await fetch('/api/auth/me')
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.user?.id) {
+          uid = data.user.id
+          localStorage.setItem('userId', uid)
+          setUserId(uid)
+          return uid
+        }
+      }
+    } catch {}
+    return null
+  }
+
   const handleThresholdChange = async (v: 10 | 20 | 30) => {
-    const uid = userId || localStorage.getItem('userId')
+    const uid = await getUid()
     if (!uid) return
     setRankingThreshold(v)
     try {
@@ -234,7 +252,7 @@ export default function SettingsPage() {
   }
 
   const handleToggleNotify = async (key: keyof typeof notifySettings) => {
-    const uid = userId || localStorage.getItem('userId')
+    const uid = await getUid()
     if (!uid) return
 
     setTogglingKey(key)
