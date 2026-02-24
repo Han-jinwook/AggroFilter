@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
-import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
+import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser, getUserId } from '@/lib/anon'
 
 export default function SettingsPage() {
@@ -317,9 +317,16 @@ export default function SettingsPage() {
               {isAnon ? (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                  className="w-full px-4 py-2 border rounded-lg bg-amber-50 text-amber-700 text-sm text-left hover:bg-amber-100 transition-colors cursor-pointer"
+                  className="w-full rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 hover:from-blue-100 hover:to-sky-100 transition-colors cursor-pointer overflow-hidden"
                 >
-                  이메일을 등록하면 분석 기록을 보존하고, 알림을 받고, 기기 변경 시에도 데이터를 유지할 수 있어요 →
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <Image src="/images/character-logo.png" alt="캐릭터" width={40} height={40} className="flex-shrink-0" unoptimized />
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-blue-700">이메일을 등록해봐요! 😊</p>
+                      <p className="text-xs text-blue-500 mt-0.5">분석 기록 보존 · 알림 수신 · 기기 변경 시 데이터 유지</p>
+                    </div>
+                    <span className="ml-auto text-blue-400 text-lg">→</span>
+                  </div>
                 </button>
               ) : (
                 <input
@@ -442,31 +449,21 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className={`bg-card border ${isAnon ? 'border-blue-200' : 'border-red-200'} rounded-xl p-6 shadow-sm`}>
-              <h2 className="text-lg font-semibold mb-3">계정</h2>
-              {isAnon ? (
+            {!isAnon && (
+              <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">
+                <h2 className="text-lg font-semibold mb-3">계정</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  로그아웃하면 메인 페이지로 이동합니다.
+                </p>
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                 >
-                  <LogIn className="h-4 w-4" />
-                  이메일 등록하기
+                  <LogOut className="h-4 w-4" />
+                  로그아웃
                 </button>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    로그아웃하면 메인 페이지로 이동합니다.
-                  </p>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    로그아웃
-                  </button>
-                </>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
