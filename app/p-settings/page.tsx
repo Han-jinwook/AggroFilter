@@ -319,7 +319,7 @@ export default function SettingsPage() {
                   onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
                   className="w-full px-4 py-2 border rounded-lg bg-amber-50 text-amber-700 text-sm text-left hover:bg-amber-100 transition-colors cursor-pointer"
                 >
-                  이메일을 등록하면 분석 기록을 보존하고 알림을 받을 수 있어요 →
+                  이메일을 등록하면 분석 기록을 보존하고, 알림을 받고, 기기 변경 시에도 데이터를 유지할 수 있어요 →
                 </button>
               ) : (
                 <input
@@ -445,18 +445,13 @@ export default function SettingsPage() {
             <div className={`bg-card border ${isAnon ? 'border-blue-200' : 'border-red-200'} rounded-xl p-6 shadow-sm`}>
               <h2 className="text-lg font-semibold mb-3">계정</h2>
               {isAnon ? (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    이메일을 등록하면 기기 변경 시에도 데이터를 유지할 수 있어요.
-                  </p>
-                  <button
-                    onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    이메일 등록하기
-                  </button>
-                </>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                >
+                  <LogIn className="h-4 w-4" />
+                  이메일 등록하기
+                </button>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground mb-4">
