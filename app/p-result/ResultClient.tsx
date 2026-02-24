@@ -408,7 +408,7 @@ export default function ResultClient() {
 
   const getTrafficLightImage = (score: number) => {
     if (score >= 70) return "/images/traffic-light-green.png"
-    if (score >= 50) return "/images/traffic-light-yellow.png"
+    if (score >= 40) return "/images/traffic-light-yellow.png"
     return "/images/traffic-light-red.png"
   }
 
