@@ -229,6 +229,13 @@ export default function MyPageClient() {
 
   useEffect(() => {
     fetchVideos();
+    // 로그인 후 anonId가 남아있으면 자동 머지
+    const email = localStorage.getItem('userEmail')
+    const anonId = localStorage.getItem('anonId')
+    if (email && anonId && anonId.startsWith('anon_')) {
+      const uid = localStorage.getItem('userId')
+      if (uid) mergeAnonToEmail(uid, email).then(() => fetchVideos())
+    }
   }, [fetchVideos]);
 
   // 뒤로가기(popstate / bfcache) 시 URL에서 탭 복원 + 데이터 재로드

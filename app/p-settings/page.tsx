@@ -7,6 +7,7 @@ import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser, getUserId } from '@/lib/anon'
+import { mergeAnonToEmail } from '@/lib/merge'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -35,6 +36,13 @@ export default function SettingsPage() {
 
     if (storedEmail && !anon) {
       setEmail(storedEmail)
+
+      // 로그인 후 anonId가 남아있으면 자동 머지
+      const pendingAnonId = localStorage.getItem('anonId')
+      if (pendingAnonId && pendingAnonId.startsWith('anon_')) {
+        const uid = getUserId()
+        if (uid) mergeAnonToEmail(uid, storedEmail)
+      }
 
       const loadUserData = async () => {
         const uid = getUserId()
