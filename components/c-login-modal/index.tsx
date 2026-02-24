@@ -60,8 +60,16 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     }
   }
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setStep("email")
+      setEmail("")
+    }
+    onOpenChange(isOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
