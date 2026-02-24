@@ -19,9 +19,9 @@ interface NotificationRow {
 }
 
 const GRADE_INFO: Record<string, { color: string; label: string; icon: string }> = {
-  'Blue': { color: '#3b82f6', label: 'Blue', icon: '�' },
-  'Yellow': { color: '#f59e0b', label: 'Yellow', icon: '�' },
-  'Red': { color: '#ef4444', label: 'Red', icon: '�' },
+  'Green': { color: '#10b981', label: 'Green', icon: '🟢' },
+  'Yellow': { color: '#f59e0b', label: 'Yellow', icon: '🟡' },
+  'Red': { color: '#ef4444', label: 'Red', icon: '🔴' },
 };
 
 function buildChannelCard(data: any, link: string, content: string): string {

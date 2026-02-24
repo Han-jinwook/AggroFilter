@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     const gradeInfo: Record<string, { color: string; label: string; icon: string }> = {
-      'Blue': { color: '#3b82f6', label: '신뢰 (Blue Zone)', icon: '🔵' },
+      'Green': { color: '#10b981', label: '신뢰 (Green Zone)', icon: '�' },
       'Yellow': { color: '#f59e0b', label: '주의 (Yellow Zone)', icon: '🟡' },
       'Red': { color: '#ef4444', label: '경고 (Red Zone)', icon: '🔴' }
     };

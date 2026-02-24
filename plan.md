@@ -147,7 +147,7 @@ const systemPrompt = `
 ### Step 4: 알림 시스템 ✅ 완료 (트리거 연결 제외)
 - 알림 발송 API (등급변화, 랭킹변동, 상위10%) 구현.
 - 알림 페이지 UI (목록, 읽음처리, 타입별 아이콘, 모두읽음) 구현.
-- 모닝 리포트 cron API 구현.
+- 배치 알림 발송 API (하루 2회 cron, 미발송 알림 일괄 이메일) 구현.
 
 ### Step 5: 결제 시스템 (카페24) 🔧 코드 완성, 세팅 필요
 - OAuth 인증 플로우, Webhook 수신, 크레딧 충전 로직 구현 완료.
@@ -167,7 +167,7 @@ const systemPrompt = `
 #### 1. 신뢰도 그레이드 변화 알림 (우선순위: 높음)
 - **조건**: 채널의 신뢰도 그레이드가 변경될 때 (Red ↔ Yellow ↔ Green)
 - **그레이드 기준**:
-  - � Green Zone: 신뢰도 70점 이상
+  - 🟢 Green Zone: 신뢰도 70점 이상
   - 🟡 Yellow Zone: 신뢰도 40~69점
   - 🔴 Red Zone: 신뢰도 39점 이하
 - **알림 내용**: 카테고리, 채널명, 기존 등급 표시 (변화값은 표시하지 않음)
@@ -202,7 +202,7 @@ const systemPrompt = `
 - `/api/notification/list`: 알림 목록 조회 + 읽음 처리 API
 - `/api/notification/unread-count`: 미읽음 개수 API
 - `/api/subscription/unsubscribe`: 구독 해제 API
-- `/api/cron/send-morning-reports`: 모닝 리포트 생성 API
+- `/api/notification/batch-send`: 배치 알림 발송 API (하루 2회 cron 연동 대상)
 - 마이페이지 구독 관리 UI (체크박스 선택 삭제)
 - 알림 페이지 UI (목록, 읽음처리, 타입별 아이콘/색상, 모두읽음 버튼)
 - 알림 클릭 시 채널 통합 리포트(`/channel/[id]`)로 이동
@@ -210,6 +210,7 @@ const systemPrompt = `
 ### 7.5 향후 추가 예정
 - **구독 채널 리포트**: 마이페이지 내 상시 확인 가능한 대시보드 기능
 - **알림 세부 설정**: 마이페이지 > 알림 설정에서 일괄 관리
+- **배치 알림 Cron 연결**: Netlify scheduled function으로 12:00/19:00 자동 발송
 
 ---
 
@@ -465,7 +466,7 @@ const systemPrompt = `
 | 8 | Admin: 미매칭 결제(t_unclaimed_payments) 관리 UI | 대기 |
 | 9 | t_payment_logs에 실제 결제 기록 저장 | 대기 |
 | 10 | 알림 설정 토글 → 서버(f_notification_enabled) 동기화 | 대기 |
-| 11 | 모닝 리포트 Vercel Cron 설정 | 대기 |
+| 11 | 배치 알림 Cron 설정 (Netlify scheduled function, 12:00/19:00) | 대기 |
 | 12 | Resend 커스텀 도메인 설정 (스팸 방지) | ⏳ DNS 레코드 등록 완료, 전파 대기 중 — 완료 후 RESEND_FROM_EMAIL 환경변수 추가 필요 |
 | 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | ✅ 완료 (2026-02-23) |
 | 14 | 비로그인 분석 데이터 정리 정책 수립 | 대기 |
@@ -475,7 +476,7 @@ const systemPrompt = `
 ### LOW — 개선 & 스케일
 | # | 항목 | 상태 |
 |---|------|------|
-| 17 | 이메일 내 CTA 링크 /channel/[id]로 변경 | 대기 |
+| 17 | 이메일 내 CTA 링크 /channel/[id]로 변경 | ✅ 완료 (f_link 저장 시 이미 /channel/[id] 사용, Blue→Green 등급 수정) |
 | 18 | SEO / OG 메타태그 점검 | 대기 |
 | 19 | 에러 핸들링 강화 (토스트 등) | 대기 |
 | 20 | 플라자 정렬/필터 개선 | 대기 |
