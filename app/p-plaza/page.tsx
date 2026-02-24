@@ -18,6 +18,19 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
+// 모듈 레벨 클라이언트 캐시 (탭 전환·언마운트 후에도 보존, 10분 TTL)
+const CLIENT_CACHE_TTL = 10 * 60 * 1000
+const clientCache = new Map<string, { data: any; ts: number }>()
+function getClientCache<T>(key: string): T | null {
+  const entry = clientCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.ts > CLIENT_CACHE_TTL) { clientCache.delete(key); return null }
+  return entry.data as T
+}
+function setClientCache(key: string, data: any) {
+  clientCache.set(key, { data, ts: Date.now() })
+}
+
 interface TVideoData {
   id?: string
   date: string
@@ -250,14 +263,19 @@ export default function PlazaPage() {
 
   useEffect(() => {
     const fetchHotIssues = async () => {
+      let sort = hotFilter === 'trust' ? 'trust' : 'aggro'
+      let direction = sortDirection === 'best' ? 'desc' : 'asc'
+      const cacheKey = `hot-issues:${sort}:${direction}:${currentLanguage}`
+      const cached = getClientCache<any[]>(cacheKey)
+      if (cached) { setHotIssues(cached); return }
       setIsLoadingHotIssues(true)
       try {
-        let sort = hotFilter === 'trust' ? 'trust' : 'aggro'
-        let direction = sortDirection === 'best' ? 'desc' : 'asc'
         const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}&lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
-          setHotIssues(data.hotIssues || [])
+          const issues = data.hotIssues || []
+          setClientCache(cacheKey, issues)
+          setHotIssues(issues)
         }
       } catch (error) {
         console.error('Failed to fetch hot issues:', error)
@@ -270,12 +288,17 @@ export default function PlazaPage() {
 
   useEffect(() => {
     const fetchHotChannels = async () => {
+      const cacheKey = `hot-channels:${channelHotFilter}:${channelSortDirection}:${currentLanguage}`
+      const cached = getClientCache<any[]>(cacheKey)
+      if (cached) { setHotChannels(cached); return }
       setIsLoadingHotChannels(true)
       try {
         const res = await fetch(`/api/plaza/hot-channels?filter=${channelHotFilter}&direction=${channelSortDirection}&lang=${currentLanguage}`)
         if (res.ok) {
           const data = await res.json()
-          setHotChannels(data.hotChannels || [])
+          const channels = data.hotChannels || []
+          setClientCache(cacheKey, channels)
+          setHotChannels(channels)
         }
       } catch (error) {
         console.error('Failed to fetch hot channels:', error)
