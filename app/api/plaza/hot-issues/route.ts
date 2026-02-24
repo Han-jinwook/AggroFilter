@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { getCached, setCache } from '@/lib/plaza-cache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const revalidate = 3600; // Cache for 1 hour
 
 export async function GET(request: Request) {
   try {
@@ -11,6 +11,12 @@ export async function GET(request: Request) {
     const sort = searchParams.get('sort') || 'trust';
     const direction = searchParams.get('direction') || 'desc';
     const lang = searchParams.get('lang') || 'korean';
+
+    const cacheKey = `hot-issues:${sort}:${direction}:${lang}`;
+    const cached = getCached<{ hotIssues: any[]; lastUpdated: string }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     const client = await pool.connect();
     try {
@@ -66,10 +72,12 @@ export async function GET(request: Request) {
         };
       });
 
-      return NextResponse.json({ 
+      const responseData = {
         hotIssues,
         lastUpdated: new Date().toISOString()
-      });
+      };
+      setCache(cacheKey, responseData);
+      return NextResponse.json(responseData);
     } finally {
       client.release();
     }
