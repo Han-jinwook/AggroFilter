@@ -114,6 +114,34 @@ export async function POST(request: Request) {
       // 3g. t_prediction_quiz
       await client.query('UPDATE t_prediction_quiz SET f_user_id = $1 WHERE f_user_id = $2', [emailUserId, anonUserId]);
 
+      // 3h-pre. anon 유저의 알림 설정을 email 유저에게 복사 (anon이 기본값이 아닌 값을 가진 경우만)
+      const anonSettings = await client.query(`
+        SELECT f_ranking_threshold, f_notify_grade_change, f_notify_ranking_change, f_notify_top10_change
+        FROM t_users WHERE f_id = $1
+      `, [anonUserId]);
+      if (anonSettings.rows.length > 0) {
+        const s = anonSettings.rows[0];
+        const updates: string[] = [];
+        const vals: any[] = [];
+        let idx = 1;
+        if (s.f_ranking_threshold !== null && s.f_ranking_threshold !== 10) {
+          updates.push(`f_ranking_threshold = $${idx++}`); vals.push(s.f_ranking_threshold);
+        }
+        if (s.f_notify_grade_change === false) {
+          updates.push(`f_notify_grade_change = $${idx++}`); vals.push(false);
+        }
+        if (s.f_notify_ranking_change === false) {
+          updates.push(`f_notify_ranking_change = $${idx++}`); vals.push(false);
+        }
+        if (s.f_notify_top10_change === false) {
+          updates.push(`f_notify_top10_change = $${idx++}`); vals.push(false);
+        }
+        if (updates.length > 0) {
+          vals.push(emailUserId);
+          await client.query(`UPDATE t_users SET ${updates.join(', ')} WHERE f_id = $${idx}`, vals);
+        }
+      }
+
       // 3h. 병합된 유저의 누적 통계 재계산
       const statsResult = await client.query(
         'SELECT gap FROM t_prediction_quiz WHERE f_user_id = $1',
