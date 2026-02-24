@@ -331,9 +331,12 @@ export default function SettingsPage() {
                 이메일
               </label>
               {isAnon ? (
-                <div className="w-full px-4 py-2 border rounded-lg bg-amber-50 text-amber-700 text-sm">
-                  이메일을 등록하면 분석 기록을 보존하고 알림을 받을 수 있어요
-                </div>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+                  className="w-full px-4 py-2 border rounded-lg bg-amber-50 text-amber-700 text-sm text-left hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  이메일을 등록하면 분석 기록을 보존하고 알림을 받을 수 있어요 →
+                </button>
               ) : (
                 <input
                   type="email"
