@@ -411,11 +411,6 @@ export default function RankingClient() {
                 <span className="flex-1 text-sm md:text-base font-bold text-gray-800 truncate">
                   {currentCategoryName}
                 </span>
-                {localeInfo && (
-                  <span className="text-[10px] md:text-xs font-normal text-gray-500 flex-shrink-0">
-                    ({localeInfo.displayName})
-                  </span>
-                )}
               </div>
               <div className="relative flex items-center gap-2 flex-shrink-0">
                 {/* 언어 선택 드롭다운 */}
