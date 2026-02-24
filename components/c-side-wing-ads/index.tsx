@@ -1,4 +1,10 @@
+"use client"
+
+import { usePathname } from 'next/navigation';
+
 export function SideWingAds() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/p-admin')) return null;
   return (
     <>
       <div
