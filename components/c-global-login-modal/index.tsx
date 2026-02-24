@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { LoginModal } from "@/components/c-login-modal"
+import { mergeAnonToEmail } from "@/lib/merge"
 
 export function GlobalLoginModal() {
   const [open, setOpen] = useState(false)
@@ -16,10 +17,11 @@ export function GlobalLoginModal() {
     <LoginModal
       open={open}
       onOpenChange={setOpen}
-      onLoginSuccess={(email: string, userId: string) => {
+      onLoginSuccess={async (email: string, userId: string) => {
         if (email) localStorage.setItem('userEmail', email)
         if (userId) localStorage.setItem('userId', userId)
         setOpen(false)
+        await mergeAnonToEmail(userId, email)
         window.location.reload()
       }}
     />
