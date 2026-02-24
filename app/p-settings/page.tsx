@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
-import { LoginModal } from '@/components/c-login-modal'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser } from '@/lib/anon'
-import { mergeAnonToEmail } from '@/lib/merge'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -28,24 +26,8 @@ export default function SettingsPage() {
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
   const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
   const [userId, setUserId] = useState('')
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [anonEmoji, setAnonEmoji] = useState('')
 
-  useEffect(() => {
-    const handleOpenLoginModal = () => setShowLoginModal(true)
-    window.addEventListener('openLoginModal', handleOpenLoginModal)
-    return () => window.removeEventListener('openLoginModal', handleOpenLoginModal)
-  }, [])
-
-  const handleLoginSuccess = async (loginEmail: string, userId: string) => {
-    localStorage.setItem('userEmail', loginEmail)
-    if (userId) localStorage.setItem('userId', userId)
-    await mergeAnonToEmail(userId, loginEmail)
-    localStorage.setItem('userNickname', loginEmail.split('@')[0])
-    window.dispatchEvent(new CustomEvent('profileUpdated'))
-    setShowLoginModal(false)
-    window.location.reload()
-  }
 
   useEffect(() => {
     const storedEmail = localStorage.getItem('userEmail')
@@ -516,7 +498,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </main>
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
     </div>
   )
 }
