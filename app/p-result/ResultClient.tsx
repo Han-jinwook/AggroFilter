@@ -417,13 +417,27 @@ export default function ResultClient() {
     if (!analysisData) return
     const nickname = localStorage.getItem("userNickname") || getAnonNickname()
     const profileImg = localStorage.getItem("userProfileImage") || getAnonEmoji()
+    const tempId = `temp_${Date.now()}`
+    const optimisticComment = {
+      id: tempId,
+      text: newComment,
+      author: nickname,
+      profileImage: profileImg,
+      createdAt: new Date().toISOString(),
+      likeCount: 0,
+      dislikeCount: 0,
+      replies: [],
+    }
+    setComments([optimisticComment, ...comments]);
+    setNewComment("");
+    setIsCommentFocused(false);
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analysisId: analysisData.id,
-          text: newComment,
+          text: optimisticComment.text,
           nickname,
           userId: getUserId(),
           profileImage: profileImg
@@ -432,12 +446,11 @@ export default function ResultClient() {
       if (!response.ok) throw new Error('Failed to post comment');
       const data = await response.json();
       if (data.success && data.comment) {
-        setComments([data.comment, ...comments]);
-        setNewComment("");
-        setIsCommentFocused(false);
+        setComments(prev => prev.map(c => c.id === tempId ? data.comment : c));
       }
     } catch (error) {
       console.error(error);
+      setComments(prev => prev.filter(c => c.id !== tempId));
       alert('댓글 등록에 실패했습니다.');
     }
   }
