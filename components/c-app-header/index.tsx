@@ -219,7 +219,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   }
 
   return (
-    <header className="relative border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center py-0">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center py-0">
       <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4 py-0">
         <Link href="/" className="flex items-center gap-1.5 cursor-pointer group no-underline py-0">
           <Image
