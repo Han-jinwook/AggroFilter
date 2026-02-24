@@ -70,7 +70,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
             AggroFilter
