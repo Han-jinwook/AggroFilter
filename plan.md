@@ -467,7 +467,7 @@ const systemPrompt = `
 | 9 | t_payment_logs에 실제 결제 기록 저장 | 대기 |
 | 10 | 알림 설정 토글 → 서버(f_notification_enabled) 동기화 | ✅ 완료 |
 | 11 | 배치 알림 Cron 설정 (Netlify scheduled function, 12:00/19:00) | ✅ 완료 (동작 확인됨) |
-| 12 | Resend 커스텀 도메인 설정 (스팸 방지) | ⏳ DNS 레코드 등록 완료, 전파 대기 중 — 완료 후 RESEND_FROM_EMAIL 환경변수 추가 필요 |
+| 12 | Resend 커스텀 도메인 설정 (스팸 방지) | ✅ 완료 (DNS 전파 + RESEND_FROM_EMAIL 환경변수 추가) |
 | 13 | f_user_id email vs UUID 전수 검사 → 일관성 확보 | ✅ 완료 (2026-02-23) |
 | 14 | 비로그인 분석 데이터 정리 정책 수립 | ✅ 완료 (3년 보관 정책 확정, 데이터 많아질 때 cron으로 처리) |
 | 15 | Admin 통계: 고유 분석 사용자 수 + 차트 개선 (SVG 바차트, 도넛, 신규/재분석, 언어별) | ✅ 완료 |
@@ -480,5 +480,5 @@ const systemPrompt = `
 | 17 | 이메일 내 CTA 링크 /channel/[id]로 변경 | ✅ 완료 (f_link 저장 시 이미 /channel/[id] 사용, Blue→Green 등급 수정) |
 | 18 | SEO / OG 메타태그 점검 | 대기 |
 | 19 | 에러 핸들링 강화 (토스트 등) | ✅ 완료 (전역 ToastContainer 추가, 어드민 alert() → toast 교체) |
-| 20 | 플라자 정렬/필터 개선 | 대기 |
-| 21 | f_rank 컬럼 마이그레이션 (스케일 대비) | 대기 |
+| 20 | 플라자 정렬/필터 개선 | ✅ 완료 |
+| 21 | f_rank 컬럼 마이그레이션 (스케일 대비) | ✅ 완료 |
