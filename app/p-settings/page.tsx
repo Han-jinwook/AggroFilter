@@ -6,7 +6,7 @@ import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell, LogIn } from 'lucide-react'
-import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser } from '@/lib/anon'
+import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser, getUserId } from '@/lib/anon'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -25,7 +25,6 @@ export default function SettingsPage() {
   })
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
   const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
-  const [userId, setUserId] = useState('')
   const [anonEmoji, setAnonEmoji] = useState('')
 
 
@@ -39,21 +38,7 @@ export default function SettingsPage() {
       setEmail(storedEmail)
 
       const loadUserData = async () => {
-        let uid = localStorage.getItem('userId') || ''
-        if (uid) setUserId(uid)
-        if (!uid) {
-          try {
-            const meRes = await fetch('/api/auth/me')
-            if (meRes.ok) {
-              const meData = await meRes.json()
-              if (meData?.user?.id) {
-                uid = meData.user.id
-                localStorage.setItem('userId', uid)
-                setUserId(uid)
-              }
-            }
-          } catch {}
-        }
+        const uid = getUserId()
         if (!uid) return
 
         // 프로필 fetch
@@ -218,30 +203,8 @@ export default function SettingsPage() {
     return text.charAt(0).toUpperCase()
   }
 
-  const getUid = async (): Promise<string | null> => {
-    let uid = localStorage.getItem('userId') || ''
-    if (uid) return uid
-    // email로 DB에서 userId 조회 (배포 환경 fallback)
-    const storedEmail = localStorage.getItem('userEmail')
-    if (storedEmail) {
-      try {
-        const res = await fetch(`/api/user/profile?email=${encodeURIComponent(storedEmail)}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data?.user?.id) {
-            uid = data.user.id
-            localStorage.setItem('userId', uid)
-            setUserId(uid)
-            return uid
-          }
-        }
-      } catch {}
-    }
-    return null
-  }
-
   const handleThresholdChange = async (v: 10 | 20 | 30) => {
-    const uid = await getUid()
+    const uid = getUserId()
     if (!uid) return
     setRankingThreshold(v)
     try {
@@ -256,7 +219,7 @@ export default function SettingsPage() {
   }
 
   const handleToggleNotify = async (key: keyof typeof notifySettings) => {
-    const uid = await getUid()
+    const uid = getUserId()
     if (!uid) return
 
     setTogglingKey(key)
