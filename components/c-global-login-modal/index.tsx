@@ -16,7 +16,9 @@ export function GlobalLoginModal() {
     <LoginModal
       open={open}
       onOpenChange={setOpen}
-      onLoginSuccess={(_email: string, _userId: string) => {
+      onLoginSuccess={(email: string, userId: string) => {
+        if (email) localStorage.setItem('userEmail', email)
+        if (userId) localStorage.setItem('userId', userId)
         setOpen(false)
         window.location.reload()
       }}
