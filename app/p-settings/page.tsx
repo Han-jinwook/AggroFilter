@@ -27,6 +27,7 @@ export default function SettingsPage() {
   })
   const [togglingKey, setTogglingKey] = useState<string | null>(null)
   const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
+  const [userId, setUserId] = useState('')
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [anonEmoji, setAnonEmoji] = useState('')
 
@@ -57,6 +58,7 @@ export default function SettingsPage() {
 
       const loadUserData = async () => {
         let uid = localStorage.getItem('userId') || ''
+        if (uid) setUserId(uid)
         if (!uid) {
           try {
             const meRes = await fetch('/api/auth/me')
@@ -65,6 +67,7 @@ export default function SettingsPage() {
               if (meData?.user?.id) {
                 uid = meData.user.id
                 localStorage.setItem('userId', uid)
+                setUserId(uid)
               }
             }
           } catch {}
@@ -234,7 +237,7 @@ export default function SettingsPage() {
   }
 
   const handleThresholdChange = async (v: 10 | 20 | 30) => {
-    const uid = localStorage.getItem('userId')
+    const uid = userId || localStorage.getItem('userId')
     if (!uid) return
     setRankingThreshold(v)
     try {
@@ -249,7 +252,7 @@ export default function SettingsPage() {
   }
 
   const handleToggleNotify = async (key: keyof typeof notifySettings) => {
-    const uid = localStorage.getItem('userId')
+    const uid = userId || localStorage.getItem('userId')
     if (!uid) return
 
     setTogglingKey(key)
@@ -414,7 +417,7 @@ export default function SettingsPage() {
                 <Bell className="h-5 w-5" />
                 알림 설정
               </h2>
-              <p className="text-xs text-muted-foreground mb-4">알림은 하루 2회(자정 12시 · 오후 7시) 모아서 발송됩니다.</p>
+              <p className="text-xs text-muted-foreground mb-4">알림은 하루 2회(오전 12시 · 오후 7시) 모아서 발송됩니다.</p>
               <div className="space-y-3">
                 {([
                   { key: 'f_notify_grade_change' as const, label: '등급 변화 알림', desc: '구독 채널의 신뢰도 등급(Red / Yellow / Green)이 변경될 때' },
