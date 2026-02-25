@@ -92,6 +92,31 @@
 
     .empty { text-align: center; padding: 48px 0; color: #4a5568; font-size: 14px; }
 
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+    .tab-btn {
+      padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px solid #2d3748; background: transparent; color: #a0aec0;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: #3182ce; border-color: #3182ce; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .kw-badge {
+      display: inline-block; background: #2d3748; color: #e2e8f0;
+      border-radius: 4px; padding: 2px 7px; font-size: 11px; margin: 2px;
+    }
+    .toggle-active { cursor: pointer; user-select: none; }
+
+    .form-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+    .form-inline .form-group { margin-bottom: 0; flex: 1; min-width: 160px; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+    .dot-queue   { background: #ecc94b; }
+    .dot-done    { background: #48bb78; }
+    .dot-error   { background: #fc8181; }
+    .dot-skipped { background: #718096; }
+
     .toast {
       position: fixed; bottom: 24px; right: 24px;
       background: #2d3748; border: 1px solid #4a5568;
@@ -183,15 +208,70 @@
       </div>
     </div>
 
-    <!-- 우측: 수집 리스트 -->
+    <!-- 우측: 탭 패널 -->
     <div class="panel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-        <h2 style="margin-bottom:0">누적 수집 리스트 (봇 분석 영상)</h2>
-        <button class="btn btn-sm btn-primary" onclick="loadCollected()">↻ 새로고침</button>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('collected', this)">📋 수집 리스트</button>
+        <button class="tab-btn" onclick="switchTab('community', this)">🎯 커뮤니티 타겟</button>
+        <button class="tab-btn" onclick="switchTab('comments', this)">💬 댓글 로그</button>
       </div>
 
-      <div id="tableWrap">
-        <div class="empty">로딩 중...</div>
+      <!-- 탭1: 수집 리스트 -->
+      <div id="tab-collected" class="tab-content active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+          <span style="font-size:12px;color:#718096">봇(user_id=bot) 분석 영상 최신 100개</span>
+          <button class="btn btn-sm btn-primary" onclick="loadCollected()">↻ 새로고침</button>
+        </div>
+        <div id="tableWrap"><div class="empty">로딩 중...</div></div>
+      </div>
+
+      <!-- 탭2: 커뮤니티 타겟 관리 -->
+      <div id="tab-community" class="tab-content">
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;color:#718096;margin-bottom:12px;background:#1e2335;padding:10px;border-radius:6px;line-height:1.7">
+            📌 <strong style="color:#63b3ed">검색 기준일:</strong> 최근 24시간 이내 게시글만 스캔<br>
+            키워드는 쉼표(,)로 구분하여 입력하세요. (예: 가짜뉴스, 유튜브 낚시)
+          </div>
+
+          <div class="form-inline" style="margin-bottom:10px">
+            <div class="form-group">
+              <label>커뮤니티 URL</label>
+              <input type="text" id="newUrl" placeholder="https://www.fmkorea.com/index.php?mid=humor" />
+            </div>
+            <div class="form-group">
+              <label>키워드 (쉼표 구분)</label>
+              <input type="text" id="newKeywords" placeholder="가짜뉴스, 유튜브 낚시, 어그로" />
+            </div>
+            <div class="form-group" style="min-width:80px;max-width:80px">
+              <label>메모</label>
+              <input type="text" id="newNote" placeholder="에펨 유머" />
+            </div>
+            <div style="padding-bottom:0">
+              <button class="btn btn-success" onclick="addTarget()" style="margin-top:20px">+ 추가</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="targetList"><div class="empty">로딩 중...</div></div>
+      </div>
+
+      <!-- 탭3: 댓글 로그 -->
+      <div id="tab-comments" class="tab-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-primary" onclick="loadCommentLogs()">↻ 새로고침</button>
+            <select id="logStatusFilter" onchange="loadCommentLogs()"
+              style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:5px 10px;border-radius:6px;font-size:12px">
+              <option value="">전체</option>
+              <option value="queue">대기(Queue)</option>
+              <option value="done">완료(Done)</option>
+              <option value="error">오류(Error)</option>
+              <option value="skipped">스킵(Skipped)</option>
+            </select>
+          </div>
+          <span style="font-size:12px;color:#718096">최근 200개</span>
+        </div>
+        <div id="commentLogWrap"><div class="empty">로딩 중...</div></div>
       </div>
     </div>
 
@@ -333,6 +413,148 @@
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ────────── 탭 전환 ──────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'community') loadTargets();
+    if (name === 'comments') loadCommentLogs();
+  }
+
+  // ────────── 커뮤니티 타겟 ──────────
+  async function loadTargets() {
+    const wrap = document.getElementById('targetList');
+    try {
+      const res = await fetch('/api/community-targets');
+      const { items } = await res.json();
+      if (!items || items.length === 0) {
+        wrap.innerHTML = '<div class="empty">등록된 타겟이 없습니다.<br>위 폼에서 추가해 주세요.</div>';
+        return;
+      }
+      const rows = items.map(t => {
+        const kws = (t.keywords || []).map(k => `<span class="kw-badge">${escHtml(k)}</span>`).join('');
+        const activeLabel = t.is_active
+          ? '<span style="color:#48bb78;font-size:12px">● 활성</span>'
+          : '<span style="color:#718096;font-size:12px">○ 비활성</span>';
+        return `
+          <tr>
+            <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              <a href="${escHtml(t.url)}" target="_blank" style="color:#63b3ed;font-size:12px">${escHtml(t.url)}</a>
+            </td>
+            <td>${kws || '<span style="color:#4a5568">—</span>'}</td>
+            <td style="white-space:nowrap">${activeLabel}</td>
+            <td style="color:#718096;font-size:11px">${escHtml(t.note || '—')}</td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-sm" style="background:#2d3748;color:#e2e8f0"
+                onclick="toggleTarget(${t.id}, ${!t.is_active})">${t.is_active ? '비활성화' : '활성화'}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteTarget(${t.id})" style="margin-left:4px">삭제</button>
+            </td>
+          </tr>`;
+      }).join('');
+      wrap.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>URL</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+    }
+  }
+
+  async function addTarget() {
+    const url = document.getElementById('newUrl').value.trim();
+    const keywords = document.getElementById('newKeywords').value.trim();
+    const note = document.getElementById('newNote').value.trim();
+    if (!url) { showToast('URL을 입력해 주세요.', 'err'); return; }
+    try {
+      const res = await fetch('/api/community-targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, keywords, note, is_active: true }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('newUrl').value = '';
+        document.getElementById('newKeywords').value = '';
+        document.getElementById('newNote').value = '';
+        showToast('타겟이 추가되었습니다.', 'ok');
+        loadTargets();
+      } else {
+        showToast('추가 실패: ' + (data.error || ''), 'err');
+      }
+    } catch (e) {
+      showToast('오류: ' + e.message, 'err');
+    }
+  }
+
+  async function toggleTarget(id, newActive) {
+    try {
+      await fetch('/api/community-targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_active: newActive }),
+      });
+      loadTargets();
+    } catch (e) {
+      showToast('오류: ' + e.message, 'err');
+    }
+  }
+
+  async function deleteTarget(id) {
+    if (!confirm('이 타겟을 삭제하시겠습니까?')) return;
+    try {
+      await fetch(`/api/community-targets/${id}`, { method: 'DELETE' });
+      showToast('삭제 완료', 'ok');
+      loadTargets();
+    } catch (e) {
+      showToast('오류: ' + e.message, 'err');
+    }
+  }
+
+  // ────────── 댓글 로그 ──────────
+  async function loadCommentLogs() {
+    const wrap = document.getElementById('commentLogWrap');
+    const status = document.getElementById('logStatusFilter')?.value || '';
+    try {
+      const res = await fetch('/api/comment-logs' + (status ? `?status=${status}` : ''));
+      const { items } = await res.json();
+      if (!items || items.length === 0) {
+        wrap.innerHTML = '<div class="empty">댓글 로그가 없습니다.</div>';
+        return;
+      }
+      const dotMap = { queue: 'dot-queue', done: 'dot-done', error: 'dot-error', skipped: 'dot-skipped' };
+      const labelMap = { queue: '대기', done: '완료', error: '오류', skipped: '스킵' };
+      const rows = items.map(item => {
+        const dot = dotMap[item.status] || '';
+        const label = labelMap[item.status] || item.status;
+        const date = item.created_at ? new Date(item.created_at).toLocaleString('ko-KR') : '—';
+        const typeLabel = item.target_type === 'youtube' ? '🎬 유튜브' : '💬 커뮤니티';
+        const textPreview = (item.generated_text || '').substring(0, 60) + ((item.generated_text || '').length > 60 ? '...' : '');
+        return `
+          <tr>
+            <td style="white-space:nowrap;font-size:11px">${typeLabel}</td>
+            <td style="font-size:11px;color:#718096">${escHtml(item.grade || '—')}</td>
+            <td style="max-width:300px;font-size:12px">${escHtml(textPreview)}</td>
+            <td><span class="status-dot ${dot}"></span>${label}</td>
+            <td style="color:#718096;font-size:11px">${date}</td>
+          </tr>`;
+      }).join('');
+      wrap.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>유형</th><th>등급</th><th>생성 텍스트</th><th>상태</th><th>시각</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+    }
   }
 
   // 초기 로드

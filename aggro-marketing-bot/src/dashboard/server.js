@@ -1,7 +1,13 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { pool } = require('../db');
+const {
+  pool,
+  getCommunityTargets,
+  upsertCommunityTarget,
+  deleteCommunityTarget,
+  getCommentLogs,
+} = require('../db');
 const config = require('../config');
 
 const app = express();
@@ -99,6 +105,56 @@ app.get('/api/collected', async (req, res) => {
     } finally {
       client.release();
     }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ────────────── 커뮤니티 타겟 API ──────────────
+
+// GET /api/community-targets
+app.get('/api/community-targets', async (req, res) => {
+  try {
+    const rows = await getCommunityTargets(false); // 비활성 포함 전체
+    res.json({ items: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/community-targets — 추가 또는 수정
+app.post('/api/community-targets', async (req, res) => {
+  try {
+    const { id, url, keywords, is_active, note } = req.body;
+    if (!url) return res.status(400).json({ error: 'url 필수' });
+    const kwArr = Array.isArray(keywords)
+      ? keywords
+      : (keywords || '').split(',').map((k) => k.trim()).filter(Boolean);
+    const row = await upsertCommunityTarget({ id, url, keywords: kwArr, is_active, note });
+    res.json({ ok: true, item: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/community-targets/:id
+app.delete('/api/community-targets/:id', async (req, res) => {
+  try {
+    await deleteCommunityTarget(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ────────────── 댓글 로그 API ──────────────
+
+// GET /api/comment-logs
+app.get('/api/comment-logs', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const rows = await getCommentLogs({ limit: 200, status: status || null });
+    res.json({ items: rows });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

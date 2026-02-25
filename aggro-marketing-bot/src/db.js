@@ -40,4 +40,107 @@ async function getRecentlyAnalyzedChannelIds(days) {
   }
 }
 
-module.exports = { pool, getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds };
+// ────────────── bot_community_targets ──────────────
+
+async function getCommunityTargets(activeOnly = true) {
+  const client = await pool.connect();
+  try {
+    const where = activeOnly ? 'WHERE is_active = true' : '';
+    const result = await client.query(
+      `SELECT * FROM bot_community_targets ${where} ORDER BY id ASC`
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function upsertCommunityTarget({ id, url, keywords, is_active, note }) {
+  const client = await pool.connect();
+  try {
+    if (id) {
+      const result = await client.query(
+        `UPDATE bot_community_targets
+         SET url=$1, keywords=$2, is_active=$3, note=$4, updated_at=NOW()
+         WHERE id=$5 RETURNING *`,
+        [url, keywords, is_active ?? true, note ?? null, id]
+      );
+      return result.rows[0];
+    } else {
+      const result = await client.query(
+        `INSERT INTO bot_community_targets (url, keywords, is_active, note)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [url, keywords, is_active ?? true, note ?? null]
+      );
+      return result.rows[0];
+    }
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteCommunityTarget(id) {
+  const client = await pool.connect();
+  try {
+    await client.query('DELETE FROM bot_community_targets WHERE id=$1', [id]);
+  } finally {
+    client.release();
+  }
+}
+
+// ────────────── bot_comment_logs ──────────────
+
+async function insertCommentLog({ target_type, target_id, target_url, video_id, grade, generated_text }) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `INSERT INTO bot_comment_logs
+         (target_type, target_id, target_url, video_id, grade, generated_text, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'queue') RETURNING *`,
+      [target_type, target_id, target_url ?? null, video_id ?? null, grade ?? null, generated_text]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function updateCommentLogStatus(id, status, errorMessage = null) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE bot_comment_logs
+       SET status=$1, error_message=$2, posted_at=CASE WHEN $1='done' THEN NOW() ELSE posted_at END
+       WHERE id=$3`,
+      [status, errorMessage, id]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+async function getCommentLogs({ limit = 100, status = null } = {}) {
+  const client = await pool.connect();
+  try {
+    const where = status ? `WHERE status = '${status}'` : '';
+    const result = await client.query(
+      `SELECT * FROM bot_comment_logs ${where} ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = {
+  pool,
+  getRecentlyAnalyzedVideoIds,
+  getRecentlyAnalyzedChannelIds,
+  getCommunityTargets,
+  upsertCommunityTarget,
+  deleteCommunityTarget,
+  insertCommentLog,
+  updateCommentLogStatus,
+  getCommentLogs,
+};
