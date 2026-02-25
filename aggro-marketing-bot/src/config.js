@@ -18,6 +18,16 @@ module.exports = {
   // 대시보드 포트
   dashboardPort: parseInt(process.env.DASHBOARD_PORT || '3001', 10),
 
+  // 섹션2: 댓글 자동화
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  // 로컬 크롬 사용자 데이터 디렉토리 (기존 세션 재사용)
+  chromeUserDataDir: process.env.CHROME_USER_DATA_DIR || '',
+  // 댓글 큐 딜레이 (ms): 1~2분 랜덤
+  commentDelayMinMs: parseInt(process.env.COMMENT_DELAY_MIN_MS || '60000', 10),
+  commentDelayMaxMs: parseInt(process.env.COMMENT_DELAY_MAX_MS || '120000', 10),
+  // 유튜브 결과 페이지 URL 패턴
+  resultUrlBase: (process.env.MAIN_APP_URL || 'https://aggrofilter.com') + '/result/',
+
   // 한국어 트렌드 수집 대상 카테고리 (Type2용)
   targetCategories: [
     { id: '25', name: '뉴스/정치', keyword: '뉴스 오늘' },

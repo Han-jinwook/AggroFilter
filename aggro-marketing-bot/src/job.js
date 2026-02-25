@@ -1,6 +1,9 @@
 const { collectTargetVideos } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
-const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds } = require('./db');
+const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, insertCommentLog } = require('./db');
+const { generateYoutubeComment } = require('./comment-generator');
+const { runFmkoreaScan } = require('./fmkorea-scanner');
+const { processCommentQueue } = require('./comment-queue');
 const defaultConfig = require('./config');
 
 /**
@@ -39,18 +42,56 @@ async function runJob(options = {}) {
     console.log(`\n[Job] 분석 시작 (총 ${videos.length}개)...`);
     const results = await analyzeVideos(videos, options);
 
-    // 4. 결과 리포트
+    // 4. 분석 성공 영상 → 유튜브 댓글 큐 적재 (섹션2)
+    if (results.analyzed && results.analyzed.length > 0) {
+      console.log(`\n[Job] 유튜브 댓글 큐 적재 (${results.analyzed.length}개)...`);
+      for (const video of results.analyzed) {
+        try {
+          const { grade, text } = generateYoutubeComment(video);
+          await insertCommentLog({
+            target_type: 'youtube',
+            target_id: video.videoId,
+            target_url: `https://www.youtube.com/watch?v=${video.videoId}`,
+            video_id: video.videoId,
+            grade,
+            generated_text: text,
+          });
+        } catch (e) {
+          console.warn(`[Job] 댓글 큐 적재 실패 (${video.videoId}): ${e.message}`);
+        }
+      }
+    }
+
+    // 5. 에펨코리아 스캔 + 댓글 큐 적재 (섹션2)
+    console.log('\n[Job] 에펨코리아 스캔 시작...');
+    try {
+      await runFmkoreaScan();
+    } catch (e) {
+      console.warn(`[Job] 에펨코리아 스캔 실패: ${e.message}`);
+    }
+
+    // 6. 댓글 큐 처리 (유튜브 + 에펨코리아)
+    console.log('\n[Job] 댓글 큐 처리 시작...');
+    let queueResult = { processed: 0, done: 0, errored: 0 };
+    try {
+      queueResult = await processCommentQueue();
+    } catch (e) {
+      console.warn(`[Job] 댓글 큐 처리 실패: ${e.message}`);
+    }
+
+    // 7. 결과 리포트
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     console.log(`\n${'='.repeat(60)}`);
     console.log(`[Job] 완료 — 소요: ${elapsed}초`);
-    console.log(`  성공: ${results.success}개 / 실패: ${results.fail}개`);
+    console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개`);
+    console.log(`  댓글 처리: ${queueResult.done}개 완료 / ${queueResult.errored}개 실패`);
     if (results.errors.length > 0) {
-      console.log('  실패 목록:');
+      console.log('  분석 실패 목록:');
       results.errors.forEach((e) => console.log(`    - ${e.title}: ${e.error}`));
     }
     console.log(`${'='.repeat(60)}\n`);
 
-    return results;
+    return { ...results, queueResult };
   } catch (err) {
     console.error('[Job] 치명적 오류:', err);
     return { success: 0, fail: 0, errors: [{ title: 'fatal', error: err.message }] };

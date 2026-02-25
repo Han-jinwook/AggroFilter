@@ -88,7 +88,7 @@ async function analyzeVideo(video) {
  */
 async function analyzeVideos(videos, options = {}) {
   const delay = options.analysisDelayMs ?? analysisDelayMs;
-  const results = { success: 0, fail: 0, errors: [] };
+  const results = { success: 0, fail: 0, errors: [], analyzed: [] };
 
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
@@ -98,6 +98,9 @@ async function analyzeVideos(videos, options = {}) {
 
     if (result.success) {
       results.success++;
+      // 댓글 큐 적재를 위해 분석 성공 영상 저장 (신뢰도 점수 포함)
+      const trustScore = result.result?.reliabilityScore ?? result.result?.score ?? 50;
+      results.analyzed.push({ ...video, trustScore });
     } else {
       results.fail++;
       results.errors.push({ title: video.title, error: result.error });
