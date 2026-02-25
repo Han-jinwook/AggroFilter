@@ -86,7 +86,8 @@ async function analyzeVideo(video) {
  * 수집된 영상 목록을 순차적으로 분석
  * Rate Limit 방어: 각 요청 사이 analysisDelayMs 딜레이
  */
-async function analyzeVideos(videos) {
+async function analyzeVideos(videos, options = {}) {
+  const delay = options.analysisDelayMs ?? analysisDelayMs;
   const results = { success: 0, fail: 0, errors: [] };
 
   for (let i = 0; i < videos.length; i++) {
@@ -104,8 +105,8 @@ async function analyzeVideos(videos) {
 
     // 마지막 영상이 아닐 때만 딜레이
     if (i < videos.length - 1) {
-      console.log(`  [Analyzer] ${analysisDelayMs / 1000}초 대기 중...`);
-      await sleep(analysisDelayMs);
+      console.log(`  [Analyzer] ${delay / 1000}초 대기 중...`);
+      await sleep(delay);
     }
   }
 

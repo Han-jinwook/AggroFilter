@@ -6,11 +6,19 @@ module.exports = {
   botSecret: process.env.BOT_SECRET || '',
   databaseUrl: process.env.DATABASE_URL,
   analysisDelayMs: parseInt(process.env.ANALYSIS_DELAY_MS || '5000', 10),
-  maxVideosPerCategory: parseInt(process.env.MAX_VIDEOS_PER_CATEGORY || '5', 10),
+
+  // 2-Track 수집 옵션 (대시보드에서 런타임에 덮어씌울 수 있음)
+  // N: Type1 전체 트렌드 상위 수집 개수
+  trackNTotal: parseInt(process.env.TRACK_N_TOTAL || '10', 10),
+  // M: Type2 카테고리별 수집 개수
+  trackMPerCategory: parseInt(process.env.TRACK_M_PER_CATEGORY || '3', 10),
+  // X: 채널 다양성 쿨타임 (일) - 최근 X일 이내 분석된 채널 스킵
   dedupDays: parseInt(process.env.DEDUP_DAYS || '7', 10),
 
-  // 한국어 트렌드 수집 대상 카테고리
-  // YouTube 공식 카테고리 ID 기준
+  // 대시보드 포트
+  dashboardPort: parseInt(process.env.DASHBOARD_PORT || '3001', 10),
+
+  // 한국어 트렌드 수집 대상 카테고리 (Type2용)
   targetCategories: [
     { id: '25', name: '뉴스/정치', keyword: '뉴스 오늘' },
     { id: '22', name: '인물/블로그', keyword: '브이로그 일상' },

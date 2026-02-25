@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AggroFilter AutoMarketer 대시보드</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3748;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+    header .badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      background: #2d3748; color: #a0aec0;
+    }
+    header .badge.running { background: #276749; color: #9ae6b4; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+
+    .panel {
+      background: #1a1d2e;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .panel h2 { font-size: 13px; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; }
+
+    .status-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #2d3748; font-size: 13px; }
+    .status-row:last-child { border-bottom: none; }
+    .status-row label { color: #a0aec0; }
+    .status-row span { color: #e2e8f0; font-weight: 500; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #a0aec0; margin-bottom: 6px; }
+    .form-group input {
+      width: 100%; padding: 8px 10px;
+      background: #0f1117; border: 1px solid #2d3748;
+      border-radius: 6px; color: #e2e8f0; font-size: 14px;
+    }
+    .form-group input:focus { outline: none; border-color: #4299e1; }
+    .form-group .hint { font-size: 11px; color: #718096; margin-top: 4px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; border-radius: 7px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: #3182ce; color: #fff; }
+    .btn-success { background: #276749; color: #9ae6b4; }
+    .btn-danger  { background: #742a2a; color: #fc8181; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+
+    .schedule-info {
+      background: #2d3748; border-radius: 8px; padding: 12px;
+      font-size: 12px; color: #a0aec0; margin-bottom: 16px; line-height: 1.7;
+    }
+    .schedule-info strong { color: #63b3ed; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 10px; background: #0f1117; color: #718096; font-weight: 500; font-size: 11px; text-transform: uppercase; }
+    td { padding: 9px 10px; border-bottom: 1px solid #1e2335; }
+    tr:hover td { background: #1e2335; }
+
+    .score { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .score-high   { background: #276749; color: #9ae6b4; }
+    .score-mid    { background: #744210; color: #fbd38d; }
+    .score-low    { background: #742a2a; color: #fc8181; }
+
+    .track-badge {
+      font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;
+    }
+    .track-type1 { background: #2b4c7e; color: #90cdf4; }
+    .track-type2 { background: #2d3a2e; color: #9ae6b4; }
+
+    .title-cell { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .title-cell a { color: #63b3ed; text-decoration: none; }
+    .title-cell a:hover { text-decoration: underline; }
+
+    .empty { text-align: center; padding: 48px 0; color: #4a5568; font-size: 14px; }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #2d3748; border: 1px solid #4a5568;
+      border-radius: 8px; padding: 12px 18px;
+      font-size: 13px; color: #e2e8f0;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      opacity: 0; transition: opacity .2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .toast.ok { border-color: #276749; color: #9ae6b4; }
+    .toast.err { border-color: #742a2a; color: #fc8181; }
+
+    .section-divider { height: 1px; background: #2d3748; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 AggroFilter AutoMarketer</h1>
+  <span class="badge" id="headerBadge">로딩 중...</span>
+</header>
+
+<div class="container">
+  <div class="grid">
+
+    <!-- 좌측: 제어판 -->
+    <div>
+      <!-- 봇 상태 -->
+      <div class="panel" style="margin-bottom:16px">
+        <h2>봇 상태</h2>
+        <div class="status-row">
+          <label>현재 상태</label>
+          <span id="statusText">—</span>
+        </div>
+        <div class="status-row">
+          <label>마지막 실행</label>
+          <span id="lastRun">—</span>
+        </div>
+        <div class="status-row">
+          <label>마지막 결과</label>
+          <span id="lastResult">—</span>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="schedule-info">
+          <strong>자동 스케줄</strong><br>
+          매일 오전 6:00 / 오후 6:00 (KST) 자동 실행<br>
+          <strong>수동 실행:</strong> 지금 즉시 1회 수집 + 분석
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" id="btnRun" onclick="runNow()">▶ 지금 실행</button>
+        </div>
+      </div>
+
+      <!-- 수집 옵션 -->
+      <div class="panel">
+        <h2>수집 옵션 (N / M / X)</h2>
+
+        <div class="form-group">
+          <label>N — 전체 트렌드 수집 개수 (Type1)</label>
+          <input type="number" id="optN" min="1" max="50" />
+          <div class="hint">YouTube 전체 인기 순위 상위 N개 수집</div>
+        </div>
+
+        <div class="form-group">
+          <label>M — 카테고리별 수집 개수 (Type2)</label>
+          <input type="number" id="optM" min="1" max="20" />
+          <div class="hint">7개 카테고리 × M개 = 최대 M×7개 추가 수집</div>
+        </div>
+
+        <div class="form-group">
+          <label>X — 채널 쿨타임 (일)</label>
+          <input type="number" id="optX" min="1" max="30" />
+          <div class="hint">최근 X일 이내 분석된 채널은 스킵 (다양성 확보)</div>
+        </div>
+
+        <div class="form-group">
+          <label>분석 딜레이 (ms)</label>
+          <input type="number" id="optDelay" min="1000" step="1000" />
+          <div class="hint">API Rate Limit 방어용 요청 간격</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveOptions()">💾 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: 수집 리스트 -->
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+        <h2 style="margin-bottom:0">누적 수집 리스트 (봇 분석 영상)</h2>
+        <button class="btn btn-sm btn-primary" onclick="loadCollected()">↻ 새로고침</button>
+      </div>
+
+      <div id="tableWrap">
+        <div class="empty">로딩 중...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let pollingTimer = null;
+
+  async function fetchStatus() {
+    try {
+      const res = await fetch('/api/status');
+      const { status, options } = await res.json();
+
+      // 헤더 배지
+      const badge = document.getElementById('headerBadge');
+      if (status.running) {
+        badge.textContent = '🔄 실행 중';
+        badge.className = 'badge running';
+      } else {
+        badge.textContent = '🟢 Auto 모드 대기';
+        badge.className = 'badge';
+      }
+
+      document.getElementById('statusText').textContent = status.running ? '🔄 분석 진행 중...' : '대기 중';
+      document.getElementById('lastRun').textContent = status.lastRun ? new Date(status.lastRun).toLocaleString('ko-KR') : '없음';
+
+      if (status.lastResult) {
+        if (status.lastResult.error) {
+          document.getElementById('lastResult').textContent = '❌ ' + status.lastResult.error;
+        } else {
+          document.getElementById('lastResult').textContent =
+            `✅ 성공 ${status.lastResult.success ?? 0}개 / 실패 ${status.lastResult.fail ?? 0}개`;
+        }
+      }
+
+      document.getElementById('btnRun').disabled = status.running;
+
+      // 옵션
+      document.getElementById('optN').value = options.trackNTotal;
+      document.getElementById('optM').value = options.trackMPerCategory;
+      document.getElementById('optX').value = options.dedupDays;
+      document.getElementById('optDelay').value = options.analysisDelayMs;
+    } catch (e) {}
+  }
+
+  async function loadCollected() {
+    const wrap = document.getElementById('tableWrap');
+    try {
+      const res = await fetch('/api/collected');
+      const { items } = await res.json();
+
+      if (!items || items.length === 0) {
+        wrap.innerHTML = '<div class="empty">아직 수집된 영상이 없습니다.</div>';
+        return;
+      }
+
+      const rows = items.map(item => {
+        const r = item.f_reliability_score;
+        const scoreClass = r >= 70 ? 'score-high' : r >= 40 ? 'score-mid' : 'score-low';
+        const date = item.f_created_at ? new Date(item.f_created_at).toLocaleString('ko-KR') : '—';
+        const link = `https://aggrofilter.com/result/${item.f_video_id}`;
+        return `
+          <tr>
+            <td class="title-cell"><a href="${link}" target="_blank">${escHtml(item.f_video_title || '—')}</a></td>
+            <td>${escHtml(item.f_channel_name || '—')}</td>
+            <td><span class="score ${scoreClass}">${r != null ? r + '점' : '—'}</span></td>
+            <td>${item.f_clickbait_score != null ? item.f_clickbait_score + '점' : '—'}</td>
+            <td style="color:#718096;font-size:11px">${date}</td>
+          </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>영상 제목</th>
+              <th>채널명</th>
+              <th>신뢰도</th>
+              <th>어그로</th>
+              <th>분석 시각</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+    }
+  }
+
+  async function saveOptions() {
+    const body = {
+      trackNTotal: document.getElementById('optN').value,
+      trackMPerCategory: document.getElementById('optM').value,
+      dedupDays: document.getElementById('optX').value,
+      analysisDelayMs: document.getElementById('optDelay').value,
+    };
+    try {
+      const res = await fetch('/api/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      showToast('옵션이 저장되었습니다.', 'ok');
+    } catch (e) {
+      showToast('저장 실패: ' + e.message, 'err');
+    }
+  }
+
+  async function runNow() {
+    document.getElementById('btnRun').disabled = true;
+    try {
+      const res = await fetch('/api/run', { method: 'POST' });
+      const data = await res.json();
+      showToast(data.message, data.ok ? 'ok' : 'err');
+      if (data.ok) {
+        fetchStatus();
+        // 실행 중 폴링
+        pollingTimer = setInterval(() => {
+          fetchStatus();
+        }, 3000);
+        setTimeout(() => { clearInterval(pollingTimer); loadCollected(); }, 60000);
+      }
+    } catch (e) {
+      showToast('실행 오류: ' + e.message, 'err');
+      document.getElementById('btnRun').disabled = false;
+    }
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // 초기 로드
+  fetchStatus();
+  loadCollected();
+  setInterval(fetchStatus, 10000);
+</script>
+</body>
+</html>
