@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       const result = await client.query(`
         SELECT f_id, f_reliability_score 
         FROM t_analyses 
-        WHERE f_video_id = $1 AND f_created_at > NOW() - INTERVAL '5 minutes'
+        WHERE f_video_id = $1 AND f_created_at > NOW() - INTERVAL '30 minutes'
         ORDER BY f_created_at DESC 
         LIMIT 1
       `, [videoId]);

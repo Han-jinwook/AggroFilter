@@ -1,0 +1,19 @@
+{
+  "name": "aggro-marketing-bot",
+  "version": "1.0.0",
+  "description": "AggroFilter 자동 마케팅 봇 - 트렌드 영상 자동 수집 및 분석",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "run-once": "node src/run-once.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
