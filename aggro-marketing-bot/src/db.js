@@ -55,22 +55,30 @@ async function getCommunityTargets(activeOnly = true) {
   }
 }
 
-async function upsertCommunityTarget({ id, url, keywords, is_active, note }) {
+async function upsertCommunityTarget({ id, url, keywords, is_active, note, community_type, community_name, nickname, login_id, login_pw, post_limit, keywords_global }) {
   const client = await pool.connect();
   try {
     if (id) {
       const result = await client.query(
         `UPDATE bot_community_targets
-         SET url=$1, keywords=$2, is_active=$3, note=$4, updated_at=NOW()
+         SET url=$1, keywords=$2, is_active=$3, note=$4,
+             community_type=$6, community_name=$7, nickname=$8,
+             login_id=$9, login_pw=$10, post_limit=$11, keywords_global=$12,
+             updated_at=NOW()
          WHERE id=$5 RETURNING *`,
-        [url, keywords, is_active ?? true, note ?? null, id]
+        [url, keywords, is_active ?? true, note ?? null, id,
+         community_type ?? 'general', community_name ?? null, nickname ?? null,
+         login_id ?? null, login_pw ?? null, post_limit ?? 10, keywords_global ?? null]
       );
       return result.rows[0];
     } else {
       const result = await client.query(
-        `INSERT INTO bot_community_targets (url, keywords, is_active, note)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [url, keywords, is_active ?? true, note ?? null]
+        `INSERT INTO bot_community_targets
+           (url, keywords, is_active, note, community_type, community_name, nickname, login_id, login_pw, post_limit, keywords_global)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [url, keywords, is_active ?? true, note ?? null,
+         community_type ?? 'general', community_name ?? null, nickname ?? null,
+         login_id ?? null, login_pw ?? null, post_limit ?? 10, keywords_global ?? null]
       );
       return result.rows[0];
     }

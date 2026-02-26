@@ -83,6 +83,8 @@
     /* 설정 카드 (우) */
     .settings-card { flex: 1; }
     .opt-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .opt-grid-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    .opt-sep-row { border-top: 1px solid #2d3748; margin: 10px 0 0; padding-top: 10px; }
     .opt-item { display: flex; flex-direction: column; gap: 5px; }
     .opt-item label { font-size: 12px; color: #cbd5e0; font-weight: 600; }
     .opt-item input {
@@ -301,8 +303,7 @@
       </div>
     </div>
     <div class="run-btn-wrap">
-      <button class="btn btn-success" id="btnRunType1" onclick="runNow('type1')">▶ Type1 실행 <span style="font-size:11px;opacity:.75">(전체 트렌드)</span></button>
-      <button class="btn btn-success" id="btnRunType2" onclick="runNow('type2')" style="background:#276749">▶ Type2 실행 <span style="font-size:11px;opacity:.75">(카테고리별)</span></button>
+      <button class="btn btn-success" id="btnRun" onclick="runNow()">▶ 수동 실행</button>
       <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
     </div>
   </div>
@@ -332,9 +333,28 @@
         <div class="hint">API Rate Limit 방어</div>
       </div>
     </div>
+    <div class="opt-sep-row">
+      <div class="opt-grid-2">
+        <div class="opt-item">
+          <label>수집 글 제한 (10~100)</label>
+          <input type="number" id="optPostLimit" min="10" max="100" />
+          <div class="hint">커뮤니티 글 수집 한도</div>
+        </div>
+        <div class="opt-item">
+          <label>범용 키워드</label>
+          <input type="text" id="optKeywordsGlobal" placeholder="가짜뉴스, 낚시, 어그로" />
+          <div class="hint">모든 커뮤니티 공통 적용</div>
+        </div>
+        <div class="opt-item">
+          <label>커뮤니티 수 (1~100)</label>
+          <input type="number" id="optCommunityCount" min="1" max="100" />
+          <div class="hint">동시 처리 커뮤니티 수</div>
+        </div>
+      </div>
+    </div>
     <div class="settings-footer">
       <button class="btn btn-primary btn-sm" onclick="saveOptions()">💾 저장</button>
-      <span class="schedule-note">🕐 자동 스케줄: 매일 06:00 / 18:00 KST</span>
+      <span class="schedule-note">🕐 자동 스케줄: 매일 00:00 / 12:00 KST</span>
     </div>
   </div>
 
@@ -463,20 +483,49 @@
   <!-- 탭2: 커뮤니티 타겟 -->
   <div id="tab-community" class="tab-content">
     <div class="community-wrap">
-      <div class="add-form">
+      <div class="add-form" style="flex-wrap:wrap;gap:6px">
+        <div class="fg" style="max-width:100px;min-width:80px">
+          <label>구분</label>
+          <select id="newType" style="padding:6px 8px;background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#e2e8f0;font-size:12px">
+            <option value="general">일반</option>
+            <option value="naver_cafe">네이버카페</option>
+          </select>
+        </div>
+        <div class="fg" style="max-width:130px;min-width:100px">
+          <label>커뮤니티명</label>
+          <input type="text" id="newName" placeholder="에펨코리아" />
+        </div>
         <div class="fg">
-          <label>커뮤니티 URL</label>
+          <label>URL</label>
           <input type="text" id="newUrl" placeholder="https://www.fmkorea.com/index.php?mid=humor" />
+        </div>
+        <div class="fg" style="max-width:110px;min-width:80px">
+          <label>닉네임</label>
+          <input type="text" id="newNickname" placeholder="닉네임" />
+        </div>
+        <div class="fg" style="max-width:110px;min-width:80px">
+          <label>아이디</label>
+          <input type="text" id="newLoginId" placeholder="아이디" />
+        </div>
+        <div class="fg" style="max-width:110px;min-width:80px">
+          <label>비밀번호</label>
+          <input type="password" id="newLoginPw" placeholder="비밀번호" />
         </div>
         <div class="fg">
           <label>키워드 (쉼표 구분)</label>
           <input type="text" id="newKeywords" placeholder="가짜뉴스, 유튜브 낚시, 어그로" />
         </div>
-        <div class="fg" style="max-width:120px">
+        <div class="fg" style="max-width:120px;min-width:80px">
           <label>메모</label>
           <input type="text" id="newNote" placeholder="에펨 유머" />
         </div>
-        <button class="btn btn-success" onclick="addTarget()">+ 추가</button>
+        <div style="display:flex;align-items:flex-end;gap:6px">
+          <button class="btn btn-success" onclick="addTarget()">+ 추가</button>
+          <label class="btn btn-ghost" style="cursor:pointer;margin:0" title="CSV 형식: 구분,커뮤니티명,URL,닉네임,아이디,비밀번호,키워드(|구분),메모">
+            📂 CSV
+            <input type="file" id="csvUpload" accept=".csv" style="display:none" onchange="uploadCsv(this)" />
+          </label>
+        </div>
       </div>
       <div class="table-wrap" id="targetList"><div class="empty">로딩 중...</div></div>
     </div>
@@ -553,14 +602,16 @@
         resultEl.style.color = '';
       }
 
-      document.getElementById('btnRunType1').disabled = status.running;
-      document.getElementById('btnRunType2').disabled = status.running;
+      document.getElementById('btnRun').disabled = status.running;
 
       // 옵션
       document.getElementById('optN').value = options.trackNTotal;
       document.getElementById('optM').value = options.trackMPerCategory;
       document.getElementById('optX').value = options.dedupDays;
       document.getElementById('optDelay').value = options.analysisDelayMs;
+      document.getElementById('optPostLimit').value = options.postLimit ?? 10;
+      document.getElementById('optKeywordsGlobal').value = options.keywordsGlobal ?? '';
+      document.getElementById('optCommunityCount').value = options.communityCount ?? 10;
     } catch (e) {}
   }
 
@@ -672,6 +723,9 @@
       trackMPerCategory: document.getElementById('optM').value,
       dedupDays: document.getElementById('optX').value,
       analysisDelayMs: document.getElementById('optDelay').value,
+      postLimit: document.getElementById('optPostLimit').value,
+      keywordsGlobal: document.getElementById('optKeywordsGlobal').value,
+      communityCount: document.getElementById('optCommunityCount').value,
     };
     try {
       const res = await fetch('/api/options', {
@@ -686,24 +740,22 @@
     }
   }
 
-  async function runNow(type) {
-    const endpoint = type === 'type1' ? '/api/run-type1' : '/api/run-type2';
-    const btnId = type === 'type1' ? 'btnRunType1' : 'btnRunType2';
-    document.getElementById(btnId).disabled = true;
+  async function runNow() {
+    document.getElementById('btnRun').disabled = true;
     try {
-      const res = await fetch(endpoint, { method: 'POST' });
+      const res = await fetch('/api/run', { method: 'POST' });
       const data = await res.json();
       showToast(data.message, data.ok ? 'ok' : 'err');
       if (data.ok) {
         fetchStatus();
         pollingTimer = setInterval(() => { fetchStatus(); }, 3000);
-        setTimeout(() => { clearInterval(pollingTimer); loadCollected(); }, 60000);
+        setTimeout(() => { clearInterval(pollingTimer); loadCollected(); }, 120000);
       } else {
-        document.getElementById(btnId).disabled = false;
+        document.getElementById('btnRun').disabled = false;
       }
     } catch (e) {
       showToast('실행 오류: ' + e.message, 'err');
-      document.getElementById(btnId).disabled = false;
+      document.getElementById('btnRun').disabled = false;
     }
   }
 
@@ -738,16 +790,27 @@
         wrap.innerHTML = '<div class="empty">등록된 타겟이 없습니다.<br>위 폼에서 추가해 주세요.</div>';
         return;
       }
+      const typeLabel = { general: '일반', naver_cafe: '네이버카페' };
       const rows = items.map(t => {
         const kws = (t.keywords || []).map(k => `<span class="kw-badge">${escHtml(k)}</span>`).join('');
         const activeLabel = t.is_active
           ? '<span style="color:#48bb78;font-size:12px">● 활성</span>'
           : '<span style="color:#718096;font-size:12px">○ 비활성</span>';
+        const ttype = escHtml(typeLabel[t.community_type] || t.community_type || '일반');
+        const tname = escHtml(t.community_name || '—');
+        const tnick = escHtml(t.nickname || '—');
+        const tid_val = escHtml(t.login_id || '—');
+        const tpw = t.login_pw ? '••••' : '—';
         return `
           <tr>
-            <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <td style="white-space:nowrap;color:#a0aec0;font-size:12px">${ttype}</td>
+            <td style="white-space:nowrap;font-size:12px">${tname}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               <a href="${escHtml(t.url)}" target="_blank" style="color:#63b3ed;font-size:12px">${escHtml(t.url)}</a>
             </td>
+            <td style="white-space:nowrap;font-size:12px;color:#a0aec0">${tnick}</td>
+            <td style="white-space:nowrap;font-size:12px;color:#a0aec0">${tid_val}</td>
+            <td style="white-space:nowrap;font-size:12px;color:#718096">${tpw}</td>
             <td>${kws || '<span style="color:#4a5568">—</span>'}</td>
             <td style="white-space:nowrap">${activeLabel}</td>
             <td style="color:#718096;font-size:11px">${escHtml(t.note || '—')}</td>
@@ -761,7 +824,7 @@
       wrap.innerHTML = `
         <table>
           <thead><tr>
-            <th>URL</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
+            <th>구분</th><th>커뮤니티명</th><th>URL</th><th>닉네임</th><th>아이디</th><th>비밀번호</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
@@ -774,18 +837,22 @@
     const url = document.getElementById('newUrl').value.trim();
     const keywords = document.getElementById('newKeywords').value.trim();
     const note = document.getElementById('newNote').value.trim();
+    const community_type = document.getElementById('newType').value;
+    const community_name = document.getElementById('newName').value.trim();
+    const nickname = document.getElementById('newNickname').value.trim();
+    const login_id = document.getElementById('newLoginId').value.trim();
+    const login_pw = document.getElementById('newLoginPw').value;
     if (!url) { showToast('URL을 입력해 주세요.', 'err'); return; }
     try {
       const res = await fetch('/api/community-targets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, keywords, note, is_active: true }),
+        body: JSON.stringify({ url, keywords, note, is_active: true, community_type, community_name, nickname, login_id, login_pw }),
       });
       const data = await res.json();
       if (data.ok) {
-        document.getElementById('newUrl').value = '';
-        document.getElementById('newKeywords').value = '';
-        document.getElementById('newNote').value = '';
+        ['newUrl','newKeywords','newNote','newName','newNickname','newLoginId','newLoginPw'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('newType').value = 'general';
         showToast('타겟이 추가되었습니다.', 'ok');
         loadTargets();
       } else {
@@ -794,6 +861,34 @@
     } catch (e) {
       showToast('오류: ' + e.message, 'err');
     }
+  }
+
+  async function uploadCsv(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let added = 0, failed = 0;
+    for (const line of lines) {
+      if (line.startsWith('#') || line.startsWith('구분')) continue;
+      const cols = line.split(',').map(c => c.trim());
+      const [community_type_raw, community_name, url, nickname, login_id, login_pw, kw_raw, note] = cols;
+      if (!url) { failed++; continue; }
+      const community_type = community_type_raw === '네이버카페' ? 'naver_cafe' : 'general';
+      const keywords = (kw_raw || '').split('|').map(k => k.trim()).filter(Boolean);
+      try {
+        const res = await fetch('/api/community-targets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, keywords, note: note || null, is_active: true, community_type, community_name: community_name || null, nickname: nickname || null, login_id: login_id || null, login_pw: login_pw || null }),
+        });
+        const data = await res.json();
+        if (data.ok) added++; else failed++;
+      } catch { failed++; }
+    }
+    input.value = '';
+    showToast(`CSV 업로드 완료: ${added}개 추가, ${failed}개 실패`, added > 0 ? 'ok' : 'err');
+    loadTargets();
   }
 
   async function toggleTarget(id, newActive) {

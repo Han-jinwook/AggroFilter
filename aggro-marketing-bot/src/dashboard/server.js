@@ -28,6 +28,9 @@ function loadOptions() {
     trackMPerCategory: config.trackMPerCategory,
     dedupDays: config.dedupDays,
     analysisDelayMs: config.analysisDelayMs,
+    postLimit: 10,
+    keywordsGlobal: '',
+    communityCount: 10,
   };
 }
 
@@ -62,11 +65,14 @@ app.post('/api/automode', (req, res) => {
 
 // POST /api/options — 옵션 저장
 app.post('/api/options', (req, res) => {
-  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs } = req.body;
+  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs, postLimit, keywordsGlobal, communityCount } = req.body;
   if (trackNTotal) runtimeOptions.trackNTotal = parseInt(trackNTotal, 10);
   if (trackMPerCategory) runtimeOptions.trackMPerCategory = parseInt(trackMPerCategory, 10);
   if (dedupDays) runtimeOptions.dedupDays = parseInt(dedupDays, 10);
   if (analysisDelayMs) runtimeOptions.analysisDelayMs = parseInt(analysisDelayMs, 10);
+  if (postLimit !== undefined) runtimeOptions.postLimit = parseInt(postLimit, 10);
+  if (keywordsGlobal !== undefined) runtimeOptions.keywordsGlobal = keywordsGlobal;
+  if (communityCount !== undefined) runtimeOptions.communityCount = parseInt(communityCount, 10);
   saveOptions(runtimeOptions);
   res.json({ ok: true, options: runtimeOptions });
 });
@@ -178,12 +184,19 @@ app.get('/api/community-targets', async (req, res) => {
 // POST /api/community-targets — 추가 또는 수정
 app.post('/api/community-targets', async (req, res) => {
   try {
-    const { id, url, keywords, is_active, note } = req.body;
-    if (!url) return res.status(400).json({ error: 'url 필수' });
+    const { id, url, keywords, is_active, note, community_type, community_name, nickname, login_id, login_pw, post_limit, keywords_global } = req.body;
+    if (!id && !url) return res.status(400).json({ error: 'url 필수' });
     const kwArr = Array.isArray(keywords)
       ? keywords
       : (keywords || '').split(',').map((k) => k.trim()).filter(Boolean);
-    const row = await upsertCommunityTarget({ id, url, keywords: kwArr, is_active, note });
+    const kwGlobalArr = Array.isArray(keywords_global)
+      ? keywords_global
+      : (keywords_global || '').split(',').map((k) => k.trim()).filter(Boolean);
+    const row = await upsertCommunityTarget({
+      id, url, keywords: kwArr, is_active, note,
+      community_type, community_name, nickname, login_id, login_pw,
+      post_limit, keywords_global: kwGlobalArr.length ? kwGlobalArr : null
+    });
     res.json({ ok: true, item: row });
   } catch (e) {
     res.status(500).json({ error: e.message });
