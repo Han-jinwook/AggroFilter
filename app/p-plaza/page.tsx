@@ -62,10 +62,6 @@ export default function PlazaPage() {
   const [activeTab, setActiveTab] = useState<"video" | "channel">(() => {
     const tab = searchParams.get('tab')
     if (tab === 'video' || tab === 'channel') return tab
-    if (typeof window !== 'undefined') {
-      const saved = window.sessionStorage.getItem('plaza_active_tab')
-      if (saved === 'video' || saved === 'channel') return saved
-    }
     return 'video'
   })
 
@@ -73,18 +69,14 @@ export default function PlazaPage() {
     const tab = searchParams.get('tab')
     if (tab === 'video' || tab === 'channel') {
       setActiveTab(tab)
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('plaza_active_tab', tab)
-      }
+      window.sessionStorage.setItem('plaza_active_tab', tab)
     } else {
-      if (typeof window !== 'undefined') {
-        const saved = window.sessionStorage.getItem('plaza_active_tab')
-        if (saved === 'video' || saved === 'channel') {
-          setActiveTab(saved)
-          return
-        }
+      const saved = window.sessionStorage.getItem('plaza_active_tab')
+      if (saved === 'video' || saved === 'channel') {
+        setActiveTab(saved)
+      } else {
+        setActiveTab('video')
       }
-      setActiveTab('video')
     }
   }, [searchParams])
 
