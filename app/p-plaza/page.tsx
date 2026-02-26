@@ -127,7 +127,7 @@ export default function PlazaPage() {
     }
     const code = navLang.split('-')[0].toLowerCase()
     const detected = langMap[code] || 'korean'
-    setCurrentLanguage(detected)
+    setCurrentLanguage(prev => prev === detected ? prev : detected)
   }, [])
 
   // Active Languages 로드
@@ -159,10 +159,10 @@ export default function PlazaPage() {
   }>({ key: "date", direction: "desc" })
 
   const [hotIssues, setHotIssues] = useState<any[]>([])
-  const [isLoadingHotIssues, setIsLoadingHotIssues] = useState(true)
+  const [isLoadingHotIssues, setIsLoadingHotIssues] = useState(false)
 
   const [hotChannels, setHotChannels] = useState<any[]>([])
-  const [isLoadingHotChannels, setIsLoadingHotChannels] = useState(true)
+  const [isLoadingHotChannels, setIsLoadingHotChannels] = useState(false)
 
 
   const [analyzedChannels, setAnalyzedChannels] = useState<TAnalyzedChannelData[]>([])
@@ -259,7 +259,7 @@ export default function PlazaPage() {
       let direction = sortDirection === 'best' ? 'desc' : 'asc'
       const cacheKey = `hot-issues:${sort}:${direction}:${currentLanguage}`
       const cached = getClientCache<any[]>(cacheKey)
-      if (cached) { setHotIssues(cached); return }
+      if (cached) { setHotIssues(cached); setIsLoadingHotIssues(false); return }
       setIsLoadingHotIssues(true)
       try {
         const res = await fetch(`/api/plaza/hot-issues?sort=${sort}&direction=${direction}&lang=${currentLanguage}`)
@@ -282,7 +282,7 @@ export default function PlazaPage() {
     const fetchHotChannels = async () => {
       const cacheKey = `hot-channels:${channelHotFilter}:${channelSortDirection}:${currentLanguage}`
       const cached = getClientCache<any[]>(cacheKey)
-      if (cached) { setHotChannels(cached); return }
+      if (cached) { setHotChannels(cached); setIsLoadingHotChannels(false); return }
       setIsLoadingHotChannels(true)
       try {
         const res = await fetch(`/api/plaza/hot-channels?filter=${channelHotFilter}&direction=${channelSortDirection}&lang=${currentLanguage}`)
