@@ -48,7 +48,7 @@ export async function GET(request: Request) {
           rank: index + 1,
           name: row.name,
           channelIcon: row.channelIcon || '/placeholder.svg',
-          topic: getCategoryName(row.category_id),
+          topic: getCategoryName(Number(row.category_id)),
           count: Number(row.analysis_count) || 0,
           avgClickbait: Number(row.avg_clickbait) || 0,
           score,

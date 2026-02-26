@@ -78,7 +78,7 @@ export async function GET(request: Request) {
           rank: index + 1,
           name: row.name,
           channelIcon: row.channelIcon || '/placeholder.svg',
-          topic: getCategoryName(row.category_id),
+          topic: getCategoryName(Number(row.category_id)),
           value: value.toString(),
           score: score,
           videoCount: row.video_count || 0,
