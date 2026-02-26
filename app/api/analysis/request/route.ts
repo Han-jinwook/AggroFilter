@@ -549,7 +549,7 @@ export async function POST(request: Request) {
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
 
-      refreshRankingCache(videoInfo.officialCategoryId)
+      await refreshRankingCache(videoInfo.officialCategoryId)
         .catch(err => {
           console.error('랭킹 캐시 갱신 실패:', err);
         });
