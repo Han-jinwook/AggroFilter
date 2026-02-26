@@ -371,38 +371,48 @@
 
       <h3>🗂 전체 구조</h3>
       <ul>
-        <li><strong>섹션0 — 대시보드</strong>: 이 화면. 봇 상태 확인, 옵션 제어, 수집/댓글 현황 모니터링</li>
-        <li><strong>섹션1 — YouTube 수집·분석</strong>: 트렌드 영상을 수집해 AggroFilter 메인 앱에 분석 요청</li>
-        <li><strong>섹션2 — 댓글 자동화</strong>: 분석 완료 영상에 유튜브 댓글 + 에펨코리아 커뮤니티 댓글 자동 작성</li>
+        <li><strong>대시보드</strong>: 이 화면. 봇 상태 확인, 옵션 제어, 수집/댓글 현황 모니터링</li>
+        <li><strong>모듈1 — YouTube 수집·분석</strong>: 트렌드 영상을 수집해 AggroFilter 메인 앱에 분석 요청</li>
+        <li><strong>모듈2 — 커뮤니티 타겟</strong>: 커뮤니티 사이트(일반/네이버카페) 등록 및 자동 수집 관리</li>
+        <li><strong>모듈3 — 댓글 자동화</strong>: 분석 완료 영상에 유튜브 댓글 + 커뮤니티 댓글 자동 작성</li>
       </ul>
 
-      <h3>⚙️ 수집 옵션 (N / M / X)</h3>
+      <h3>⚙️ 수집 옵션 (모듈1 — YouTube 수집)</h3>
       <table class="guide-table">
         <thead><tr><th>파라미터</th><th>의미</th><th>기본값</th><th>권장 범위</th></tr></thead>
         <tbody>
-          <tr><td><code>N</code></td><td>YouTube 전체 트렌드 수집 개수 (Type1) — <strong>업로드 12시간 이내</strong> 인기 영상만 대상</td><td>10</td><td>5 ~ 30</td></tr>
-          <tr><td><code>M</code></td><td>카테고리별 수집 개수 (Type2, 유튜브 공식 <strong>15개</strong> 카테고리 전체) — <strong>업로드 12시간 이내</strong> 최고 조회수 순</td><td>3</td><td>1 ~ 10</td></tr>
+          <tr><td><code>N</code></td><td>YouTube 전체 트렌드 수집 개수 — <strong>업로드 12시간 이내</strong> 인기 영상만 대상</td><td>10</td><td>5 ~ 30</td></tr>
+          <tr><td><code>M</code></td><td>카테고리별 수집 개수 (유튜브 공식 <strong>15개</strong> 카테고리 전체) — <strong>업로드 12시간 이내</strong> 최고 조회수 순</td><td>3</td><td>1 ~ 10</td></tr>
           <tr><td><code>X</code></td><td>채널 쿨타임 (일) — 동일 채널 재수집 방지</td><td>7</td><td>3 ~ 14</td></tr>
           <tr><td><code>딜레이</code></td><td>분석 요청 간격 (ms) — API Rate Limit 방어</td><td>5000</td><td>3000 ~ 10000</td></tr>
         </tbody>
       </table>
       <ul style="margin-top:10px">
         <li>변경 후 반드시 <strong>💾 저장</strong> 버튼을 눌러야 다음 실행에 적용됩니다.</li>
-        <li>Type1 + Type2 합산 최대 수집량 = <code>N + M×15</code>개 (중복 제거 후)</li>
-        <li>수집 대상은 <strong>업로드 후 12시간 이내</strong> 영상으로 한정 — 스케줄 실행 시마다 최신 트렌드만 분석</li>
+        <li>합산 최대 수집량 = <code>N + M×15</code>개 (중복 제거 후)</li>
+        <li>수집 대상은 <strong>업로드 후 12시간 이내</strong> 영상으로 한정</li>
       </ul>
+
+      <h3>⚙️ 수집 옵션 (모듈2 — 커뮤니티 타겟)</h3>
+      <table class="guide-table">
+        <thead><tr><th>파라미터</th><th>의미</th><th>기본값</th><th>범위</th></tr></thead>
+        <tbody>
+          <tr><td><code>수집 글 제한</code></td><td>커뮤니티당 수집할 최대 게시글 수</td><td>10</td><td>10 ~ 100</td></tr>
+          <tr><td><code>범용 키워드</code></td><td>모든 커뮤니티에 공통 적용되는 탐지 키워드 (쉼표 구분)</td><td>—</td><td>자유 입력</td></tr>
+          <tr><td><code>커뮤니티 수</code></td><td>동시 처리할 커뮤니티 목록 수</td><td>10</td><td>1 ~ 100</td></tr>
+        </tbody>
+      </table>
 
       <h3>🤖 자동 스케줄</h3>
       <ul>
-        <li>매일 <strong>오전 6:00 / 오후 6:00 (KST)</strong> 자동 실행 — Type1+2 합산</li>
+        <li>매일 <strong>00:00 / 12:00 (KST)</strong> 자동 실행 — 오전 12시(자정) + 낮 12시</li>
         <li>실행 순서: 수집 → 중복 제거 → 자막 수집 → 분석 등록 (자막 없는 영상 자동 제외)</li>
-        <li>댓글/커뮤니티 자동화는 <strong>2차 모듈</strong>에서 별도 설정 예정</li>
+        <li>오토모드 ON 상태일 때만 스케줄 자동 실행, OFF 시 수동 실행만 가능</li>
       </ul>
       <h3>▶ 수동 실행 버튼</h3>
       <ul>
-        <li><strong>Type1 실행</strong>: 전체 트렌드(mostPopular) N개 수집 후 분석</li>
-        <li><strong>Type2 실행</strong>: 15개 카테고리별 M개씩 수집 후 분석</li>
-        <li>두 버튼 모두 저장된 N/M/X/딜레이 설정값을 그대로 사용</li>
+        <li><strong>수동 실행</strong> 버튼 1개 — 저장된 N/M/X/딜레이 설정값 그대로 사용</li>
+        <li>실행 중에는 버튼이 비활성화되며, 완료 시 수집 리스트가 자동 새로고침됩니다</li>
       </ul>
 
       <h3>💬 유튜브 댓글 등급 기준</h3>
@@ -431,14 +441,26 @@
         <li>댓글 사이 딜레이: <strong>1~2분 랜덤</strong> (스팸 방지)</li>
       </ul>
 
-      <h3>🎯 커뮤니티 타겟 관리</h3>
+      <h3>🎯 모듈2 — 커뮤니티 타겟 관리</h3>
       <ul>
-        <li>에펨코리아 게시판 URL + 탐지 키워드를 등록해두면 봇이 자동으로 해당 게시글을 찾아 댓글 작성</li>
-        <li>키워드는 쉼표(,)로 구분 — 예: <code>가짜뉴스, 유튜브 낚시, 어그로</code></li>
+        <li><strong>구분</strong>: 일반 커뮤니티 / 네이버카페 중 선택</li>
+        <li><strong>커뮤니티명</strong>: 식별용 이름 (예: 에펨코리아, 보배드림)</li>
+        <li><strong>URL</strong>: 게시판 URL 등록 — 봇이 해당 게시글을 탐색</li>
+        <li><strong>닉네임 / 아이디 / 비밀번호</strong>: 해당 커뮤니티 로그인 정보 (비밀번호는 ••••로 표시)</li>
+        <li><strong>키워드</strong>: 타겟별 탐지 키워드, 쉼표(,) 구분 — 예: <code>가짜뉴스, 유튜브 낚시, 어그로</code></li>
+        <li><strong>범용 키워드</strong>: 수집 설정에서 지정 — 모든 커뮤니티에 공통 적용</li>
         <li>최근 <strong>24시간 이내</strong> 게시글만 대상 (오래된 글 스팸 방지)</li>
         <li>활성화/비활성화 토글로 타겟별 on/off 제어 가능</li>
         <li>댓글 내용은 <strong>Gemini AI</strong>가 게시글 본문을 읽고 자연스럽게 생성</li>
       </ul>
+      <h3>📂 CSV 일괄 업로드</h3>
+      <ul>
+        <li>커뮤니티 탭 우측 상단 <strong>📂 CSV</strong> 버튼으로 일괄 등록 가능</li>
+        <li>파일 형식 (헤더 행 포함 시 자동 스킵):</li>
+      </ul>
+      <pre style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:10px;font-size:12px;color:#a0aec0;overflow-x:auto">구분,커뮤니티명,URL,닉네임,아이디,비밀번호,키워드(|구분),메모
+일반,에펨코리아,https://fmkorea.com/...,닉네임,myid,mypw,가짜뉴스|낚시,유머게시판
+네이버카페,예시카페,https://cafe.naver.com/...,닉네임2,id2,pw2,어그로,</pre>
 
       <h3>🔐 필수 환경변수 (.env)</h3>
       <table class="guide-table">
