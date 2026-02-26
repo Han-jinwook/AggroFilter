@@ -164,25 +164,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
                 <span>▷</span>
               </div>
             </div>
-          ) : userPredictionStats ? (
-            <div className="mt-3 border-t border-gray-200 pt-3">
-              {userPredictionStats.totalPredictions > 0 ? (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 bg-slate-50 rounded-lg py-1.5 px-2">
-                  <span>◁</span>
-                  <span>누적</span>
-                  <span className="font-bold text-blue-600">{userPredictionStats.totalPredictions}개</span>
-                  <span>영상 평균</span>
-                  <span className="font-bold text-blue-600">{userPredictionStats.avgGap?.toFixed(1) ?? '-'}</span>
-                  <span>로</span>
-                  <span className="font-bold text-gray-800">{userPredictionStats.currentTierLabel || ''}({userPredictionStats.currentTier || ''}급)</span>
-                  <span>▷</span>
-                </div>
-              ) : (
-                <div className="text-center text-xs text-gray-400 py-1">
-                  촉점수를 준 영상이 없어 등급이 없습니다
-                </div>
-              )}
-            </div>
           ) : null}
         </div>
       </div>
