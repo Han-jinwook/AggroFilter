@@ -14,40 +14,50 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 런타임 옵션 저장소 (메모리 + 파일)
-const OPTS_FILE = path.join(__dirname, '../../data/options.json');
+// ────────────── 옵션 저장/로드 헬퍼 ──────────────
+const DATA_DIR = path.join(__dirname, '../../data');
 
-function loadOptions() {
+function loadJsonFile(filePath, defaults) {
   try {
-    if (fs.existsSync(OPTS_FILE)) {
-      return JSON.parse(fs.readFileSync(OPTS_FILE, 'utf8'));
-    }
+    if (fs.existsSync(filePath)) return { ...defaults, ...JSON.parse(fs.readFileSync(filePath, 'utf8')) };
   } catch (e) {}
-  return {
-    trackNTotal: config.trackNTotal,
-    trackMPerCategory: config.trackMPerCategory,
-    dedupDays: config.dedupDays,
-    analysisDelayMs: config.analysisDelayMs,
-    postLimit: 10,
-    keywordsGlobal: '',
-    communityCount: 10,
-  };
+  return { ...defaults };
 }
 
-function saveOptions(opts) {
-  const dir = path.dirname(OPTS_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(OPTS_FILE, JSON.stringify(opts, null, 2), 'utf8');
+function saveJsonFile(filePath, data) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-// 전역 옵션 (job.js에서 참조)
-let runtimeOptions = loadOptions();
-function getRuntimeOptions() { return runtimeOptions; }
+// ────────────── 모듈1 (YouTube 수집) ──────────────
+const M1_OPTS_FILE = path.join(DATA_DIR, 'module1_options.json');
+const M1_DEFAULTS = {
+  trackNTotal: config.trackNTotal,
+  trackMPerCategory: config.trackMPerCategory,
+  dedupDays: config.dedupDays,
+  analysisDelayMs: config.analysisDelayMs,
+};
+let module1Options = loadJsonFile(M1_OPTS_FILE, M1_DEFAULTS);
+let module1Status = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
+function setModule1Status(s) { Object.assign(module1Status, s); }
 
-// 봇 실행 상태
-let botStatus = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
-function setBotStatus(s) { Object.assign(botStatus, s); }
-function getBotStatus() { return botStatus; }
+// ────────────── 모듈2 (커뮤니티 타겟) ──────────────
+const M2_OPTS_FILE = path.join(DATA_DIR, 'module2_options.json');
+const M2_DEFAULTS = {
+  postLimit: 10,
+  keywordsGlobal: '',
+  communityCount: 10,
+};
+let module2Options = loadJsonFile(M2_OPTS_FILE, M2_DEFAULTS);
+let module2Status = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
+function setModule2Status(s) { Object.assign(module2Status, s); }
+
+// 하위호환: 기존 코드가 참조하는 runtimeOptions/botStatus
+let runtimeOptions = module1Options;
+function getRuntimeOptions() { return module1Options; }
+let botStatus = module1Status;
+function setBotStatus(s) { setModule1Status(s); }
+function getBotStatus() { return module1Status; }
 
 // ────────────── API ──────────────
 
@@ -63,28 +73,92 @@ app.post('/api/automode', (req, res) => {
   res.json({ ok: true, autoMode: botStatus.autoMode });
 });
 
-// POST /api/options — 옵션 저장
+// POST /api/options — (하위호환) 모듈1 옵션 저장
 app.post('/api/options', (req, res) => {
-  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs, postLimit, keywordsGlobal, communityCount } = req.body;
-  if (trackNTotal) runtimeOptions.trackNTotal = parseInt(trackNTotal, 10);
-  if (trackMPerCategory) runtimeOptions.trackMPerCategory = parseInt(trackMPerCategory, 10);
-  if (dedupDays) runtimeOptions.dedupDays = parseInt(dedupDays, 10);
-  if (analysisDelayMs) runtimeOptions.analysisDelayMs = parseInt(analysisDelayMs, 10);
-  if (postLimit !== undefined) runtimeOptions.postLimit = parseInt(postLimit, 10);
-  if (keywordsGlobal !== undefined) runtimeOptions.keywordsGlobal = keywordsGlobal;
-  if (communityCount !== undefined) runtimeOptions.communityCount = parseInt(communityCount, 10);
-  saveOptions(runtimeOptions);
-  res.json({ ok: true, options: runtimeOptions });
+  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs } = req.body;
+  if (trackNTotal) module1Options.trackNTotal = parseInt(trackNTotal, 10);
+  if (trackMPerCategory) module1Options.trackMPerCategory = parseInt(trackMPerCategory, 10);
+  if (dedupDays) module1Options.dedupDays = parseInt(dedupDays, 10);
+  if (analysisDelayMs) module1Options.analysisDelayMs = parseInt(analysisDelayMs, 10);
+  saveJsonFile(M1_OPTS_FILE, module1Options);
+  res.json({ ok: true, options: module1Options });
 });
 
-// 공통: job 실행 후 botStatus 업데이트
-function _runJobAsync(jobFn, label, progressMsg) {
-  setBotStatus({ running: true, runningLabel: label, progress: progressMsg, lastResult: null });
+// ────────────── 모듈1 전용 API ──────────────
+
+// GET /api/module1/status
+app.get('/api/module1/status', (req, res) => {
+  res.json({ status: module1Status, options: module1Options });
+});
+
+// POST /api/module1/automode
+app.post('/api/module1/automode', (req, res) => {
+  const { enabled } = req.body;
+  module1Status.autoMode = !!enabled;
+  res.json({ ok: true, autoMode: module1Status.autoMode });
+});
+
+// POST /api/module1/options
+app.post('/api/module1/options', (req, res) => {
+  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs } = req.body;
+  if (trackNTotal !== undefined) module1Options.trackNTotal = parseInt(trackNTotal, 10);
+  if (trackMPerCategory !== undefined) module1Options.trackMPerCategory = parseInt(trackMPerCategory, 10);
+  if (dedupDays !== undefined) module1Options.dedupDays = parseInt(dedupDays, 10);
+  if (analysisDelayMs !== undefined) module1Options.analysisDelayMs = parseInt(analysisDelayMs, 10);
+  saveJsonFile(M1_OPTS_FILE, module1Options);
+  res.json({ ok: true, options: module1Options });
+});
+
+// POST /api/module1/run
+app.post('/api/module1/run', (req, res) => {
+  if (module1Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  res.json({ ok: true, message: '모듈1 수집 시작' });
+  const { runJob } = require('../job');
+  _runJobAsync(runJob, '모듈1', 'YouTube 수집 중...', module1Options, setModule1Status);
+});
+
+// ────────────── 모듈2 전용 API ──────────────
+
+// GET /api/module2/status
+app.get('/api/module2/status', (req, res) => {
+  res.json({ status: module2Status, options: module2Options });
+});
+
+// POST /api/module2/automode
+app.post('/api/module2/automode', (req, res) => {
+  const { enabled } = req.body;
+  module2Status.autoMode = !!enabled;
+  res.json({ ok: true, autoMode: module2Status.autoMode });
+});
+
+// POST /api/module2/options
+app.post('/api/module2/options', (req, res) => {
+  const { postLimit, keywordsGlobal, communityCount } = req.body;
+  if (postLimit !== undefined) module2Options.postLimit = parseInt(postLimit, 10);
+  if (keywordsGlobal !== undefined) module2Options.keywordsGlobal = keywordsGlobal;
+  if (communityCount !== undefined) module2Options.communityCount = parseInt(communityCount, 10);
+  saveJsonFile(M2_OPTS_FILE, module2Options);
+  res.json({ ok: true, options: module2Options });
+});
+
+// POST /api/module2/run
+app.post('/api/module2/run', (req, res) => {
+  if (module2Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  res.json({ ok: true, message: '모듈2 커뮤니티 수집 시작' });
+  // TODO: 커뮤니티 수집 job 연결 예정
+  _runJobAsync(() => Promise.resolve({ success: 0, fail: 0, skipped: 0 }), '모듈2', '커뮤니티 수집 중...', module2Options, setModule2Status);
+});
+
+// 공통: job 실행 후 상태 업데이트 (opts, statusSetter 파라미터로 모듈별 독립 실행)
+function _runJobAsync(jobFn, label, progressMsg, opts, statusSetter) {
+  const _opts = opts || module1Options;
+  const _set = statusSetter || setModule1Status;
+  _set({ running: true, runningLabel: label, progress: progressMsg, lastResult: null });
   setImmediate(async () => {
     try {
-      const result = await jobFn(runtimeOptions);
+      const result = await jobFn(_opts);
       const summary = `✅ [${label}] 분석 ${result.success ?? 0}개 완료 / 실패 ${result.fail ?? 0}개 / 자막없음 ${result.skipped ?? 0}개 제외`;
-      setBotStatus({
+      _set({
         running: false,
         runningLabel: null,
         lastRun: new Date().toISOString(),
@@ -92,7 +166,7 @@ function _runJobAsync(jobFn, label, progressMsg) {
         progress: null,
       });
     } catch (e) {
-      setBotStatus({
+      _set({
         running: false,
         runningLabel: null,
         lastRun: new Date().toISOString(),
@@ -103,34 +177,12 @@ function _runJobAsync(jobFn, label, progressMsg) {
   });
 }
 
-// POST /api/run — 자동 스케줄과 동일 (Type1+2 전체)
+// POST /api/run — (하위호환) 모듈1 수동 실행
 app.post('/api/run', (req, res) => {
-  if (botStatus.running) {
-    return res.json({ ok: false, message: '이미 실행 중입니다.' });
-  }
-  res.json({ ok: true, message: 'Type1+2 실행 시작' });
+  if (module1Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  res.json({ ok: true, message: '모듈1 수집 시작' });
   const { runJob } = require('../job');
-  _runJobAsync(runJob, 'Type1+2', 'Type1+2 수집 중...');
-});
-
-// POST /api/run-type1 — Type1 전용 수동 실행
-app.post('/api/run-type1', (req, res) => {
-  if (botStatus.running) {
-    return res.json({ ok: false, message: '이미 실행 중입니다.' });
-  }
-  res.json({ ok: true, message: 'Type1 실행 시작' });
-  const { runJobType1 } = require('../job');
-  _runJobAsync(runJobType1, 'Type1', 'Type1 수집 중...');
-});
-
-// POST /api/run-type2 — Type2 전용 수동 실행
-app.post('/api/run-type2', (req, res) => {
-  if (botStatus.running) {
-    return res.json({ ok: false, message: '이미 실행 중입니다.' });
-  }
-  res.json({ ok: true, message: 'Type2 실행 시작' });
-  const { runJobType2 } = require('../job');
-  _runJobAsync(runJobType2, 'Type2', 'Type2 카테고리 수집 중...');
+  _runJobAsync(runJob, '모듈1', 'YouTube 수집 중...', module1Options, setModule1Status);
 });
 
 // GET /api/collected — 봇이 수집/분석한 영상 목록 (최신 100개)
