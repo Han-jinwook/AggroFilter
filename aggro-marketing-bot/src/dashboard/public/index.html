@@ -318,16 +318,19 @@
         </tbody>
       </table>
 
-      <h3>🤖 자동 스케줄</h3>
-      <ul>
-        <li>매일 <strong>00:00 / 12:00 (KST)</strong> 자동 실행 — 오전 12시(자정) + 낮 12시</li>
-        <li>실행 순서: 수집 → 중복 제거 → 자막 수집 → 분석 등록 (자막 없는 영상 자동 제외)</li>
-        <li>오토모드 ON 상태일 때만 스케줄 자동 실행, OFF 시 수동 실행만 가능</li>
-      </ul>
-      <h3>▶ 수동 실행 버튼</h3>
-      <ul>
-        <li><strong>수동 실행</strong> 버튼 1개 — 저장된 N/M/X/딜레이 설정값 그대로 사용</li>
-        <li>실행 중에는 버튼이 비활성화되며, 완료 시 수집 리스트가 자동 새로고침됩니다</li>
+      <h3>🤖 자동 스케줄 (모듈별 독립)</h3>
+      <table class="guide-table">
+        <thead><tr><th>모듈</th><th>스케줄</th><th>오토모드 위치</th><th>특이사항</th></tr></thead>
+        <tbody>
+          <tr><td><strong>모듈1</strong> YouTube 수집</td><td>매일 00:00 / 12:00 KST</td><td>모듈1 탭 좌측 현황카드</td><td>수집 → 중복제거 → 자막수집 → 분석등록</td></tr>
+          <tr><td><strong>모듈2</strong> 커뮤니티 타겟</td><td>매일 00:00 / 12:00 KST</td><td>모듈2 탭 좌측 현황카드</td><td>타겟 커뮤니티 게시글 수집</td></tr>
+        </tbody>
+      </table>
+      <ul style="margin-top:10px">
+        <li>각 모듈의 오토모드를 <strong>독립적으로</strong> ON/OFF 가능 — 한 모듈만 자동 실행도 가능</li>
+        <li>오토모드 OFF 시 해당 모듈은 수동 실행만 가능</li>
+        <li>수동 실행 버튼 클릭 시 저장된 설정값 그대로 즉시 실행</li>
+        <li>실행 중에는 버튼이 비활성화되며, 완료 시 리스트 자동 새로고침</li>
       </ul>
 
       <h3>💬 유튜브 댓글 등급 기준</h3>
