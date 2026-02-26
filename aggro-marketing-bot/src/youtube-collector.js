@@ -67,6 +67,12 @@ async function collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds) {
   const collected = [];
   let pageToken = undefined;
   let fetched = 0;
+  const publishedAfter12h = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+
+  // 카테고리당 최대 허용 수: N/10 * 2, 최소 2개 (예: N=10→2개, N=20→4개, N=30→6개)
+  const maxPerCategory = Math.max(2, Math.floor(n / 10) * 2);
+  const categoryCount = {}; // categoryId → 수집 수
+  console.log(`  [Type1] 카테고리당 최대 ${maxPerCategory}개 제한 (N=${n})`);
 
   while (collected.length < n) {
     try {
@@ -86,10 +92,18 @@ async function collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds) {
       for (const v of items) {
         if (collected.length >= n) break;
         if (isShorts(v.contentDetails?.duration)) continue;
+        if (new Date(v.snippet.publishedAt) < new Date(publishedAfter12h)) continue;
         if (recentVideoIds.has(v.id)) continue;
         if (recentChannelIds.has(v.snippet.channelId)) continue;
         if (seenVideoIds.has(v.id)) continue;
+        // 카테고리당 최대 개수 초과 시 스킵
+        const catId = v.snippet?.categoryId || 'unknown';
+        if ((categoryCount[catId] || 0) >= maxPerCategory) {
+          console.log(`  [Type1][SKIP-CAT] 카테고리(${catId}) ${maxPerCategory}개 초과: ${v.snippet.title}`);
+          continue;
+        }
         seenVideoIds.add(v.id);
+        categoryCount[catId] = (categoryCount[catId] || 0) + 1;
         collected.push(normalizeVideo(v, 'type1', '전체 트렌드'));
         console.log(`  [Type1][OK] ${v.snippet.title}`);
       }
@@ -184,4 +198,26 @@ async function collectTargetVideos(recentVideoIds, recentChannelIds, options = {
   return all;
 }
 
-module.exports = { collectTargetVideos };
+/**
+ * Type1 전용 수집 (수동 실행용)
+ */
+async function collectType1Only(recentVideoIds, recentChannelIds, options = {}) {
+  const n = options.trackNTotal ?? config.trackNTotal;
+  const seenVideoIds = new Set();
+  const type1 = await collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds);
+  console.log(`\n[Collector] Type1 전용 수집: ${type1.length}개`);
+  return type1;
+}
+
+/**
+ * Type2 전용 수집 (수동 실행용)
+ */
+async function collectType2Only(recentVideoIds, recentChannelIds, options = {}) {
+  const m = options.trackMPerCategory ?? config.trackMPerCategory;
+  const seenVideoIds = new Set();
+  const type2 = await collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds);
+  console.log(`\n[Collector] Type2 전용 수집: ${type2.length}개`);
+  return type2;
+}
+
+module.exports = { collectTargetVideos, collectType1Only, collectType2Only };

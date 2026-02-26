@@ -42,7 +42,7 @@ let runtimeOptions = loadOptions();
 function getRuntimeOptions() { return runtimeOptions; }
 
 // 봇 실행 상태
-let botStatus = { running: false, lastRun: null, lastResult: null };
+let botStatus = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
 function setBotStatus(s) { Object.assign(botStatus, s); }
 function getBotStatus() { return botStatus; }
 
@@ -51,6 +51,13 @@ function getBotStatus() { return botStatus; }
 // GET /api/status — 봇 상태 + 옵션
 app.get('/api/status', (req, res) => {
   res.json({ status: botStatus, options: runtimeOptions });
+});
+
+// POST /api/automode — 오토모드 토글
+app.post('/api/automode', (req, res) => {
+  const { enabled } = req.body;
+  botStatus.autoMode = !!enabled;
+  res.json({ ok: true, autoMode: botStatus.autoMode });
 });
 
 // POST /api/options — 옵션 저장
@@ -64,21 +71,60 @@ app.post('/api/options', (req, res) => {
   res.json({ ok: true, options: runtimeOptions });
 });
 
-// POST /api/run — 수동 즉시 실행
-app.post('/api/run', async (req, res) => {
+// 공통: job 실행 후 botStatus 업데이트
+function _runJobAsync(jobFn, label, progressMsg) {
+  setBotStatus({ running: true, runningLabel: label, progress: progressMsg, lastResult: null });
+  setImmediate(async () => {
+    try {
+      const result = await jobFn(runtimeOptions);
+      const summary = `✅ [${label}] 분석 ${result.success ?? 0}개 완료 / 실패 ${result.fail ?? 0}개 / 자막없음 ${result.skipped ?? 0}개 제외`;
+      setBotStatus({
+        running: false,
+        runningLabel: null,
+        lastRun: new Date().toISOString(),
+        lastResult: { ...result, summary },
+        progress: null,
+      });
+    } catch (e) {
+      setBotStatus({
+        running: false,
+        runningLabel: null,
+        lastRun: new Date().toISOString(),
+        lastResult: { error: e.message, summary: '❌ ' + e.message },
+        progress: null,
+      });
+    }
+  });
+}
+
+// POST /api/run — 자동 스케줄과 동일 (Type1+2 전체)
+app.post('/api/run', (req, res) => {
   if (botStatus.running) {
     return res.json({ ok: false, message: '이미 실행 중입니다.' });
   }
-  res.json({ ok: true, message: '실행 시작' });
-  // 비동기로 job 실행
+  res.json({ ok: true, message: 'Type1+2 실행 시작' });
   const { runJob } = require('../job');
-  setBotStatus({ running: true });
-  try {
-    const result = await runJob(runtimeOptions);
-    setBotStatus({ running: false, lastRun: new Date().toISOString(), lastResult: result });
-  } catch (e) {
-    setBotStatus({ running: false, lastRun: new Date().toISOString(), lastResult: { error: e.message } });
+  _runJobAsync(runJob, 'Type1+2', 'Type1+2 수집 중...');
+});
+
+// POST /api/run-type1 — Type1 전용 수동 실행
+app.post('/api/run-type1', (req, res) => {
+  if (botStatus.running) {
+    return res.json({ ok: false, message: '이미 실행 중입니다.' });
   }
+  res.json({ ok: true, message: 'Type1 실행 시작' });
+  const { runJobType1 } = require('../job');
+  _runJobAsync(runJobType1, 'Type1', 'Type1 수집 중...');
+});
+
+// POST /api/run-type2 — Type2 전용 수동 실행
+app.post('/api/run-type2', (req, res) => {
+  if (botStatus.running) {
+    return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  }
+  res.json({ ok: true, message: 'Type2 실행 시작' });
+  const { runJobType2 } = require('../job');
+  _runJobAsync(runJobType2, 'Type2', 'Type2 카테고리 수집 중...');
 });
 
 // GET /api/collected — 봇이 수집/분석한 영상 목록 (최신 100개)
@@ -90,16 +136,23 @@ app.get('/api/collected', async (req, res) => {
         SELECT
           a.f_id,
           a.f_video_id,
-          a.f_video_title,
-          a.f_channel_name,
+          a.f_title                                        AS f_video_title,
+          COALESCE(NULLIF(c.f_title, ''), a.f_channel_id) AS f_channel_name,
+          a.f_channel_id,
           a.f_reliability_score,
+          a.f_accuracy_score,
           a.f_clickbait_score,
-          a.f_created_at,
-          a.f_language
+          a.f_grounding_used,
+          a.f_grounding_queries,
+          a.f_is_recheck,
+          a.f_language,
+          a.f_official_category_id                        AS f_category,
+          a.f_created_at
         FROM t_analyses a
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_user_id = 'bot'
         ORDER BY a.f_created_at DESC
-        LIMIT 100
+        LIMIT 200
       `);
       res.json({ items: result.rows });
     } finally {

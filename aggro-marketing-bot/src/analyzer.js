@@ -31,11 +31,14 @@ async function pollUntilComplete(videoId, maxWaitMs = 600000) {
 
 /**
  * 메인 앱 /api/analysis/request 를 HTTP로 호출하여 분석 요청
+ * - clientTranscript/clientTranscriptItems: 봇이 미리 수집한 자막을 함께 전송
  * - 504 대응: 요청 후 폴링으로 완료 확인
  * - userId = 'bot' 으로 고정 → DB에서 봇 분석 필터링 가능
  */
 async function analyzeVideo(video) {
   console.log(`  [Analyzer] 분석 요청: ${video.title}`);
+  const hasTranscript = video.transcriptItems && video.transcriptItems.length > 0;
+  console.log(`  [Analyzer] 자막: ${hasTranscript ? `${video.transcript?.length ?? 0}자 / ${video.transcriptItems.length}줄` : '없음 (제목+썸네일 기반 분석)'}`);
 
   // 1. 분석 요청 (504가 와도 서버는 백그라운드에서 계속 처리 중)
   try {
@@ -46,6 +49,10 @@ async function analyzeVideo(video) {
         userId: 'bot',
         isRecheck: false,
         forceRecheck: false,
+        ...(hasTranscript && {
+          clientTranscript: video.transcript,
+          clientTranscriptItems: video.transcriptItems,
+        }),
       },
       {
         headers: { 'Content-Type': 'application/json' },

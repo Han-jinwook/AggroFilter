@@ -1,27 +1,61 @@
-const { collectTargetVideos } = require('./youtube-collector');
+const { collectTargetVideos, collectType1Only, collectType2Only } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
-const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, insertCommentLog } = require('./db');
-const { generateYoutubeComment } = require('./comment-generator');
-const { runFmkoreaScan } = require('./fmkorea-scanner');
-const { processCommentQueue } = require('./comment-queue');
+const { getTranscriptData } = require('./youtube-meta');
+const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds } = require('./db');
 const defaultConfig = require('./config');
 
 /**
- * 메인 잡 — 수집 → 중복 제거 → 순차 분석
- * @param {object} options - 대시보드에서 전달된 런타임 옵션 (없으면 config 기본값 사용)
- * @returns {{ success: number, fail: number, errors: Array }}
+ * 공통: 자막 수집 + 자막없는 영상 필터링 + 분석 실행
+ */
+async function _collectTranscriptAndAnalyze(videos, options, label) {
+  if (videos.length === 0) {
+    console.log(`[Job][${label}] 새로 분석할 영상 없음. 종료.`);
+    return { success: 0, fail: 0, skipped: 0, errors: [] };
+  }
+
+  // 자막 수집
+  console.log(`\n[Job][${label}] 자막 수집 시작 (총 ${videos.length}개)...`);
+  for (let i = 0; i < videos.length; i++) {
+    const v = videos[i];
+    console.log(`  자막 (${i + 1}/${videos.length}): ${v.title}`);
+    const meta = await getTranscriptData(v.videoId);
+    v.transcript = meta.transcript;
+    v.transcriptItems = meta.transcriptItems;
+    v.hasTranscript = meta.hasTranscript;
+  }
+
+  const noTranscript = videos.filter(v => !v.hasTranscript);
+  const analysisTargets = videos.filter(v => v.hasTranscript);
+  console.log(`[Job][${label}] 자막 완료: ${analysisTargets.length}개 분석 대상 / ${noTranscript.length}개 자막없음 제외`);
+  if (noTranscript.length > 0) {
+    noTranscript.forEach(v => console.log(`  - 자막없음 스킵: ${v.title}`));
+  }
+
+  if (analysisTargets.length === 0) {
+    console.log(`[Job][${label}] 자막 있는 영상이 없어 분석을 건너뜁니다.`);
+    return { success: 0, fail: 0, skipped: noTranscript.length, errors: [] };
+  }
+
+  // 분석
+  console.log(`\n[Job][${label}] 분석 시작 (${analysisTargets.length}개)...`);
+  const results = await analyzeVideos(analysisTargets, options);
+  return { ...results, skipped: noTranscript.length };
+}
+
+/**
+ * 자동 스케줄 잡 — Type1+2 수집 → 자막 → 분석 등록까지
+ * (댓글/커뮤니티 모듈은 2차 작업으로 분리)
  */
 async function runJob(options = {}) {
   const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
   const startTime = Date.now();
 
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`[Job] 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`[Job] 자동 실행 시작: ${new Date().toLocaleString('ko-KR')}`);
   console.log(`[Job] 옵션: N=${options.trackNTotal ?? defaultConfig.trackNTotal}, M=${options.trackMPerCategory ?? defaultConfig.trackMPerCategory}, X=${dedupDays}일, 딜레이=${options.analysisDelayMs ?? defaultConfig.analysisDelayMs}ms`);
   console.log(`${'='.repeat(60)}`);
 
   try {
-    // 1. 최근 분석된 video/channel ID 조회 (중복 방지)
     console.log(`\n[Job] 중복 체크 (최근 ${dedupDays}일)...`);
     const [recentVideoIds, recentChannelIds] = await Promise.all([
       getRecentlyAnalyzedVideoIds(dedupDays),
@@ -29,73 +63,83 @@ async function runJob(options = {}) {
     ]);
     console.log(`[Job] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelIds.size}개`);
 
-    // 2. YouTube 2-Track 수집
-    console.log('\n[Job] YouTube 2-Track 수집 시작...');
+    console.log('\n[Job] YouTube Type1+2 수집 시작...');
     const videos = await collectTargetVideos(recentVideoIds, recentChannelIds, options);
 
-    if (videos.length === 0) {
-      console.log('[Job] 새로 분석할 영상 없음. 종료.');
-      return { success: 0, fail: 0, errors: [] };
-    }
+    const results = await _collectTranscriptAndAnalyze(videos, options, '자동');
 
-    // 3. 순차 분석 (메인 앱 API 호출)
-    console.log(`\n[Job] 분석 시작 (총 ${videos.length}개)...`);
-    const results = await analyzeVideos(videos, options);
-
-    // 4. 분석 성공 영상 → 유튜브 댓글 큐 적재 (섹션2)
-    if (results.analyzed && results.analyzed.length > 0) {
-      console.log(`\n[Job] 유튜브 댓글 큐 적재 (${results.analyzed.length}개)...`);
-      for (const video of results.analyzed) {
-        try {
-          const { grade, text } = generateYoutubeComment(video);
-          await insertCommentLog({
-            target_type: 'youtube',
-            target_id: video.videoId,
-            target_url: `https://www.youtube.com/watch?v=${video.videoId}`,
-            video_id: video.videoId,
-            grade,
-            generated_text: text,
-          });
-        } catch (e) {
-          console.warn(`[Job] 댓글 큐 적재 실패 (${video.videoId}): ${e.message}`);
-        }
-      }
-    }
-
-    // 5. 에펨코리아 스캔 + 댓글 큐 적재 (섹션2)
-    console.log('\n[Job] 에펨코리아 스캔 시작...');
-    try {
-      await runFmkoreaScan();
-    } catch (e) {
-      console.warn(`[Job] 에펨코리아 스캔 실패: ${e.message}`);
-    }
-
-    // 6. 댓글 큐 처리 (유튜브 + 에펨코리아)
-    console.log('\n[Job] 댓글 큐 처리 시작...');
-    let queueResult = { processed: 0, done: 0, errored: 0 };
-    try {
-      queueResult = await processCommentQueue();
-    } catch (e) {
-      console.warn(`[Job] 댓글 큐 처리 실패: ${e.message}`);
-    }
-
-    // 7. 결과 리포트
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     console.log(`\n${'='.repeat(60)}`);
     console.log(`[Job] 완료 — 소요: ${elapsed}초`);
-    console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개`);
-    console.log(`  댓글 처리: ${queueResult.done}개 완료 / ${queueResult.errored}개 실패`);
-    if (results.errors.length > 0) {
-      console.log('  분석 실패 목록:');
+    console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개 / 자막없음 제외: ${results.skipped}개`);
+    if (results.errors?.length > 0) {
       results.errors.forEach((e) => console.log(`    - ${e.title}: ${e.error}`));
     }
     console.log(`${'='.repeat(60)}\n`);
 
-    return { ...results, queueResult };
+    return results;
   } catch (err) {
     console.error('[Job] 치명적 오류:', err);
-    return { success: 0, fail: 0, errors: [{ title: 'fatal', error: err.message }] };
+    return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
   }
 }
 
-module.exports = { runJob };
+/**
+ * Type1 수동 실행 — 전체 트렌드 수집 → 자막 → 분석
+ */
+async function runJobType1(options = {}) {
+  const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
+  const startTime = Date.now();
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[Job][Type1] 수동 실행 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`${'='.repeat(60)}`);
+
+  try {
+    const [recentVideoIds, recentChannelIds] = await Promise.all([
+      getRecentlyAnalyzedVideoIds(dedupDays),
+      getRecentlyAnalyzedChannelIds(dedupDays),
+    ]);
+
+    const videos = await collectType1Only(recentVideoIds, recentChannelIds, options);
+    const results = await _collectTranscriptAndAnalyze(videos, options, 'Type1');
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`[Job][Type1] 완료 — 소요: ${elapsed}초 | 성공: ${results.success}개 / 실패: ${results.fail}개 / 자막없음: ${results.skipped}개`);
+    return results;
+  } catch (err) {
+    console.error('[Job][Type1] 치명적 오류:', err);
+    return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
+  }
+}
+
+/**
+ * Type2 수동 실행 — 카테고리별 수집 → 자막 → 분석
+ */
+async function runJobType2(options = {}) {
+  const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
+  const startTime = Date.now();
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[Job][Type2] 수동 실행 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`${'='.repeat(60)}`);
+
+  try {
+    const [recentVideoIds, recentChannelIds] = await Promise.all([
+      getRecentlyAnalyzedVideoIds(dedupDays),
+      getRecentlyAnalyzedChannelIds(dedupDays),
+    ]);
+
+    const videos = await collectType2Only(recentVideoIds, recentChannelIds, options);
+    const results = await _collectTranscriptAndAnalyze(videos, options, 'Type2');
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`[Job][Type2] 완료 — 소요: ${elapsed}초 | 성공: ${results.success}개 / 실패: ${results.fail}개 / 자막없음: ${results.skipped}개`);
+    return results;
+  } catch (err) {
+    console.error('[Job][Type2] 치명적 오류:', err);
+    return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
+  }
+}
+
+module.exports = { runJob, runJobType1, runJobType2 };
