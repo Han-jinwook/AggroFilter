@@ -469,6 +469,10 @@
             <div class="hint">API Rate Limit 방어</div>
           </div>
         </div>
+        <div style="margin-top:12px">
+          <div style="font-size:11px;font-weight:700;color:#718096;margin-bottom:6px">📂 카테고리별 채널 쿨타임 (비워두면 X일 기본값 적용)</div>
+          <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px"></div>
+        </div>
         <div class="settings-footer">
           <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 저장</button>
           <span class="schedule-note">🕐 자동: 매일 00:00 / 12:00 KST</span>
@@ -645,6 +649,30 @@
     if (btnEl) btnEl.disabled = status.running;
   }
 
+  // 카테고리 ID → 이름 맵
+  const CAT_NAMES = {
+    '1':'필름/애니','2':'자동차','10':'음악','15':'동물','17':'스포츠',
+    '19':'여행','20':'게임','22':'인물/블로그','23':'코미디','24':'엔터테인먼트',
+    '25':'뉴스/정치','26':'노하우','27':'교육','28':'과학/기술','29':'비영리'
+  };
+
+  function renderCatCooldownGrid(savedCooldowns) {
+    const grid = document.getElementById('catCooldownGrid');
+    if (!grid) return;
+    grid.innerHTML = Object.entries(CAT_NAMES).map(([id, name]) => `
+      <div style="display:flex;align-items:center;gap:4px;padding:3px 0">
+        <span style="font-size:11px;color:#a0aec0;width:80px;flex-shrink:0">${name}</span>
+        <input type="number" id="catCool_${id}" min="1" max="365"
+          value="${savedCooldowns?.[id] ?? ''}"
+          placeholder="X일"
+          style="width:52px;padding:3px 6px;background:#0f1117;border:1px solid #2d3748;border-radius:4px;color:#e2e8f0;font-size:11px" />
+        <span style="font-size:10px;color:#4a5568">일</span>
+      </div>`).join('');
+  }
+
+  // 시작 시 그리드 한 번 렌더링 (저장값 없이 초기화)
+  renderCatCooldownGrid({});
+
   // ────────── 모듈1 (YouTube 수집) ──────────
   async function fetchModule1Status() {
     try {
@@ -662,6 +690,7 @@
         document.getElementById('m1OptM').value     = options.trackMPerCategory ?? '';
         document.getElementById('m1OptX').value     = options.dedupDays ?? '';
         document.getElementById('m1OptDelay').value = options.analysisDelayMs ?? '';
+        renderCatCooldownGrid(options.categoryCooldowns || {});
       }
     } catch (e) {}
   }
@@ -675,11 +704,18 @@
   }
 
   async function saveModule1Options() {
+    // 카테고리별 쿨타임 수집
+    const categoryCooldowns = {};
+    for (const catId of Object.keys(CAT_NAMES)) {
+      const el = document.getElementById('catCool_' + catId);
+      if (el && el.value !== '') categoryCooldowns[catId] = parseInt(el.value, 10);
+    }
     const body = {
-      trackNTotal:      document.getElementById('m1OptN').value,
+      trackNTotal:       document.getElementById('m1OptN').value,
       trackMPerCategory: document.getElementById('m1OptM').value,
-      dedupDays:        document.getElementById('m1OptX').value,
-      analysisDelayMs:  document.getElementById('m1OptDelay').value,
+      dedupDays:         document.getElementById('m1OptX').value,
+      analysisDelayMs:   document.getElementById('m1OptDelay').value,
+      categoryCooldowns,
     };
     try {
       await fetch('/api/module1/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });

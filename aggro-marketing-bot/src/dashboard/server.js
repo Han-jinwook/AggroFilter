@@ -36,6 +36,7 @@ const M1_DEFAULTS = {
   trackMPerCategory: config.trackMPerCategory,
   dedupDays: config.dedupDays,
   analysisDelayMs: config.analysisDelayMs,
+  categoryCooldowns: {}, // { "10": 30, "20": 20 } 형태
 };
 let module1Options = loadJsonFile(M1_OPTS_FILE, M1_DEFAULTS);
 let module1Status = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
@@ -100,11 +101,20 @@ app.post('/api/module1/automode', (req, res) => {
 
 // POST /api/module1/options
 app.post('/api/module1/options', (req, res) => {
-  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs } = req.body;
+  const { trackNTotal, trackMPerCategory, dedupDays, analysisDelayMs, categoryCooldowns } = req.body;
   if (trackNTotal !== undefined) module1Options.trackNTotal = parseInt(trackNTotal, 10);
   if (trackMPerCategory !== undefined) module1Options.trackMPerCategory = parseInt(trackMPerCategory, 10);
   if (dedupDays !== undefined) module1Options.dedupDays = parseInt(dedupDays, 10);
   if (analysisDelayMs !== undefined) module1Options.analysisDelayMs = parseInt(analysisDelayMs, 10);
+  if (categoryCooldowns !== undefined) {
+    // { "10": 30, "20": 20 } 형태로 저장, 값은 정수로 변환
+    const parsed = {};
+    for (const [catId, days] of Object.entries(categoryCooldowns)) {
+      const d = parseInt(days, 10);
+      if (!isNaN(d) && d > 0) parsed[catId] = d;
+    }
+    module1Options.categoryCooldowns = parsed;
+  }
   saveJsonFile(M1_OPTS_FILE, module1Options);
   res.json({ ok: true, options: module1Options });
 });

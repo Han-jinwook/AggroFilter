@@ -1,7 +1,7 @@
 const { collectTargetVideos, collectType1Only, collectType2Only } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
 const { getTranscriptData } = require('./youtube-meta');
-const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds } = require('./db');
+const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, getRecentlyAnalyzedChannelsByCategoryMap } = require('./db');
 const defaultConfig = require('./config');
 
 /**
@@ -57,14 +57,18 @@ async function runJob(options = {}) {
 
   try {
     console.log(`\n[Job] 중복 체크 (최근 ${dedupDays}일)...`);
-    const [recentVideoIds, recentChannelIds] = await Promise.all([
+    const categoryCooldowns = options.categoryCooldowns || {};
+    const hasCategoryCooldowns = Object.keys(categoryCooldowns).length > 0;
+    const [recentVideoIds, recentChannelMap] = await Promise.all([
       getRecentlyAnalyzedVideoIds(dedupDays),
-      getRecentlyAnalyzedChannelIds(dedupDays),
+      hasCategoryCooldowns
+        ? getRecentlyAnalyzedChannelsByCategoryMap(categoryCooldowns, dedupDays)
+        : getRecentlyAnalyzedChannelIds(dedupDays),
     ]);
-    console.log(`[Job] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelIds.size}개`);
+    console.log(`[Job] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelMap.size}개${hasCategoryCooldowns ? ' (카테고리별 쿨타임 적용)' : ''}`);
 
     console.log('\n[Job] YouTube Type1+2 수집 시작...');
-    const videos = await collectTargetVideos(recentVideoIds, recentChannelIds, options);
+    const videos = await collectTargetVideos(recentVideoIds, recentChannelMap, options);
 
     const results = await _collectTranscriptAndAnalyze(videos, options, '자동');
 
@@ -96,12 +100,16 @@ async function runJobType1(options = {}) {
   console.log(`${'='.repeat(60)}`);
 
   try {
-    const [recentVideoIds, recentChannelIds] = await Promise.all([
+    const categoryCooldowns = options.categoryCooldowns || {};
+    const hasCategoryCooldowns = Object.keys(categoryCooldowns).length > 0;
+    const [recentVideoIds, recentChannelMap] = await Promise.all([
       getRecentlyAnalyzedVideoIds(dedupDays),
-      getRecentlyAnalyzedChannelIds(dedupDays),
+      hasCategoryCooldowns
+        ? getRecentlyAnalyzedChannelsByCategoryMap(categoryCooldowns, dedupDays)
+        : getRecentlyAnalyzedChannelIds(dedupDays),
     ]);
 
-    const videos = await collectType1Only(recentVideoIds, recentChannelIds, options);
+    const videos = await collectType1Only(recentVideoIds, recentChannelMap, options);
     const results = await _collectTranscriptAndAnalyze(videos, options, 'Type1');
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);

@@ -59,10 +59,18 @@ function normalizeVideo(v, trackType, categoryName) {
 }
 
 /**
+ * recentChannelMap: Map<channelId, reason> 또는 Set<channelId> 모두 지원
+ */
+function isChannelExcluded(recentChannelMap, channelId) {
+  if (recentChannelMap instanceof Map) return recentChannelMap.has(channelId);
+  return recentChannelMap.has(channelId);
+}
+
+/**
  * [Type1] 전체 트렌드 상위 N개 수집
  * YouTube mostPopular chart 기준 (regionCode: KR)
  */
-async function collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds) {
+async function collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds) {
   console.log(`\n[Collector][Type1] 전체 인기 트렌드 최대 ${n}개 수집...`);
   const collected = [];
   let pageToken = undefined;
@@ -94,7 +102,7 @@ async function collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds) {
         if (isShorts(v.contentDetails?.duration)) continue;
         if (new Date(v.snippet.publishedAt) < new Date(publishedAfter12h)) continue;
         if (recentVideoIds.has(v.id)) continue;
-        if (recentChannelIds.has(v.snippet.channelId)) continue;
+        if (isChannelExcluded(recentChannelMap, v.snippet.channelId)) continue;
         if (seenVideoIds.has(v.id)) continue;
         // 카테고리당 최대 개수 초과 시 스킵
         const catId = v.snippet?.categoryId || 'unknown';
@@ -124,10 +132,15 @@ async function collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds) {
 
 /**
  * [Type2] 카테고리별 최고 조회수 상위 M개 수집
+ * options.categoryCooldowns 에 해당 카테고리가 있으면 카테고리별 쿨타임 적용
  */
-async function collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds) {
+async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, options = {}) {
   const { targetCategories } = config;
+  const categoryCooldowns = options.categoryCooldowns || {};
   console.log(`\n[Collector][Type2] 카테고리별 최대 ${m}개 × ${targetCategories.length}개 카테고리 수집...`);
+  if (Object.keys(categoryCooldowns).length > 0) {
+    console.log(`  [Type2] 카테고리 쿨타임 설정:`, JSON.stringify(categoryCooldowns));
+  }
   const collected = [];
   const publishedAfter = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
 
@@ -159,7 +172,7 @@ async function collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds) {
         if (count >= m) break;
         if (isShorts(v.contentDetails?.duration)) continue;
         if (recentVideoIds.has(v.id)) continue;
-        if (recentChannelIds.has(v.snippet.channelId)) continue;
+        if (isChannelExcluded(recentChannelMap, v.snippet.channelId)) continue;
         if (seenVideoIds.has(v.id)) continue;
         seenVideoIds.add(v.id);
         collected.push(normalizeVideo(v, 'type2', category.name));
@@ -179,17 +192,17 @@ async function collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds) {
 /**
  * 2-Track 전체 수집 (Type1 + Type2, 중복 제거 포함)
  */
-async function collectTargetVideos(recentVideoIds, recentChannelIds, options = {}) {
+async function collectTargetVideos(recentVideoIds, recentChannelMap, options = {}) {
   const n = options.trackNTotal ?? config.trackNTotal;
   const m = options.trackMPerCategory ?? config.trackMPerCategory;
 
   const seenVideoIds = new Set(); // Type1/Type2 간 중복 방지
 
   const [type1, type2] = await Promise.all([
-    collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds),
+    collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds),
     // Type2는 Type1 완료 후 실행 (seenVideoIds 공유)
   ]).then(async ([t1]) => {
-    const t2 = await collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds);
+    const t2 = await collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, options);
     return [t1, t2];
   });
 
@@ -201,10 +214,10 @@ async function collectTargetVideos(recentVideoIds, recentChannelIds, options = {
 /**
  * Type1 전용 수집 (수동 실행용)
  */
-async function collectType1Only(recentVideoIds, recentChannelIds, options = {}) {
+async function collectType1Only(recentVideoIds, recentChannelMap, options = {}) {
   const n = options.trackNTotal ?? config.trackNTotal;
   const seenVideoIds = new Set();
-  const type1 = await collectType1(n, recentVideoIds, recentChannelIds, seenVideoIds);
+  const type1 = await collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds);
   console.log(`\n[Collector] Type1 전용 수집: ${type1.length}개`);
   return type1;
 }
@@ -212,10 +225,10 @@ async function collectType1Only(recentVideoIds, recentChannelIds, options = {}) 
 /**
  * Type2 전용 수집 (수동 실행용)
  */
-async function collectType2Only(recentVideoIds, recentChannelIds, options = {}) {
+async function collectType2Only(recentVideoIds, recentChannelMap, options = {}) {
   const m = options.trackMPerCategory ?? config.trackMPerCategory;
   const seenVideoIds = new Set();
-  const type2 = await collectType2(m, recentVideoIds, recentChannelIds, seenVideoIds);
+  const type2 = await collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, options);
   console.log(`\n[Collector] Type2 전용 수집: ${type2.length}개`);
   return type2;
 }

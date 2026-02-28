@@ -40,6 +40,41 @@ async function getRecentlyAnalyzedChannelIds(days) {
   }
 }
 
+/**
+ * 카테고리별 쿨타임으로 채널 제외 맵 조회
+ * categoryCooldowns: { "10": 30, "20": 20 } — 없는 카테고리는 defaultDays 적용
+ * 반환: Map<channelId, reason> (reason: "cat:10:30d" 등)
+ */
+async function getRecentlyAnalyzedChannelsByCategoryMap(categoryCooldowns, defaultDays) {
+  const client = await pool.connect();
+  try {
+    // 최대 쿨타임 일수만큼 후보 조회 (효율성)
+    const maxDays = Math.max(defaultDays, ...Object.values(categoryCooldowns).map(Number));
+    const result = await client.query(
+      `SELECT DISTINCT ON (f_channel_id) f_channel_id, f_official_category_id, f_created_at
+       FROM t_analyses
+       WHERE f_created_at > NOW() - INTERVAL '${maxDays} days'
+         AND f_channel_id IS NOT NULL
+       ORDER BY f_channel_id, f_created_at DESC`
+    );
+    const excludeMap = new Map();
+    for (const row of result.rows) {
+      const catId = String(row.f_official_category_id || '');
+      const coolDays = catId && categoryCooldowns[catId] != null
+        ? Number(categoryCooldowns[catId])
+        : defaultDays;
+      const ageMs = Date.now() - new Date(row.f_created_at).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays < coolDays) {
+        excludeMap.set(row.f_channel_id, `cat:${catId || 'default'}:${coolDays}d`);
+      }
+    }
+    return excludeMap;
+  } finally {
+    client.release();
+  }
+}
+
 // ────────────── bot_community_targets ──────────────
 
 async function getCommunityTargets(activeOnly = true) {
@@ -145,6 +180,7 @@ module.exports = {
   pool,
   getRecentlyAnalyzedVideoIds,
   getRecentlyAnalyzedChannelIds,
+  getRecentlyAnalyzedChannelsByCategoryMap,
   getCommunityTargets,
   upsertCommunityTarget,
   deleteCommunityTarget,
