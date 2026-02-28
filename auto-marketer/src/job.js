@@ -110,10 +110,10 @@ async function runJobType1(options = {}) {
     ]);
 
     const videos = await collectType1Only(recentVideoIds, recentChannelMap, options);
-    const results = await _collectTranscriptAndAnalyze(videos, options, 'Type1');
+    const results = await _collectTranscriptAndAnalyze(videos, options, '수동/트렌드');
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);
-    console.log(`[Job][Type1] 완료 — 소요: ${elapsed}초 | 성공: ${results.success}개 / 실패: ${results.fail}개 / 자막없음: ${results.skipped}개`);
+    console.log(`[Job][수동/트렌드] 완료 — 소요: ${elapsed}초 | 성공: ${results.success}개 / 실패: ${results.fail}개 / 자막없음: ${results.skipped}개`);
     return results;
   } catch (err) {
     console.error('[Job][Type1] 치명적 오류:', err);

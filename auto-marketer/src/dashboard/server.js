@@ -121,8 +121,8 @@ app.post('/api/module1/options', (req, res) => {
 app.post('/api/module1/run', (req, res) => {
   if (module1Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
   res.json({ ok: true, message: '모듈1 수집 시작' });
-  const { runJob } = require('../job');
-  _runJobAsync(runJob, '모듈1', 'YouTube 수집 중...', module1Options, setModule1Status);
+  const { runJobType1 } = require('../job');
+  _runJobAsync(runJobType1, '모듈1', 'YouTube 트렌드 수집 중...', module1Options, setModule1Status);
 });
 
 // ────────────── 모듈2 전용 API ──────────────
