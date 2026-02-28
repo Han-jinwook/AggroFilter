@@ -252,6 +252,20 @@
       border: 1px solid #4a5568;
     }
     .btn-guide:hover { background: #4a5568; }
+
+    /* ══ 모듈1 설정 섹션 구분 ══ */
+    .m1-section { padding: 10px 0; }
+    .m1-section-title {
+      font-size: 13px; font-weight: 800; color: #90cdf4;
+      letter-spacing: -.2px; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .m1-section-desc { font-size: 11px; color: #4a5568; }
+    .m1-divider {
+      border: none; border-top: 1px dashed #2d3748;
+      margin: 6px 0;
+    }
+    .run-note { font-size: 11px; color: #4a5568; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -445,38 +459,52 @@
           <button class="btn btn-success" id="m1BtnRun" onclick="runModule1()">▶ 수동 실행</button>
           <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
         </div>
+        <div class="run-note">⚡ 수동 실행 시 트렌드 수집(Type1)만 실행됩니다 — 자동 스케줄은 트렌드→카테고리 순으로 전체 실행
+        </div>
       </div>
       <div class="card settings-card">
         <div class="card-title">⚙️ 모듈1 수집 설정</div>
-        <div class="opt-grid">
-          <div class="opt-item">
-            <label>N — 전체 트렌드</label>
-            <input type="number" id="m1OptN" min="1" max="50" />
-            <div class="hint">mostPopular N개</div>
+
+        <!-- ① 트렌드 수집 섹션 -->
+        <div class="m1-section">
+          <div class="m1-section-title">📈 트렌드 수집</div>
+          <div class="m1-section-desc">YouTube 전체 인기 차트 기반 — 업로드 12시간 이내, 한국 기준</div>
+          <div class="opt-grid" style="margin-top:10px">
+            <div class="opt-item">
+              <label>N — 수집 개수</label>
+              <input type="number" id="m1OptN" min="1" max="50" />
+              <div class="hint">mostPopular 상위 N개</div>
+            </div>
           </div>
-          <div class="opt-item">
-            <label>M — 카테고리별</label>
-            <input type="number" id="m1OptM" min="1" max="20" />
-            <div class="hint">15개 카테고리 × M</div>
-          </div>
-          <div class="opt-item">
-            <label>X — 채널 쿨타임(일)</label>
-            <input type="number" id="m1OptX" min="1" max="30" />
-            <div class="hint">동일 채널 재수집 방지</div>
-          </div>
-          <div class="opt-item">
-            <label>딜레이 (ms)</label>
-            <input type="number" id="m1OptDelay" min="1000" step="500" />
-            <div class="hint">API Rate Limit 방어</div>
+          <div style="margin-top:10px">
+            <div style="font-size:11px;font-weight:600;color:#718096;margin-bottom:6px">카테고리별 채널 쿨타임 <span style="font-weight:400">(비워두면 X일 기본값 적용)</span></div>
+            <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px"></div>
           </div>
         </div>
-        <div style="margin-top:12px">
-          <div style="font-size:11px;font-weight:700;color:#718096;margin-bottom:6px">📂 카테고리별 채널 쿨타임 (비워두면 X일 기본값 적용)</div>
-          <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px"></div>
+
+        <div class="m1-divider"></div>
+
+        <!-- ② 카테고리별 수집 섹션 -->
+        <div class="m1-section">
+          <div class="m1-section-title">🗂 카테고리별 수집</div>
+          <div class="m1-section-desc">15개 카테고리별 최고 조회수 순 — 업로드 12시간 이내, 한국 기준</div>
+          <div class="opt-grid" style="margin-top:10px">
+            <div class="opt-item">
+              <label>M — 카테고리당 개수</label>
+              <input type="number" id="m1OptM" min="1" max="20" />
+              <div class="hint">15개 카테고리 × M개</div>
+            </div>
+            <div class="opt-item">
+              <label>X — 동일채널 쿨타임(일)</label>
+              <input type="number" id="m1OptX" min="1" max="30" />
+              <div class="hint">카테고리 쿨타임 미설정 시 기본값</div>
+            </div>
+          </div>
         </div>
+
         <div class="settings-footer">
           <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 저장</button>
-          <span class="schedule-note">🕐 자동: 매일 00:00 / 12:00 KST</span>
+          <span class="schedule-note">🕐 자동: 매일 00:00 / 12:00 KST (트렌드→카테고리 순)</span>
         </div>
       </div>
     </div>
@@ -690,7 +718,6 @@
         document.getElementById('m1OptN').value     = options.trackNTotal ?? '';
         document.getElementById('m1OptM').value     = options.trackMPerCategory ?? '';
         document.getElementById('m1OptX').value     = options.dedupDays ?? '';
-        document.getElementById('m1OptDelay').value = options.analysisDelayMs ?? '';
         renderCatCooldownGrid(options.categoryCooldowns || {});
       }
     } catch (e) {}
@@ -715,7 +742,6 @@
       trackNTotal:       document.getElementById('m1OptN').value,
       trackMPerCategory: document.getElementById('m1OptM').value,
       dedupDays:         document.getElementById('m1OptX').value,
-      analysisDelayMs:   document.getElementById('m1OptDelay').value,
       categoryCooldowns,
     };
     try {
