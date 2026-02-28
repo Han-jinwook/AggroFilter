@@ -1176,13 +1176,16 @@
     }
   }
 
-  // ────────── 접기/펴기 ──────────
-  function toggleCollapse(bodyId, headerEl) {
-    const body = document.getElementById(bodyId);
-    const arrow = headerEl.querySelector('.collapse-arrow');
-    const isOpen = body.classList.contains('open');
-    body.classList.toggle('open', !isOpen);
-    if (arrow) arrow.classList.toggle('open', !isOpen);
+  // ────────── 접기/펴기 (모든 섹션 동시 제어) ──────────
+  function toggleCollapse(ignoredId, headerEl) {
+    const isNowOpening = !headerEl.querySelector('.collapse-arrow').classList.contains('open');
+    
+    // 모든 화살표와 바디를 찾아서 상태 통일
+    const arrows = document.querySelectorAll('.collapse-arrow');
+    const bodies = document.querySelectorAll('.collapse-body');
+    
+    arrows.forEach(a => a.classList.toggle('open', isNowOpening));
+    bodies.forEach(b => b.classList.toggle('open', isNowOpening));
   }
 
   // ────────── 가이드 모달 ──────────
