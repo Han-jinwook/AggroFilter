@@ -300,12 +300,14 @@
           <tr><td><code>M</code></td><td>카테고리별 수집 개수 (유튜브 공식 <strong>15개</strong> 카테고리 전체) — <strong>업로드 12시간 이내</strong> 최고 조회수 순</td><td>3</td><td>1 ~ 10</td></tr>
           <tr><td><code>X</code></td><td>채널 쿨타임 (일) — 동일 채널 재수집 방지</td><td>7</td><td>3 ~ 14</td></tr>
           <tr><td><code>딜레이</code></td><td>분석 요청 간격 (ms) — API Rate Limit 방어</td><td>5000</td><td>3000 ~ 10000</td></tr>
+          <tr><td><code>카테고리별 쿨타임</code></td><td>카테고리마다 채널 재수집 주기를 개별 지정 — 비워두면 X일 기본값 적용</td><td>—</td><td>1 ~ 365일</td></tr>
         </tbody>
       </table>
       <ul style="margin-top:10px">
         <li>변경 후 반드시 <strong>💾 저장</strong> 버튼을 눌러야 다음 실행에 적용됩니다.</li>
         <li>합산 최대 수집량 = <code>N + M×15</code>개 (중복 제거 후)</li>
-        <li>수집 대상은 <strong>업로드 후 12시간 이내</strong> 영상으로 한정</li>
+        <li>수집 대상은 <strong>업로드 후 12시간 이내</strong> 영상으로 한정 (KST 기준, YouTube API 정확한 데이터)</li>
+        <li>카테고리 쿨타임 예시 — 음악: 30일, 게임: 20일 → 해당 카테고리 채널은 그 주기만큼 건너뜀</li>
       </ul>
 
       <h3>⚙️ 수집 옵션 (모듈2 — 커뮤니티 타겟)</h3>
