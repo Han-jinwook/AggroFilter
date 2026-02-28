@@ -57,8 +57,37 @@
     /* ══ 컨트롤 영역 ══ */
     .control-bar {
       background: #0f1117; border-bottom: 1px solid #2d3748;
-      padding: 12px 24px; display: flex; gap: 14px; flex-shrink: 0;
+      padding: 12px 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; flex-shrink: 0;
     }
+
+    /* 접기/펴기 */
+    .collapse-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; padding: 2px 0;
+    }
+    .collapse-header:hover .collapse-arrow { color: #90cdf4; }
+    .collapse-arrow {
+      font-size: 11px; color: #4a5568; transition: transform .2s;
+      display: inline-block;
+    }
+    .collapse-arrow.open { transform: rotate(180deg); }
+    .collapse-body {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .3s ease, opacity .2s;
+      opacity: 0;
+    }
+    .collapse-body.open { max-height: 600px; opacity: 1; }
+
+    /* 상시표시 핵심값 행 */
+    .always-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 0 6px; border-bottom: 1px solid #1e2335;
+      margin-bottom: 4px;
+    }
+    .always-val { font-size: 22px; font-weight: 900; color: #e2e8f0; }
+    .always-label { font-size: 12px; color: #718096; font-weight: 600; }
+    .always-unit { font-size: 12px; color: #4a5568; }
 
     /* 카드 공통 */
     .card {
@@ -431,83 +460,125 @@
   <div id="tab-collected" class="tab-content active">
     <!-- 모듈1 현황+설정 카드 -->
     <div class="control-bar" style="margin-bottom:14px">
-      <div class="card status-card">
-        <div class="card-title">📊 모듈1 현황 — YouTube 수집</div>
-        <div class="auto-toggle-wrap" style="margin-bottom:10px">
-          <span class="auto-toggle-label" id="m1AutoLabel">오토모드 OFF</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="m1AutoToggle" onchange="toggleAutoMode1(this)" />
-            <div class="toggle-track"></div>
-            <div class="toggle-thumb"></div>
-          </label>
-          <span id="m1AutoBadge" style="font-size:12px;color:#4a5568">수동 실행 전용</span>
-        </div>
-        <div class="status-grid">
-          <div class="stat-item">
-            <div class="stat-label">현재 상태</div>
-            <div class="stat-value" id="m1StatusText">대기 중</div>
+
+      <!-- ── 섹션1: 현황 ── -->
+      <div class="card">
+        <div class="card-title">📊 모듈1 현황</div>
+
+        <!-- 상시: 오토모드 + 현재상태 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">오토모드</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <label class="toggle-switch">
+                <input type="checkbox" id="m1AutoToggle" onchange="toggleAutoMode1(this)" />
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="auto-toggle-label" id="m1AutoLabel" style="font-size:14px;font-weight:700">OFF</span>
+            </div>
           </div>
-          <div class="stat-item">
-            <div class="stat-label">마지막 실행</div>
-            <div class="stat-value" id="m1LastRun">—</div>
-          </div>
-          <div class="stat-item" style="grid-column:1/-1">
-            <div class="stat-label">마지막 결과</div>
-            <div class="stat-value" id="m1LastResult">—</div>
+          <div style="margin-left:auto;text-align:right">
+            <div class="always-label">현재 상태</div>
+            <div class="always-val" id="m1StatusText" style="font-size:16px;margin-top:4px">대기 중</div>
           </div>
         </div>
-        <div class="run-btn-wrap">
-          <button class="btn btn-success" id="m1BtnRun" onclick="runModule1()">▶ 수동 실행</button>
-          <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
+
+        <!-- 접기 토글 -->
+        <div class="collapse-header" onclick="toggleCollapse('m1StatusDetail', this)">
+          <span style="font-size:12px;color:#718096">실행 이력 / 버튼</span>
+          <span class="collapse-arrow">▼</span>
         </div>
-        <div class="run-note">⚡ 수동 실행 시 트렌드 수집(Type1)만 실행됩니다 — 자동 스케줄은 트렌드→카테고리 순으로 전체 실행
+        <div class="collapse-body" id="m1StatusDetail">
+          <div class="status-grid" style="margin-top:8px">
+            <div class="stat-item">
+              <div class="stat-label">마지막 실행</div>
+              <div class="stat-value" id="m1LastRun">—</div>
+            </div>
+            <div class="stat-item" style="grid-column:1/-1">
+              <div class="stat-label">마지막 결과</div>
+              <div class="stat-value" id="m1LastResult">—</div>
+            </div>
+          </div>
+          <div class="run-btn-wrap" style="margin-top:10px">
+            <button class="btn btn-success" id="m1BtnRun" onclick="runModule1()">▶ 수동 실행</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
+          </div>
+          <div class="run-note">⚡ 수동: 트렌드만 / 자동: 트렌드→카테고리 전체</div>
+          <div style="margin-top:8px;font-size:12px;color:#68d391;font-weight:600">🕐 자동: 00:00 / 12:00 KST</div>
+          <div style="margin-top:8px">
+            <span id="m1AutoBadge" style="font-size:12px;color:#4a5568"></span>
+          </div>
         </div>
       </div>
-      <div class="card settings-card">
-        <div class="card-title">⚙️ 모듈1 수집 설정</div>
 
-        <!-- ① 트렌드 수집 섹션 -->
-        <div class="m1-section">
-          <div class="m1-section-title">📈 트렌드 수집</div>
-          <div class="m1-section-desc">YouTube 전체 인기 차트 기반 — 업로드 12시간 이내, 한국 기준</div>
-          <div class="opt-grid" style="margin-top:10px">
-            <div class="opt-item">
-              <label>N — 수집 개수</label>
-              <input type="number" id="m1OptN" min="1" max="50" />
-              <div class="hint">mostPopular 상위 N개</div>
+      <!-- ── 섹션2: 트렌드 수집 ── -->
+      <div class="card">
+        <div class="card-title">📈 트렌드 수집</div>
+
+        <!-- 상시: N값 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">수집 개수 (N)</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <input type="number" id="m1OptN" min="1" max="50"
+                style="width:72px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
+              <span class="always-unit">개</span>
             </div>
-          </div>
-          <div style="margin-top:10px">
-            <div style="font-size:11px;font-weight:600;color:#718096;margin-bottom:6px">카테고리별 채널 쿨타임 <span style="font-weight:400">(비워두면 X일 기본값 적용)</span></div>
-            <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px"></div>
+            <div style="font-size:11px;color:#4a5568;margin-top:3px">mostPopular 상위 N개</div>
           </div>
         </div>
 
-        <div class="m1-divider"></div>
-
-        <!-- ② 카테고리별 수집 섹션 -->
-        <div class="m1-section">
-          <div class="m1-section-title">🗂 카테고리별 수집</div>
-          <div class="m1-section-desc">15개 카테고리별 최고 조회수 순 — 업로드 12시간 이내, 한국 기준</div>
-          <div class="opt-grid" style="margin-top:10px">
-            <div class="opt-item">
-              <label>M — 카테고리당 개수</label>
-              <input type="number" id="m1OptM" min="1" max="20" />
-              <div class="hint">15개 카테고리 × M개</div>
-            </div>
-            <div class="opt-item">
-              <label>X — 동일채널 쿨타임(일)</label>
-              <input type="number" id="m1OptX" min="1" max="30" />
-              <div class="hint">카테고리 쿨타임 미설정 시 기본값</div>
-            </div>
-          </div>
+        <!-- 접기 토글 -->
+        <div class="collapse-header" onclick="toggleCollapse('m1TrendDetail', this)">
+          <span style="font-size:12px;color:#718096">카테고리별 채널 쿨타임</span>
+          <span class="collapse-arrow">▼</span>
         </div>
-
-        <div class="settings-footer">
-          <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 저장</button>
-          <span class="schedule-note">🕐 자동: 매일 00:00 / 12:00 KST (트렌드→카테고리 순)</span>
+        <div class="collapse-body" id="m1TrendDetail">
+          <div style="font-size:11px;color:#718096;margin:8px 0 6px">비워두면 X일(카테고리별 수집의 기본값) 적용</div>
+          <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 10px"></div>
         </div>
       </div>
+
+      <!-- ── 섹션3: 카테고리별 수집 ── -->
+      <div class="card">
+        <div class="card-title">🗂 카테고리별 수집</div>
+
+        <!-- 상시: M + X값 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">카테고리당 (M)</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <input type="number" id="m1OptM" min="1" max="20"
+                style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
+              <span class="always-unit">개</span>
+            </div>
+            <div style="font-size:11px;color:#4a5568;margin-top:3px">15개 카테고리 × M</div>
+          </div>
+          <div style="margin-left:auto">
+            <div class="always-label">채널 쿨타임 (X)</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <input type="number" id="m1OptX" min="1" max="30"
+                style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
+              <span class="always-unit">일</span>
+            </div>
+            <div style="font-size:11px;color:#4a5568;margin-top:3px">동일 채널 재수집 방지</div>
+          </div>
+        </div>
+
+        <!-- 접기 토글 -->
+        <div class="collapse-header" onclick="toggleCollapse('m1CatDetail', this)">
+          <span style="font-size:12px;color:#718096">저장</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body" id="m1CatDetail">
+          <div style="font-size:12px;color:#718096;margin:8px 0 10px;line-height:1.6">
+            15개 카테고리별 최고 조회수 순<br>업로드 12시간 이내, 한국 기준
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 설정 저장</button>
+        </div>
+      </div>
+
     </div>
     <!-- 수집 리스트 테이블 -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -1103,6 +1174,15 @@
     } catch (e) {
       wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
     }
+  }
+
+  // ────────── 접기/펴기 ──────────
+  function toggleCollapse(bodyId, headerEl) {
+    const body = document.getElementById(bodyId);
+    const arrow = headerEl.querySelector('.collapse-arrow');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    if (arrow) arrow.classList.toggle('open', !isOpen);
   }
 
   // ────────── 가이드 모달 ──────────
