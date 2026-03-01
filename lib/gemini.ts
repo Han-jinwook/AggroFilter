@@ -546,6 +546,25 @@ export async function analyzeContent(
         - **형식**: '0:00 - 소주제: 요약내용' (특수문자/마크다운 금지).
         - **가변 분할**: 영상 길이에 따라 요약 개수를 조절하되, 영상 전체 맥락을 촘촘히 연결하라.
     
+    ## 분석 대상 여부 사전 판단 (최우선)
+    **판정 기준**: 콘텐츠의 **95% 이상이 단순 리액션/플레이 진행/장면 재생** 일 때만 notAnalyzable: true를 쓴다. 1%라도 명확한 주장·평가·비판이 있다면 분석 대상이다.
+    애매한 경우 **false로 판정**하라 (차단보다 용인이 안전).
+    
+    notAnalyzable: true 해당 유형 (아래 모두 해당할 때만):
+    - **단순 게임 플레이**: 진행자의 주장/정보 없이 게임 화면만 녹화하며 리액션만 하는 영상 (자막 95% 이상이 "영탑다!", "암두 왜 이래?" 등 리액션)
+    - **단순 스포츠 중계**: 해설·분석 없이 경기 영상만 찍은 풀매치/중계 영상 (자막 95% 이상이 경기 진행 스코어인 경우)
+    - **단순 공연/콘서트 재생**: 논평 없이 공연만 녹화한 영상
+    - **단순 영화/드라마 재생**: 리뷰·논평 없이 콘텐츠만 나오는 영상
+    - **단순 창작물 재생**: 음악·창작물을 논평 없이 틀어놓기만 하는 영상
+    - **단순 하이라이트 모음**: 해설·논평 없이 장면만 편집한 영상 (자막 자체가 없거나 화상진행 자막 90% 이상)
+    - **자막 극히 부족**: 자막 문장 수 5개 이하 등 분석에 필요한 발화 무
+    
+    단, 아래는 분석 대상이다 (notAnalyzable: false):
+    - 게임 리뷰·논평·분석 ("이 게임이 왜 문제인가", "게임 업계 비판" 등)
+    - 게임 플레이를 하면서 **직접 주장하거나 시청자에게 정보/평가를 전달하는** 플레이어 영상
+    - 스포츠 경기 분석·전술 해설
+    - 게임하면서 스토리·사회현상을 직접 언급하는 영상 (예: "수술 후 퇴원하자마자 파피 플레이타임 5를 플레이한다")
+    
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
     - **중요**: evaluationReason 내의 각 항목 제목(1, 2, 3번) 뒤에는 반드시 한 번의 줄바꿈(<br />)을 넣어 제목과 본문을 분리하라.
@@ -553,7 +572,24 @@ export async function analyzeContent(
     - **중요**: 항목 간의 구분을 위해서만 <br /><br /> 태그를 사용하라.
     - **중요**: subtitleSummary 및 evaluationReason 내에서 따옴표(")나 줄바꿈(\n) 사용 시 반드시 적절히 이스케이프 처리하여 JSON 문법 오류를 방지하라.
     
+    **[분석 대상 아님으로 판정 시]** notAnalyzable가 true이면 나머지 필드는 null로 채워라:
     {
+      "notAnalyzable": true,
+      "notAnalyzableReason": "단순 게임 플레이|단순 창작물 재생|하이라이트 모음|발화 없음" 중 하나,
+      "accuracy": null,
+      "clickbait": null,
+      "reliability": null,
+      "clickbaitTierLabel": null,
+      "subtitleSummary": null,
+      "evaluationReason": null,
+      "overallAssessment": null,
+      "recommendedTitle": null
+    }
+    
+    **[정상 분석 시]** notAnalyzable: false:
+    {
+      "notAnalyzable": false,
+      "notAnalyzableReason": null,
       "accuracy": 0-100,
       "clickbait": 0-100,
       "reliability": 0-100,

@@ -188,6 +188,7 @@ async function refreshCafe24AccessToken(params: {
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: params.refreshToken,
+      mall_id: params.mallId,
     }),
     cache: 'no-store',
   })

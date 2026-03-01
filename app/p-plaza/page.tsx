@@ -757,13 +757,13 @@ export default function PlazaPage() {
                       </div>
                       <div className="w-12 sm:w-14 flex-shrink-0 flex justify-center">
                         <div className={`flex flex-col items-center w-full rounded-lg py-1 sm:py-2 border ${
-                          item.clickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
-                          item.clickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                          item.clickbait <= 30 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                          item.clickbait <= 60 ? 'bg-amber-50/50 border-amber-100/30' :
                           'bg-rose-50/50 border-rose-100/30'
                         }`}>
                           <span className={`text-xs sm:text-sm font-black tabular-nums tracking-tight leading-none ${
-                            item.clickbait <= 20 ? 'text-emerald-600' :
-                            item.clickbait <= 40 ? 'text-amber-600' :
+                            item.clickbait <= 30 ? 'text-emerald-600' :
+                            item.clickbait <= 60 ? 'text-amber-600' :
                             'text-rose-600'
                           }`}>
                             {item.clickbait}
@@ -866,13 +866,13 @@ export default function PlazaPage() {
                       </div>
                       <div className="w-12 sm:w-14 flex-shrink-0 flex justify-center">
                         <div className={`flex flex-col items-center w-full rounded-lg py-1 sm:py-2 border ${
-                          item.clickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
-                          item.clickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                          item.clickbait <= 30 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                          item.clickbait <= 60 ? 'bg-amber-50/50 border-amber-100/30' :
                           'bg-rose-50/50 border-rose-100/30'
                         }`}>
                           <span className={`text-xs sm:text-sm font-black tabular-nums tracking-tight leading-none ${
-                            item.clickbait <= 20 ? 'text-emerald-600' :
-                            item.clickbait <= 40 ? 'text-amber-600' :
+                            item.clickbait <= 30 ? 'text-emerald-600' :
+                            item.clickbait <= 60 ? 'text-amber-600' :
                             'text-rose-600'
                           }`}>
                             {item.clickbait}
@@ -999,13 +999,13 @@ export default function PlazaPage() {
                         </div>
                         <div className="w-16 flex justify-center">
                           <div className={`flex flex-col items-center w-full rounded-lg py-2 border ${
-                            item.avgClickbait <= 20 ? 'bg-emerald-50/50 border-emerald-100/30' :
-                            item.avgClickbait <= 40 ? 'bg-amber-50/50 border-amber-100/30' :
+                            item.avgClickbait <= 30 ? 'bg-emerald-50/50 border-emerald-100/30' :
+                            item.avgClickbait <= 60 ? 'bg-amber-50/50 border-amber-100/30' :
                             'bg-rose-50/50 border-rose-100/30'
                           }`}>
                             <span className={`text-sm font-black tabular-nums tracking-tight leading-none ${
-                              item.avgClickbait <= 20 ? 'text-emerald-600' :
-                              item.avgClickbait <= 40 ? 'text-amber-600' :
+                              item.avgClickbait <= 30 ? 'text-emerald-600' :
+                              item.avgClickbait <= 60 ? 'text-amber-600' :
                               'text-rose-600'
                             }`}>
                               {item.avgClickbait}

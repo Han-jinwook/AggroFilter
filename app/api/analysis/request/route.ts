@@ -130,7 +130,7 @@ export async function POST(request: Request) {
         lockedVideoId = videoId;
 
         const existingAnalysis = await lockClient.query(`
-          SELECT f_id, f_reliability_score 
+          SELECT f_id, f_reliability_score, f_not_analyzable, f_not_analyzable_reason
           FROM t_analyses 
           WHERE f_video_id = $1 
           ORDER BY f_created_at DESC 
@@ -139,6 +139,31 @@ export async function POST(request: Request) {
 
         if (existingAnalysis.rows.length > 0) {
           const row = existingAnalysis.rows[0];
+
+          // [notAnalyzable 캐시] 이전에 AI가 분석 불가 판정한 영상 -> 즉시 메시지 반환
+          if (!forceRecheck && row.f_not_analyzable === true) {
+            const cachedReason = row.f_not_analyzable_reason || '분석 불가 콘텐츠';
+            console.log(`[notAnalyzable 캐시] 이미 판정된 영상: ${cachedReason}`);
+
+            await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+            lockClient.release();
+            lockClient = null;
+            lockedVideoId = null;
+
+            const reasonMessages: Record<string, string> = {
+              '단순 게임 플레이': '단순 게임 플레이 영상은 분석 대상이 아닙니다.\n게임 리뷰·논평·해설 영상은 정상 분석됩니다.',
+              '단순 창작물 재생': '단순 창작물 재생(음악·영상 틀어놓기) 영상은 분석 대상이 아닙니다.\n논평·비평·리뷰 영상은 정상 분석됩니다.',
+              '하이라이트 모음': '해설 없는 단순 하이라이트 모음 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설 영상은 정상 분석됩니다.',
+              '발화 없음': '분석에 필요한 내러이션·논평이 없는 영상입니다.\n실질적인 선택과 논평이 있는 영상을 입력해 주세요.',
+            };
+            const userMessage = reasonMessages[cachedReason] || `이 영상은 분석 대상이 아닙니다. (${cachedReason})`;
+
+            return NextResponse.json(
+              { error: userMessage, notAnalyzable: true, reason: cachedReason },
+              { status: 422, headers: corsHeaders }
+            );
+          }
+
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
             console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
             
@@ -218,6 +243,127 @@ export async function POST(request: Request) {
     let transcript = '';
     let transcriptItems: { text: string; start: number; duration: number }[] = [];
     let hasTranscript = false;
+
+    // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 제목 키워드로 즉시 차단 (비용 절감)
+    // 카테고리는 절대 다루지 않음: 음악평론·게임리뷰도 분석 대상
+    const titleLower = (videoInfo.title || '').toLowerCase();
+
+    // 1. 단순 음악 영상 (MV, Official Video 등)
+    const musicKeywords = [
+      ' m/v', '(m/v)', '[m/v]',
+      ' mv)', '(mv)', '[mv]',
+      'official video', 'official m/v', 'official mv',
+      'lyric video', 'lyrics video',
+      'music video',
+      'official audio',
+      '뮤직비디오',
+      '노래 가사',
+      '가사 영상',
+    ];
+    if (musicKeywords.some(kw => titleLower.includes(kw))) {
+      return NextResponse.json(
+        { error: '단순 음악 영상(M/V, Official Video 등)은 분석 대상이 아닙니다.\n음악 평론·인터뷰·연주 영상은 정상 분석됩니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 2. 라이브/생방송 (게임 라이브, 방송 다시보기 등)
+    const liveKeywords = [
+      '라이브', '생방송', '생중계', '실시간 방송',
+      ' live', '(live)', '[live]',
+      'live stream', 'livestream',
+      '다시보기', '풀영상', '전편',
+    ];
+    if (liveKeywords.some(kw => titleLower.includes(kw))) {
+      return NextResponse.json(
+        { error: '라이브·생방송·다시보기 영상은 분석 대상이 아닙니다.\n편집된 리뷰·논평 영상은 정상 분석됩니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 3. 단순 줄거리 요약/결말 (논평 없이 내용만 압축)
+    const summaryKeywords = [
+      '줄거리 요약', '내용 요약', '줄거리 정리',
+      '결말 정리', '결말 요약', '결말 포함',
+      '스토리 요약', '내용 정리', '편 요약',
+      '몰아보기', '전체 줄거리',
+    ];
+    if (summaryKeywords.some(kw => titleLower.includes(kw))) {
+      return NextResponse.json(
+        { error: '단순 줄거리 요약·결말 정리 영상은 분석 대상이 아닙니다.\n영화·드라마 논평·비평 영상은 정상 분석됩니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 4. 단순 콘텐츠 재생 (카테고리 + 키워드 조합, 논평/리뷰 키워드 있으면 통과)
+    const officialCategoryId = videoInfo.officialCategoryId?.toString();
+    const reviewKeywords = [
+      '리뷰', '분석', '비판', '논란', '문제', '평가',
+      '추천', '비교', '역대', '최고', '최악', '랭킹',
+      '해설', '논평', '의미', '시사',
+    ];
+    const hasReviewKw = reviewKeywords.some(kw => titleLower.includes(kw));
+
+    // 게임(20): 단순 플레이
+    if (officialCategoryId === '20' && !hasReviewKw) {
+      const gamePlayKeywords = [
+        '플레이', 'gameplay', 'game play',
+        '풀게임', '풀플레이',
+        '솔로랭크', '솔랭', '칼바람', '배틀그라운드',
+        '클리어', '엔딩', '공략',
+      ];
+      if (gamePlayKeywords.some(kw => titleLower.includes(kw))) {
+        return NextResponse.json(
+          { error: '단순 게임 플레이 영상은 분석 대상이 아닙니다.\n게임 리뷰·논평·비평 영상은 정상 분석됩니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+    }
+
+    // 스포츠(17): 단순 경기 중계/풀매치
+    if (officialCategoryId === '17' && !hasReviewKw) {
+      const sportsPlayKeywords = [
+        '풀게임', '풀매치', '전리플', '실제경기',
+        'full match', 'full game',
+        '중계', '직캐스트', '라이브 중계',
+      ];
+      if (sportsPlayKeywords.some(kw => titleLower.includes(kw))) {
+        return NextResponse.json(
+          { error: '단순 스포츠 중계/풀매치 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설·리뷰 영상은 정상 분석됩니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+    }
+
+    // 필름/애니(1): 단순 영화/드라마 재생
+    if (officialCategoryId === '1' && !hasReviewKw) {
+      const filmPlayKeywords = [
+        '전편 보기', '풀버전', '전편 스트림',
+        'full movie', 'full film', 'full episode',
+        '전편보기', '전체 보기',
+      ];
+      if (filmPlayKeywords.some(kw => titleLower.includes(kw))) {
+        return NextResponse.json(
+          { error: '단순 영화/드라마 재생 영상은 분석 대상이 아닙니다.\n영화·드라마 논평·비평·리뷰 영상은 정상 분석됩니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+    }
+
+    // 엔터테인먼트(24): 공연/콘서트 단순 재생
+    if (officialCategoryId === '24' && !hasReviewKw) {
+      const entertainPlayKeywords = [
+        '콘서트 영상', '콘서트 전편', '전체 공연',
+        'full concert', 'full performance', 'full show',
+        '공연 영상', '공연 전편',
+      ];
+      if (entertainPlayKeywords.some(kw => titleLower.includes(kw))) {
+        return NextResponse.json(
+          { error: '단순 공연/콘서트 재생 영상은 분석 대상이 아닙니다.\n콘서트 리뷰·공연 비평 영상은 정상 분석됩니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+    }
 
     if (clientTranscript && typeof clientTranscript === 'string' && clientTranscript.length > 50) {
       // 크롬 확장팩/모바일 앱에서 보낸 자막 사용
@@ -303,9 +449,89 @@ export async function POST(request: Request) {
       throw new Error(`AI 분석 중 오류가 발생했습니다: ${aiError.message}`);
     }
     
-    // 자막 없는 영상: AI가 제목+썸네일로 분석한 점수는 유지, 자막 요약만 표시 변경
+    // [notAnalyzable 판정] AI가 분석 가치 없는 영상으로 판정한 경우
+    if (analysisResult?.notAnalyzable === true) {
+      const reason = analysisResult.notAnalyzableReason || '분석 불가 콘텐츠';
+      console.log(`[notAnalyzable] AI 판정: ${reason} - DB 저장 후 거절`);
+
+      // DB에 저장 (재요청 시 캐시 응답을 위해)
+      const naClient = await pool.connect();
+      try {
+        await naClient.query('BEGIN');
+        await naClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_not_analyzable BOOLEAN DEFAULT FALSE`);
+        await naClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_not_analyzable_reason TEXT`);
+
+        // t_videos 저장 (metadata만)
+        await naClient.query(`
+          INSERT INTO t_videos (
+            f_video_id, f_channel_id, f_title, f_published_at,
+            f_thumbnail_url, f_official_category_id, f_view_count, f_created_at, f_updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+          ON CONFLICT (f_video_id) DO UPDATE SET
+            f_title = EXCLUDED.f_title,
+            f_view_count = EXCLUDED.f_view_count,
+            f_updated_at = NOW()
+        `, [
+          videoId,
+          videoInfo.channelId,
+          videoInfo.title,
+          videoInfo.publishedAt || null,
+          videoInfo.thumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.viewCount || 0
+        ]);
+
+        // t_analyses에 notAnalyzable 레코드 저장
+        await naClient.query(`
+          INSERT INTO t_analyses (
+            f_id, f_video_url, f_video_id, f_title, f_channel_id,
+            f_thumbnail_url, f_user_id, f_official_category_id,
+            f_request_count, f_view_count, f_created_at, f_last_action_at,
+            f_is_latest, f_not_analyzable, f_not_analyzable_reason
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8,
+            1, $9, NOW(), NOW(),
+            TRUE, TRUE, $10
+          )
+          ON CONFLICT DO NOTHING
+        `, [
+          uuidv4(),
+          url,
+          videoId,
+          videoInfo.title,
+          videoInfo.channelId,
+          videoInfo.thumbnailUrl,
+          userId || null,
+          videoInfo.officialCategoryId,
+          videoInfo.viewCount || 0,
+          reason
+        ]);
+
+        await naClient.query('COMMIT');
+      } catch (dbErr) {
+        await naClient.query('ROLLBACK');
+        console.error('[notAnalyzable] DB 저장 실패 (뭔시):', dbErr);
+      } finally {
+        naClient.release();
+      }
+
+      const reasonMessages: Record<string, string> = {
+        '단순 게임 플레이': '단순 게임 플레이 영상은 분석 대상이 아닙니다.\n게임 리뷰·논평·해설 영상은 정상 분석됩니다.',
+        '단순 창작물 재생': '단순 창작물 재생(음악·영상 틀어놓기) 영상은 분석 대상이 아닙니다.\n논평·비평·리뷰 영상은 정상 분석됩니다.',
+        '하이라이트 모음': '해설 없는 단순 하이라이트 모음 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설 영상은 정상 분석됩니다.',
+        '발화 없음': '분석에 필요한 내러이션·논평이 없는 영상입니다.\n실질적인 선택과 논평이 있는 영상을 입력해 주세요.',
+      };
+      const userMessage = reasonMessages[reason] || `이 영상은 분석 대상이 아닙니다. (${reason})`;
+
+      return NextResponse.json(
+        { error: userMessage, notAnalyzable: true, reason },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 자막 없는 영상: AI가 제목+썬네일로 분석한 점수는 유지, 자막 요약만 표시 변경
     if (!hasTranscript && !analysisResult.subtitleSummary?.includes('자막 없음')) {
-      analysisResult.subtitleSummary = '자막 없음 - 제목 및 썸네일 기반 분석';
+      analysisResult.subtitleSummary = '자막 없음 - 제목 및 썬네일 기반 분석';
     }
 
     const accuracyNum = typeof analysisResult?.accuracy === 'number' ? analysisResult.accuracy : null;
@@ -371,6 +597,31 @@ export async function POST(request: Request) {
       // 5-1. 채널 정보 저장 (v2.0 필드 반영)
       await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
 
+      console.log('5-1-1. 비디오 기본 정보 저장 (t_videos)...');
+      await client.query(`
+        INSERT INTO t_videos (
+          f_video_id, f_channel_id, f_title, f_description, f_published_at,
+          f_thumbnail_url, f_official_category_id, f_view_count, f_created_at, f_updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        ON CONFLICT (f_video_id) DO UPDATE SET
+          f_title = EXCLUDED.f_title,
+          f_description = EXCLUDED.f_description,
+          f_published_at = EXCLUDED.f_published_at,
+          f_thumbnail_url = EXCLUDED.f_thumbnail_url,
+          f_official_category_id = EXCLUDED.f_official_category_id,
+          f_view_count = EXCLUDED.f_view_count,
+          f_updated_at = NOW()
+      `, [
+        videoId,
+        videoInfo.channelId,
+        videoInfo.title,
+        videoInfo.description,
+        videoInfo.publishedAt || null,
+        videoInfo.thumbnailUrl,
+        videoInfo.officialCategoryId,
+        videoInfo.viewCount || 0
+      ]);
+
       await client.query(`
         INSERT INTO t_channels (
           f_channel_id,
@@ -418,7 +669,7 @@ export async function POST(request: Request) {
             f_grounding_used, f_grounding_queries
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-            1, 1, NOW(), NOW(),
+            1, $23, NOW(), NOW(),
             $17, $18, $19,
             TRUE, $20,
             $21, $22
@@ -445,7 +696,8 @@ export async function POST(request: Request) {
           isRecheck ? new Date() : null,
           finalLanguage,
           Boolean(analysisResult.groundingUsed),
-          analysisResult.groundingQueries?.length > 0 ? analysisResult.groundingQueries : null
+          analysisResult.groundingQueries?.length > 0 ? analysisResult.groundingQueries : null,
+          videoInfo.viewCount || 0
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용

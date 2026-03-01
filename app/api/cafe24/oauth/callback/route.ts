@@ -62,6 +62,7 @@ export async function GET(request: Request) {
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,
+        mall_id: mallId,
       }),
       cache: 'no-store',
     })

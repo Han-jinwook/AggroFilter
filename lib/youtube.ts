@@ -71,7 +71,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   }
 
   // 1. 비디오 정보 가져오기
-  const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${apiKey}`;
+  const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${apiKey}`;
   console.log('YouTube API 호출 (Video):', videoUrl.replace(apiKey, 'API_KEY_HIDDEN'));
   
   const videoResponse = await fetch(videoUrl);
@@ -89,9 +89,11 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   const item = videoData.items[0];
   const snippet = item.snippet;
   const contentDetails = item.contentDetails;
+  const statistics = item.statistics;
   const channelId = snippet.channelId;
   const officialCategoryId = parseInt(snippet.categoryId || '0', 10);
   const duration = contentDetails?.duration || '';
+  const viewCount = parseInt(statistics?.viewCount || '0', 10);
 
   // Extract language information from YouTube API metadata
   const defaultLanguage = snippet.defaultLanguage || snippet.defaultAudioLanguage;
@@ -152,6 +154,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     officialCategoryId,
     duration,
     publishedAt: snippet.publishedAt || '',
+    viewCount,
     language,
     languageSource,
   };

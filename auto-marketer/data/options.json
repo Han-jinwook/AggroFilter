@@ -1,6 +1,6 @@
 {
-  "trackNTotal": 5,
-  "trackMPerCategory": 2,
+  "trackNTotal": 10,
+  "trackMPerCategory": 1,
   "dedupDays": 7,
   "analysisDelayMs": 5000
 }

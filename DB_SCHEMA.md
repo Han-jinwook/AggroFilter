@@ -32,6 +32,8 @@
 | t_analyses              | f_official_category_id       | integer                     | YES         |
 | t_analyses              | f_is_latest                  | boolean                     | YES         |
 | t_analyses              | f_is_recheck                 | boolean                     | YES         |
+| t_analyses              | f_not_analyzable             | boolean                     | YES         |
+| t_analyses              | f_not_analyzable_reason      | text                        | YES         |
 | t_analyses              | f_recheck_parent_analysis_id | text                        | YES         |
 | t_analyses              | f_recheck_at                 | timestamp without time zone | YES         |
 | t_analyses              | f_language                   | character varying           | YES         |

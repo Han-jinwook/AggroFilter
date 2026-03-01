@@ -32,7 +32,7 @@ module.exports = {
   targetCategories: [
     { id: '1',  name: '필름/애니',    keyword: '영화 리뷰 최신' },
     { id: '2',  name: '자동차',       keyword: '자동차 신차 리뷰' },
-    { id: '10', name: '음악',         keyword: '뮤직비디오 신곡' },
+    { id: '10', name: '음악',         keyword: '음악 리뷰 논평 연주' },
     { id: '15', name: '동물',         keyword: '동물 귀여운 영상' },
     { id: '17', name: '스포츠',       keyword: '스포츠 하이라이트' },
     { id: '19', name: '여행',         keyword: '여행 브이로그' },

@@ -18,8 +18,8 @@
     }
     .logo { display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; text-decoration: none; }
     .logo img { width: 52px; height: 52px; border-radius: 10px; }
-    .logo-text { font-size: 16px; font-weight: 800; color: #a0aec0; letter-spacing: -.3px; }
-    .logo-sub { font-size: 20px; font-weight: 900; color: #63b3ed; letter-spacing: -.5px; margin-left: 4px; }
+    .logo-text { font-size: 22px; font-weight: 800; color: #a0aec0; letter-spacing: -.3px; }
+    .logo-sub { font-size: 26px; font-weight: 900; color: #63b3ed; letter-spacing: -.5px; margin-left: 4px; }
 
     /* 헤더 네비 탭 */
     .nav { display: flex; height: 100%; gap: 4px; align-items: center; position: absolute; left: 50%; transform: translateX(-50%); }
@@ -38,7 +38,7 @@
 
     /* 오토모드 토글 */
     .auto-toggle-wrap { display: flex; align-items: center; gap: 10px; background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 8px 14px; }
-    .auto-toggle-label { font-size: 13px; font-weight: 700; color: #a0aec0; }
+    .auto-toggle-label { font-size: 17px; font-weight: 700; color: #a0aec0; }
     .auto-toggle-label.on { color: #68d391; }
     .toggle-switch { position: relative; width: 44px; height: 24px; cursor: pointer; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -67,7 +67,7 @@
     }
     .collapse-header:hover .collapse-arrow { color: #90cdf4; }
     .collapse-arrow {
-      font-size: 11px; color: #4a5568; transition: transform .2s;
+      font-size: 16px; color: #4a5568; transition: transform .2s;
       display: inline-block;
     }
     .collapse-arrow.open { transform: rotate(180deg); }
@@ -86,8 +86,8 @@
       margin-bottom: 4px;
     }
     .always-val { font-size: 22px; font-weight: 900; color: #e2e8f0; }
-    .always-label { font-size: 12px; color: #718096; font-weight: 600; }
-    .always-unit { font-size: 12px; color: #4a5568; }
+    .always-label { font-size: 17px; color: #718096; font-weight: 600; }
+    .always-unit { font-size: 17px; color: #4a5568; }
 
     /* 카드 공통 */
     .card {
@@ -95,7 +95,7 @@
       padding: 14px 16px;
     }
     .card-title {
-      font-size: 15px; font-weight: 800; color: #63b3ed;
+      font-size: 20px; font-weight: 800; color: #63b3ed;
       letter-spacing: .2px; margin-bottom: 12px;
     }
 
@@ -103,8 +103,8 @@
     .status-card { flex: 0 0 auto; min-width: 380px; }
     .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat-item { background: #0f1117; border-radius: 7px; padding: 8px 12px; }
-    .stat-label { font-size: 12px; color: #a0aec0; font-weight: 600; margin-bottom: 4px; }
-    .stat-value { font-size: 14px; font-weight: 700; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat-label { font-size: 17px; color: #a0aec0; font-weight: 600; margin-bottom: 4px; }
+    .stat-value { font-size: 19px; font-weight: 700; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stat-value.running { color: #63b3ed; }
     .stat-value.ok { color: #9ae6b4; }
     .stat-value.err { color: #fc8181; }
@@ -116,21 +116,21 @@
     .opt-grid-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
     .opt-sep-row { border-top: 1px solid #2d3748; margin: 10px 0 0; padding-top: 10px; }
     .opt-item { display: flex; flex-direction: column; gap: 5px; }
-    .opt-item label { font-size: 12px; color: #cbd5e0; font-weight: 600; }
+    .opt-item label { font-size: 17px; color: #cbd5e0; font-weight: 600; }
     .opt-item input {
       padding: 7px 8px; background: #0f1117; border: 1px solid #2d3748;
       border-radius: 6px; color: #e2e8f0; font-size: 14px; text-align: center;
       width: 100%;
     }
     .opt-item input:focus { outline: none; border-color: #4299e1; }
-    .opt-item .hint { font-size: 12px; color: #63b3ed; line-height: 1.5; font-style: italic; }
+    .opt-item .hint { font-size: 16px; color: #63b3ed; line-height: 1.5; font-style: italic; }
     .settings-footer { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
-    .schedule-note { font-size: 13px; color: #68d391; font-weight: 600; margin-left: auto; }
+    .schedule-note { font-size: 17px; color: #68d391; font-weight: 600; margin-left: auto; }
 
     /* 버튼 */
     .btn {
       display: inline-flex; align-items: center; gap: 5px;
-      padding: 7px 16px; border-radius: 7px; font-size: 12px;
+      padding: 8px 18px; border-radius: 7px; font-size: 17px;
       font-weight: 700; cursor: pointer; border: none; transition: opacity .15s;
       white-space: nowrap;
     }
@@ -140,7 +140,7 @@
     .btn-success { background: #276749; color: #9ae6b4; }
     .btn-danger  { background: #742a2a; color: #fc8181; }
     .btn-ghost   { background: #2d3748; color: #cbd5e0; border: 1px solid #4a5568; }
-    .btn-sm { padding: 5px 11px; font-size: 11px; }
+    .btn-sm { padding: 6px 12px; font-size: 16px; }
 
     /* ══ 메인 콘텐츠 ══ */
     .main-content {
@@ -151,23 +151,23 @@
     .tab-content.active { display: flex; }
 
     .table-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .table-toolbar span { font-size: 12px; color: #718096; }
+    .table-toolbar span { font-size: 17px; color: #718096; }
 
     /* 테이블 */
     .table-wrap { flex: 1; overflow-y: auto; border: 1px solid #2d3748; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 17px; }
     thead { position: sticky; top: 0; z-index: 1; }
     th {
-      text-align: left; padding: 9px 12px;
-      background: #0d0f1a; color: #cbd5e0; font-weight: 700; font-size: 13px;
+      text-align: left; padding: 10px 12px;
+      background: #0d0f1a; color: #cbd5e0; font-weight: 700; font-size: 17px;
       white-space: nowrap;
       border-bottom: 1px solid #2d3748;
     }
-    td { padding: 8px 12px; border-bottom: 1px solid #161928; vertical-align: middle; color: #e2e8f0; font-size: 13px; }
+    td { padding: 10px 12px; border-bottom: 1px solid #161928; vertical-align: middle; color: #e2e8f0; font-size: 17px; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #1a1d2e; }
 
-    .score { display: inline-block; padding: 3px 9px; border-radius: 4px; font-weight: 700; font-size: 12px; }
+    .score { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 16px; }
     .score-high { background: #1c4532; color: #9ae6b4; }
     .score-mid  { background: #3d2b00; color: #fbd38d; }
     .score-low  { background: #3d0f0f; color: #fc8181; }
@@ -179,9 +179,9 @@
     .cell-ch { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cell-ch a { color: #a0aec0; text-decoration: none; }
     .cell-ch a:hover { color: #63b3ed; }
-    .cell-time { white-space: nowrap; color: #a0aec0; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .cell-time { white-space: nowrap; color: #a0aec0; font-size: 16px; font-variant-numeric: tabular-nums; }
 
-    .empty { text-align: center; padding: 60px 0; color: #4a5568; font-size: 13px; }
+    .empty { text-align: center; padding: 60px 0; color: #4a5568; font-size: 18px; }
 
     /* 커뮤니티 */
     .community-wrap { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow: hidden; }
@@ -190,14 +190,14 @@
       padding: 10px 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
     }
     .add-form .fg { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-    .add-form .fg label { font-size: 11px; color: #718096; }
+    .add-form .fg label { font-size: 16px; color: #a0aec0; font-weight: 600; }
     .add-form .fg input {
-      padding: 6px 8px; background: #0f1117; border: 1px solid #2d3748;
-      border-radius: 5px; color: #e2e8f0; font-size: 12px;
+      padding: 8px 12px; background: #0f1117; border: 1px solid #2d3748;
+      border-radius: 6px; color: #e2e8f0; font-size: 16px;
     }
     .kw-badge {
       display: inline-block; background: #2d3748; color: #e2e8f0;
-      border-radius: 3px; padding: 1px 6px; font-size: 10px; margin: 1px;
+      border-radius: 4px; padding: 3px 10px; font-size: 16px; margin: 2px;
     }
 
     /* 댓글 로그 */
@@ -212,7 +212,7 @@
       position: fixed; bottom: 20px; right: 20px;
       background: #1a1d2e; border: 1px solid #4a5568;
       border-radius: 8px; padding: 10px 18px;
-      font-size: 12px; color: #e2e8f0;
+      font-size: 16px; color: #e2e8f0;
       box-shadow: 0 4px 24px rgba(0,0,0,.6);
       opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 9999;
     }
@@ -248,10 +248,10 @@
     .modal-close:hover { background: #2d3748; color: #fff; }
     .modal-body {
       padding: 24px; overflow-y: auto; flex: 1;
-      font-size: 13px; line-height: 1.75; color: #cbd5e0;
+      font-size: 16px; line-height: 1.75; color: #cbd5e0;
     }
     .modal-body h3 {
-      font-size: 13px; font-weight: 700; color: #63b3ed;
+      font-size: 16px; font-weight: 700; color: #63b3ed;
       margin: 20px 0 8px; padding-bottom: 4px;
       border-bottom: 1px solid #2d3748;
     }
@@ -261,18 +261,18 @@
     .modal-body code {
       background: #0f1117; border: 1px solid #2d3748;
       border-radius: 4px; padding: 1px 6px;
-      font-family: 'Courier New', monospace; font-size: 12px; color: #f6ad55;
+      font-family: 'Courier New', monospace; font-size: 16px; color: #f6ad55;
     }
     .guide-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     .guide-table th {
-      background: #0f1117; color: #718096; font-size: 11px;
+      background: #0f1117; color: #718096; font-size: 16px;
       padding: 6px 10px; text-align: left; font-weight: 500;
     }
     .guide-table td { padding: 7px 10px; border-bottom: 1px solid #1e2335; }
     .guide-table tr:last-child td { border-bottom: none; }
     .g-badge {
       display: inline-block; padding: 2px 8px; border-radius: 4px;
-      font-size: 11px; font-weight: 700;
+      font-size: 16px; font-weight: 700;
     }
     .g-A { background: #276749; color: #9ae6b4; }
     .g-B { background: #2b4c7e; color: #90cdf4; }
@@ -286,16 +286,16 @@
     /* ══ 모듈1 설정 섹션 구분 ══ */
     .m1-section { padding: 10px 0; }
     .m1-section-title {
-      font-size: 13px; font-weight: 800; color: #90cdf4;
+      font-size: 19px; font-weight: 800; color: #90cdf4;
       letter-spacing: -.2px; margin-bottom: 4px;
       display: flex; align-items: center; gap: 6px;
     }
-    .m1-section-desc { font-size: 11px; color: #4a5568; }
+    .m1-section-desc { font-size: 16px; color: #718096; margin-bottom: 8px; }
     .m1-divider {
       border: none; border-top: 1px dashed #2d3748;
       margin: 6px 0;
     }
-    .run-note { font-size: 13px; color: #718096; margin-top: 7px; font-weight: 500; line-height: 1.5; }
+    .run-note { font-size: 16px; color: #718096; margin-top: 7px; font-weight: 500; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -421,7 +421,7 @@
         <li>커뮤니티 탭 우측 상단 <strong>📂 CSV</strong> 버튼으로 일괄 등록 가능</li>
         <li>파일 형식 (헤더 행 포함 시 자동 스킵):</li>
       </ul>
-      <pre style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:10px;font-size:12px;color:#a0aec0;overflow-x:auto">구분,커뮤니티명,URL,닉네임,아이디,비밀번호,키워드(|구분),메모
+      <pre style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:10px;font-size:16px;color:#a0aec0;overflow-x:auto">구분,커뮤니티명,URL,닉네임,아이디,비밀번호,키워드(|구분),메모
 일반,에펨코리아,https://fmkorea.com/...,닉네임,myid,mypw,가짜뉴스|낚시,유머게시판
 네이버카페,예시카페,https://cafe.naver.com/...,닉네임2,id2,pw2,어그로,</pre>
 
@@ -505,9 +505,9 @@
             <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
           </div>
           <div class="run-note">⚡ 수동: 트렌드만 / 자동: 트렌드→카테고리 전체</div>
-          <div style="margin-top:8px;font-size:12px;color:#68d391;font-weight:600">🕐 자동: 00:00 / 12:00 KST</div>
+          <div style="margin-top:8px;font-size:16px;color:#68d391;font-weight:600">🕐 자동: 00:00 / 12:00 KST</div>
           <div style="margin-top:8px">
-            <span id="m1AutoBadge" style="font-size:12px;color:#4a5568"></span>
+            <span id="m1AutoBadge" style="font-size:16px;color:#4a5568"></span>
           </div>
         </div>
       </div>
@@ -525,17 +525,17 @@
                 style="width:72px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">개</span>
             </div>
-            <div style="font-size:11px;color:#4a5568;margin-top:3px">mostPopular 상위 N개</div>
+            <div style="font-size:16px;color:#4a5568;margin-top:3px">mostPopular 상위 N개</div>
           </div>
         </div>
 
         <!-- 접기 토글 -->
         <div class="collapse-header" onclick="toggleCollapse('m1TrendDetail', this)">
-          <span style="font-size:12px;color:#718096">카테고리별 채널 쿨타임</span>
+          <span style="font-size:16px;color:#718096">카테고리별 채널 쿨타임</span>
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1TrendDetail">
-          <div style="font-size:11px;color:#718096;margin:8px 0 6px">비워두면 X일(카테고리별 수집의 기본값) 적용</div>
+          <div style="font-size:16px;color:#718096;margin:8px 0 6px">비워두면 X일(카테고리별 수집의 기본값) 적용</div>
           <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 10px"></div>
         </div>
       </div>
@@ -553,7 +553,7 @@
                 style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">개</span>
             </div>
-            <div style="font-size:11px;color:#4a5568;margin-top:3px">15개 카테고리 × M</div>
+            <div style="font-size:16px;color:#4a5568;margin-top:3px">15개 카테고리 × M</div>
           </div>
           <div style="margin-left:auto">
             <div class="always-label">채널 쿨타임 (X)</div>
@@ -562,17 +562,17 @@
                 style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">일</span>
             </div>
-            <div style="font-size:11px;color:#4a5568;margin-top:3px">동일 채널 재수집 방지</div>
+            <div style="font-size:16px;color:#4a5568;margin-top:3px">동일 채널 재수집 방지</div>
           </div>
         </div>
 
         <!-- 접기 토글 -->
         <div class="collapse-header" onclick="toggleCollapse('m1CatDetail', this)">
-          <span style="font-size:12px;color:#718096">저장</span>
+          <span style="font-size:16px;color:#718096">저장</span>
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1CatDetail">
-          <div style="font-size:12px;color:#718096;margin:8px 0 10px;line-height:1.6">
+          <div style="font-size:16px;color:#718096;margin:8px 0 10px;line-height:1.6">
             15개 카테고리별 최고 조회수 순<br>업로드 12시간 이내, 한국 기준
           </div>
           <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 설정 저장</button>
@@ -582,7 +582,7 @@
     </div>
     <!-- 수집 리스트 테이블 -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:13px;font-weight:700;color:#cbd5e0">봇 분석 영상 최신 200개</span>
+      <span style="font-size:16px;font-weight:700;color:#cbd5e0">봇 분석 영상 최신 200개</span>
     </div>
     <div class="table-wrap" id="tableWrap"><div class="empty">로딩 중...</div></div>
   </div>
@@ -600,7 +600,7 @@
             <div class="toggle-track"></div>
             <div class="toggle-thumb"></div>
           </label>
-          <span id="m2AutoBadge" style="font-size:12px;color:#4a5568">수동 실행 전용</span>
+          <span id="m2AutoBadge" style="font-size:16px;color:#4a5568">수동 실행 전용</span>
         </div>
         <div class="status-grid">
           <div class="stat-item">
@@ -651,7 +651,7 @@
       <div class="add-form" style="flex-wrap:wrap;gap:6px">
         <div class="fg" style="max-width:100px;min-width:80px">
           <label>구분</label>
-          <select id="newType" style="padding:6px 8px;background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#e2e8f0;font-size:12px">
+          <select id="newType" style="padding:6px 8px;background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#e2e8f0;font-size:16px">
             <option value="general">일반</option>
             <option value="naver_cafe">네이버카페</option>
           </select>
@@ -701,7 +701,7 @@
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <button class="btn btn-ghost btn-sm" onclick="loadCommentLogs()">↻ 새로고침</button>
       <select id="logStatusFilter" onchange="loadCommentLogs()"
-        style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:4px 8px;border-radius:5px;font-size:11px">
+        style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:16px">
         <option value="">전체</option>
         <option value="queue">대기(Queue)</option>
         <option value="done">완료(Done)</option>
@@ -908,8 +908,8 @@
 
   function aggroCell(val) {
     if (val == null) return '<span class="score-none">—</span>';
-    // 어그로는 높을수록 나쁜 것 → 역산
-    const cls = val >= 70 ? 'score-low' : val >= 40 ? 'score-mid' : 'score-high';
+    // 어그로는 높을수록 나쁜 것 → 역산 (0~30 녹색, 31~60 노랑, 61~100 빨강)
+    const cls = val >= 61 ? 'score-low' : val >= 31 ? 'score-mid' : 'score-high';
     return `<span class="score ${cls}">${val}</span>`;
   }
 
@@ -944,16 +944,21 @@
         const catId = String(item.f_category || '');
         const cat = catId && catId !== 'null' ? escHtml(CAT_MAP[catId] || catId) : '—';
 
+        const viewCount = item.f_view_count != null ? item.f_view_count.toLocaleString() : '—';
+        const publishedAt = item.f_published_at ? fmt24(item.f_published_at) : '—';
+
         return `
           <tr>
             <td class="cell-time">${fmt24(item.f_created_at)}</td>
+            <td class="cell-time">${publishedAt}</td>
             <td class="cell-ch"><a href="${chUrl}" target="_blank" title="${escHtml(chId)}">${chName}</a></td>
-            <td class="cell-title"><a href="${resultUrl}" target="_blank">${escHtml(item.f_video_title || '—')}</a></td>
-            <td style="white-space:nowrap;color:#a0aec0">${cat}</td>
-            <td style="text-align:center">${scoreCell(item.f_reliability_score)}</td>
-            <td style="text-align:center">${scoreCell(item.f_accuracy_score)}</td>
-            <td style="text-align:center">${aggroCell(item.f_clickbait_score)}</td>
-            <td style="text-align:center">${grounding}</td>
+            <td class="cell-title"><a href="${resultUrl}" target="_blank">${escHtml(item.f_video_title)}</a></td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums">${viewCount}</td>
+            <td style="font-size:14px;color:#a0aec0;white-space:nowrap">${cat}</td>
+            <td>${scoreCell(item.f_reliability_score)}</td>
+            <td>${scoreCell(item.f_accuracy_score)}</td>
+            <td>${aggroCell(item.f_clickbait_score)}</td>
+            <td>${grounding}</td>
           </tr>`;
       }).join('');
 
@@ -961,14 +966,16 @@
         <table>
           <thead>
             <tr>
-              <th style="width:130px">일시</th>
-              <th style="width:120px">채널</th>
+              <th style="width:160px">수집 일시</th>
+              <th style="width:160px">업로드 일시</th>
+              <th style="width:140px">채널</th>
               <th>영상 제목</th>
-              <th style="width:110px">카테고리</th>
-              <th style="width:66px;text-align:center">신뢰도</th>
-              <th style="width:66px;text-align:center">정확도</th>
-              <th style="width:66px;text-align:center">어그로</th>
-              <th style="width:80px;text-align:center">그라운딩</th>
+              <th style="width:110px;text-align:right">조회수</th>
+              <th style="width:130px">카테고리</th>
+              <th style="width:75px;text-align:center">신뢰도</th>
+              <th style="width:75px;text-align:center">정확도</th>
+              <th style="width:75px;text-align:center">어그로</th>
+              <th style="width:100px;text-align:center">그라운딩</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
