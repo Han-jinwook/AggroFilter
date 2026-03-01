@@ -14,6 +14,10 @@ module.exports = {
   trackMPerCategory: parseInt(process.env.TRACK_M_PER_CATEGORY || '3', 10),
   // X: 채널 다양성 쿨타임 (일) - 최근 X일 이내 분석된 채널 스킵
   dedupDays: parseInt(process.env.DEDUP_DAYS || '7', 10),
+  // 최소 조회수 하한 (이 수치 미만 영상은 수집 제외)
+  minViewCount: parseInt(process.env.MIN_VIEW_COUNT || '1000', 10),
+  // 최소 시간당 조회수(VPH) 하한 - 하꼬 영상 원천 차단
+  minViewsPerHour: parseInt(process.env.MIN_VIEWS_PER_HOUR || '500', 10),
 
   // 대시보드 포트
   dashboardPort: parseInt(process.env.DASHBOARD_PORT || '3001', 10),

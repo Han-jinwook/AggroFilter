@@ -214,11 +214,10 @@ app.get('/api/collected', async (req, res) => {
           a.f_language,
           a.f_official_category_id                        AS f_category,
           a.f_view_count,
-          v.f_published_at                                 AS f_published_at,
+          a.f_published_at,
           a.f_created_at
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
-        LEFT JOIN t_videos v ON a.f_video_id = v.f_video_id
         WHERE a.f_user_id = 'bot'
         ORDER BY a.f_created_at DESC
         LIMIT 200

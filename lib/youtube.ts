@@ -11,6 +11,7 @@ export interface VideoInfo {
   subscriberCount: number;
   description: string;
   officialCategoryId: number; // 추가: 유튜브 공식 카테고리 ID
+  viewCount: number; // 유튜브 조회수
   duration?: string; // 추가: 영상 길이 (ISO 8601 형식)
   publishedAt?: string; // 영상 업로드 날짜 (ISO 8601)
   language?: string; // 언어 코드 (ISO 639-1: ko, en, ja, etc.)

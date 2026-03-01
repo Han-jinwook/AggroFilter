@@ -573,6 +573,7 @@ export async function POST(request: Request) {
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_is_recheck BOOLEAN DEFAULT FALSE`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
+      await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
 
       // 5-0. User lookup/creation (if userId provided)
       let actualUserId = userId || null;
@@ -666,13 +667,15 @@ export async function POST(request: Request) {
             f_request_count, f_view_count, f_created_at, f_last_action_at,
             f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
             f_is_latest, f_language,
-            f_grounding_used, f_grounding_queries
+            f_grounding_used, f_grounding_queries,
+            f_published_at
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, $23, NOW(), NOW(),
             $17, $18, $19,
             TRUE, $20,
-            $21, $22
+            $21, $22,
+            $24
           )
         `, [
           analysisId,
@@ -697,7 +700,8 @@ export async function POST(request: Request) {
           finalLanguage,
           Boolean(analysisResult.groundingUsed),
           analysisResult.groundingQueries?.length > 0 ? analysisResult.groundingQueries : null,
-          videoInfo.viewCount || 0
+          videoInfo.viewCount || 0,
+          videoInfo.publishedAt || null
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
