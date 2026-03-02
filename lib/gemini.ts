@@ -489,13 +489,13 @@ export async function analyzeContent(
     본격적인 분석에 앞서, 이 영상이 **'객관적인 팩트체크가 가능한 정보성 콘텐츠'**인지 먼저 판단하라.
 
     - **is_valid_target**: 
-        - 단순 유머, 먹방, 뷰티 리뷰, 개인 브이로그 등 팩트 검증이 무의미한 영상이라면 `false`를 반환하라.
-        - 명백한 뉴스, 지식 전달, 정보 제공, 폭로 영상이라면 `true`를 반환하라.
+        - 단순 유머, 먹방, 뷰티 리뷰, 개인 브이로그 등 팩트 검증이 무의미한 영상이라면 \`false\`를 반환하라.
+        - 명백한 뉴스, 지식 전달, 정보 제공, 폭로 영상이라면 \`true\`를 반환하라.
     - **needs_admin_review**:
-        - 정보성 영상인지 단순 썰(주관적 감상)인지 판단이 애매하다면 `true`를 반환하여 인간 관리자의 검토를 요청하라.
-        - 판단이 명확하다면 `false`를 반환하라.
+        - 정보성 영상인지 단순 썰(주관적 감상)인지 판단이 애매하다면 \`true\`를 반환하여 인간 관리자의 검토를 요청하라.
+        - 판단이 명확하다면 \`false\`를 반환하라.
     - **review_reason**: 
-        - `needs_admin_review`가 `true`이거나 `is_valid_target`이 `false`인 경우, 그 이유를 1문장으로 작성하라.
+        - \`needs_admin_review\`가 \`true\`이거나 \`is_valid_target\`이 \`false\`인 경우, 그 이유를 1문장으로 작성하라.
 
     ---
 
@@ -600,8 +600,8 @@ export async function analyzeContent(
     }
 
     **[판단 가이드]**
-    1. `is_valid_target: false`인 경우: 나머지 분석 필드는 `null`로 채워도 됨.
-    2. `needs_admin_review: true`인 경우: 분석은 끝까지 진행하되 필드만 `true`로 설정.
+    1. \`is_valid_target: false\`인 경우: 나머지 분석 필드는 \`null\`로 채워도 됨.
+    2. \`needs_admin_review: true\`인 경우: 분석은 끝까지 진행하되 필드만 \`true\`로 설정.
 
 
     **[신뢰도 총평 판정 기준]**:
