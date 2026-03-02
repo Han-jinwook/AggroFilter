@@ -58,7 +58,7 @@ export function extractVideoId(url: string): string | null {
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match && match[1]) {
-      return match[1];
+      return match[1].trim();
     }
   }
 
@@ -143,10 +143,10 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   }
   
   return {
-    videoId,
+    videoId: videoId.trim(),
     title: snippet.title,
     channelName: snippet.channelTitle,
-    channelId: channelId,
+    channelId: channelId.trim(),
     thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url,
     channelThumbnailUrl,
     channelHandle,

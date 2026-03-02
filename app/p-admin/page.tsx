@@ -21,7 +21,7 @@ function isAllowedAdminEmail(email: string | null | undefined) {
   return localPart === 'chiu3';
 }
 
-type TabType = 'credits' | 'analysis' | 'stats' | 'payments';
+type TabType = 'credits' | 'analysis' | 'review' | 'stats' | 'payments';
 
 type ColDef = { key: string; label: string; width: number; fixed?: boolean };
 
@@ -34,6 +34,9 @@ const DEFAULT_COLUMNS: ColDef[] = [
   { key: 'score',      label: '신뢰도',     width: 68 },
   { key: 'accuracy',   label: '정확도',     width: 68 },
   { key: 'clickbait',  label: '어그로',     width: 68 },
+  { key: 'is_valid',   label: '유효',       width: 60 },
+  { key: 'needs_review', label: '검토',      width: 60 },
+  { key: 'review_reason', label: '이유',      width: 150 },
   { key: 'grounding',  label: '검색',       width: 80 },
   { key: 'type',       label: '구분',       width: 68 },
 ];
@@ -132,6 +135,9 @@ function AnalysisTable({ logs, selectedLogIds, toggleLogSelection, toggleAllLogs
       }`}>{log.score}</span>;
       case 'accuracy': return <span className="text-gray-600">{log.accuracy ?? '-'}</span>;
       case 'clickbait': return <span className="text-gray-600">{log.clickbait ?? '-'}</span>;
+      case 'is_valid': return log.is_valid ? <span className="text-emerald-500">Y</span> : <span className="text-rose-500">N</span>;
+      case 'needs_review': return log.needs_review ? <span className="text-amber-500 font-bold">Q</span> : <span className="text-gray-300">-</span>;
+      case 'review_reason': return <span className="text-gray-500 truncate block text-[10px]" title={log.review_reason}>{log.review_reason || '-'}</span>;
       case 'grounding': return log.grounding_used
         ? <span title={(log.grounding_queries || []).join(', ')} className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 cursor-help">🔍 검색</span>
         : <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-400">💭 추론</span>;
@@ -217,6 +223,7 @@ export default function AdminPage() {
   
   // Logs state
   const [analysisLogs, setAnalysisLogs] = useState<any[]>([]);
+  const [reviewLogs, setReviewLogs] = useState<any[]>([]);
   const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
   const [paymentLogs, setPaymentLogs] = useState<any[]>([]);
 
@@ -269,6 +276,16 @@ export default function AdminPage() {
     } catch (e) { console.error(e); }
   }, [adminHeaders]);
 
+  const fetchReviewLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/analysis-logs?reviewOnly=true', { headers: adminHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setReviewLogs(data.logs);
+      }
+    } catch (e) { console.error(e); }
+  }, [adminHeaders]);
+
   const fetchPaymentLogs = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/payment-logs', { headers: adminHeaders() });
@@ -283,6 +300,7 @@ export default function AdminPage() {
     if (isAllowed) {
       if (activeTab === 'stats') fetchStats();
       if (activeTab === 'analysis') fetchAnalysisLogs();
+      if (activeTab === 'review') fetchReviewLogs();
       if (activeTab === 'payments') fetchPaymentLogs();
     }
   }, [isAllowed, activeTab, fetchStats, fetchAnalysisLogs, fetchPaymentLogs]);
@@ -332,6 +350,23 @@ export default function AdminPage() {
         setSelectedLogIds(new Set());
         fetchAnalysisLogs();
         fetchStats();
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleReviewAction = async (id: string, isValid: boolean) => {
+    try {
+      const res = await fetch('/api/admin/analysis-logs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders() },
+        body: JSON.stringify({ id, is_valid: isValid, needs_review: false })
+      });
+      if (res.ok) {
+        toast.success(isValid ? '승인 완료' : '반려 완료');
+        fetchReviewLogs();
+        fetchAnalysisLogs();
+      } else {
+        toast.error('처리에 실패했습니다.');
       }
     } catch (e) { console.error(e); }
   };
@@ -400,6 +435,12 @@ export default function AdminPage() {
             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeTab === 'analysis' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
           >
             <History className="w-4 h-4" /> 분석
+          </button>
+          <button
+            onClick={() => setActiveTab('review')}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeTab === 'review' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            <Search className="w-4 h-4" /> 검토 {reviewLogs.length > 0 && <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{reviewLogs.length}</span>}
           </button>
           <button
             onClick={() => setActiveTab('payments')}
@@ -576,7 +617,7 @@ export default function AdminPage() {
                             <div key={l.language}>
                               <div className="flex justify-between text-xs mb-0.5">
                                 <span className="text-gray-600 font-bold capitalize">{l.language}</span>
-                                <span className="font-black text-gray-700">{pct}% <span className="text-gray-400 font-normal">({Number(l.count).toLocaleString()})</span></span>
+                                <span className="font-bold text-gray-700">{pct}% <span className="text-gray-400 font-normal">({Number(l.count).toLocaleString()})</span></span>
                               </div>
                               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                 <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: colors[i % colors.length] }} />
@@ -680,6 +721,65 @@ export default function AdminPage() {
                 toggleAllLogs={toggleAllLogs}
                 isChiu3={isAllowedAdminEmail(typeof window !== 'undefined' ? localStorage.getItem('userEmail') : '')}
               />
+            </div>
+          )}
+
+          {/* === REVIEW TAB === */}
+          {activeTab === 'review' && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-700 mb-1">AI 검토 대기열 (Review Queue)</h3>
+                <p className="text-xs text-gray-500">AI가 '팩트체크 적합성'을 확신하지 못해 관리자의 확인이 필요한 영상들입니다.</p>
+              </div>
+              <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="p-3 text-left font-bold text-gray-500">일시</th>
+                      <th className="p-3 text-left font-bold text-gray-500">채널/제목</th>
+                      <th className="p-3 text-left font-bold text-gray-500">검토 사유</th>
+                      <th className="p-3 text-center font-bold text-gray-500">액션</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {reviewLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50">
+                        <td className="p-3 text-gray-500 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-gray-900 truncate max-w-[200px]">{log.title}</div>
+                          <div className="text-gray-500 text-[10px]">{log.channel_name}</div>
+                        </td>
+                        <td className="p-3 text-amber-600 font-medium">
+                          {log.review_reason || '사유 없음'}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleReviewAction(log.id, true)}
+                              className="px-3 py-1 bg-emerald-500 text-white font-bold rounded hover:bg-emerald-600 transition-all"
+                            >
+                              승인
+                            </button>
+                            <button
+                              onClick={() => handleReviewAction(log.id, false)}
+                              className="px-3 py-1 bg-rose-500 text-white font-bold rounded hover:bg-rose-600 transition-all"
+                            >
+                              반려
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {reviewLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-12 text-center text-gray-400">검토 대기 중인 영상이 없습니다.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

@@ -214,15 +214,37 @@ app.get('/api/collected', async (req, res) => {
           a.f_language,
           a.f_official_category_id                        AS f_category,
           a.f_view_count,
-          a.f_published_at,
+          v.f_published_at,
           a.f_created_at
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
+        LEFT JOIN t_videos v ON a.f_video_id = v.f_video_id
         WHERE a.f_user_id = 'bot'
         ORDER BY a.f_created_at DESC
         LIMIT 200
       `);
       res.json({ items: result.rows });
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/collected — 분석 레코드 다중 삭제 (ids: string[])
+app.delete('/api/collected', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids 필수' });
+    const client = await pool.connect();
+    try {
+      const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+      const result = await client.query(
+        `DELETE FROM t_analyses WHERE f_id IN (${placeholders}) AND f_user_id = 'bot'`,
+        ids
+      );
+      res.json({ ok: true, deleted: result.rowCount });
     } finally {
       client.release();
     }

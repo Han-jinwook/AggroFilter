@@ -42,26 +42,26 @@ export async function GET(request: Request) {
 
       // First, try with the strict time condition
       // [v2.2 Optimization] Use f_is_latest = true instead of CTE + language filter
-      let query = `
-        SELECT 
-          a.f_id as id,
-          a.f_created_at as date,
-          a.f_title as title,
-          c.f_title as channel,
-          c.f_thumbnail_url as "channelIcon",
-          a.f_clickbait_score as clickbait,
-          a.f_reliability_score as score
-        FROM t_analyses a
-        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
-        WHERE a.f_is_latest = TRUE
-          AND ${timeCondition}
-          AND a.f_reliability_score IS NOT NULL
-          AND COALESCE(c.f_language, 'korean') = $1
-        ORDER BY ${orderBy}
-        LIMIT 200
-      `;
-
-      let result = await client.query(query, [lang]);
+    const result = await client.query(`
+      SELECT 
+        a.f_id as id,
+        a.f_created_at as date,
+        a.f_title as title,
+        c.f_title as channel,
+        c.f_thumbnail_url as "channelIcon",
+        a.f_clickbait_score as clickbait,
+        a.f_reliability_score as score
+      FROM t_analyses a
+      LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
+      WHERE a.f_is_latest = TRUE
+        AND ${timeCondition}
+        AND a.f_reliability_score IS NOT NULL
+        AND COALESCE(c.f_language, 'korean') = $1
+        AND a.f_is_valid = TRUE
+        AND a.f_needs_review = FALSE
+      ORDER BY ${orderBy}
+      LIMIT 200
+    `, [lang]);
 
       const videos = result.rows.map(row => {
         return {

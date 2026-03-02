@@ -17,7 +17,7 @@ async function getRecentlyAnalyzedVideoIds(days) {
        WHERE f_created_at > NOW() - INTERVAL '${days} days'
          AND f_video_id IS NOT NULL`
     );
-    return new Set(result.rows.map((r) => r.f_video_id));
+    return new Set(result.rows.map((r) => (r.f_video_id || '').toString().trim()));
   } finally {
     client.release();
   }
@@ -34,7 +34,7 @@ async function getRecentlyAnalyzedChannelIds(days) {
        WHERE f_created_at > NOW() - INTERVAL '${days} days'
          AND f_channel_id IS NOT NULL`
     );
-    return new Set(result.rows.map((r) => r.f_channel_id));
+    return new Set(result.rows.map((r) => (r.f_channel_id || '').toString().trim()));
   } finally {
     client.release();
   }
@@ -60,13 +60,14 @@ async function getRecentlyAnalyzedChannelsByCategoryMap(categoryCooldowns, defau
     const excludeMap = new Map();
     for (const row of result.rows) {
       const catId = String(row.f_official_category_id || '');
+      const channelId = (row.f_channel_id || '').toString().trim();
       const coolDays = catId && categoryCooldowns[catId] != null
         ? Number(categoryCooldowns[catId])
         : defaultDays;
       const ageMs = Date.now() - new Date(row.f_created_at).getTime();
       const ageDays = ageMs / (1000 * 60 * 60 * 24);
       if (ageDays < coolDays) {
-        excludeMap.set(row.f_channel_id, `cat:${catId || 'default'}:${coolDays}d`);
+        excludeMap.set(channelId, `cat:${catId || 'default'}:${coolDays}d`);
       }
     }
     return excludeMap;

@@ -82,6 +82,20 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
       const analysis = analysisRes.rows[0];
 
+      // [V2.0] 부적합 판정되거나 검토 대기 중인 영상 접근 제어
+      // f_is_valid가 false이거나 f_needs_review가 true인 경우 일반 사용자 접근 제한
+      // (관리자 체크 로직을 넣을 수도 있으나, 일단은 서비스 안정성을 위해 목록에서 빠진 것과 동일하게 처리)
+      if (analysis.f_is_valid === false || analysis.f_needs_review === true) {
+        // 단, 관리자 이메일 헤더가 있는 경우나 본인의 분석인 경우 허용할 수 있지만,
+        // 기획상 '비공개' 상태이므로 404 또는 특정 에러 반환이 적절함.
+        // 여기서는 Plaza/Ranking 필터와 동일한 기조로 접근 제한 처리.
+        return NextResponse.json({ 
+          error: '이 콘텐츠는 현재 검토 중이거나 분석 부적합 판정을 받아 조회할 수 없습니다.',
+          isRestricted: true,
+          reason: analysis.f_review_reason
+        }, { status: 403 });
+      }
+
       let recheckParentScores: { accuracy: number | null; clickbait: number | null; trust: number | null } | null = null;
       const isRecheck = Boolean((analysis as any).f_is_recheck);
       const parentAnalysisId = (analysis as any).f_recheck_parent_analysis_id as string | null;

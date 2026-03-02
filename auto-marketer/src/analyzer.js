@@ -9,23 +9,29 @@ function sleep(ms) {
  * 분석 완료 여부를 폴링으로 확인 (최대 10분, 15초 간격)
  */
 async function pollUntilComplete(videoId, maxWaitMs = 600000) {
+  const cleanVideoId = (videoId || '').toString().trim();
   const interval = 15000;
   const start = Date.now();
+  let attempt = 0;
 
   while (Date.now() - start < maxWaitMs) {
+    attempt++;
+    process.stdout.write(`  [Analyzer] 폴링 중... (${attempt}회차, ${(Math.round((Date.now() - start) / 1000))}초 경과)\r`);
     await sleep(interval);
     try {
       const res = await axios.get(`${mainAppUrl}/api/analysis/status`, {
-        params: { videoId },
+        params: { videoId: cleanVideoId },
         timeout: 10000,
       });
       if (res.data?.status === 'completed') {
+        process.stdout.write('\n');
         return { completed: true, analysisId: res.data.analysisId };
       }
     } catch (e) {
       // 폴링 실패는 무시하고 재시도
     }
   }
+  process.stdout.write('\n');
   return { completed: false };
 }
 
@@ -36,7 +42,8 @@ async function pollUntilComplete(videoId, maxWaitMs = 600000) {
  * - userId = 'bot' 으로 고정 → DB에서 봇 분석 필터링 가능
  */
 async function analyzeVideo(video) {
-  console.log(`  [Analyzer] 분석 요청: ${video.title}`);
+  const cleanVideoId = (video.videoId || '').toString().trim();
+  console.log(`  [Analyzer] 분석 요청: ${video.title} (${cleanVideoId})`);
   const hasTranscript = video.transcriptItems && video.transcriptItems.length > 0;
   console.log(`  [Analyzer] 자막: ${hasTranscript ? `${video.transcript?.length ?? 0}자 / ${video.transcriptItems.length}줄` : '없음 (제목+썸네일 기반 분석)'}`);
 
@@ -46,6 +53,7 @@ async function analyzeVideo(video) {
       `${mainAppUrl}/api/analysis/request`,
       {
         url: video.url,
+        videoId: cleanVideoId, // 명시적으로 전달
         userId: 'bot',
         isRecheck: false,
         forceRecheck: false,

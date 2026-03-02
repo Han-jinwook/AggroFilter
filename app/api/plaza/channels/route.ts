@@ -32,6 +32,8 @@ export async function GET(request: Request) {
         FROM t_channels c
         JOIN t_analyses a ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
+          AND a.f_is_valid = TRUE
+          AND a.f_needs_review = FALSE
           AND COALESCE(c.f_language, 'korean') = $1
         GROUP BY c.f_channel_id, c.f_title, c.f_thumbnail_url, c.f_official_category_id
         ORDER BY analysis_count DESC, avg_reliability DESC

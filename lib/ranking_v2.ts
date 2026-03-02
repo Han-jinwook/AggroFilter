@@ -112,6 +112,8 @@ export async function refreshRankingCache(f_category_id?: number) {
           FROM t_analyses
           WHERE f_channel_id IS NOT NULL
             AND f_reliability_score IS NOT NULL
+            AND f_is_valid = TRUE
+            AND f_needs_review = FALSE
         )
         SELECT 
           f_channel_id, 

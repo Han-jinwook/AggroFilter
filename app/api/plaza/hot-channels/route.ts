@@ -55,6 +55,7 @@ export async function GET(request: Request) {
           WHERE f_language = $1
             AND f_last_updated >= NOW() - INTERVAL '7 days'
             AND f_avg_reliability IS NOT NULL
+            AND f_video_count > 0
         ) cs
         JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
         WHERE cs.rn = 1

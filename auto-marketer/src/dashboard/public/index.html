@@ -526,6 +526,7 @@
               <span class="always-unit">개</span>
             </div>
             <div style="font-size:16px;color:#4a5568;margin-top:3px">mostPopular 상위 N개</div>
+            <div style="font-size:13px;color:#4a5568;margin-top:6px;line-height:1.6">업로드 12시간 이내 · VPH 높은 순<br>동일 채널 최대 2개 · 동일 카테고리 균형 제한</div>
           </div>
         </div>
 
@@ -537,6 +538,9 @@
         <div class="collapse-body" id="m1TrendDetail">
           <div style="font-size:16px;color:#718096;margin:8px 0 6px">비워두면 X일(카테고리별 수집의 기본값) 적용</div>
           <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 10px"></div>
+        </div>
+        <div style="margin-top:14px; padding-top:12px; border-top: 1px solid #2d3748;">
+          <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 설정 저장</button>
         </div>
       </div>
 
@@ -568,21 +572,25 @@
 
         <!-- 접기 토글 -->
         <div class="collapse-header" onclick="toggleCollapse('m1CatDetail', this)">
-          <span style="font-size:16px;color:#718096">저장</span>
+          <span style="font-size:16px;color:#718096">상세 기준</span>
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1CatDetail">
           <div style="font-size:16px;color:#718096;margin:8px 0 10px;line-height:1.6">
-            15개 카테고리별 최고 조회수 순<br>업로드 12시간 이내, 한국 기준
+            15개 카테고리별 VPH 높은 순<br>업로드 12시간 이내 · 한국 기준<br>플랜A: mostPopular+카테고리ID → 플랜B: search.list(조회수 1만↑, VPH 1000↑)
           </div>
+        </div>
+        <div style="margin-top:14px; padding-top:12px; border-top: 1px solid #2d3748;">
           <button class="btn btn-primary btn-sm" onclick="saveModule1Options()">💾 설정 저장</button>
         </div>
       </div>
 
     </div>
     <!-- 수집 리스트 테이블 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:16px;font-weight:700;color:#cbd5e0">봇 분석 영상 최신 200개</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:17px;font-weight:700;color:#e2e8f0">봇 분석 영상 최신 200개</span>
+      <button id="btnDeleteMode" onclick="toggleDeleteMode()" style="padding:4px 12px;font-size:13px;font-weight:600;background:#2d3748;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;cursor:pointer">🗑 삭제관리</button>
+      <button id="btnDeleteDo" onclick="doDelete()" style="display:none;padding:4px 12px;font-size:13px;font-weight:600;background:#c53030;color:#fff;border:none;border-radius:6px;cursor:pointer">🗑 삭제</button>
     </div>
     <div class="table-wrap" id="tableWrap"><div class="empty">로딩 중...</div></div>
   </div>
@@ -775,6 +783,7 @@
   renderCatCooldownGrid({});
 
   // ────────── 모듈1 (YouTube 수집) ──────────
+  let m1OptionsLoaded = false;
   async function fetchModule1Status() {
     try {
       const res = await fetch('/api/module1/status');
@@ -786,11 +795,12 @@
         toggle: 'm1AutoToggle', label: 'm1AutoLabel', badge: 'm1AutoBadge',
         statusText: 'm1StatusText', lastRun: 'm1LastRun', lastResult: 'm1LastResult', btn: 'm1BtnRun'
       });
-      if (options) {
+      if (options && !m1OptionsLoaded) {
         document.getElementById('m1OptN').value     = options.trackNTotal ?? '';
         document.getElementById('m1OptM').value     = options.trackMPerCategory ?? '';
         document.getElementById('m1OptX').value     = options.dedupDays ?? '';
         renderCatCooldownGrid(options.categoryCooldowns || {});
+        m1OptionsLoaded = true;
       }
     } catch (e) {}
   }
@@ -817,8 +827,13 @@
       categoryCooldowns,
     };
     try {
-      await fetch('/api/module1/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      showToast('모듈1 설정 저장 완료', 'ok');
+      const res = await fetch('/api/module1/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('모듈1 설정 저장 완료', 'ok');
+        m1OptionsLoaded = false; // 저장 후 다음 폴링에서 서버 데이터와 동기화 허용
+        fetchModule1Status();
+      }
     } catch (e) { showToast('저장 실패: ' + e.message, 'err'); }
   }
 
@@ -837,6 +852,7 @@
   }
 
   // ────────── 모듈2 (커뮤니티 타겟) ──────────
+  let m2OptionsLoaded = false;
   async function fetchModule2Status() {
     try {
       const res = await fetch('/api/module2/status');
@@ -848,10 +864,11 @@
         toggle: 'm2AutoToggle', label: 'm2AutoLabel', badge: 'm2AutoBadge',
         statusText: 'm2StatusText', lastRun: 'm2LastRun', lastResult: 'm2LastResult', btn: 'm2BtnRun'
       });
-      if (options) {
+      if (options && !m2OptionsLoaded) {
         document.getElementById('m2OptPostLimit').value      = options.postLimit ?? 10;
         document.getElementById('m2OptKeywordsGlobal').value = options.keywordsGlobal ?? '';
         document.getElementById('m2OptCommunityCount').value = options.communityCount ?? 10;
+        m2OptionsLoaded = true;
       }
     } catch (e) {}
   }
@@ -913,6 +930,57 @@
     return `<span class="score ${cls}">${val}</span>`;
   }
 
+  let deleteMode = false;
+
+  function toggleDeleteMode() {
+    deleteMode = !deleteMode;
+    const btn = document.getElementById('btnDeleteMode');
+    const btnDo = document.getElementById('btnDeleteDo');
+    if (deleteMode) {
+      btn.textContent = '✕ 취소';
+      btn.style.background = '#4a5568';
+    } else {
+      btn.textContent = '🗑 삭제관리';
+      btn.style.background = '';
+      btnDo.style.display = 'none';
+    }
+    loadCollected();
+  }
+
+  function updateDeleteBtn() {
+    const checked = document.querySelectorAll('.del-chk:checked');
+    const btnDo = document.getElementById('btnDeleteDo');
+    if (checked.length > 0) {
+      btnDo.style.display = 'inline-flex';
+      btnDo.textContent = `🗑 ${checked.length}개 삭제`;
+    } else {
+      btnDo.style.display = 'none';
+    }
+  }
+
+  async function doDelete() {
+    const checked = [...document.querySelectorAll('.del-chk:checked')];
+    if (checked.length === 0) return;
+    const ids = checked.map(el => el.dataset.id);
+    if (!confirm(`선택한 ${ids.length}개 레코드를 삭제하시겠습니까?`)) return;
+    try {
+      const res = await fetch('/api/collected', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`${data.deleted}개 삭제 완료`, 'ok');
+        loadCollected();
+      } else {
+        showToast('삭제 실패: ' + data.error, 'err');
+      }
+    } catch (e) {
+      showToast('삭제 오류: ' + e.message, 'err');
+    }
+  }
+
   async function loadCollected() {
     const wrap = document.getElementById('tableWrap');
     try {
@@ -947,8 +1015,13 @@
         const viewCount = item.f_view_count != null ? item.f_view_count.toLocaleString() : '—';
         const publishedAt = item.f_published_at ? fmt24(item.f_published_at) : '—';
 
+        const chkCell = deleteMode
+          ? `<td style="width:36px;text-align:center"><input type="checkbox" class="del-chk" data-id="${escHtml(item.f_id)}" onchange="updateDeleteBtn()" style="width:16px;height:16px;cursor:pointer"></td>`
+          : '';
+
         return `
           <tr>
+            ${chkCell}
             <td class="cell-time">${fmt24(item.f_created_at)}</td>
             <td class="cell-time">${publishedAt}</td>
             <td class="cell-ch"><a href="${chUrl}" target="_blank" title="${escHtml(chId)}">${chName}</a></td>
@@ -962,10 +1035,13 @@
           </tr>`;
       }).join('');
 
+      const chkHeader = deleteMode ? `<th style="width:36px"></th>` : '';
+
       wrap.innerHTML = `
         <table>
           <thead>
             <tr>
+              ${chkHeader}
               <th style="width:160px">수집 일시</th>
               <th style="width:160px">업로드 일시</th>
               <th style="width:140px">채널</th>

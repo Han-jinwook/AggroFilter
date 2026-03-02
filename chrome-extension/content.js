@@ -19,11 +19,12 @@
   // 유튜브 URL에서 영상 ID 추출
   function getVideoId() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('v')) return params.get('v');
+    const v = params.get('v');
+    if (v) return v.trim();
 
     // Shorts 대응
     const match = window.location.pathname.match(/\/shorts\/([^/?]+)/);
-    if (match) return match[1];
+    if (match) return match[1].trim();
 
     return null;
   }

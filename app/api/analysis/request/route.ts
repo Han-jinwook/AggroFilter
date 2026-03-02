@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     console.log('분석 요청 URL:', url);
 
     // 1. YouTube 영상 ID 추출
-    const videoId = extractVideoId(url);
+    const videoId = extractVideoId(url)?.trim();
     if (!videoId) {
       return NextResponse.json({ error: '유효한 YouTube URL이 아닙니다.' }, { status: 400, headers: corsHeaders });
     }
@@ -252,6 +252,7 @@ export async function POST(request: Request) {
     const musicKeywords = [
       ' m/v', '(m/v)', '[m/v]',
       ' mv)', '(mv)', '[mv]',
+      '[mv]', '(mv)', ' mv ',
       'official video', 'official m/v', 'official mv',
       'lyric video', 'lyrics video',
       'music video',
@@ -259,6 +260,14 @@ export async function POST(request: Request) {
       '뮤직비디오',
       '노래 가사',
       '가사 영상',
+      'special clip', 'live clip',
+      '主題歌', '挿入歌', // 일본어 주제가, 삽입곡
+      'utattemita', '歌ってみた', // 불러보았다 (커버)
+      '弾いてみた', // 연주해보았다
+      'dance practice', '안무 영상',
+      'lyrics', '가사', '자막', 'karaoke', 'inst', 'instrumental',
+      'remix', 'prod by', 'prod.', 'feat.', 'ft.',
+      'translation', '번역', '자막판',
     ];
     if (musicKeywords.some(kw => titleLower.includes(kw))) {
       return NextResponse.json(
@@ -267,16 +276,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. 라이브/생방송 (게임 라이브, 방송 다시보기 등)
+    // 2. 라이브/생방송/하이라이트 (단순 재생 영상)
     const liveKeywords = [
       '라이브', '생방송', '생중계', '실시간 방송',
       ' live', '(live)', '[live]',
-      'live stream', 'livestream',
-      '다시보기', '풀영상', '전편',
+      'live stream', 'livestream', 'streaming', 'streamer', '스트리밍', '스트리머',
+      '다시보기', '풀영상', '전편', '녹화본', '방송분', '(녹)',
+      '무대영상', '공연영상', '콘서트', 'fancam', '직캠',
+      '하이라이트', '풀 하이라이트', 'highlight', 'highlights',
+      ' h/l', '[h/l]', '(h/l)', ' hl ', '[hl]', '(hl)',
+      '득점장면', '골장면', '명장면', '주요장면', '전반전', '후반전',
+      '모든 골', '전경기', '경기 요약',
+      '정주행', '연속보기', '모음집', '모음', '클립', 'clips',
+      '실시간', '방송중', '달립시다', '탐방',
+      '역대급', '최신판', '멸망전', '대회', '스크림', '내전', '자랭',
     ];
     if (liveKeywords.some(kw => titleLower.includes(kw))) {
       return NextResponse.json(
-        { error: '라이브·생방송·다시보기 영상은 분석 대상이 아닙니다.\n편집된 리뷰·논평 영상은 정상 분석됩니다.' },
+        { error: '라이브·생방송·하이라이트 영상은 분석 대상이 아닙니다.\n편집된 리뷰·논평 영상은 정상 분석됩니다.' },
         { status: 422, headers: corsHeaders }
       );
     }
@@ -299,7 +316,7 @@ export async function POST(request: Request) {
     const officialCategoryId = videoInfo.officialCategoryId?.toString();
     const reviewKeywords = [
       '리뷰', '분석', '비판', '논란', '문제', '평가',
-      '추천', '비교', '역대', '최고', '최악', '랭킹',
+      '추천', '비교', '최고', '최악', '랭킹',
       '해설', '논평', '의미', '시사',
     ];
     const hasReviewKw = reviewKeywords.some(kw => titleLower.includes(kw));
@@ -311,6 +328,18 @@ export async function POST(request: Request) {
         '풀게임', '풀플레이',
         '솔로랭크', '솔랭', '칼바람', '배틀그라운드',
         '클리어', '엔딩', '공략',
+        '육성', '강화', '러쉬', '노가다', '파밍',
+        '리니지', '리니지m', '리니지w', '리니지2m', '리니지클래식',
+        '메이플', '메이플스토리', '로아', '로스트아크', '던파', '던전앤파이터',
+        '롤', 'league of legends', 'lol', 'tft', '전략적 팀 전투',
+        '배그', 'pubg', '발로란트', 'valorant',
+        '오버워치', 'overwatch', 'minecraft', '마인크래프트',
+        '티어올리기',
+        '요들', '거인 요들', '2중 성장', '뽑기', '지배뽑기',
+        '서든어택', '서든', 'sudden attack', '철권', 'tekken',
+        '피파', 'fc온라인', 'fconline', '스타', '스타크래프트',
+        '기가 막힌 타이밍', '타이밍',
+        '생존 시단', '혼입', '흑롭법사',
       ];
       if (gamePlayKeywords.some(kw => titleLower.includes(kw))) {
         return NextResponse.json(
@@ -320,16 +349,29 @@ export async function POST(request: Request) {
       }
     }
 
-    // 스포츠(17): 단순 경기 중계/풀매치
+    // 스포츠(17): 단순 경기 중계/풀매치/패턴 기반 하이라이트
     if (officialCategoryId === '17' && !hasReviewKw) {
       const sportsPlayKeywords = [
         '풀게임', '풀매치', '전리플', '실제경기',
         'full match', 'full game',
         '중계', '직캐스트', '라이브 중계',
+        '라운드', ' round', ' r ',
       ];
-      if (sportsPlayKeywords.some(kw => titleLower.includes(kw))) {
+      // [v3.5] 팀 vs 팀 형태의 단순 경기 영상 차단 (리뷰 키워드 없을 때)
+      const hasVsPattern = titleLower.includes(' vs ') || titleLower.includes(' vs. ') || titleLower.includes(' v ');
+      const hasRoundPattern = /\d+r\s/.test(titleLower) || /\d+라운드/.test(titleLower);
+
+      // 공식 채널성 이름 감지
+      const channelName = (videoInfo.channelName || '').toLowerCase();
+      const isOfficialSportsChannel = [
+        '쿠팡플레이', 'coupang play', 'sbs', 'kbs', 'mbc', 'tvn', 'jtbc', 'spotv', '스포티비',
+        'k리그', 'kleague', 'kfa', '축구협회', 'kbo', 'kbl', 'kovo', 'v리그', 'v-league',
+        '공식채널', 'official', 'sports', '스포츠', 'tv조선', '채널a', 'mbn'
+      ].some(kw => channelName.includes(kw));
+
+      if (sportsPlayKeywords.some(kw => titleLower.includes(kw)) || hasVsPattern || hasRoundPattern || isOfficialSportsChannel) {
         return NextResponse.json(
-          { error: '단순 스포츠 중계/풀매치 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설·리뷰 영상은 정상 분석됩니다.' },
+          { error: '단순 스포츠 중계/풀매치/하이라이트 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설·리뷰 영상은 정상 분석됩니다.' },
           { status: 422, headers: corsHeaders }
         );
       }
@@ -363,6 +405,33 @@ export async function POST(request: Request) {
           { status: 422, headers: corsHeaders }
         );
       }
+    }
+
+    // 5. 음악(10): 단순 음원/MV (리뷰/분석/논평 키워드 없으면 제외)
+    if (officialCategoryId === '10' && !hasReviewKw) {
+      return NextResponse.json(
+        { error: '단순 음악 영상(M/V, Official Video 등)은 분석 대상이 아닙니다.\n음악 평론·인터뷰·연주 영상은 정상 분석됩니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 6. 해외 영상 필터링 (일본어 가나 문자 감지)
+    const hasJapaneseKana = /[\u3040-\u309F\u30A0-\u30FF\uFF66-\uFF9D]/.test(videoInfo.title || '') || 
+                            /[\u3040-\u309F\u30A0-\u30FF\uFF66-\uFF9D]/.test(videoInfo.channelName || '');
+    if (hasJapaneseKana) {
+      return NextResponse.json(
+        { error: '해외 영상(일본어 등)은 분석 대상이 아닙니다.\n한국어로 제작된 콘텐츠만 분석 가능합니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 7. 한글 미포함 필터링 (영어 전용 등)
+    const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(videoInfo.title || '') || /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(videoInfo.channelName || '');
+    if (!hasKorean) {
+      return NextResponse.json(
+        { error: '한글이 포함되지 않은 영상은 분석 대상이 아닙니다.' },
+        { status: 422, headers: corsHeaders }
+      );
     }
 
     if (clientTranscript && typeof clientTranscript === 'string' && clientTranscript.length > 50) {
@@ -434,7 +503,7 @@ export async function POST(request: Request) {
       const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
       console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
       
-      analysisResult = await analyzeContent(
+      const analysis = await analyzeContent(
         videoInfo.channelName,
         videoInfo.title,
         promptTranscript,
@@ -443,6 +512,40 @@ export async function POST(request: Request) {
         transcriptItems,
         videoInfo.publishedAt
       );
+
+      // [V2.0] AI의 분석 대상 적합성 판단 처리
+      const isValidTarget = analysis.is_valid_target !== false; // 기본값 true
+      const needsReview = analysis.needs_admin_review === true;
+      const reviewReason = analysis.review_reason || analysis.notAnalyzableReason || null;
+
+      if (!isValidTarget) {
+        console.log(`[AI Reject] 분석 부적합 판정: ${reviewReason}`);
+        // 부적합 판정 시 DB에 저장하되, f_is_valid = false로 마킹하여 노출 제외
+        // 또는 기존처럼 422 에러로 반환 (사용자 요청에 따라 저장 후 숨김 처리도 가능)
+        // 여기서는 기획안 v2.0에 따라 '분석 데이터 파기' 또는 '분석 불가' 메시지 반환
+        return NextResponse.json(
+          { 
+            error: `분석 부적합 콘텐츠: ${reviewReason}`, 
+            notAnalyzable: true, 
+            reason: reviewReason 
+          },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+
+      analysisResult = {
+        accuracy: analysis.accuracy,
+        clickbait: analysis.clickbait,
+        reliability: analysis.reliability,
+        subtitleSummary: analysis.subtitleSummary,
+        evaluationReason: analysis.evaluationReason,
+        overallAssessment: analysis.overallAssessment,
+        recommendedTitle: analysis.recommendedTitle,
+        groundingUsed: analysis.groundingUsed,
+        groundingQueries: analysis.groundingQueries,
+        notAnalyzable: analysis.notAnalyzable,
+        notAnalyzableReason: analysis.notAnalyzableReason,
+      };
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
       console.error('AI 분석 엔진 에러:', aiError);
@@ -458,8 +561,26 @@ export async function POST(request: Request) {
       const naClient = await pool.connect();
       try {
         await naClient.query('BEGIN');
-        await naClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_not_analyzable BOOLEAN DEFAULT FALSE`);
-        await naClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_not_analyzable_reason TEXT`);
+        
+        const cleanChannelId = videoInfo.channelId?.trim();
+
+        // t_channels 저장 (v2.0 필드 반영) - FK 제약 조건 위반 방지를 위해 선행
+        await naClient.query(`
+          INSERT INTO t_channels (
+            f_channel_id, f_title, f_thumbnail_url, f_official_category_id, f_subscriber_count
+          ) VALUES ($1, $2, NULLIF($3, ''), $4, $5)
+          ON CONFLICT (f_channel_id) DO UPDATE SET
+            f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
+            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
+            f_official_category_id = EXCLUDED.f_official_category_id,
+            f_subscriber_count = EXCLUDED.f_subscriber_count
+        `, [
+          cleanChannelId,
+          videoInfo.channelName,
+          videoInfo.channelThumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.subscriberCount || 0
+        ]);
 
         // t_videos 저장 (metadata만)
         await naClient.query(`
@@ -473,7 +594,7 @@ export async function POST(request: Request) {
             f_updated_at = NOW()
         `, [
           videoId,
-          videoInfo.channelId,
+          cleanChannelId,
           videoInfo.title,
           videoInfo.publishedAt || null,
           videoInfo.thumbnailUrl,
@@ -482,32 +603,28 @@ export async function POST(request: Request) {
         ]);
 
         // t_analyses에 notAnalyzable 레코드 저장
-        await naClient.query(`
-          INSERT INTO t_analyses (
-            f_id, f_video_url, f_video_id, f_title, f_channel_id,
-            f_thumbnail_url, f_user_id, f_official_category_id,
-            f_request_count, f_view_count, f_created_at, f_last_action_at,
-            f_is_latest, f_not_analyzable, f_not_analyzable_reason
+        const insertRes = await naClient.query(
+          `INSERT INTO t_analyses (
+            f_video_url, f_video_id, f_title, f_channel_id, f_thumbnail_url,
+            f_transcript, f_accuracy_score, f_clickbait_score, f_reliability_score,
+            f_summary, f_evaluation_reason, f_overall_assessment, f_ai_title_recommendation,
+            f_user_id, f_official_category_id, f_is_latest, f_language,
+            f_grounding_used, f_grounding_queries, f_published_at,
+            f_not_analyzable, f_not_analyzable_reason,
+            f_is_valid, f_needs_review, f_review_reason
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8,
-            1, $9, NOW(), NOW(),
-            TRUE, TRUE, $10
-          )
-          ON CONFLICT DO NOTHING
-        `, [
-          uuidv4(),
-          url,
-          videoId,
-          videoInfo.title,
-          videoInfo.channelId,
-          videoInfo.thumbnailUrl,
-          userId || null,
-          videoInfo.officialCategoryId,
-          videoInfo.viewCount || 0,
-          reason
-        ]);
-
-        await naClient.query('COMMIT');
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+          ) RETURNING f_id`,
+          [
+            url, videoId, videoInfo.title, videoInfo.channelId, videoInfo.thumbnailUrl,
+            transcript, analysisResult.accuracy, analysisResult.clickbait, analysisResult.reliability,
+            analysisResult.subtitleSummary, analysisResult.evaluationReason, analysisResult.overallAssessment, analysisResult.recommendedTitle,
+            userId || 'anonymous', videoInfo.officialCategoryId, true, detectedLang,
+            analysisResult.groundingUsed || false, analysisResult.groundingQueries || [], videoInfo.publishedAt,
+            analysisResult.notAnalyzable || false, reason,
+            isValidTarget, needsReview, reviewReason
+          ]
+        );
       } catch (dbErr) {
         await naClient.query('ROLLBACK');
         console.error('[notAnalyzable] DB 저장 실패 (뭔시):', dbErr);
@@ -594,9 +711,33 @@ export async function POST(request: Request) {
         }
       }
 
-      console.log('5-1. 채널 정보 저장 (t_channels)...');
       // 5-1. 채널 정보 저장 (v2.0 필드 반영)
+      console.log('5-1. 채널 정보 저장 (t_channels)...');
+      const cleanChannelId = videoInfo.channelId?.trim();
       await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
+      await client.query(`
+        INSERT INTO t_channels (
+          f_channel_id,
+          f_title,
+          f_thumbnail_url,
+          f_official_category_id,
+          f_subscriber_count,
+          f_language
+        ) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
+        ON CONFLICT (f_channel_id) DO UPDATE SET
+          f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
+          f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
+          f_official_category_id = EXCLUDED.f_official_category_id,
+          f_subscriber_count = EXCLUDED.f_subscriber_count,
+          f_language = COALESCE(EXCLUDED.f_language, t_channels.f_language)
+      `, [
+        cleanChannelId, 
+        videoInfo.channelName, 
+        videoInfo.channelThumbnailUrl, 
+        videoInfo.officialCategoryId,
+        videoInfo.subscriberCount,
+        finalLanguage
+      ]);
 
       console.log('5-1-1. 비디오 기본 정보 저장 (t_videos)...');
       await client.query(`
@@ -614,37 +755,13 @@ export async function POST(request: Request) {
           f_updated_at = NOW()
       `, [
         videoId,
-        videoInfo.channelId,
+        cleanChannelId,
         videoInfo.title,
         videoInfo.description,
         videoInfo.publishedAt || null,
         videoInfo.thumbnailUrl,
         videoInfo.officialCategoryId,
         videoInfo.viewCount || 0
-      ]);
-
-      await client.query(`
-        INSERT INTO t_channels (
-          f_channel_id,
-          f_title,
-          f_thumbnail_url,
-          f_official_category_id,
-          f_subscriber_count,
-          f_language
-        ) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
-        ON CONFLICT (f_channel_id) DO UPDATE SET
-          f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
-          f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
-          f_official_category_id = EXCLUDED.f_official_category_id,
-          f_subscriber_count = EXCLUDED.f_subscriber_count,
-          f_language = COALESCE(EXCLUDED.f_language, t_channels.f_language)
-      `, [
-        videoInfo.channelId, 
-        videoInfo.channelName, 
-        videoInfo.channelThumbnailUrl, 
-        videoInfo.officialCategoryId,
-        videoInfo.subscriberCount,
-        finalLanguage
       ]);
 
       if (!shouldKeepParentOnDecrease) {
@@ -668,21 +785,23 @@ export async function POST(request: Request) {
             f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
             f_is_latest, f_language,
             f_grounding_used, f_grounding_queries,
-            f_published_at
+            f_published_at,
+            f_is_valid, f_needs_review, f_review_reason
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, $23, NOW(), NOW(),
             $17, $18, $19,
             TRUE, $20,
             $21, $22,
-            $24
+            $24,
+            $25, $26, $27
           )
         `, [
           analysisId,
           url,
           videoId,
           videoInfo.title,
-          videoInfo.channelId,
+          cleanChannelId,
           videoInfo.thumbnailUrl,
           transcript.substring(0, 50000),
           analysisResult.accuracy,
@@ -701,7 +820,10 @@ export async function POST(request: Request) {
           Boolean(analysisResult.groundingUsed),
           analysisResult.groundingQueries?.length > 0 ? analysisResult.groundingQueries : null,
           videoInfo.viewCount || 0,
-          videoInfo.publishedAt || null
+          videoInfo.publishedAt || null,
+          isValidTarget,
+          needsReview,
+          reviewReason
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
@@ -730,6 +852,8 @@ export async function POST(request: Request) {
             AND COALESCE(a.f_language, 'korean') = $3
             AND a.f_reliability_score IS NOT NULL
             AND a.f_is_latest = TRUE
+            AND a.f_is_valid = TRUE
+            AND a.f_needs_review = FALSE
           GROUP BY a.f_channel_id, a.f_official_category_id, COALESCE(a.f_language, 'korean')
           ON CONFLICT (f_channel_id, f_official_category_id, f_language) 
           DO UPDATE SET 
@@ -738,7 +862,7 @@ export async function POST(request: Request) {
             f_avg_clickbait = EXCLUDED.f_avg_clickbait,
             f_avg_reliability = EXCLUDED.f_avg_reliability,
             f_last_updated = NOW()
-        `, [videoInfo.channelId, videoInfo.officialCategoryId, finalLanguage]);
+        `, [cleanChannelId, videoInfo.officialCategoryId, finalLanguage]);
       }
 
       if (isRecheck) {
@@ -797,7 +921,7 @@ export async function POST(request: Request) {
           `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at)
            VALUES ($1, $2, NOW())
            ON CONFLICT (f_user_id, f_channel_id) DO NOTHING;`,
-          [actualUserId, videoInfo.channelId]
+          [actualUserId, cleanChannelId]
         );
         console.log('구독 처리 완료');
       }

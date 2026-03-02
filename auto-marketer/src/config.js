@@ -14,6 +14,8 @@ module.exports = {
   trackMPerCategory: parseInt(process.env.TRACK_M_PER_CATEGORY || '3', 10),
   // X: 채널 다양성 쿨타임 (일) - 최근 X일 이내 분석된 채널 스킵
   dedupDays: parseInt(process.env.DEDUP_DAYS || '7', 10),
+  // Type1 동일 채널 최대 허용 수 (N개 중 동일 채널은 최대 이 수만큼)
+  maxPerChannel: parseInt(process.env.MAX_PER_CHANNEL || '2', 10),
   // 최소 조회수 하한 (이 수치 미만 영상은 수집 제외)
   minViewCount: parseInt(process.env.MIN_VIEW_COUNT || '1000', 10),
   // 최소 시간당 조회수(VPH) 하한 - 하꼬 영상 원천 차단
@@ -32,22 +34,16 @@ module.exports = {
   // 유튜브 결과 페이지 URL 패턴
   resultUrlBase: (process.env.MAIN_APP_URL || 'https://aggrofilter.com') + '/result/',
 
-  // 유튜브 공식 카테고리 전체 (한국 기준 실사용, Type2용)
+  // 수집 화이트리스트 (7개 핵심 카테고리)
   targetCategories: [
-    { id: '1',  name: '필름/애니',    keyword: '영화 리뷰 최신' },
-    { id: '2',  name: '자동차',       keyword: '자동차 신차 리뷰' },
-    { id: '10', name: '음악',         keyword: '음악 리뷰 논평 연주' },
-    { id: '15', name: '동물',         keyword: '동물 귀여운 영상' },
-    { id: '17', name: '스포츠',       keyword: '스포츠 하이라이트' },
-    { id: '19', name: '여행',         keyword: '여행 브이로그' },
-    { id: '20', name: '게임',         keyword: '게임 플레이 최신' },
-    { id: '22', name: '인물/블로그',  keyword: '브이로그 일상' },
-    { id: '23', name: '코미디',       keyword: '코미디 웃긴 영상' },
-    { id: '24', name: '엔터테인먼트', keyword: '예능 밈' },
-    { id: '25', name: '뉴스/정치',    keyword: '뉴스 오늘' },
-    { id: '26', name: '노하우/스타일',keyword: '정보 꿀팁' },
-    { id: '27', name: '교육',         keyword: '투자 경제 강의' },
-    { id: '28', name: '과학/기술',    keyword: 'AI 기술 최신' },
-    { id: '29', name: '비영리/사회',  keyword: '사회 이슈 캠페인' },
+    { id: '22', name: '인물/블로그',  keyword: '인물 인터뷰 브이로그 이슈' },
+    { id: '24', name: '엔터테인먼트', keyword: '예능 방송 연예 이슈' },
+    { id: '25', name: '뉴스/정치',    keyword: '뉴스 분석 논평 이슈 사건' },
+    { id: '26', name: '노하우/스타일',keyword: '꿀팁 정보 생활 지식' },
+    { id: '27', name: '교육',         keyword: '강의 교육 지식 정보' },
+    { id: '28', name: '과학/기술',    keyword: '과학 기술 IT 분석 리뷰' },
+    { id: '29', name: '비영리/사회',  keyword: '사회 이슈 운동 분석' },
   ],
+  // 수집 및 분석 제외 카테고리 ID (유튜브 공식 ID 기준)
+  excludedCategoryIds: ['1', '2', '10', '15', '17', '18', '19', '20', '23'],
 };

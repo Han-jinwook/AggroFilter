@@ -40,6 +40,8 @@ export async function GET(request: Request) {
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         WHERE a.f_is_latest = TRUE
           AND a.f_reliability_score IS NOT NULL
+          AND a.f_is_valid = TRUE
+          AND a.f_needs_review = FALSE
           AND (
             a.f_title ILIKE $1
             OR c.f_title ILIKE $1

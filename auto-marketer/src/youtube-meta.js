@@ -59,10 +59,10 @@ async function getVideoInfo(videoId) {
   }
 
   return {
-    videoId,
+    videoId: videoId.toString().trim(),
     title: snippet.title,
     channelName: snippet.channelTitle,
-    channelId,
+    channelId: channelId.toString().trim(),
     thumbnailUrl:
       snippet.thumbnails?.maxres?.url ||
       snippet.thumbnails?.high?.url ||

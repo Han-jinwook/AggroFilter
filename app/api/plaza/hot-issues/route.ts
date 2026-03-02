@@ -49,6 +49,8 @@ export async function GET(request: Request) {
           AND a.f_last_action_at >= NOW() - INTERVAL '24 hours'
           AND a.f_reliability_score IS NOT NULL
           AND COALESCE(c.f_language, 'korean') = $1
+          AND a.f_is_valid = TRUE
+          AND a.f_needs_review = FALSE
         ${orderByClause}
         LIMIT 3
       `;

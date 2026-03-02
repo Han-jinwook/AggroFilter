@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const url = searchParams.get('url');
-    const videoId = url ? extractVideoId(url) : searchParams.get('videoId');
+    const videoId = (url ? extractVideoId(url) : searchParams.get('videoId'))?.trim();
 
     if (!videoId) {
       return NextResponse.json({ error: 'videoId or url is required' }, { status: 400, headers: corsHeaders });

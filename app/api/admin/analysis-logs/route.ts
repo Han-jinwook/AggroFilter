@@ -25,9 +25,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const reviewOnly = searchParams.get('reviewOnly') === 'true';
+
     const client = await pool.connect();
     try {
-      const res = await client.query(`
+      let query = `
         SELECT 
           a.f_id as id,
           a.f_title as title,
@@ -39,15 +42,24 @@ export async function GET(request: Request) {
           a.f_language as language,
           a.f_grounding_used as grounding_used,
           a.f_grounding_queries as grounding_queries,
+          a.f_is_valid as is_valid,
+          a.f_needs_review as needs_review,
+          a.f_review_reason as review_reason,
           u.f_email as user_email,
           u.f_id as user_id,
           COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name
         FROM t_analyses a
         LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
         LEFT JOIN t_users u ON a.f_user_id = u.f_id
-        ORDER BY a.f_created_at DESC
-        LIMIT 100
-      `);
+      `;
+
+      if (reviewOnly) {
+        query += ` WHERE a.f_needs_review = TRUE `;
+      }
+
+      query += ` ORDER BY a.f_created_at DESC LIMIT 100 `;
+
+      const res = await client.query(query);
 
       return NextResponse.json({ logs: res.rows });
     } finally {
@@ -55,6 +67,44 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     console.error('Admin Analysis Logs GET Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const email = await getAdminEmail(request);
+    if (!isAdminEmail(email)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, is_valid, needs_review } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: 'id가 필요합니다' }, { status: 400 });
+    }
+
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        `UPDATE t_analyses 
+         SET f_is_valid = COALESCE($1, f_is_valid),
+             f_needs_review = COALESCE($2, f_needs_review),
+             f_updated_at = NOW()
+         WHERE f_id = $3
+         RETURNING f_id`,
+        [is_valid, needs_review, id]
+      );
+
+      if (res.rowCount === 0) {
+        return NextResponse.json({ error: '해당 분석 기록을 찾을 수 없습니다' }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true, id: res.rows[0].f_id });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Admin Analysis Logs PATCH Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
