@@ -499,6 +499,10 @@ export async function POST(request: Request) {
     // 4. Gemini AI 분석
     console.log('AI 분석 시작...');
     let analysisResult;
+    let isValidTarget = true;
+    let needsReview = false;
+    let reviewReason: string | null = null;
+
     try {
       const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
       console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
@@ -514,9 +518,9 @@ export async function POST(request: Request) {
       );
 
       // [V2.0] AI의 분석 대상 적합성 판단 처리
-      const isValidTarget = analysis.is_valid_target !== false; // 기본값 true
-      const needsReview = analysis.needs_admin_review === true;
-      const reviewReason = analysis.review_reason || analysis.notAnalyzableReason || null;
+      isValidTarget = analysis.is_valid_target !== false; // 기본값 true
+      needsReview = analysis.needs_admin_review === true;
+      reviewReason = analysis.review_reason || analysis.notAnalyzableReason || null;
 
       if (!isValidTarget) {
         console.log(`[AI Reject] 분석 부적합 판정: ${reviewReason}`);
@@ -619,7 +623,7 @@ export async function POST(request: Request) {
             url, videoId, videoInfo.title, videoInfo.channelId, videoInfo.thumbnailUrl,
             transcript, analysisResult.accuracy, analysisResult.clickbait, analysisResult.reliability,
             analysisResult.subtitleSummary, analysisResult.evaluationReason, analysisResult.overallAssessment, analysisResult.recommendedTitle,
-            userId || 'anonymous', videoInfo.officialCategoryId, true, detectedLang,
+            userId || 'anonymous', videoInfo.officialCategoryId, true, finalLanguage,
             analysisResult.groundingUsed || false, analysisResult.groundingQueries || [], videoInfo.publishedAt,
             analysisResult.notAnalyzable || false, reason,
             isValidTarget, needsReview, reviewReason
