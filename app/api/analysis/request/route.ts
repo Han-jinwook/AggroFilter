@@ -244,11 +244,20 @@ export async function POST(request: Request) {
     let transcriptItems: { text: string; start: number; duration: number }[] = [];
     let hasTranscript = false;
 
-    // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 제목 키워드로 즉시 차단 (비용 절감)
-    // 카테고리는 절대 다루지 않음: 음악평론·게임리뷰도 분석 대상
+    // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 즉시 차단 (비용 절감)
     const titleLower = (videoInfo.title || '').toLowerCase();
 
-    // 1. 단순 음악 영상 (MV, Official Video 등)
+    // 0. 카테고리 기반 즉시 차단 (키워드 검사 이전)
+    // 음악(10): 뮤직비디오·음원 카테고리는 분석 대상 아님 (음악평론은 주로 카테고리 22/24에 배정됨)
+    const earlyBlockCategoryId = videoInfo.officialCategoryId?.toString();
+    if (earlyBlockCategoryId === '10') {
+      return NextResponse.json(
+        { error: '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·인터뷰는 정상 분석됩니다.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // 1. 단순 음악 영상 (MV, Official Video 등) — 카테고리 무관 키워드 차단
     const musicKeywords = [
       ' m/v', '(m/v)', '[m/v]',
       ' mv)', '(mv)', '[mv]',
@@ -405,14 +414,6 @@ export async function POST(request: Request) {
           { status: 422, headers: corsHeaders }
         );
       }
-    }
-
-    // 5. 음악(10): 단순 음원/MV (리뷰/분석/논평 키워드 없으면 제외)
-    if (officialCategoryId === '10' && !hasReviewKw) {
-      return NextResponse.json(
-        { error: '단순 음악 영상(M/V, Official Video 등)은 분석 대상이 아닙니다.\n음악 평론·인터뷰·연주 영상은 정상 분석됩니다.' },
-        { status: 422, headers: corsHeaders }
-      );
     }
 
     // 6. 해외 영상 필터링 (일본어 가나 문자 감지)
