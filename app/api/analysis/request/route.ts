@@ -258,6 +258,7 @@ export async function POST(request: Request) {
       '19': '여행/이벤트 카테고리 영상은 분석 대상이 아닙니다.\n여행 정보·리뷰 영상은 정상 분석됩니다.',
       '20': '게임 카테고리 영상은 분석 대상이 아닙니다.\n게임 리뷰·논평·비평 영상은 정상 분석됩니다.',
       '23': '코미디/유머 카테고리 영상은 분석 대상이 아닙니다.',
+      '43': '방송(Shows) 카테고리 영상은 분석 대상이 아닙니다.',
     };
     if (earlyBlockCategoryId && blockedCategoryMessages[earlyBlockCategoryId]) {
       return NextResponse.json(
