@@ -247,12 +247,21 @@ export async function POST(request: Request) {
     // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 즉시 차단 (비용 절감)
     const titleLower = (videoInfo.title || '').toLowerCase();
 
-    // 0. 카테고리 기반 즉시 차단 (키워드 검사 이전)
-    // 음악(10): 뮤직비디오·음원 카테고리는 분석 대상 아님 (음악평론은 주로 카테고리 22/24에 배정됨)
+    // 0. 카테고리 기반 즉시 차단 (AI 분석 이전 — 비용 절감 및 빠른 거절)
     const earlyBlockCategoryId = videoInfo.officialCategoryId?.toString();
-    if (earlyBlockCategoryId === '10') {
+    const blockedCategoryMessages: Record<string, string> = {
+      '10': '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·비평 영상은 정상 분석됩니다.',
+      '1':  '영화/애니메이션 재생 영상은 분석 대상이 아닙니다.\n영화 리뷰·비평 영상은 정상 분석됩니다.',
+      '2':  '자동차/이동수단 카테고리 영상은 분석 대상이 아닙니다.\n자동차 리뷰·비교 영상은 정상 분석됩니다.',
+      '15': '반려동물/동물 카테고리 영상은 분석 대상이 아닙니다.',
+      '17': '스포츠 단순 경기/하이라이트 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설 영상은 정상 분석됩니다.',
+      '19': '여행/이벤트 카테고리 영상은 분석 대상이 아닙니다.\n여행 정보·리뷰 영상은 정상 분석됩니다.',
+      '20': '게임 카테고리 영상은 분석 대상이 아닙니다.\n게임 리뷰·논평·비평 영상은 정상 분석됩니다.',
+      '23': '코미디/유머 카테고리 영상은 분석 대상이 아닙니다.',
+    };
+    if (earlyBlockCategoryId && blockedCategoryMessages[earlyBlockCategoryId]) {
       return NextResponse.json(
-        { error: '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·인터뷰는 정상 분석됩니다.' },
+        { error: blockedCategoryMessages[earlyBlockCategoryId] },
         { status: 422, headers: corsHeaders }
       );
     }
