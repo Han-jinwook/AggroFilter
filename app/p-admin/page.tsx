@@ -729,7 +729,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-700 mb-1">AI 검토 대기열 (Review Queue)</h3>
-                <p className="text-xs text-gray-500">AI가 '팩트체크 적합성'을 확신하지 못해 관리자의 확인이 필요한 영상들입니다.</p>
+                <p className="text-xs text-gray-500">AI가 &apos;팩트체크 적합성&apos;을 확신하지 못해 관리자의 확인이 필요한 영상들입니다.</p>
               </div>
               <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
                 <table className="w-full text-xs">
