@@ -98,6 +98,13 @@
       font-size: 20px; font-weight: 800; color: #63b3ed;
       letter-spacing: .2px; margin-bottom: 12px;
     }
+    /* 카드별 강조 테두리 */
+    .card-status  { border-color: #2b6cb0; }
+    .card-trend   { border-color: #276749; }
+    .card-category{ border-color: #6b46c1; }
+    /* 서브 설명 텍스트 */
+    .sub-desc { font-size:15px; color:#718096; margin-top:4px; line-height:1.55; }
+    .sub-label { font-size:14px; color:#63b3ed; font-weight:600; background:#0d1829; border-radius:4px; padding:2px 7px; display:inline-block; margin-top:4px; }
 
     /* 현황 카드 (좌) */
     .status-card { flex: 0 0 auto; min-width: 380px; }
@@ -295,7 +302,7 @@
       border: none; border-top: 1px dashed #2d3748;
       margin: 6px 0;
     }
-    .run-note { font-size: 16px; color: #718096; margin-top: 7px; font-weight: 500; line-height: 1.5; }
+    .run-note { font-size: 15px; color: #63b3ed; margin-top: 7px; font-weight: 600; line-height: 1.5; background:#0d1829; border-radius:6px; padding:6px 10px; border-left:3px solid #2b6cb0; }
   </style>
 </head>
 <body>
@@ -462,7 +469,7 @@
     <div class="control-bar" style="margin-bottom:14px">
 
       <!-- ── 섹션1: 현황 ── -->
-      <div class="card">
+      <div class="card card-status">
         <div class="card-title">📊 모듈1 현황</div>
 
         <!-- 상시: 오토모드 + 현재상태 -->
@@ -475,18 +482,18 @@
                 <div class="toggle-track"></div>
                 <div class="toggle-thumb"></div>
               </label>
-              <span class="auto-toggle-label" id="m1AutoLabel" style="font-size:14px;font-weight:700">OFF</span>
+              <span class="auto-toggle-label" id="m1AutoLabel" style="font-size:16px;font-weight:700">OFF</span>
             </div>
           </div>
           <div style="margin-left:auto;text-align:right">
             <div class="always-label">현재 상태</div>
-            <div class="always-val" id="m1StatusText" style="font-size:16px;margin-top:4px">대기 중</div>
+            <div class="always-val" id="m1StatusText" style="font-size:18px;margin-top:4px">대기 중</div>
           </div>
         </div>
 
         <!-- 접기 토글 -->
         <div class="collapse-header" onclick="toggleCollapse('m1StatusDetail', this)">
-          <span style="font-size:12px;color:#718096">실행 이력 / 버튼</span>
+          <span style="font-size:14px;color:#718096">실행 이력 / 버튼</span>
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1StatusDetail">
@@ -505,15 +512,15 @@
             <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
           </div>
           <div class="run-note">⚡ 수동: 트렌드만 / 자동: 트렌드→카테고리 전체</div>
-          <div style="margin-top:8px;font-size:16px;color:#68d391;font-weight:600">🕐 자동: 00:00 / 12:00 KST</div>
+          <div style="margin-top:8px;font-size:15px;color:#68d391;font-weight:600;background:#0d1f17;border-radius:6px;padding:5px 10px;border-left:3px solid #276749;">🕐 자동: 00:00 / 12:00 KST</div>
           <div style="margin-top:8px">
-            <span id="m1AutoBadge" style="font-size:16px;color:#4a5568"></span>
+            <span id="m1AutoBadge" style="font-size:15px;color:#4a5568"></span>
           </div>
         </div>
       </div>
 
       <!-- ── 섹션2: 트렌드 수집 ── -->
-      <div class="card">
+      <div class="card card-trend">
         <div class="card-title">📈 트렌드 수집</div>
 
         <!-- 상시: N값 -->
@@ -525,8 +532,8 @@
                 style="width:72px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">개</span>
             </div>
-            <div style="font-size:16px;color:#4a5568;margin-top:3px">mostPopular 상위 N개</div>
-            <div style="font-size:15px;color:#4a5568;margin-top:6px;line-height:1.6">업로드 12시간 이내 · VPH 높은 순<br>동일 채널 최대 2개 · 동일 카테고리 균형 제한</div>
+            <div class="sub-label">mostPopular 상위 N개</div>
+            <div class="sub-desc">업로드 12시간 이내 · VPH 높은 순<br>동일 채널 최대 2개 · 카테고리 균형 제한</div>
           </div>
         </div>
 
@@ -536,7 +543,7 @@
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1TrendDetail">
-          <div style="font-size:15px;color:#718096;margin:8px 0 6px">비워두면 X일(카테고리별 수집의 기본값) 적용</div>
+          <div class="sub-desc" style="margin:8px 0 6px">비워두면 X일(기본값) 적용</div>
           <div id="catCooldownGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px 10px"></div>
         </div>
         <div style="margin-top:14px; padding-top:12px; border-top: 1px solid #2d3748;">
@@ -545,7 +552,7 @@
       </div>
 
       <!-- ── 섹션3: 카테고리별 수집 ── -->
-      <div class="card">
+      <div class="card card-category">
         <div class="card-title">🗂 카테고리별 수집</div>
 
         <!-- 상시: M + X값 -->
@@ -557,7 +564,7 @@
                 style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">개</span>
             </div>
-            <div style="font-size:15px;color:#4a5568;margin-top:3px">7개 카테고리 × M</div>
+            <div class="sub-label">7개 카테고리 × M</div>
           </div>
           <div style="margin-left:auto">
             <div class="always-label">채널 쿨타임 (X)</div>
@@ -566,7 +573,7 @@
                 style="width:64px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:22px;font-weight:900;text-align:center" />
               <span class="always-unit">일</span>
             </div>
-            <div style="font-size:16px;color:#4a5568;margin-top:3px">동일 채널 재수집 방지</div>
+            <div class="sub-desc" style="margin-top:4px;font-size:14px">동일 채널 재수집 방지</div>
           </div>
         </div>
 
@@ -576,8 +583,8 @@
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1CatDetail">
-          <div style="font-size:15px;color:#718096;margin:8px 0 10px;line-height:1.6">
-            7개 카테고리(인물/블로그·엔터·뉴스·노하우·교육·과학기술·비영리) VPH 높은 순<br>업로드 12시간 이내 · 한국 기준<br>플랜A: mostPopular+카테고리ID → 플랜B: search.list(조회수 1만↑, VPH 1000↑)
+          <div class="sub-desc" style="margin:8px 0 10px">
+            화이트리스트 7개 카테고리 · VPH 높은 순 · 12시간 이내<br>플랜A: mostPopular+카테고리ID → 플랜B: search.list(1만↑, VPH 1000↑)
           </div>
         </div>
         <div style="margin-top:14px; padding-top:12px; border-top: 1px solid #2d3748;">
