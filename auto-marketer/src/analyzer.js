@@ -80,7 +80,13 @@ async function analyzeVideo(video) {
     const status = err.response?.status;
     const msg = err.response?.data?.error || err.message;
 
-    // 504는 서버가 백그라운드에서 계속 처리 중 → 폴링으로 완료 대기
+    // 422 = 서버가 필터로 즉시 차단 (분석 완료가 아님) → 폴링 불필요, 즉시 실패
+    if (status === 422) {
+      console.warn(`  [Analyzer] 실패 (${video.title}): ${msg}`);
+      return { success: false, video, error: msg };
+    }
+
+    // 504/타임아웃 = 서버는 백그라운드에서 계속 처리 중 → 폴링으로 완료 대기
     if (status === 504 || err.code === 'ECONNABORTED') {
       console.warn(`  [Analyzer] 504/타임아웃 → 폴링 대기 시작: ${video.title}`);
       const poll = await pollUntilComplete(video.videoId);

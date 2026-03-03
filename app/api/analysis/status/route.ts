@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     try {
       const result = await client.query(`
-        SELECT f_id, f_reliability_score 
+        SELECT f_id, f_reliability_score, f_is_valid
         FROM t_analyses 
         WHERE f_video_id = $1 AND f_created_at > NOW() - INTERVAL '30 minutes'
         ORDER BY f_created_at DESC 
