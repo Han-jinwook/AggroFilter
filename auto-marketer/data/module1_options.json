@@ -1,6 +1,6 @@
 {
   "trackNTotal": 5,
-  "trackMPerCategory": 3,
+  "trackMPerCategory": 1,
   "dedupDays": 7,
   "categoryCooldowns": {}
 }
