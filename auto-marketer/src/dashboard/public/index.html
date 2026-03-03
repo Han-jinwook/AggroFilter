@@ -484,6 +484,11 @@
               </label>
               <span class="auto-toggle-label" id="m1AutoLabel" style="font-size:16px;font-weight:700">OFF</span>
             </div>
+            <!-- 자동 스케줄 정보 (오토모드 바로 아래) -->
+            <div style="margin-top:7px;font-size:14px;color:#68d391;font-weight:600;background:#0d1f17;border-radius:6px;padding:4px 9px;border-left:3px solid #276749;display:inline-block">🕐 자동: 00:00 / 12:00 KST</div>
+            <div style="margin-top:4px">
+              <span id="m1AutoBadge" style="font-size:14px;color:#68d391;font-weight:600"></span>
+            </div>
           </div>
           <div style="margin-left:auto;text-align:right">
             <div class="always-label">현재 상태</div>
@@ -491,9 +496,9 @@
           </div>
         </div>
 
-        <!-- 접기 토글 -->
+        <!-- 접기 토글: 수동 실행 섹션 -->
         <div class="collapse-header" onclick="toggleCollapse('m1StatusDetail', this)">
-          <span style="font-size:14px;color:#718096">실행 이력 / 버튼</span>
+          <span style="font-size:14px;color:#718096">수동 실행 / 이력</span>
           <span class="collapse-arrow">▼</span>
         </div>
         <div class="collapse-body" id="m1StatusDetail">
@@ -511,11 +516,7 @@
             <button class="btn btn-success" id="m1BtnRun" onclick="runModule1()">▶ 수동 실행</button>
             <button class="btn btn-ghost btn-sm" onclick="loadCollected()" style="margin-left:auto">↻ 새로고침</button>
           </div>
-          <div class="run-note">⚡ 수동: 트렌드만 / 자동: 트렌드→카테고리 전체</div>
-          <div style="margin-top:8px;font-size:15px;color:#68d391;font-weight:600;background:#0d1f17;border-radius:6px;padding:5px 10px;border-left:3px solid #276749;">🕐 자동: 00:00 / 12:00 KST</div>
-          <div style="margin-top:8px">
-            <span id="m1AutoBadge" style="font-size:15px;color:#4a5568"></span>
-          </div>
+          <div class="run-note">⚡ 수동: 트렌드만 수집·분석</div>
         </div>
       </div>
 
