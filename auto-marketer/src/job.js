@@ -20,6 +20,9 @@ async function _collectTranscriptAndAnalyze(videos, options, label, targetCount)
   const analysisTargets = [];
   let skippedCount = 0;
 
+  // 블랙리스트 카테고리 — 자막 확인 전 즉시 차단 (API 비용 절감)
+  const BLACKLIST_CATEGORY_IDS = new Set(['1','2','10','15','17','19','20','23','43']);
+
   // 자막 수집 및 대상 선정 (목표 개수를 채울 때까지)
   for (let i = 0; i < videos.length; i++) {
     if (analysisTargets.length >= limit) {
@@ -28,6 +31,14 @@ async function _collectTranscriptAndAnalyze(videos, options, label, targetCount)
     }
 
     const v = videos[i];
+    const catId = String(v.categoryId || v.officialCategoryId || '');
+    if (catId && BLACKLIST_CATEGORY_IDS.has(catId)) {
+      console.log(`  자막 확인 (${i + 1}/${videos.length}): ${v.title}`);
+      console.log(`    -> 블랙리스트 카테고리(${catId}) 스킵`);
+      skippedCount++;
+      continue;
+    }
+
     console.log(`  자막 확인 (${i + 1}/${videos.length}): ${v.title}`);
     const meta = await getTranscriptData(v.videoId);
     

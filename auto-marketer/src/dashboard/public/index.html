@@ -782,6 +782,9 @@
   // 시작 시 그리드 한 번 렌더링 (저장값 없이 초기화)
   renderCatCooldownGrid({});
 
+  // 마지막 실행 실패 목록 (DB에 없는 항목)을 전역에 보관
+  window._lastErrors = [];
+
   // ────────── 모듈1 (YouTube 수집) ──────────
   let m1OptionsLoaded = false;
   async function fetchModule1Status() {
@@ -790,7 +793,10 @@
       const { status, options } = await res.json();
       const wasRunning = window._m1WasRunning ?? false;
       window._m1WasRunning = status.running;
-      if (wasRunning && !status.running) loadCollected();
+      if (wasRunning && !status.running) {
+        window._lastErrors = (status.lastResult?.errors || []);
+        loadCollected();
+      }
       _applyModuleStatus(status, options, {
         toggle: 'm1AutoToggle', label: 'm1AutoLabel', badge: 'm1AutoBadge',
         statusText: 'm1StatusText', lastRun: 'm1LastRun', lastResult: 'm1LastResult', btn: 'm1BtnRun'
@@ -986,13 +992,15 @@
     try {
       const res = await fetch('/api/collected');
       const { items } = await res.json();
+      const failItems = window._lastErrors || [];
 
-      if (!items || items.length === 0) {
+      if ((!items || items.length === 0) && failItems.length === 0) {
         wrap.innerHTML = '<div class="empty">아직 수집된 영상이 없습니다.</div>';
         return;
       }
 
-      const rows = items.map(item => {
+      // 성공 행
+      const rows = (items || []).map(item => {
         const resultUrl  = `https://aggrofilter.com/p-result?id=${item.f_id}`;
         const chId  = item.f_channel_id || '';
         const chUrl = chId ? `https://www.youtube.com/channel/${chId}` : '#';
@@ -1022,6 +1030,7 @@
         return `
           <tr>
             ${chkCell}
+            <td style="text-align:center"><span class="score score-high" style="font-size:12px">✅ 성공</span></td>
             <td class="cell-time">${fmt24(item.f_created_at)}</td>
             <td class="cell-time">${publishedAt}</td>
             <td class="cell-ch"><a href="${chUrl}" target="_blank" title="${escHtml(chId)}">${chName}</a></td>
@@ -1035,6 +1044,21 @@
           </tr>`;
       }).join('');
 
+      // 실패 행 (이번 실행의 errors)
+      const failRows = failItems.map(e => {
+        const chkCell = deleteMode ? `<td style="width:36px"></td>` : '';
+        const errMsg = escHtml((e.error || '').split('\n')[0].substring(0, 60));
+        return `
+          <tr style="opacity:0.65">
+            ${chkCell}
+            <td style="text-align:center"><span class="score score-low" style="font-size:12px">❌ 실패</span></td>
+            <td class="cell-time" colspan="2" style="color:#fc8181;font-size:13px">${errMsg}</td>
+            <td class="cell-ch">—</td>
+            <td class="cell-title" style="color:#a0aec0">${escHtml(e.title || '—')}</td>
+            <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>`;
+      }).join('');
+
       const chkHeader = deleteMode ? `<th style="width:36px"></th>` : '';
 
       wrap.innerHTML = `
@@ -1042,19 +1066,20 @@
           <thead>
             <tr>
               ${chkHeader}
-              <th style="width:160px">수집 일시</th>
-              <th style="width:160px">업로드 일시</th>
+              <th style="width:80px;text-align:center">상태</th>
+              <th style="width:150px">수집 일시</th>
+              <th style="width:150px">업로드 일시</th>
               <th style="width:140px">채널</th>
               <th>영상 제목</th>
               <th style="width:110px;text-align:right">조회수</th>
-              <th style="width:130px">카테고리</th>
+              <th style="width:120px">카테고리</th>
               <th style="width:75px;text-align:center">신뢰도</th>
               <th style="width:75px;text-align:center">정확도</th>
               <th style="width:75px;text-align:center">어그로</th>
               <th style="width:100px;text-align:center">그라운딩</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows}${failRows}</tbody>
         </table>`;
     } catch (e) {
       wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
