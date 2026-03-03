@@ -603,113 +603,112 @@
     <div class="table-wrap" id="tableWrap"><div class="empty">로딩 중...</div></div>
   </div>
 
-  <!-- 탭2: 커뮤니티 타겟 (= 모듈2) -->
+  <!-- 탭2: 커뮤니티 세팅 (= 모듈2) -->
   <div id="tab-community" class="tab-content">
-    <!-- 모듈2 현황+설정 카드 -->
-    <div class="control-bar" style="margin-bottom:14px">
-      <div class="card status-card">
-        <div class="card-title">📊 모듈2 현황 — 커뮤니티 타겟</div>
-        <div class="auto-toggle-wrap" style="margin-bottom:10px">
-          <span class="auto-toggle-label" id="m2AutoLabel">오토모드 OFF</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="m2AutoToggle" onchange="toggleAutoMode2(this)" />
-            <div class="toggle-track"></div>
-            <div class="toggle-thumb"></div>
-          </label>
-          <span id="m2AutoBadge" style="font-size:16px;color:#4a5568">수동 실행 전용</span>
-        </div>
-        <div class="status-grid">
-          <div class="stat-item">
-            <div class="stat-label">현재 상태</div>
-            <div class="stat-value" id="m2StatusText">대기 중</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-label">마지막 실행</div>
-            <div class="stat-value" id="m2LastRun">—</div>
-          </div>
-          <div class="stat-item" style="grid-column:1/-1">
-            <div class="stat-label">마지막 결과</div>
-            <div class="stat-value" id="m2LastResult">—</div>
-          </div>
-        </div>
-        <div class="run-btn-wrap">
-          <button class="btn btn-success" id="m2BtnRun" onclick="runModule2()">▶ 수동 실행</button>
-          <button class="btn btn-ghost btn-sm" onclick="loadTargets()" style="margin-left:auto">↻ 새로고침</button>
-        </div>
-      </div>
-      <div class="card settings-card">
-        <div class="card-title">⚙️ 모듈2 수집 설정</div>
-        <div class="opt-grid-2">
-          <div class="opt-item">
-            <label>수집 글 제한 (10~100)</label>
-            <input type="number" id="m2OptPostLimit" min="10" max="100" />
-            <div class="hint">커뮤니티당 게시글 한도</div>
-          </div>
-          <div class="opt-item">
-            <label>범용 키워드 (쉼표 구분)</label>
-            <input type="text" id="m2OptKeywordsGlobal" placeholder="가짜뉴스, 낚시, 어그로" />
-            <div class="hint">모든 커뮤니티 공통 적용</div>
-          </div>
-          <div class="opt-item">
-            <label>커뮤니티 수 (1~100)</label>
-            <input type="number" id="m2OptCommunityCount" min="1" max="100" />
-            <div class="hint">동시 처리 커뮤니티 수</div>
-          </div>
-        </div>
-        <div class="settings-footer">
-          <button class="btn btn-primary btn-sm" onclick="saveModule2Options()">💾 저장</button>
-          <span class="schedule-note">🕐 자동: 매일 00:00 / 12:00 KST</span>
-        </div>
-      </div>
-    </div>
-    <!-- 커뮤니티 타겟 리스트 -->
-    <div class="community-wrap">
-      <div class="add-form" style="flex-wrap:wrap;gap:6px">
-        <div class="fg" style="max-width:100px;min-width:80px">
-          <label>구분</label>
-          <select id="newType" style="padding:6px 8px;background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#e2e8f0;font-size:16px">
-            <option value="general">일반</option>
-            <option value="naver_cafe">네이버카페</option>
-          </select>
-        </div>
-        <div class="fg" style="max-width:130px;min-width:100px">
+
+    <!-- ══ 섹션A: 일반 커뮤니티 ══ -->
+    <div class="card card-status" style="margin-bottom:18px">
+      <div class="card-title">🌐 일반 커뮤니티 <span style="font-size:14px;font-weight:400;color:#718096">(에펨코리아 등 독립 사이트 — 개별 로그인)</span></div>
+
+      <!-- 추가 폼 -->
+      <div class="add-form" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        <div class="fg" style="max-width:140px;min-width:110px">
           <label>커뮤니티명</label>
-          <input type="text" id="newName" placeholder="에펨코리아" />
+          <input type="text" id="gc_name" placeholder="에펨코리아" />
         </div>
         <div class="fg">
-          <label>URL</label>
-          <input type="text" id="newUrl" placeholder="https://www.fmkorea.com/index.php?mid=humor" />
+          <label>게시판 URL</label>
+          <input type="text" id="gc_url" placeholder="https://www.fmkorea.com/index.php?mid=humor" />
         </div>
         <div class="fg" style="max-width:110px;min-width:80px">
           <label>닉네임</label>
-          <input type="text" id="newNickname" placeholder="닉네임" />
+          <input type="text" id="gc_nickname" placeholder="닉네임" />
         </div>
-        <div class="fg" style="max-width:110px;min-width:80px">
+        <div class="fg" style="max-width:120px;min-width:90px">
           <label>아이디</label>
-          <input type="text" id="newLoginId" placeholder="아이디" />
+          <input type="text" id="gc_login_id" placeholder="아이디" />
         </div>
-        <div class="fg" style="max-width:110px;min-width:80px">
+        <div class="fg" style="max-width:120px;min-width:90px">
           <label>비밀번호</label>
-          <input type="password" id="newLoginPw" placeholder="비밀번호" />
+          <input type="password" id="gc_login_pw" placeholder="비밀번호" />
         </div>
         <div class="fg">
           <label>키워드 (쉼표 구분)</label>
-          <input type="text" id="newKeywords" placeholder="가짜뉴스, 유튜브 낚시, 어그로" />
+          <input type="text" id="gc_keywords" placeholder="가짜뉴스, 유튜브 낚시, 어그로" />
         </div>
         <div class="fg" style="max-width:120px;min-width:80px">
           <label>메모</label>
-          <input type="text" id="newNote" placeholder="에펨 유머" />
+          <input type="text" id="gc_note" placeholder="유머게시판" />
         </div>
         <div style="display:flex;align-items:flex-end;gap:6px">
-          <button class="btn btn-success" onclick="addTarget()">+ 추가</button>
-          <label class="btn btn-ghost" style="cursor:pointer;margin:0" title="CSV 형식: 구분,커뮤니티명,URL,닉네임,아이디,비밀번호,키워드(|구분),메모">
-            📂 CSV
-            <input type="file" id="csvUpload" accept=".csv" style="display:none" onchange="uploadCsv(this)" />
+          <button class="btn btn-success" onclick="addGeneralTarget()">+ 추가</button>
+        </div>
+      </div>
+
+      <!-- 일반 커뮤니티 목록 -->
+      <div class="table-wrap" id="generalTargetList"><div class="empty">로딩 중...</div></div>
+    </div>
+
+    <!-- ══ 섹션B: 네이버 카페 ══ -->
+    <div class="card card-category" style="margin-bottom:14px">
+      <div class="card-title">☕ 네이버 카페 <span style="font-size:14px;font-weight:400;color:#718096">(맘카페 등 — 공통 로그인)</span></div>
+
+      <!-- 공통 로그인 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#0d1829;border-radius:8px;border-left:3px solid #6b46c1;flex-wrap:wrap">
+        <span style="font-size:14px;color:#a0aec0;font-weight:600;flex-shrink:0">🔑 네이버 공통 로그인</span>
+        <div class="fg" style="max-width:160px;min-width:120px">
+          <label>아이디</label>
+          <input type="text" id="nc_login_id" placeholder="네이버 아이디" />
+        </div>
+        <div class="fg" style="max-width:160px;min-width:120px">
+          <label>비밀번호</label>
+          <input type="password" id="nc_login_pw" placeholder="비밀번호" />
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary btn-sm" onclick="saveNaverLogin()">💾 저장</button>
+        </div>
+        <span id="nc_login_status" style="font-size:13px;color:#718096;margin-left:4px"></span>
+      </div>
+
+      <!-- 카페 추가 폼 -->
+      <div class="add-form" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        <div class="fg" style="max-width:180px;min-width:140px">
+          <label>카페명</label>
+          <input type="text" id="nc_name" placeholder="OO맘카페" />
+        </div>
+        <div class="fg">
+          <label>카페 URL (게시판)</label>
+          <input type="text" id="nc_url" placeholder="https://cafe.naver.com/oo/게시판ID" />
+        </div>
+        <div class="fg">
+          <label>키워드 (쉼표 구분)</label>
+          <input type="text" id="nc_keywords" placeholder="유튜브, 어그로, 가짜뉴스" />
+        </div>
+        <div class="fg" style="max-width:120px;min-width:80px">
+          <label>메모</label>
+          <input type="text" id="nc_note" placeholder="강남맘" />
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px">
+          <button class="btn btn-success" onclick="addNaverCafe()">+ 추가</button>
+          <label class="btn btn-ghost" style="cursor:pointer;margin:0"
+            title="CSV: 카페명,URL,키워드(|구분),메모">
+            📂 CSV 일괄 업로드
+            <input type="file" id="ncCsvUpload" accept=".csv" style="display:none" onchange="uploadNaverCafeCsv(this)" />
           </label>
         </div>
       </div>
-      <div class="table-wrap" id="targetList"><div class="empty">로딩 중...</div></div>
+      <div style="margin-bottom:8px">
+        <span class="sub-desc">CSV 형식: <code style="background:#0f1117;padding:2px 6px;border-radius:3px;font-size:13px">카페명,URL,키워드(|구분),메모</code> (헤더 행 자동 스킵)</span>
+      </div>
+
+      <!-- 카페 목록 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span id="nc_count" style="font-size:14px;color:#a0aec0">로딩 중...</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadTargets()" style="margin-left:auto">↻ 새로고침</button>
+      </div>
+      <div class="table-wrap" id="naverCafeList"><div class="empty">로딩 중...</div></div>
     </div>
+
   </div>
 
   <!-- 탭3: 댓글 로그 -->
@@ -1112,143 +1111,207 @@
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'collected') { fetchModule1Status(); loadCollected(); }
-    if (name === 'community') { fetchModule2Status(); loadTargets(); }
+    if (name === 'community') { loadTargets(); }
     if (name === 'comments') loadCommentLogs();
   }
 
-  // ────────── 커뮤니티 타겟 ──────────
+  // ────────── 커뮤니티 타겟 (모듈2) ──────────
+
+  // 전체 로드 — 일반/네이버카페 분리 렌더링
   async function loadTargets() {
-    const wrap = document.getElementById('targetList');
     try {
       const res = await fetch('/api/community-targets');
       const { items } = await res.json();
-      if (!items || items.length === 0) {
-        wrap.innerHTML = '<div class="empty">등록된 타겟이 없습니다.<br>위 폼에서 추가해 주세요.</div>';
-        return;
-      }
-      const typeLabel = { general: '일반', naver_cafe: '네이버카페' };
-      const rows = items.map(t => {
-        const kws = (t.keywords || []).map(k => `<span class="kw-badge">${escHtml(k)}</span>`).join('');
-        const activeLabel = t.is_active
-          ? '<span style="color:#48bb78;font-size:12px">● 활성</span>'
-          : '<span style="color:#718096;font-size:12px">○ 비활성</span>';
-        const ttype = escHtml(typeLabel[t.community_type] || t.community_type || '일반');
-        const tname = escHtml(t.community_name || '—');
-        const tnick = escHtml(t.nickname || '—');
-        const tid_val = escHtml(t.login_id || '—');
-        const tpw = t.login_pw ? '••••' : '—';
-        return `
-          <tr>
-            <td style="white-space:nowrap;color:#a0aec0;font-size:12px">${ttype}</td>
-            <td style="white-space:nowrap;font-size:12px">${tname}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              <a href="${escHtml(t.url)}" target="_blank" style="color:#63b3ed;font-size:12px">${escHtml(t.url)}</a>
-            </td>
-            <td style="white-space:nowrap;font-size:12px;color:#a0aec0">${tnick}</td>
-            <td style="white-space:nowrap;font-size:12px;color:#a0aec0">${tid_val}</td>
-            <td style="white-space:nowrap;font-size:12px;color:#718096">${tpw}</td>
-            <td>${kws || '<span style="color:#4a5568">—</span>'}</td>
-            <td style="white-space:nowrap">${activeLabel}</td>
-            <td style="color:#718096;font-size:11px">${escHtml(t.note || '—')}</td>
-            <td style="white-space:nowrap">
-              <button class="btn btn-sm" style="background:#2d3748;color:#e2e8f0"
-                onclick="toggleTarget(${t.id}, ${!t.is_active})">${t.is_active ? '비활성화' : '활성화'}</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteTarget(${t.id})" style="margin-left:4px">삭제</button>
-            </td>
-          </tr>`;
-      }).join('');
-      wrap.innerHTML = `
-        <table>
-          <thead><tr>
-            <th>구분</th><th>커뮤니티명</th><th>URL</th><th>닉네임</th><th>아이디</th><th>비밀번호</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      const all = items || [];
+      const generals = all.filter(t => t.community_type !== 'naver_cafe');
+      const cafes    = all.filter(t => t.community_type === 'naver_cafe');
+      renderGeneralList(generals);
+      renderNaverCafeList(cafes);
     } catch (e) {
-      wrap.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+      document.getElementById('generalTargetList').innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+      document.getElementById('naverCafeList').innerHTML = `<div class="empty">오류: ${e.message}</div>`;
     }
   }
 
-  async function addTarget() {
-    const url = document.getElementById('newUrl').value.trim();
-    const keywords = document.getElementById('newKeywords').value.trim();
-    const note = document.getElementById('newNote').value.trim();
-    const community_type = document.getElementById('newType').value;
-    const community_name = document.getElementById('newName').value.trim();
-    const nickname = document.getElementById('newNickname').value.trim();
-    const login_id = document.getElementById('newLoginId').value.trim();
-    const login_pw = document.getElementById('newLoginPw').value;
+  function renderGeneralList(items) {
+    const wrap = document.getElementById('generalTargetList');
+    if (!items.length) {
+      wrap.innerHTML = '<div class="empty">등록된 일반 커뮤니티가 없습니다.</div>';
+      return;
+    }
+    const rows = items.map(t => {
+      const kws = (t.keywords || []).map(k => `<span class="kw-badge">${escHtml(k)}</span>`).join('');
+      const activeLabel = t.is_active
+        ? '<span style="color:#48bb78;font-size:13px">● 활성</span>'
+        : '<span style="color:#718096;font-size:13px">○ 비활성</span>';
+      return `
+        <tr>
+          <td style="white-space:nowrap;font-size:14px;font-weight:600">${escHtml(t.community_name || '—')}</td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <a href="${escHtml(t.url)}" target="_blank" style="color:#63b3ed;font-size:13px">${escHtml(t.url)}</a>
+          </td>
+          <td style="white-space:nowrap;font-size:13px;color:#a0aec0">${escHtml(t.nickname || '—')}</td>
+          <td style="white-space:nowrap;font-size:13px;color:#a0aec0">${escHtml(t.login_id || '—')}</td>
+          <td style="white-space:nowrap;font-size:13px;color:#718096">${t.login_pw ? '••••' : '—'}</td>
+          <td>${kws || '<span style="color:#4a5568">—</span>'}</td>
+          <td style="white-space:nowrap">${activeLabel}</td>
+          <td style="color:#718096;font-size:13px">${escHtml(t.note || '—')}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#2d3748;color:#e2e8f0"
+              onclick="toggleTarget(${t.id}, ${!t.is_active})">${t.is_active ? '비활성화' : '활성화'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTarget(${t.id})" style="margin-left:4px">삭제</button>
+          </td>
+        </tr>`;
+    }).join('');
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>커뮤니티명</th><th>URL</th><th>닉네임</th><th>아이디</th><th>비밀번호</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function renderNaverCafeList(items) {
+    const wrap = document.getElementById('naverCafeList');
+    const countEl = document.getElementById('nc_count');
+    if (countEl) countEl.textContent = `총 ${items.length}개 카페 등록됨`;
+    if (!items.length) {
+      wrap.innerHTML = '<div class="empty">등록된 네이버 카페가 없습니다. CSV로 일괄 업로드하거나 개별 추가하세요.</div>';
+      return;
+    }
+    const rows = items.map(t => {
+      const kws = (t.keywords || []).map(k => `<span class="kw-badge">${escHtml(k)}</span>`).join('');
+      const activeLabel = t.is_active
+        ? '<span style="color:#48bb78;font-size:13px">● 활성</span>'
+        : '<span style="color:#718096;font-size:13px">○ 비활성</span>';
+      return `
+        <tr>
+          <td style="white-space:nowrap;font-size:14px;font-weight:600">${escHtml(t.community_name || '—')}</td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <a href="${escHtml(t.url)}" target="_blank" style="color:#b794f4;font-size:13px">${escHtml(t.url)}</a>
+          </td>
+          <td>${kws || '<span style="color:#4a5568">—</span>'}</td>
+          <td style="white-space:nowrap">${activeLabel}</td>
+          <td style="color:#718096;font-size:13px">${escHtml(t.note || '—')}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#2d3748;color:#e2e8f0"
+              onclick="toggleTarget(${t.id}, ${!t.is_active})">${t.is_active ? '비활성화' : '활성화'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTarget(${t.id})" style="margin-left:4px">삭제</button>
+          </td>
+        </tr>`;
+    }).join('');
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>카페명</th><th>URL</th><th>키워드</th><th>상태</th><th>메모</th><th>관리</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // 일반 커뮤니티 추가
+  async function addGeneralTarget() {
+    const url  = document.getElementById('gc_url').value.trim();
     if (!url) { showToast('URL을 입력해 주세요.', 'err'); return; }
+    const body = {
+      url,
+      community_type: 'general',
+      community_name: document.getElementById('gc_name').value.trim() || null,
+      nickname:       document.getElementById('gc_nickname').value.trim() || null,
+      login_id:       document.getElementById('gc_login_id').value.trim() || null,
+      login_pw:       document.getElementById('gc_login_pw').value || null,
+      keywords:       document.getElementById('gc_keywords').value.trim(),
+      note:           document.getElementById('gc_note').value.trim() || null,
+      is_active: true,
+    };
     try {
-      const res = await fetch('/api/community-targets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, keywords, note, is_active: true, community_type, community_name, nickname, login_id, login_pw }),
-      });
+      const res = await fetch('/api/community-targets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const data = await res.json();
       if (data.ok) {
-        ['newUrl','newKeywords','newNote','newName','newNickname','newLoginId','newLoginPw'].forEach(id => { document.getElementById(id).value = ''; });
-        document.getElementById('newType').value = 'general';
-        showToast('타겟이 추가되었습니다.', 'ok');
+        ['gc_url','gc_name','gc_nickname','gc_login_id','gc_login_pw','gc_keywords','gc_note'].forEach(id => { document.getElementById(id).value = ''; });
+        showToast('추가 완료', 'ok');
         loadTargets();
-      } else {
-        showToast('추가 실패: ' + (data.error || ''), 'err');
-      }
-    } catch (e) {
-      showToast('오류: ' + e.message, 'err');
-    }
+      } else { showToast('추가 실패: ' + (data.error || ''), 'err'); }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
   }
 
-  async function uploadCsv(input) {
+  // 네이버 카페 공통 로그인 저장 (bot_options에 보관)
+  async function saveNaverLogin() {
+    const login_id = document.getElementById('nc_login_id').value.trim();
+    const login_pw = document.getElementById('nc_login_pw').value;
+    if (!login_id) { showToast('아이디를 입력해 주세요.', 'err'); return; }
+    try {
+      await fetch('/api/module2/options', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ naverLoginId: login_id, naverLoginPw: login_pw }) });
+      document.getElementById('nc_login_status').textContent = '✅ 저장됨';
+      showToast('네이버 로그인 정보 저장 완료', 'ok');
+    } catch (e) { showToast('저장 실패: ' + e.message, 'err'); }
+  }
+
+  // 네이버 카페 단건 추가
+  async function addNaverCafe() {
+    const url = document.getElementById('nc_url').value.trim();
+    if (!url) { showToast('URL을 입력해 주세요.', 'err'); return; }
+    const body = {
+      url,
+      community_type: 'naver_cafe',
+      community_name: document.getElementById('nc_name').value.trim() || null,
+      keywords:       document.getElementById('nc_keywords').value.trim(),
+      note:           document.getElementById('nc_note').value.trim() || null,
+      is_active: true,
+    };
+    try {
+      const res = await fetch('/api/community-targets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok) {
+        ['nc_url','nc_name','nc_keywords','nc_note'].forEach(id => { document.getElementById(id).value = ''; });
+        showToast('카페 추가 완료', 'ok');
+        loadTargets();
+      } else { showToast('추가 실패: ' + (data.error || ''), 'err'); }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  // 네이버 카페 CSV 일괄 업로드 (카페명,URL,키워드|구분,메모)
+  async function uploadNaverCafeCsv(input) {
     const file = input.files[0];
     if (!file) return;
     const text = await file.text();
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     let added = 0, failed = 0;
     for (const line of lines) {
-      if (line.startsWith('#') || line.startsWith('구분')) continue;
+      if (line.startsWith('#') || /^(카페명|name)/i.test(line)) continue;
       const cols = line.split(',').map(c => c.trim());
-      const [community_type_raw, community_name, url, nickname, login_id, login_pw, kw_raw, note] = cols;
+      const [community_name, url, kw_raw, note] = cols;
       if (!url) { failed++; continue; }
-      const community_type = community_type_raw === '네이버카페' ? 'naver_cafe' : 'general';
       const keywords = (kw_raw || '').split('|').map(k => k.trim()).filter(Boolean);
       try {
         const res = await fetch('/api/community-targets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, keywords, note: note || null, is_active: true, community_type, community_name: community_name || null, nickname: nickname || null, login_id: login_id || null, login_pw: login_pw || null }),
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ url, community_type: 'naver_cafe', community_name: community_name || null, keywords, note: note || null, is_active: true }),
         });
         const data = await res.json();
         if (data.ok) added++; else failed++;
       } catch { failed++; }
     }
     input.value = '';
-    showToast(`CSV 업로드 완료: ${added}개 추가, ${failed}개 실패`, added > 0 ? 'ok' : 'err');
+    showToast(`CSV 완료: ${added}개 추가, ${failed}개 실패`, added > 0 ? 'ok' : 'err');
     loadTargets();
   }
 
   async function toggleTarget(id, newActive) {
     try {
-      await fetch('/api/community-targets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, is_active: newActive }),
-      });
+      await fetch('/api/community-targets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, is_active: newActive }) });
       loadTargets();
-    } catch (e) {
-      showToast('오류: ' + e.message, 'err');
-    }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
   }
 
   async function deleteTarget(id) {
-    if (!confirm('이 타겟을 삭제하시겠습니까?')) return;
+    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
     try {
       await fetch(`/api/community-targets/${id}`, { method: 'DELETE' });
       showToast('삭제 완료', 'ok');
       loadTargets();
-    } catch (e) {
-      showToast('오류: ' + e.message, 'err');
-    }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
   }
 
   // ────────── 댓글 로그 ──────────
