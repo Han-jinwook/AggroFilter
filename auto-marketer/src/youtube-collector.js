@@ -309,7 +309,7 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
   const FALLBACK_MIN_VIEW = 10000;
   const FALLBACK_MIN_VPH  = 1000;
   const cutoff12h = new Date(Date.now() - 12 * 60 * 60 * 1000);
-  const targetWithBuffer = m * 2; // 자막 없음 등을 대비해 2배 수집
+  const targetWithBuffer = Math.max(m * 3, 5); // 자막 없음 등을 대비해 최소 5개 버퍼 확보
 
   console.log(`\n[Collector][Type2] 카테고리별 최대 ${m}개(버퍼:${targetWithBuffer}) × ${targetCategories.length}개 카테고리 수집...`);
   if (Object.keys(categoryCooldowns).length > 0) {

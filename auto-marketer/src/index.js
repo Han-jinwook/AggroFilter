@@ -16,7 +16,7 @@ if (!config.databaseUrl) {
 console.log('========================================');
 console.log('  AggroFilter AutoMarketer 시작');
 console.log('  메인 앱:', config.mainAppUrl);
-console.log('  스케줄: 매일 오전 6시, 오후 6시 (KST)');
+console.log('  스케줄: 매일 06:00 / 18:00 KST');
 console.log('========================================\n');
 
 // 대시보드 서버 시작
