@@ -16,7 +16,7 @@ if (!config.databaseUrl) {
 console.log('========================================');
 console.log('  AggroFilter AutoMarketer 시작');
 console.log('  메인 앱:', config.mainAppUrl);
-console.log('  스케줄: 매일 06:00 / 18:00 KST');
+console.log('  스케줄: 매일 00:00 / 12:00 KST');
 console.log('========================================\n');
 
 // 대시보드 서버 시작
@@ -34,11 +34,11 @@ async function scheduledRun(label) {
   }
 }
 
-// 오전 6시 (KST)
-cron.schedule('0 6 * * *', () => scheduledRun('오전 6시'), { timezone: 'Asia/Seoul' });
+// 자정 00:00 (KST)
+cron.schedule('0 0 * * *', () => scheduledRun('자정 00:00'), { timezone: 'Asia/Seoul' });
 
-// 오후 6시 (KST)
-cron.schedule('0 18 * * *', () => scheduledRun('오후 6시'), { timezone: 'Asia/Seoul' });
+// 정오 12:00 (KST)
+cron.schedule('0 12 * * *', () => scheduledRun('정오 12:00'), { timezone: 'Asia/Seoul' });
 
 console.log('[Boot] 스케줄러 대기 중... (종료: Ctrl+C)');
 console.log(`[Boot] 대시보드: http://localhost:${config.dashboardPort}\n`);

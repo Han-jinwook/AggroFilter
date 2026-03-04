@@ -147,7 +147,7 @@ async function collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds) {
   const targetWithBuffer = Math.max(n * 4, 20);
   let pageToken = undefined;
   let fetchedCount = 0;
-  const publishedAfter12h = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  const publishedAfter12h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // 24시간으로 확대
 
   // 카테고리당 최대 허용 수: 후보군 내 균형을 위해 약간 넉넉히 잡음
   const maxPerCategory = Math.max(5, Math.floor(targetWithBuffer / 5));
@@ -178,7 +178,7 @@ async function collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds) {
         const title = v.snippet.title;
 
         if (isShorts(v.contentDetails?.duration)) continue;
-        if (new Date(v.snippet.publishedAt) < new Date(publishedAfter12h)) continue;
+        if (new Date(v.snippet.publishedAt) < new Date(publishedAfter12h)) continue; // 24시간 이내
         
         if (recentVideoIds.has(vId)) {
           // console.log(`  [Type1][SKIP-ALREADY] 이미 분석됨: ${title}`);
@@ -307,8 +307,8 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
   const { targetCategories } = config;
   const categoryCooldowns = options.categoryCooldowns || {};
   const FALLBACK_MIN_VIEW = 10000;
-  const FALLBACK_MIN_VPH  = 1000;
-  const cutoff12h = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const FALLBACK_MIN_VPH  = 500; // 완화: 1000→500
+  const cutoff12h = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24시간으로 확대
   const targetWithBuffer = Math.max(m * 3, 5); // 자막 없음 등을 대비해 최소 5개 버퍼 확보
 
   console.log(`\n[Collector][Type2] 카테고리별 최대 ${m}개(버퍼:${targetWithBuffer}) × ${targetCategories.length}개 카테고리 수집...`);
@@ -361,7 +361,7 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
         }
 
         const normalized = normalizeVideo(v, 'type2', category.name);
-        if (normalized.viewsPerHour < config.minViewsPerHour) {
+        if (normalized.viewsPerHour < Math.floor(config.minViewsPerHour / 2)) {
           console.log(`    [Type2][PlanA][SKIP-VPH] VPH 부족(${normalized.viewsPerHour}/h): ${v.snippet.title}`);
           continue;
         }
@@ -422,7 +422,7 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
             if (normalized.viewsPerHour < FALLBACK_MIN_VPH) {
               console.log(`    [Type2][PlanB][SKIP-VPH] VPH 부족(${normalized.viewsPerHour}/h): ${v.snippet.title}`);
               continue;
-            }
+            } // Fallback VPH: 500
 
             catCandidates.push(normalized);
           }
