@@ -16,13 +16,52 @@ interface TRootLayoutProps {
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AggroFilter",
-  description: "AI-powered YouTube content analysis",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://aggrofilter.com"
+  ),
+  title: {
+    default: "어그로필터 | AI 유튜브 신뢰도 분석",
+    template: "%s | 어그로필터",
+  },
+  description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
   },
-    generator: 'v0.app'
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "어그로필터 | AI 유튜브 신뢰도 분석",
+    description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
+    url: "/",
+    siteName: "어그로필터",
+    locale: "ko_KR",
+    type: "website",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "어그로필터",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "어그로필터 | AI 유튜브 신뢰도 분석",
+    description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
+    images: ["/icon.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  generator: 'v0.app'
 }
 
 export default function RootLayout({ children }: TRootLayoutProps) {
