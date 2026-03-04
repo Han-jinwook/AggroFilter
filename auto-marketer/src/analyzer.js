@@ -41,11 +41,40 @@ async function pollUntilComplete(videoId, maxWaitMs = 600000) {
  * - 504 대응: 요청 후 폴링으로 완료 확인
  * - userId = 'bot' 으로 고정 → DB에서 봇 분석 필터링 가능
  */
+/**
+ * 본진 gemini.ts와 동일한 자막 전처리 — 8000자 초과 시 4등분 샘플링
+ * (앞 40% / 중간1 20% / 중간2 20% / 끝 20%)
+ */
+function trimTranscript(transcript) {
+  const MAX = 8000;
+  if (!transcript || transcript.length <= MAX) return transcript;
+  const s1 = Math.floor(MAX * 0.4);
+  const s2 = Math.floor(MAX * 0.2);
+  const s3 = Math.floor(MAX * 0.2);
+  const s4 = MAX - s1 - s2 - s3;
+  const len = transcript.length;
+  const start = transcript.substring(0, s1);
+  const mid1  = transcript.substring(Math.floor(len * 0.33), Math.floor(len * 0.33) + s2);
+  const mid2  = transcript.substring(Math.floor(len * 0.66), Math.floor(len * 0.66) + s3);
+  const end   = transcript.substring(len - s4);
+  return `${start}\n...(중략)...\n${mid1}\n...(중략)...\n${mid2}\n...(중략)...\n${end}`;
+}
+
 async function analyzeVideo(video) {
   const cleanVideoId = (video.videoId || '').toString().trim();
   console.log(`  [Analyzer] 분석 요청: ${video.title} (${cleanVideoId})`);
   const hasTranscript = video.transcriptItems && video.transcriptItems.length > 0;
-  console.log(`  [Analyzer] 자막: ${hasTranscript ? `${video.transcript?.length ?? 0}자 / ${video.transcriptItems.length}줄` : '없음 (제목+썸네일 기반 분석)'}`);
+  const rawLen = video.transcript?.length ?? 0;
+
+  // 자막 전처리: 8000자 초과 시 4등분 샘플링 (본진 gemini.ts와 동일)
+  const trimmedTranscript = hasTranscript ? trimTranscript(video.transcript) : null;
+  const trimmedItems = hasTranscript
+    ? video.transcriptItems.slice(0, 500) // items도 500줄 상한
+    : null;
+
+  console.log(`  [Analyzer] 자막: ${hasTranscript
+    ? `${rawLen}자→${trimmedTranscript.length}자 / ${video.transcriptItems.length}줄`
+    : '없음 (제목+썸네일 기반 분석)'}`);
 
   // 1. 분석 요청 (504가 와도 서버는 백그라운드에서 계속 처리 중)
   try {
@@ -53,13 +82,13 @@ async function analyzeVideo(video) {
       `${mainAppUrl}/api/analysis/request`,
       {
         url: video.url,
-        videoId: cleanVideoId, // 명시적으로 전달
+        videoId: cleanVideoId,
         userId: 'bot',
         isRecheck: false,
         forceRecheck: false,
         ...(hasTranscript && {
-          clientTranscript: video.transcript,
-          clientTranscriptItems: video.transcriptItems,
+          clientTranscript: trimmedTranscript,
+          clientTranscriptItems: trimmedItems,
         }),
       },
       {
