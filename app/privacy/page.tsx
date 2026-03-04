@@ -11,7 +11,7 @@ export default function PrivacyPage() {
 
       <section style={{ marginBottom: 36 }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>1. 수집하는 개인정보</h2>
-        <p>어그로필터(이하 "서비스")는 다음과 같은 정보를 수집합니다.</p>
+        <p>어그로필터(이하 &quot;서비스&quot;)는 다음과 같은 정보를 수집합니다.</p>
         <ul style={{ paddingLeft: 24, marginTop: 8 }}>
           <li><strong>이메일 주소</strong>: 로그인 및 알림 발송 목적</li>
           <li><strong>닉네임</strong>: 서비스 내 프로필 표시 목적 (선택)</li>
