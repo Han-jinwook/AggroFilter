@@ -72,7 +72,7 @@ export default function PrivacyPage() {
         <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>7. 개인정보보호 책임자</h2>
         <ul style={{ paddingLeft: 24 }}>
           <li><strong>서비스명</strong>: 어그로필터 (AggroFilter)</li>
-          <li><strong>문의 이메일</strong>: chiu3@aggrofilter.com</li>
+          <li><strong>문의 이메일</strong>: chiukign369@gmail.com</li>
           <li><strong>웹사이트</strong>: https://aggrofilter.com</li>
         </ul>
       </section>
