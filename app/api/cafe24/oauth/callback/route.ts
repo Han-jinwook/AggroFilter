@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCafe24ApiBaseUrl, getCafe24MallId, saveCafe24Tokens } from '@/lib/cafe24'
+import { getCafe24MallId, saveCafe24Tokens } from '@/lib/cafe24'
 
 export const runtime = 'nodejs'
 
@@ -12,8 +12,11 @@ export async function GET(request: Request) {
     const oauthErrorDescription = searchParams.get('error_description')
     const oauthErrorUri = searchParams.get('error_uri')
 
+    // mall_id는 카페24가 콜백 URL에 동적으로 포함시켜 전달 (심사팀 테스트 mall_id 대응)
+    const mallIdFromParam = searchParams.get('mall_id')
+    const mallId = mallIdFromParam?.trim() || getCafe24MallId()
+
     if (oauthError) {
-      const mallId = getCafe24MallId()
       const redirectUri = process.env.CAFE24_REDIRECT_URI
       const scope = process.env.CAFE24_OAUTH_SCOPE
 
@@ -36,7 +39,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'code is required' }, { status: 400 })
     }
 
-    const mallId = getCafe24MallId()
     const clientId = process.env.CAFE24_CLIENT_ID?.trim()
     const clientSecret = process.env.CAFE24_CLIENT_SECRET?.trim()
     const redirectUri = process.env.CAFE24_REDIRECT_URI?.trim()
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
       )
     }
 
-    const base = getCafe24ApiBaseUrl().replace(/\/$/, '')
+    const base = `https://${mallId}.cafe24api.com/api/v2`
     const basic = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')
     
     // Rollback to Basic Auth Header with trimmed credentials
