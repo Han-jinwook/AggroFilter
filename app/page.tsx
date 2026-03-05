@@ -175,7 +175,18 @@ export default function MainPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        if (!response.ok) throw new Error('분석 요청에 실패했습니다.');
+        if (!response.ok) {
+          let errorMessage = '분석 요청에 실패했습니다.'
+          try {
+            const data = await response.json()
+            if (data?.error) errorMessage = String(data.error)
+          } catch {
+          }
+
+          const err: any = new Error(errorMessage)
+          err.statusCode = response.status
+          throw err
+        }
         return response.json();
       }
 
@@ -183,6 +194,10 @@ export default function MainPage() {
       try {
         result = await fetchAnalysis();
       } catch (firstError) {
+        const statusCode = Number((firstError as any)?.statusCode)
+        const shouldPoll = statusCode === 504 || statusCode === 502 || statusCode === 503
+        if (!shouldPoll) throw firstError
+
         // 504 등 게이트웨이 타임아웃: 서버는 분석 중일 수 있으므로 결과 폴링
         console.warn('첫 번째 요청 실패, 결과 폴링 시작...', firstError);
         const pollUrl = `/api/analysis/status?url=${encodeURIComponent(analysisUrl)}`;
@@ -226,6 +241,8 @@ export default function MainPage() {
       }
     } catch (error) {
       console.error('분석 최종 실패:', error);
+      const msg = (error as any)?.message
+      if (msg) alert(String(msg))
     } finally {
       setIsAnalyzing(false);
     }

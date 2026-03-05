@@ -247,12 +247,14 @@ export async function POST(request: Request) {
     // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 즉시 차단 (비용 절감)
     const titleLower = (videoInfo.title || '').toLowerCase();
 
-    // 0. 카테고리 기반 즉시 차단 (AI 분석 이전 — 비용 절감 및 빠른 거절)
-    const earlyBlockCategoryId = videoInfo.officialCategoryId?.toString();
+    // 0. 카테고리 화이트리스트 기반 즉시 차단 (AI 분석 이전 — 비용 절감 및 빠른 거절)
+    // AutoMarketer와 동일한 핵심 7개 카테고리만 허용: 22,24,25,26,27,28,29
+    const officialCategoryId = videoInfo.officialCategoryId?.toString();
+    const allowedCategoryIds = new Set(['22', '24', '25', '26', '27', '28', '29']);
     const blockedCategoryMessages: Record<string, string> = {
       '10': '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·비평 영상은 정상 분석됩니다.',
-      '1':  '영화/애니메이션 재생 영상은 분석 대상이 아닙니다.\n영화 리뷰·비평 영상은 정상 분석됩니다.',
-      '2':  '자동차/이동수단 카테고리 영상은 분석 대상이 아닙니다.\n자동차 리뷰·비교 영상은 정상 분석됩니다.',
+      '1': '영화/애니메이션 재생 영상은 분석 대상이 아닙니다.\n영화 리뷰·비평 영상은 정상 분석됩니다.',
+      '2': '자동차/이동수단 카테고리 영상은 분석 대상이 아닙니다.\n자동차 리뷰·비교 영상은 정상 분석됩니다.',
       '15': '반려동물/동물 카테고리 영상은 분석 대상이 아닙니다.',
       '17': '스포츠 단순 경기/하이라이트 영상은 분석 대상이 아닙니다.\n스포츠 분석·전술 해설 영상은 정상 분석됩니다.',
       '19': '여행/이벤트 카테고리 영상은 분석 대상이 아닙니다.\n여행 정보·리뷰 영상은 정상 분석됩니다.',
@@ -260,11 +262,10 @@ export async function POST(request: Request) {
       '23': '코미디/유머 카테고리 영상은 분석 대상이 아닙니다.',
       '43': '방송(Shows) 카테고리 영상은 분석 대상이 아닙니다.',
     };
-    if (earlyBlockCategoryId && blockedCategoryMessages[earlyBlockCategoryId]) {
-      return NextResponse.json(
-        { error: blockedCategoryMessages[earlyBlockCategoryId] },
-        { status: 422, headers: corsHeaders }
-      );
+    if (!officialCategoryId || !allowedCategoryIds.has(officialCategoryId)) {
+      const msg = blockedCategoryMessages[officialCategoryId || ''] ||
+        '현재 분석 가능한 카테고리가 아닙니다.\n(허용 카테고리: 인물/블로그, 엔터테인먼트, 뉴스/정치, 노하우/스타일, 교육, 과학/기술, 비영리/사회)';
+      return NextResponse.json({ error: msg }, { status: 422, headers: corsHeaders });
     }
 
     // 1. 단순 음악 영상 (MV, Official Video 등) — 카테고리 무관 키워드 차단
@@ -332,7 +333,6 @@ export async function POST(request: Request) {
     }
 
     // 4. 단순 콘텐츠 재생 (카테고리 + 키워드 조합, 논평/리뷰 키워드 있으면 통과)
-    const officialCategoryId = videoInfo.officialCategoryId?.toString();
     const reviewKeywords = [
       '리뷰', '분석', '비판', '논란', '문제', '평가',
       '추천', '비교', '최고', '최악', '랭킹',
