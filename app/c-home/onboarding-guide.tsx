@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 
 export function OnboardingGuide() {
   return (
@@ -14,10 +15,19 @@ export function OnboardingGuide() {
         />
       </div>
       <div className="flex-1 space-y-2">
-        <p className="text-sm font-semibold text-slate-800">유튜브 영상 URL을 입력하고 Enter를 눌러보세요</p>
+        <p className="text-sm font-semibold text-slate-800">PC에서는 크롬 확장프로그램으로 분석을 시작하세요</p>
         <p className="text-xs text-slate-600 leading-relaxed">
-          빅데이터와 ChatGPT 기술로 영상의 신뢰도, 어그로성, 자막 요약을 즉시 분석해드립니다.
+          모바일에서는 분석 결과를 깔끔하게 조회하고, 필요하면 재분석을 요청할 수 있습니다.
         </p>
+
+        <div className="pt-1">
+          <Link
+            href="/guide/extension"
+            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
+          >
+            확장프로그램 설치/사용 가이드 보기
+          </Link>
+        </div>
       </div>
     </div>
   )

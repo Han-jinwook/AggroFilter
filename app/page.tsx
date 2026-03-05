@@ -8,7 +8,6 @@ import { HeroSection } from "@/app/c-home/hero-section"
 import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
-import { UrlDisplayBox } from "@/components/c-url-display-box"
 import { Disclaimer } from "@/app/c-home/disclaimer"
 import { getUserId, getOrCreateAnonId, isAnonymousUser } from "@/lib/anon"
 import { mergeAnonToEmail } from "@/lib/merge"
@@ -232,11 +231,6 @@ export default function MainPage() {
     }
   }
 
-  const handleAnalyze = async () => {
-    if (!url.trim()) return
-    await startAnalysis(url);
-  }
-
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
     if (userId) localStorage.setItem("userId", userId)
@@ -270,10 +264,6 @@ export default function MainPage() {
     }
 
     window.dispatchEvent(new CustomEvent("profileUpdated"))
-
-    if (url.trim()) {
-      startAnalysis(url);
-    }
   }
 
   return (
@@ -286,8 +276,6 @@ export default function MainPage() {
             url={url}
             isAnalyzing={isAnalyzing}
             isCompleted={isCompleted}
-            onUrlChange={setUrl}
-            onAnalyze={handleAnalyze}
           />
 
           {!isAnalyzing ? <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
