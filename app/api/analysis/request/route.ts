@@ -79,11 +79,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { url, userId: userIdFromBody, forceRecheck, isRecheck, clientTranscript, clientTranscriptItems } = body;
 
-    let userId = userIdFromBody as string | undefined;
+    const userIdFromBodyStr = typeof userIdFromBody === 'string' ? userIdFromBody : undefined;
+    let userId = userIdFromBodyStr;
     try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.id) userId = data.user.id;
+      if (!userId) {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) userId = data.user.id;
+      }
     } catch {
     }
 
@@ -102,7 +105,7 @@ export async function POST(request: Request) {
     console.log('영상 ID:', videoId);
 
     if (isRecheck) {
-      if (!userId) {
+      if (!userId || userId.startsWith('anon_')) {
         return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401, headers: corsHeaders });
       }
 
@@ -159,7 +162,7 @@ export async function POST(request: Request) {
             const userMessage = reasonMessages[cachedReason] || `이 영상은 분석 대상이 아닙니다. (${cachedReason})`;
 
             return NextResponse.json(
-              { error: userMessage, notAnalyzable: true, reason: cachedReason },
+              { error: userMessage, notAnalyzable: true, reason: cachedReason, cached: true },
               { status: 422, headers: corsHeaders }
             );
           }
@@ -182,7 +185,8 @@ export async function POST(request: Request) {
 
             return NextResponse.json({ 
               message: '이미 분석된 영상입니다.',
-              analysisId: row.f_id
+              analysisId: row.f_id,
+              cached: true
             }, { headers: corsHeaders });
           }
         }
@@ -634,7 +638,7 @@ export async function POST(request: Request) {
             url, videoId, videoInfo.title, videoInfo.channelId, videoInfo.thumbnailUrl,
             transcript, analysisResult.accuracy, analysisResult.clickbait, analysisResult.reliability,
             analysisResult.subtitleSummary, analysisResult.evaluationReason, analysisResult.overallAssessment, analysisResult.recommendedTitle,
-            userId || 'anonymous', videoInfo.officialCategoryId, true, finalLanguage,
+            userId || null, videoInfo.officialCategoryId, true, finalLanguage,
             analysisResult.groundingUsed || false, analysisResult.groundingQueries || [], videoInfo.publishedAt,
             analysisResult.notAnalyzable || false, reason,
             isValidTarget, needsReview, reviewReason

@@ -61,9 +61,13 @@ export default function MyPageClient() {
   const [analyzedVideos, setAnalyzedVideos] = useState<TAnalysisVideo[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
 
+  const [subscribedChannels, setSubscribedChannels] = useState<TSubscribedChannel[]>([])
+  const [isLoadingChannels, setIsLoadingChannels] = useState(true)
+
   const [sortKey, setSortKey] = useState<"date" | "name" | "topic" | "videoCount" | "rankScore">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
+  const [expandedChannelVideos, setExpandedChannelVideos] = useState<Record<string, TAnalysisVideo[]>>({})
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -108,7 +112,7 @@ export default function MyPageClient() {
         stats: { totalChannels: 0, totalVideos: 0 },
         greenTopics: [],
         redTopics: [],
-        channels: [],
+        channels: subscribedChannels,
         groupedVideos: {}
       }
     }
@@ -122,8 +126,8 @@ export default function MyPageClient() {
 
     analyzedVideos.forEach(v => {
       // Group videos
-      if (!videoMap[v.channel]) videoMap[v.channel] = [];
-      videoMap[v.channel].push(v);
+      if (!videoMap[v.channelId]) videoMap[v.channelId] = [];
+      videoMap[v.channelId].push(v);
 
       // Topic stats
       const topic = v.category || "기타";
@@ -134,10 +138,10 @@ export default function MyPageClient() {
       });
 
       // Channel stats
-      const existing = channelMap.get(v.channel);
+      const existing = channelMap.get(v.channelId);
       if (!existing) {
-        channelMap.set(v.channel, {
-          id: v.channel,
+        channelMap.set(v.channelId, {
+          id: v.channelId,
           channelId: v.channelId,
           date: v.date,
           channelName: v.channel,
@@ -151,7 +155,7 @@ export default function MyPageClient() {
         if (v.date > existing.date) existing.date = v.date;
         existing.videoCount += 1;
         existing.rankScore += v.score;
-        channelMap.set(v.channel, existing);
+        channelMap.set(v.channelId, existing);
       }
     });
 
@@ -172,7 +176,7 @@ export default function MyPageClient() {
     const processedChannels = Array.from(channelMap.values()).map(c => ({
       ...c,
       rankScore: Math.round(c.rankScore / c.videoCount)
-    }));
+    }))
 
     return {
       stats: {
@@ -181,10 +185,10 @@ export default function MyPageClient() {
       },
       greenTopics: green,
       redTopics: red,
-      channels: processedChannels,
+      channels: subscribedChannels.length > 0 ? subscribedChannels : processedChannels,
       groupedVideos: videoMap
     };
-  }, [analyzedVideos]);
+  }, [analyzedVideos, subscribedChannels]);
 
   const fetchVideos = useCallback(async () => {
     try {
@@ -192,7 +196,7 @@ export default function MyPageClient() {
       let uid = getUserId();
       if (uid && !uid.startsWith('anon_')) {
         // 로그인 유저: localStorage.userId가 없으면 세션에서 확보
-      } else if (!uid || uid.startsWith('anon_')) {
+      } else if ((!uid || uid.startsWith('anon_')) && localStorage.getItem('userEmail')) {
         try {
           const meRes = await fetch('/api/auth/me');
           if (meRes.ok) {
@@ -227,16 +231,61 @@ export default function MyPageClient() {
     }
   }, []);
 
+  const fetchChannels = useCallback(async () => {
+    try {
+      setIsLoadingChannels(true);
+      let uid = getUserId();
+      if (uid && !uid.startsWith('anon_')) {
+        // 로그인 유저: localStorage.userId가 없으면 세션에서 확보
+      } else if ((!uid || uid.startsWith('anon_')) && localStorage.getItem('userEmail')) {
+        try {
+          const meRes = await fetch('/api/auth/me');
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData?.user?.id) {
+              uid = meData.user.id;
+              localStorage.setItem('userId', uid);
+            }
+          }
+        } catch {}
+      }
+
+      const resolvedUid = uid || null;
+      const res = await fetch('/api/mypage/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: resolvedUid })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Fetched subscribed channels from DB:", data.channels);
+        setSubscribedChannels(data.channels || []);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Failed to fetch channels from API", res.status, errorData);
+      }
+    } catch (e) {
+      console.error("Failed to fetch channels (Exception)", e);
+    } finally {
+      setIsLoadingChannels(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchVideos();
+    fetchChannels();
     // 로그인 후 anonId가 남아있으면 자동 머지
     const email = localStorage.getItem('userEmail')
     const anonId = localStorage.getItem('anonId')
     if (email && anonId && anonId.startsWith('anon_')) {
       const uid = localStorage.getItem('userId')
-      if (uid) mergeAnonToEmail(uid, email).then(() => fetchVideos())
+      if (uid) mergeAnonToEmail(uid, email).then(() => {
+        fetchVideos()
+        fetchChannels()
+      })
     }
-  }, [fetchVideos]);
+  }, [fetchVideos, fetchChannels]);
 
   // 뒤로가기(popstate / bfcache) 시 URL에서 탭 복원 + 데이터 재로드
   useEffect(() => {
@@ -245,6 +294,7 @@ export default function MyPageClient() {
       const tab = params.get("tab");
       setActiveTab(tab === "subscribed" ? "channels" : "analysis");
       fetchVideos();
+      fetchChannels();
     };
 
     const handlePopState = () => restoreFromUrl();
@@ -258,7 +308,7 @@ export default function MyPageClient() {
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("pageshow", handlePageShow);
     };
-  }, [fetchVideos]);
+  }, [fetchVideos, fetchChannels]);
 
   // Next.js 클라이언트 네비게이션 뒤로가기 시 탭 동기화
   useEffect(() => {
@@ -320,6 +370,24 @@ export default function MyPageClient() {
       setExpandedChannelId(expandedChannelId === channelId ? null : channelId)
     }
   }
+
+  const ensureExpandedVideos = useCallback(async (channelId: string) => {
+    if (!channelId) return
+    if (expandedChannelVideos[channelId]) return
+    try {
+      const uid = getUserId()
+      const res = await fetch('/api/mypage/channel-videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId, userId: uid, limit: 5 })
+      })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      const videos = Array.isArray(data?.videos) ? data.videos : []
+      setExpandedChannelVideos(prev => ({ ...prev, [channelId]: videos }))
+    } catch {
+    }
+  }, [expandedChannelVideos])
 
   const handleChannelPressStart = (channelId: string, categoryId?: number, language?: string) => {
     isLongPressRef.current = false
@@ -593,37 +661,37 @@ export default function MyPageClient() {
                     setSelectedChannels(new Set())
                     return
                   }
-                  // 선택된 채널이 있으면 구독 취소 실행
+                  // 선택된 채널이 있으면 관심 목록 삭제 실행
                   const selectedNames = channels
                     .filter(c => selectedChannels.has(c.id))
                     .map(c => c.channelName)
                     .join(', ')
                   if (!confirm(
-                    `⚠️ 다음 ${selectedChannels.size}개 채널을 구독 취소하시겠습니까?\n\n${selectedNames}\n\n해당 채널의 분석영상들에 대한 나의 구독기록이 모두 삭제되며 복구할 수 없습니다.`
+                    `⚠️ 다음 ${selectedChannels.size}개 채널을 관심 목록에서 삭제하시겠습니까?\n\n${selectedNames}\n\n내 관심 목록에서만 제거되며, 분석 데이터는 유지됩니다.`
                   )) return
                   try {
-                    const email = localStorage.getItem('userEmail')
-                    if (!email) { alert('로그인이 필요합니다.'); return }
+                    const userId = getUserId()
                     const channelIdsToDelete = channels
                       .filter(c => selectedChannels.has(c.id))
                       .map(c => c.channelId)
                     const response = await fetch('/api/subscription/unsubscribe', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ channelIds: channelIdsToDelete, email })
+                      body: JSON.stringify({ channelIds: channelIdsToDelete, userId })
                     })
                     if (response.ok) {
                       const data = await response.json()
-                      alert(data.message || '구독이 해제되었습니다.')
+                      alert(data.message || '관심 목록에서 삭제되었습니다.')
                       setSelectedChannels(new Set())
                       setIsManageMode(false)
                       await fetchVideos()
+                      await fetchChannels()
                     } else {
-                      alert('구독 해제에 실패했습니다.')
+                      alert('관심 목록 삭제에 실패했습니다.')
                     }
                   } catch (error) {
-                    console.error('구독 해제 오류:', error)
-                    alert('구독 해제 중 오류가 발생했습니다.')
+                    console.error('관심 목록 삭제 오류:', error)
+                    alert('관심 목록 삭제 중 오류가 발생했습니다.')
                   }
                 }}
                 className={`rounded-full px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold transition-all shadow-sm border whitespace-nowrap ${
@@ -636,9 +704,9 @@ export default function MyPageClient() {
               >
                 {isManageMode
                   ? selectedChannels.size > 0
-                    ? `구독 취소 (${selectedChannels.size})`
+                    ? `관심채널삭제 (${selectedChannels.size})`
                     : "취소"
-                  : "구독 관리"}
+                  : "관심채널삭제"}
               </button>
             )}
           </div>
@@ -816,7 +884,7 @@ export default function MyPageClient() {
                   <ChevronDown
                     className={`h-3 w-3 transition-all ${sortKey === "name" ? `text-slate-800 ${sortOrder === "asc" ? "rotate-180" : ""}` : "text-slate-300"}`}
                   />
-                  <span className="text-slate-400 font-normal ml-2 text-[11px] sm:text-xs">구독중 {channels.length}개</span>
+                  <span className="text-slate-400 font-normal ml-2 text-[11px] sm:text-xs">관심 채널 {channels.length}개</span>
                 </button>
                 <div className="ml-auto flex gap-1 sm:gap-2 pr-1">
                   <button
@@ -869,7 +937,10 @@ export default function MyPageClient() {
                             newSelected.add(channel.id)
                           }
                           setSelectedChannels(newSelected)
-                        } : undefined}
+                        } : async () => {
+                          handleChannelClick(channel.id)
+                          await ensureExpandedVideos(channel.id)
+                        }}
                         className={`w-full rounded-xl p-3 sm:p-4 text-white transition-all shadow-sm hover:shadow-md active:scale-[0.99] ${
                           isManageMode && selectedChannels.has(channel.id)
                             ? 'bg-blue-600 hover:bg-blue-700'
@@ -914,9 +985,9 @@ export default function MyPageClient() {
                       </button>
 
                       {/* Expanded Video List */}
-                      {expandedChannelId === channel.id && groupedVideos[channel.id] && (
+                      {expandedChannelId === channel.id && ((expandedChannelVideos[channel.id] && expandedChannelVideos[channel.id].length > 0) || groupedVideos[channel.id]) && (
                         <div className="mt-2 space-y-1 rounded-xl bg-slate-50 p-2 animate-in slide-in-from-top-2 duration-200 border border-slate-100">
-                          {groupedVideos[channel.id].map((video) => (
+                          {(expandedChannelVideos[channel.id] || groupedVideos[channel.id] || []).map((video) => (
                             <Link
                               key={video.id}
                               href={`/p-result?id=${video.id}&from=p-my-page&tab=channels`}

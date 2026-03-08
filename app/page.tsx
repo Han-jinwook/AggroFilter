@@ -147,7 +147,8 @@ export default function MainPage() {
 
   const startAnalysis = async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
     setIsAnalyzing(true)
-    const quizMinEndTime = Date.now() + 8000 // 촉퀴즈 최소 표시 시간 8초
+    const quizStartTime = Date.now()
+    const quizMinEndTime = quizStartTime + 8000 // 촉퀴즈 최소 표시 시간 8초
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
@@ -177,14 +178,17 @@ export default function MainPage() {
         });
         if (!response.ok) {
           let errorMessage = '분석 요청에 실패했습니다.'
+          let errorData: any = null
           try {
             const data = await response.json()
+            errorData = data
             if (data?.error) errorMessage = String(data.error)
           } catch {
           }
 
           const err: any = new Error(errorMessage)
           err.statusCode = response.status
+          err.data = errorData
           throw err
         }
         return response.json();
@@ -195,6 +199,20 @@ export default function MainPage() {
         result = await fetchAnalysis();
       } catch (firstError) {
         const statusCode = Number((firstError as any)?.statusCode)
+        const errorData = (firstError as any)?.data
+
+        // [cached notAnalyzable] UX 연출: 캐시로 즉시 컷되더라도 촉퀴즈를 10초 정도 유지 후 안내
+        if (statusCode === 422 && errorData?.cached === true) {
+          const minEndTime = quizStartTime + 10000
+          const remaining = minEndTime - Date.now()
+          if (remaining > 0) {
+            await new Promise((r) => setTimeout(r, remaining))
+          }
+          const msg = (firstError as any)?.message
+          if (msg) alert(String(msg))
+          return
+        }
+
         const shouldPoll = statusCode === 504 || statusCode === 502 || statusCode === 503
         if (!shouldPoll) throw firstError
 
@@ -224,8 +242,9 @@ export default function MainPage() {
         }
       }
       
-      // 촉퀴즈 최소 표시 시간 보장: API가 빨리 응답해도 퀴즈 풀 시간 확보
-      const remaining = quizMinEndTime - Date.now()
+      // 촉퀴즈 최소 표시 시간 보장: 캐시 히트는 10초 연출, 일반 케이스는 8초
+      const minEndTime = result?.cached === true ? (quizStartTime + 10000) : quizMinEndTime
+      const remaining = minEndTime - Date.now()
       if (remaining > 0) {
         await new Promise(r => setTimeout(r, remaining))
       }

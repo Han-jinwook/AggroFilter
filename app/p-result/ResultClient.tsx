@@ -202,11 +202,42 @@ export default function ResultClient() {
 
           if (!hasCountedView.current) {
             hasCountedView.current = true;
+
+            const claimUid = getUserId()
+            if (claimUid) {
+              fetch('/api/analysis/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ analysisId: id, userId: claimUid })
+              }).catch(() => {})
+            }
+
             fetch('/api/analysis/view', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ analysisId: id })
             }).catch(err => console.error('View counting failed:', err));
+
+            const trackUid = getUserId()
+            if (trackUid) {
+              console.log('[subscription/track] sending', { analysisId: id, userId: trackUid })
+              fetch('/api/subscription/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ analysisId: id, userId: trackUid })
+              })
+                .then(async (res) => {
+                  const data = await res.json().catch(() => ({}))
+                  if (!res.ok) {
+                    console.error('[subscription/track] failed', res.status, data)
+                    return
+                  }
+                  if (data?.skipped) {
+                    console.warn('[subscription/track] skipped', data)
+                  }
+                })
+                .catch(err => console.error('Subscription tracking failed:', err))
+            }
           }
 
           // 익명 사용자 5회 이상 시 혜택 안내 모달 (5회마다 반복)
@@ -895,9 +926,9 @@ ${content}
           {activeSubtitle === "summary" && (
             <div className="overflow-hidden rounded-3xl border-4 border-blue-300 bg-blue-50">
               <div className="max-h-[60vh] overflow-y-auto p-5">
-                <p className="whitespace-pre-line text-sm leading-relaxed">
+                <div className="whitespace-pre-line text-sm leading-relaxed">
                   {renderTextWithTimestamps(analysisData.summarySubtitle)}
-                </p>
+                </div>
               </div>
             </div>
           )}

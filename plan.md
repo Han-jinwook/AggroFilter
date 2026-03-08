@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-02-24 21:30 KST
+Last Updated: 2026-03-08 18:00 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -35,7 +35,52 @@ Last Updated: 2026-02-24 21:30 KST
 - **분류 전략: "Youtube Native"**: 유튜브 공식 `category_id` (1~29) 사용.
 - **글로벌 랭킹 키**: `[Language] + [Country] + [Category ID]` (DB 반영 완료: 2026-01-20).
 
-### 2.2 점수 산정 가이드 (Fact-Based Gap Analysis) 🎯
+### 2.3 카테고리 화이트/블랙 정책 (Category Gate Policy) 
+#### 화이트리스트 (7개) — API 수집 및 AI 검토 진행
+우리 앱의 본질(정보/팩트/논란)이 담길 수 있는 핵심 카테고리만 분석 대상으로 허용한다.
+
+| category_id | 카테고리 | 메모 |
+|---:|---|---|
+| 22 | 인물/블로그 | ※ 사이버 렉카 위장용 (단, "순수 브이로그"는 AI/룰로 컷 가능) |
+| 24 | 엔터테인먼트 | ※ 가짜뉴스 위장용 |
+| 25 | 뉴스/정치 | 핵심 |
+| 26 | 노하우/스타일 | 핵심 |
+| 27 | 교육 | 핵심 |
+| 28 | 과학/기술 | 핵심 |
+| 29 | 비영리/사회운동 | 핵심 |
+
+#### 블랙리스트 (8개) — 수집/분석 거부 (비용 100% 세이브)
+어그로필터(팩트체크)와 전혀 무관한, 순수 재미/취미/예술 영역은 트렌딩에 떠도 AI 근처에도 안 가게 즉시 차단한다.
+
+- 영화/애니메이션 (`1`)
+- 자동차/교통 (`2`)
+- 음악 (`10`)
+- 동물/애완동물 (`15`)
+- 스포츠 (`17`)
+- 여행/행사 (`19`)
+- 게임 (`20`)
+- 코미디 (`23`)
+
+#### 유튜브 API의 "유령(비활성)" 카테고리
+- `18` (단편영화): 현재는 크리에이터가 `1` 또는 `24`로 업로드하는 경우가 대부분
+- `21` (브이로그): 현재는 크리에이터가 사실상 `22`로 업로드
+- `43` (방송/Shows), `30`번대 (영화 장르): 유튜브 공식 파트너(방송국, OTT 등) 전용으로 관측
+
+#### 구현 원칙 (비용/UX)
+
+1) **서버 1차 입구컷 (화이트리스트 강제)**
+- `app/api/analysis/request/route.ts`
+- `officialCategoryId`가 화이트리스트(22,24,25,26,27,28,29)가 아니면 즉시 `422`로 거절
+
+2) **AI 2차 컷 (포맷/내용 기반 부적합 판정)**
+- 카테고리가 화이트리스트로 들어왔더라도,
+  - 순수 브이로그/음악/재생형 콘텐츠 등 "팩트체크 가치 없음"은 AI가 `is_valid_target=false` 또는 `notAnalyzable=true`로 판정 가능
+
+3) **AI 컷 결과는 DB에 저장하여 캐시로 재사용**
+- 한번 비용을 들여 "부적합" 판정이 났다면, 다음 요청자에겐 즉시 거절 응답을 제공해야 함 (중복 비용 방지)
+- `notAnalyzable=true` 케이스는 메타데이터/거절 사유를 DB에 남겨 다음 요청에서 캐시 히트로 빠르게 처리
+
+### 2.2 점수 산정 가이드 (Fact-Based Gap Analysis) 
 '제목/썸네일이 약속한 내용'과 '실제 영상 내용' 사이의 **불일치(Gap)** 정도를 기준으로 산정함.
 
 | 점수 | 단계 | 기준 (The Gap Scale) |
@@ -518,3 +563,47 @@ const systemPrompt = `
 |------|------|
 | SEO / OG 메타태그 점검 | 대기 |
 | Admin: 미매칭 결제 관리 UI | 대기 |
+
+---
+
+## 14. 2026-03-05 업데이트
+
+### SEO 기본세트 적용
+- `robots.txt`, `sitemap.xml` GET 라우트 핸들러 추가 (405 해결)
+- OG 이미지 라우트 (`/api/og`) 1200x630 추가 + 메타데이터 연결
+- 홈 온보딩 전환 + 확장프로그램 가이드 페이지 추가
+- 카테고리 화이트리스트 입구컷 + 422 즉시 에러 UX
+
+---
+
+## 15. 2026-03-08 18:00 KST — MyPage 구독 아키텍처 개편 + 익명 분석 지원
+
+### 핵심 개념 정립
+- **구독 = 관심 = 분석** — 단일 개념. 결과 페이지 진입 시 해당 채널+영상이 자동 구독됨.
+- 각 유저는 **자신만의 구독일**을 가짐 (원본 분석일과 별개).
+- 구독 삭제 → 해당 채널의 영상 구독도 전부 소멸. 원본 분석 데이터(`t_analyses`)는 불변.
+
+### 신규 테이블
+- **`t_video_subscriptions`** (`f_user_id`, `f_video_id`, `f_channel_id`, `f_subscribed_at`, UNIQUE(user,video))
+  - 유저별 영상 구독 기록. 날짜는 유저의 결과페이지 진입 시각.
+
+### 신규 API
+| API | 설명 |
+|-----|------|
+| `POST /api/analysis/claim` | 분석 레코드의 f_user_id를 현재 유저로 claim (NULL/anonymous → userId) |
+| `POST /api/subscription/track` | 결과 페이지 진입 시 채널+영상 구독 upsert (t_channel_subscriptions + t_video_subscriptions) |
+| `POST /api/mypage/channels` | 유저의 구독 채널 목록 조회 |
+| `POST /api/mypage/channel-videos` | 채널별 내 구독 영상 조회 (구독일 기준) |
+
+### 수정 파일
+| 파일 | 변경 요약 |
+|------|----------|
+| `api/analysis/request` | 익명 userId(anonId) 우선 사용, Supabase 세션으로 덮어쓰기 방지. f_user_id에 'anonymous' 대신 null 저장 |
+| `api/mypage/videos` | t_video_subscriptions 기반 쿼리로 전환. 표시 날짜 = 내 구독일(f_subscribed_at) |
+| `api/mypage/channel-videos` | userId 파라미터 추가. 내 구독 영상만 + 내 구독일로 반환 |
+| `api/subscription/unsubscribe` | 채널 삭제 시 t_video_subscriptions 연쇄 삭제 추가 |
+| `p-result/ResultClient` | analysis/claim 호출 추가 (결과 페이지 진입 시), subscription/track 디버깅 로그 |
+| `p-my-page/MyPageClient` | 구독 채널 API 연동, 채널 펼침 시 영상 fetch + userId 전달, groupedVideos 키 수정 |
+
+### 백필
+- `scripts/backfill_video_subscriptions.cjs` 실행: 기존 114개 채널 구독 → 109개 영상 구독 레코드 생성

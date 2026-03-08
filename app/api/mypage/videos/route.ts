@@ -30,27 +30,34 @@ export async function POST(request: Request) {
     const client = await pool.connect();
 
     try {
-      // UUID를 사용하여 분석 내역 조회
-      // [v2.2 Optimization] Use f_is_latest = true instead of CTE
+      // t_video_subscriptions 기반 — 내 구독일(f_subscribed_at)을 표시 날짜로 사용
+      // 구독 삭제 시 해당 채널 영상 전부 자동 소멸
       const refinedQuery = `
-      SELECT 
-        a.f_id as id,
-        a.f_title as title,
-        a.f_reliability_score as score,
-        a.f_created_at as created_at,
-        COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
-        COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
-        a.f_official_category_id as category_id,
-        a.f_channel_id as channel_id,
-        c.f_language as channel_language
-      FROM t_analyses a
-      LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
-      WHERE a.f_user_id = $1
-        AND a.f_is_latest = TRUE
-      ORDER BY a.f_created_at DESC
-    `;
+        SELECT
+          a.f_id as id,
+          a.f_title as title,
+          a.f_reliability_score as score,
+          vs.f_subscribed_at as subscribed_at,
+          COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
+          COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
+          a.f_official_category_id as category_id,
+          vs.f_channel_id as channel_id,
+          c.f_language as channel_language
+        FROM t_video_subscriptions vs
+        JOIN LATERAL (
+          SELECT *
+          FROM t_analyses a2
+          WHERE a2.f_video_id = vs.f_video_id
+          ORDER BY a2.f_created_at DESC
+          LIMIT 1
+        ) a ON true
+        LEFT JOIN t_channels c ON vs.f_channel_id = c.f_channel_id
+        WHERE vs.f_user_id = $1
+        ORDER BY vs.f_subscribed_at DESC
+        LIMIT 200
+      `;
 
-    const res = await client.query(refinedQuery, [userId]);
+      const res = await client.query(refinedQuery, [userId]);
       
       const videos = res.rows.map(row => ({
         id: row.id,
@@ -62,8 +69,8 @@ export async function POST(request: Request) {
         score: row.score,
         category: getCategoryName(row.category_id),
         categoryId: row.category_id,
-        fullDate: row.created_at, // 정렬용 정밀 타임스탬프 추가
-        date: new Date(row.created_at).toLocaleDateString('ko-KR', {
+        fullDate: row.subscribed_at, // 내 구독일 (정렬용 정밀 타임스탬프)
+        date: new Date(row.subscribed_at).toLocaleDateString('ko-KR', {
            year: '2-digit',
            month: '2-digit',
            day: '2-digit'
