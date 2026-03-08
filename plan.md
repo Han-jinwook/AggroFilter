@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-03-08 18:00 KST
+Last Updated: 2026-03-09 01:00 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -607,3 +607,32 @@ const systemPrompt = `
 
 ### 백필
 - `scripts/backfill_video_subscriptions.cjs` 실행: 기존 114개 채널 구독 → 109개 영상 구독 레코드 생성
+
+---
+
+## 16. 2026-03-09 01:00 KST — 알림 조건 상향 + 홈 CTA + PWA 셋업
+
+### 알림 채널 조건 상향
+- `lib/notification.ts`: 구독자 쿼리에 `t_video_subscriptions COUNT >= 2` 서브쿼리 추가
+- 해당 채널 영상 **2개 이상 열람한 유저만** 알림 대상 (N=2, 시스템 상수)
+- 설정 UI 미변경 (유저 볼륨 늘어난 후 옵션화 예정)
+
+### 홈 플라자 CTA 버튼
+- `app/c-home/feature-cards.tsx`: feature cards 아래 "분석된 채널·영상 둘러보기" 버튼 추가
+- `/p-plaza` 링크, indigo→purple 그라데이션
+- 모바일 사용자가 기존 분석 결과를 탐색하도록 유도
+
+### PWA 셋업
+- `public/manifest.json`: name, short_name, icons(192/512), theme_color(#6366f1), standalone
+- `public/sw.js`: 정적 자산 cache-first, 네비게이션 network-first + 오프라인 폴백
+- `public/icon-192x192.png`, `public/icon-512x512.png`: 정사각형 패딩 처리 후 리사이즈
+- `app/layout.tsx`: manifest 메타데이터 연결, theme-color/apple-mobile-web-app 메타, SW 자동 등록 스크립트
+
+### 잔여 TODO
+| 항목 | 상태 |
+|------|------|
+| 카페24 Webhook URL 등록 | 재심사 승인 대기 |
+| 크롬 확장프로그램 Web Store | 제출 완료, 승인 대기 |
+| SEO 잔여 (canonical/structured-data/noindex) | 대기 |
+| 모바일 반응형 최종 점검 | 배포 후 실기기 확인 예정 |
+| 오토마케터 전환 | 다음 작업 |
