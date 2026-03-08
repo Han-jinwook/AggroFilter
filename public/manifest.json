@@ -1,0 +1,30 @@
+{
+  "name": "어그로필터 - 유튜브 신뢰도 분석",
+  "short_name": "어그로필터",
+  "description": "유튜브 영상의 과장/낚시 여부를 AI로 분석하여 신뢰도 랭킹을 제공합니다.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

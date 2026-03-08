@@ -79,6 +79,9 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
       const isCurrentTop10Percent = current_rank <= top10PercentThreshold;
 
       // 구독자 조회 (알림 활성화된 사용자만 + 사용자별 알림 설정)
+      // 알림 조건: 해당 채널 영상 2개 이상 열람한 유저만 대상
+      const MIN_VIDEO_VIEWS_FOR_NOTIFY = 2;
+
       const subscribers = await client.query(`
         SELECT 
           s.f_user_id as user_id,
@@ -99,7 +102,11 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
         JOIN t_channels c ON s.f_channel_id = c.f_channel_id
         WHERE s.f_channel_id = $1 
           AND s.f_notification_enabled = TRUE
-      `, [f_channel_id]);
+          AND (
+            SELECT COUNT(*) FROM t_video_subscriptions vs
+            WHERE vs.f_user_id = s.f_user_id AND vs.f_channel_id = s.f_channel_id
+          ) >= $2
+      `, [f_channel_id, MIN_VIDEO_VIEWS_FOR_NOTIFY]);
 
       for (const sub of subscribers.rows) {
         const oldGrade = sub.f_last_reliability_grade;
