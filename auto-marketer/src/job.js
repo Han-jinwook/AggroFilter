@@ -1,7 +1,8 @@
-const { collectTargetVideos, collectType1Only, collectType2Only } = require('./youtube-collector');
+const { collectTargetVideos, collectType1Only, collectType2Only, collectType3Only } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
 const { getTranscriptData } = require('./youtube-meta');
 const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, getRecentlyAnalyzedChannelsByCategoryMap } = require('./db');
+const { batchScoreAggro, checkOllamaConnection } = require('./aggro-prescorer');
 const defaultConfig = require('./config');
 
 /**
@@ -181,4 +182,127 @@ async function runJobType2(options = {}) {
   }
 }
 
-module.exports = { runJob, runJobType1, runJobType2 };
+/**
+ * Type3 실행 — 어그로 키워드 사냥 (섹션2 핵심)
+ * 파이프라인: 수집 → 자막 → 오픈소스 AI 사전 스코어링 → 컷라인 필터 → 유료 분석
+ */
+async function runJobType3(options = {}) {
+  const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
+  const cutoff = options.aggroPreScoreCutoff ?? defaultConfig.aggroPreScoreCutoff ?? 60;
+  const dailyLimit = options.aggroDailyAnalysisLimit ?? defaultConfig.aggroDailyAnalysisLimit ?? 30;
+  const startTime = Date.now();
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[Job][Type3] 어그로 키워드 사냥 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`[Job][Type3] 사전필터 컷라인: ${cutoff}점, 유료분석 일일한도: ${dailyLimit}개`);
+  console.log(`${'='.repeat(60)}`);
+
+  try {
+    // 0. Ollama 연결 확인
+    const ollamaStatus = await checkOllamaConnection();
+    if (!ollamaStatus.connected) {
+      console.error(`[Job][Type3] ❌ Ollama 미연결: ${ollamaStatus.error}`);
+      console.error(`  → Ollama 설치/실행 후 재시도. 설치: https://ollama.com`);
+      return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'ollama', error: ollamaStatus.error }] };
+    }
+    if (!ollamaStatus.hasRequiredModel) {
+      console.error(`[Job][Type3] ❌ 필요 모델 없음: ${ollamaStatus.requiredModel}`);
+      console.error(`  → ollama pull ${ollamaStatus.requiredModel} 실행 필요`);
+      console.error(`  → 보유 모델: ${ollamaStatus.models.join(', ') || '없음'}`);
+      return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'model', error: `${ollamaStatus.requiredModel} 없음` }] };
+    }
+    console.log(`[Job][Type3] ✅ Ollama 연결 OK (모델: ${ollamaStatus.requiredModel})`);
+
+    // 1. 중복 체크
+    console.log(`\n[Job][Type3] 중복 체크 (최근 ${dedupDays}일)...`);
+    const [recentVideoIds, recentChannelMap] = await Promise.all([
+      getRecentlyAnalyzedVideoIds(dedupDays),
+      getRecentlyAnalyzedChannelIds(dedupDays),
+    ]);
+    console.log(`[Job][Type3] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelMap.size}개`);
+
+    // 2. 어그로 키워드 수집
+    const videos = await collectType3Only(recentVideoIds, recentChannelMap, options);
+    if (videos.length === 0) {
+      console.log(`[Job][Type3] 수집된 후보 없음. 종료.`);
+      return { success: 0, fail: 0, skipped: 0, errors: [] };
+    }
+
+    // 3. 자막 수집
+    console.log(`\n[Job][Type3] 자막 수집 시작 (${videos.length}개)...`);
+    const BLACKLIST_CATEGORY_IDS = new Set(['1','2','10','15','17','19','20','23','43']);
+    const withTranscript = [];
+    let noTranscriptCount = 0;
+
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
+      const catId = String(v.categoryId || '');
+      if (catId && BLACKLIST_CATEGORY_IDS.has(catId)) {
+        noTranscriptCount++;
+        continue;
+      }
+
+      console.log(`  자막 (${i + 1}/${videos.length}): ${v.title.substring(0, 40)}...`);
+      const meta = await getTranscriptData(v.videoId);
+      if (meta.hasTranscript) {
+        v.transcript = meta.transcript;
+        v.transcriptItems = meta.transcriptItems;
+        withTranscript.push(v);
+      } else {
+        noTranscriptCount++;
+      }
+    }
+    console.log(`[Job][Type3] 자막 있는 후보: ${withTranscript.length}개 (자막없음: ${noTranscriptCount}개)`);
+
+    if (withTranscript.length === 0) {
+      return { success: 0, fail: 0, skipped: noTranscriptCount, errors: [] };
+    }
+
+    // 4. 오픈소스 AI 사전 스코어링
+    console.log(`\n[Job][Type3] 오픈소스 AI 사전 스코어링 시작...`);
+    const scores = await batchScoreAggro(withTranscript);
+
+    // 5. 컷라인 필터
+    const scoreMap = new Map(scores.map(s => [s.videoId, s]));
+    const filtered = withTranscript.filter(v => {
+      const s = scoreMap.get(v.videoId);
+      return s && s.score >= cutoff;
+    });
+
+    // 일일 한도 적용
+    const toAnalyze = filtered.slice(0, dailyLimit);
+
+    console.log(`\n[Job][Type3] 사전필터 결과: ${scores.length}건 스코어링 → ${filtered.length}건 컷라인(${cutoff}점) 통과 → ${toAnalyze.length}건 유료분석 대상`);
+
+    if (toAnalyze.length === 0) {
+      console.log(`[Job][Type3] 컷라인 통과 영상 없음. 종료.`);
+      return { success: 0, fail: 0, skipped: withTranscript.length, preScored: scores.length, errors: [] };
+    }
+
+    // 6. 유료 정식 AI 분석
+    console.log(`\n[Job][Type3] 유료 분석 시작 (${toAnalyze.length}개)...`);
+    const results = await analyzeVideos(toAnalyze, options);
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[Job][Type3] 완료 — 소요: ${elapsed}초`);
+    console.log(`  수집: ${videos.length}개 → 자막: ${withTranscript.length}개 → 사전스코어: ${scores.length}건 → 컷라인통과: ${filtered.length}건 → 유료분석: ${toAnalyze.length}개`);
+    console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개`);
+    if (results.errors?.length > 0) {
+      results.errors.forEach(e => console.log(`    - ${e.title}: ${e.error}`));
+    }
+    console.log(`${'='.repeat(60)}\n`);
+
+    return {
+      ...results,
+      skipped: noTranscriptCount,
+      preScored: scores.length,
+      passedCutoff: filtered.length,
+    };
+  } catch (err) {
+    console.error('[Job][Type3] 치명적 오류:', err);
+    return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
+  }
+}
+
+module.exports = { runJob, runJobType1, runJobType2, runJobType3 };

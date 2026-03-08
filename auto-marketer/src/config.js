@@ -24,7 +24,31 @@ module.exports = {
   // 대시보드 포트
   dashboardPort: parseInt(process.env.DASHBOARD_PORT || '3001', 10),
 
-  // 섹션2: 댓글 자동화
+  // ── 섹션2: 어그로 키워드 사냥 (Type3) ──
+  // K: 키워드당 검색 개수
+  aggroSearchPerKeyword: parseInt(process.env.AGGRO_SEARCH_PER_KEYWORD || '30', 10),
+  // 오픈소스 AI 사전필터 컷라인 (이 점수 이상만 유료 분석)
+  aggroPreScoreCutoff: parseInt(process.env.AGGRO_PRESCORE_CUTOFF || '60', 10),
+  // 유료 분석 일일 한도
+  aggroDailyAnalysisLimit: parseInt(process.env.AGGRO_DAILY_ANALYSIS_LIMIT || '30', 10),
+  // Ollama 엔드포인트 (로컬)
+  ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
+  // Ollama 모델명
+  ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
+
+  // 초기 시드 키워드 (DB 없을 때 폴백 — 실제 운영은 DB bot_aggro_keywords에서 관리)
+  defaultAggroKeywordGroups: [
+    {
+      groupName: '일반/이슈/렉카',
+      keywords: ['단독', '충격', '폭로', '경악', '논란', '소름', '근황', '결말', '진실', '숨겨진', '참교육', '분노'],
+    },
+    {
+      groupName: '금전손해/사기/코인',
+      keywords: ['폭락', '상폐', '먹튀', '전재산', '청산', '세력', '급등', '떡상', '사기', '피해자', '원금보장', '무조건', '폰지'],
+    },
+  ],
+
+  // ── 섹션2 기존: 댓글 자동화 ──
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   // 로컬 크롬 사용자 데이터 디렉토리 (기존 세션 재사용)
   chromeUserDataDir: process.env.CHROME_USER_DATA_DIR || '',

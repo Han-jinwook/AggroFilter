@@ -76,6 +76,98 @@ async function getRecentlyAnalyzedChannelsByCategoryMap(categoryCooldowns, defau
   }
 }
 
+// ────────────── bot_aggro_keywords (섹션2: 어그로 키워드 그룹) ──────────────
+
+async function ensureAggroKeywordsTable() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bot_aggro_keywords (
+        id SERIAL PRIMARY KEY,
+        group_name TEXT NOT NULL UNIQUE,
+        keywords TEXT[] NOT NULL DEFAULT '{}',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * 어그로 키워드 그룹 조회 (활성화된 것만 or 전체)
+ * DB에 없으면 config의 defaultAggroKeywordGroups를 시드로 삽입
+ */
+async function getAggroKeywordGroups(activeOnly = true) {
+  await ensureAggroKeywordsTable();
+  const client = await pool.connect();
+  try {
+    const where = activeOnly ? 'WHERE is_active = true' : '';
+    let result = await client.query(
+      `SELECT * FROM bot_aggro_keywords ${where} ORDER BY id ASC`
+    );
+
+    // DB 비어있으면 시드 삽입
+    if (result.rows.length === 0) {
+      const config = require('./config');
+      for (const group of config.defaultAggroKeywordGroups) {
+        await client.query(
+          `INSERT INTO bot_aggro_keywords (group_name, keywords, is_active)
+           VALUES ($1, $2, TRUE)
+           ON CONFLICT (group_name) DO NOTHING`,
+          [group.groupName, group.keywords]
+        );
+      }
+      result = await client.query(
+        `SELECT * FROM bot_aggro_keywords ${where} ORDER BY id ASC`
+      );
+    }
+
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function upsertAggroKeywordGroup({ id, group_name, keywords, is_active }) {
+  await ensureAggroKeywordsTable();
+  const client = await pool.connect();
+  try {
+    if (id) {
+      const result = await client.query(
+        `UPDATE bot_aggro_keywords
+         SET group_name=$1, keywords=$2, is_active=$3, updated_at=NOW()
+         WHERE id=$4 RETURNING *`,
+        [group_name, keywords, is_active ?? true, id]
+      );
+      return result.rows[0];
+    } else {
+      const result = await client.query(
+        `INSERT INTO bot_aggro_keywords (group_name, keywords, is_active)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (group_name) DO UPDATE
+           SET keywords=$2, is_active=$3, updated_at=NOW()
+         RETURNING *`,
+        [group_name, keywords, is_active ?? true]
+      );
+      return result.rows[0];
+    }
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteAggroKeywordGroup(id) {
+  const client = await pool.connect();
+  try {
+    await client.query('DELETE FROM bot_aggro_keywords WHERE id=$1', [id]);
+  } finally {
+    client.release();
+  }
+}
+
 // ────────────── bot_community_targets ──────────────
 
 async function getCommunityTargets(activeOnly = true) {
@@ -182,6 +274,9 @@ module.exports = {
   getRecentlyAnalyzedVideoIds,
   getRecentlyAnalyzedChannelIds,
   getRecentlyAnalyzedChannelsByCategoryMap,
+  getAggroKeywordGroups,
+  upsertAggroKeywordGroup,
+  deleteAggroKeywordGroup,
   getCommunityTargets,
   upsertCommunityTarget,
   deleteCommunityTarget,

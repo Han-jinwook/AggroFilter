@@ -453,6 +453,109 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
 }
 
 /**
+ * [Type3] 어그로 키워드 사냥 — 섹션2 핵심
+ * DB의 bot_aggro_keywords에서 키워드 그룹을 가져와 각 키워드로 YouTube 검색.
+ * 기본 필터링만 수행하고 후보를 모두 반환 (사전 스코어링은 job에서 처리).
+ */
+async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, options = {}) {
+  const { getAggroKeywordGroups } = require('./db');
+  const k = options.aggroSearchPerKeyword ?? config.aggroSearchPerKeyword ?? 30;
+  const publishedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const maxPerChannel = config.maxPerChannel ?? 2;
+
+  console.log(`\n[Collector][Type3] 어그로 키워드 사냥 시작 (키워드당 최대 ${k}개)...`);
+
+  // DB에서 활성 키워드 그룹 로드
+  let keywordGroups;
+  try {
+    keywordGroups = await getAggroKeywordGroups(true);
+  } catch (err) {
+    console.warn('[Collector][Type3] DB 키워드 로드 실패, config 폴백 사용:', err.message);
+    keywordGroups = (config.defaultAggroKeywordGroups || []).map(g => ({
+      group_name: g.groupName,
+      keywords: g.keywords,
+    }));
+  }
+
+  if (keywordGroups.length === 0) {
+    console.log('[Collector][Type3] 활성 키워드 그룹 없음. 스킵.');
+    return [];
+  }
+
+  const allKeywords = [];
+  for (const group of keywordGroups) {
+    const kws = Array.isArray(group.keywords) ? group.keywords : [];
+    console.log(`  [Type3] 그룹 "${group.group_name}": ${kws.length}개 키워드`);
+    for (const kw of kws) {
+      allKeywords.push({ keyword: kw, groupName: group.group_name });
+    }
+  }
+
+  const candidates = [];
+  const channelCount = {};
+
+  for (const { keyword, groupName } of allKeywords) {
+    try {
+      const searchRes = await axios.get(YT_SEARCH_URL, {
+        params: {
+          key: config.youtubeApiKey,
+          part: 'snippet',
+          type: 'video',
+          q: keyword,
+          regionCode: 'KR',
+          relevanceLanguage: 'ko',
+          publishedAfter,
+          order: 'viewCount',
+          maxResults: Math.min(k, 50),
+          videoDuration: 'medium',
+        },
+      });
+
+      const rawIds = (searchRes.data.items || []).map(i => i.id.videoId).filter(Boolean);
+      if (rawIds.length === 0) {
+        console.log(`  [Type3] "${keyword}" → 결과 없음`);
+        continue;
+      }
+
+      const details = await fetchVideoDetails(rawIds);
+      let added = 0;
+
+      for (const v of details) {
+        const vId = v.id;
+        if (isShorts(v.contentDetails?.duration)) continue;
+        if (recentVideoIds.has(vId)) continue;
+        if (seenVideoIds.has(vId)) continue;
+        if (isChannelExcluded(recentChannelMap, v.snippet.channelId)) continue;
+        if (!isKoreanVideo(v)) continue;
+
+        const excl = isExcludedVideo(v);
+        if (excl.excluded) continue;
+
+        const chId = v.snippet.channelId;
+        if ((channelCount[chId] || 0) >= maxPerChannel) continue;
+
+        const normalized = normalizeVideo(v, 'type3', `어그로:${groupName}:${keyword}`);
+        candidates.push(normalized);
+        seenVideoIds.add(vId);
+        channelCount[chId] = (channelCount[chId] || 0) + 1;
+        added++;
+      }
+
+      console.log(`  [Type3] "${keyword}" → ${rawIds.length}건 검색, ${added}건 후보 추가`);
+      await sleep(300);
+    } catch (err) {
+      console.error(`  [Type3] "${keyword}" 검색 실패:`, err.response?.data?.error?.message || err.message);
+    }
+  }
+
+  // VPH 내림차순 정렬
+  candidates.sort((a, b) => b.viewsPerHour - a.viewsPerHour);
+
+  console.log(`[Collector][Type3] 어그로 키워드 사냥 완료: ${candidates.length}개 후보 확보`);
+  return candidates;
+}
+
+/**
  * 2-Track 전체 수집 (Type1 + Type2, 중복 제거 포함)
  */
 async function collectTargetVideos(recentVideoIds, recentChannelMap, options = {}) {
@@ -496,4 +599,14 @@ async function collectType2Only(recentVideoIds, recentChannelMap, options = {}) 
   return type2;
 }
 
-module.exports = { collectTargetVideos, collectType1Only, collectType2Only };
+/**
+ * Type3 전용 수집 — 어그로 키워드 사냥 (수동 실행용)
+ */
+async function collectType3Only(recentVideoIds, recentChannelMap, options = {}) {
+  const seenVideoIds = new Set();
+  const type3 = await collectType3(recentVideoIds, recentChannelMap, seenVideoIds, options);
+  console.log(`\n[Collector] Type3 전용 수집 (어그로 키워드): ${type3.length}개`);
+  return type3;
+}
+
+module.exports = { collectTargetVideos, collectType1Only, collectType2Only, collectType3, collectType3Only };
