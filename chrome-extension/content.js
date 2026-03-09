@@ -125,17 +125,65 @@
     return null;
   }
 
+  function parseTimestampToSeconds(raw) {
+    if (!raw) return null;
+    const normalized = String(raw).trim().replace(/,/g, '.');
+    const match = normalized.match(/(\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d{1,3})?/);
+    if (!match) return null;
+
+    const parts = match[0].split(':').map((v) => Number(v));
+    if (parts.some((v) => Number.isNaN(v))) return null;
+
+    if (parts.length === 2) {
+      return parts[0] * 60 + parts[1];
+    }
+    if (parts.length === 3) {
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return null;
+  }
+
   function collectPanelItems() {
-    const segments = document.querySelectorAll(
-      'ytd-transcript-segment-renderer yt-formatted-string.segment-text'
-    );
-    if (segments.length === 0) return null;
+    const segmentRenderers = document.querySelectorAll('ytd-transcript-segment-renderer');
+    if (segmentRenderers.length === 0) return null;
 
     const items = [];
-    segments.forEach((seg) => {
-      const text = seg.textContent?.trim();
-      if (text) items.push({ text, start: 0, duration: 0 });
+    segmentRenderers.forEach((renderer) => {
+      const textEl = renderer.querySelector('yt-formatted-string.segment-text, .segment-text');
+      const text = textEl?.textContent?.trim();
+      if (!text) return;
+
+      const tsEl = renderer.querySelector(
+        'yt-formatted-string.segment-timestamp, .segment-timestamp, .cue-group-start-offset'
+      );
+      const directTimestamp = parseTimestampToSeconds(tsEl?.textContent || '');
+      const fallbackTimestamp = parseTimestampToSeconds(renderer.textContent || '');
+      const start = directTimestamp ?? fallbackTimestamp;
+
+      items.push({ text, start: Number.isFinite(start) ? start : null, duration: 0 });
     });
+
+    if (items.length === 0) return null;
+
+    const defaultDurationSec = 2;
+    let lastKnownStart = null;
+    for (let i = 0; i < items.length; i++) {
+      if (Number.isFinite(items[i].start)) {
+        lastKnownStart = items[i].start;
+      } else {
+        items[i].start = Number.isFinite(lastKnownStart) ? lastKnownStart + defaultDurationSec : i * defaultDurationSec;
+        lastKnownStart = items[i].start;
+      }
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const current = items[i];
+      const next = items[i + 1];
+      const nextStart = next ? next.start : null;
+      const guessed = Number.isFinite(nextStart) ? Math.max(0.5, nextStart - current.start) : defaultDurationSec;
+      current.duration = guessed;
+    }
+
     return items.length > 0 ? items : null;
   }
 
@@ -586,9 +634,25 @@
 
   // 현재 활성 retry 세션 ID (이전 루프 취소용)
   let retrySessionId = 0;
+  let retryTimer = null;
+  let isRetryingInsert = false;
 
   // 상태 리셋 및 재삽입
+  function stopRetryInsert() {
+    retrySessionId++;
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    isRetryingInsert = false;
+  }
+
   function resetAndInsert() {
+    if (!isTargetPage()) {
+      stopRetryInsert();
+      return;
+    }
+    stopRetryInsert();
     buttonInserted = false;
     currentVideoId = null;
     const existing = document.getElementById('aggro-filter-container');
@@ -598,17 +662,26 @@
 
   // 재시도 로직
   function retryInsert() {
+    if (isRetryingInsert) return;
+    isRetryingInsert = true;
+
     const sessionId = ++retrySessionId;
     let attempts = 0;
     const maxAttempts = 30;
 
     const tryInsert = () => {
       if (sessionId !== retrySessionId) return; // 새 세션이 시작됐으면 중단
-      if (insertButton()) return; // 성공
+      if (insertButton()) {
+        isRetryingInsert = false;
+        retryTimer = null;
+        return;
+      }
       attempts++;
       if (attempts < maxAttempts) {
-        setTimeout(tryInsert, 500);
+        retryTimer = setTimeout(tryInsert, 500);
       } else {
+        isRetryingInsert = false;
+        retryTimer = null;
         log('최대 재시도 횟수 초과. 버튼 삽입 실패.');
       }
     };
@@ -619,22 +692,58 @@
   // 유튜브 SPA 네비게이션 감지
   function observeNavigation() {
     let lastUrl = location.href;
+    let lastScheduledUrl = location.href;
     let resetDebounceTimer = null;
 
     function scheduleReset(source, delay = 0) {
+      const scheduledUrl = location.href;
+      if (resetDebounceTimer && scheduledUrl === lastScheduledUrl) {
+        return;
+      }
+
+      lastScheduledUrl = scheduledUrl;
       if (resetDebounceTimer) clearTimeout(resetDebounceTimer);
       resetDebounceTimer = setTimeout(() => {
         resetDebounceTimer = null;
         const newUrl = location.href;
+        const targetPage = isTargetPage();
+
+        if (!targetPage) {
+          stopRetryInsert();
+          buttonInserted = false;
+          currentVideoId = null;
+          const existing = document.getElementById('aggro-filter-container');
+          if (existing) existing.remove();
+          lastUrl = newUrl;
+          lastScheduledUrl = newUrl;
+          return;
+        }
+
         const newVideoId = getVideoId();
+        const hasButton = !!document.getElementById('aggro-filter-container');
+        const sameVideo = !!newVideoId && newVideoId === currentVideoId;
+        const sameVideoWithButton = sameVideo && hasButton;
+        const sameVideoRetrying = sameVideo && !hasButton && isRetryingInsert;
 
         // 같은 영상이고 버튼이 이미 있으면 무시
-        if (newVideoId && newVideoId === currentVideoId && document.getElementById('aggro-filter-container')) {
+        if (sameVideoWithButton && newUrl === lastUrl) {
+          lastScheduledUrl = newUrl;
+          return;
+        }
+
+        if (sameVideoRetrying && newUrl === lastUrl) {
+          lastScheduledUrl = newUrl;
           return;
         }
 
         log(`${source} 감지 (URL: ${newUrl !== lastUrl ? '변경됨' : '동일'})`);
         lastUrl = newUrl;
+        lastScheduledUrl = newUrl;
+
+        if (sameVideoWithButton) {
+          return;
+        }
+
         resetAndInsert();
       }, delay);
     }
@@ -649,23 +758,24 @@
       }
     });
 
-    // 방법 3: URL 변경 감지 (폴백) - yt-navigate-finish보다 늦게 실행되도록 500ms 지연
-    const urlObserver = new MutationObserver(() => {
-      if (location.href !== lastUrl) {
-        log('URL 변경 감지:', location.href);
-        scheduleReset('URL 변경', 500);
-      }
-    });
+    // 방법 3: 브라우저 네비게이션 이벤트 폴백
+    window.addEventListener('popstate', () => scheduleReset('popstate', 0));
+    window.addEventListener('hashchange', () => scheduleReset('hashchange', 0));
 
-    if (document.body) {
-      urlObserver.observe(document.body, { childList: true, subtree: true });
-    }
+    // 방법 4: 저비용 URL 폴링 폴백
+    setInterval(() => {
+      if (location.href !== lastUrl) {
+        scheduleReset('URL 폴링 변경', 500);
+      }
+    }, 1000);
   }
 
   // 초기 실행
   function init() {
     log('Content script 로드됨. URL:', location.href);
-    retryInsert();
+    if (isTargetPage()) {
+      retryInsert();
+    }
     observeNavigation();
   }
 

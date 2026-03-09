@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-03-09 01:00 KST
+Last Updated: 2026-03-10 01:50 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -636,3 +636,21 @@ const systemPrompt = `
 | SEO 잔여 (canonical/structured-data/noindex) | 대기 |
 | 모바일 반응형 최종 점검 | 배포 후 실기기 확인 예정 |
 | 오토마케터 전환 | 다음 작업 |
+
+---
+
+## 17. 2026-03-10 01:50 KST — 확장 자막 신뢰성/안정성 보강 + 분석 지연 튜닝
+
+### Chrome Extension (YouTube)
+- `chrome-extension/content.js`
+  - **method2 패널 폴백 타임스탬프 보강**: `collectPanelItems`에서 자막 패널 시간 텍스트를 초 단위로 파싱하고, 다음 세그먼트 시작 시각 기반으로 `duration` 계산.
+  - **네비게이션/삽입 루프 안정화**: 동일 URL/동일 영상 조건에서 중복 reset 및 버튼 재삽입 재시도 방지.
+  - **비대상 페이지 보호**: watch/shorts 외 페이지에서 재시도 루프 중단 및 상태 정리.
+
+### AI 분석 지연 최적화
+- `lib/gemini.ts`
+  - **사전 요약 스킵 범위 확대**: 중간 길이 자막에 대해 불필요한 pre-summary 호출을 줄여 지연 완화.
+  - **thinking budget 하향**: 프로파일 기반으로 추론 예산을 낮춰 평균 응답 시간을 개선.
+
+### 비고
+- 이번 변경은 **분석 품질(점수/챕터 로직) 저하 없이** 안정성과 응답 속도 개선을 목표로 적용.

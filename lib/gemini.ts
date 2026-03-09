@@ -58,7 +58,9 @@ function shouldSkipSmartSummary(params: {
   if (itemsCount > 0 && itemsCount <= 30) return true;
 
   const transcriptLen = typeof params.transcript === 'string' ? params.transcript.length : 0;
-  if (transcriptLen > 0 && transcriptLen <= 1500) return true;
+  // Medium-length transcripts are already well handled by the main analysis call.
+  // Skipping pre-summary here removes extra model calls and reduces latency.
+  if (transcriptLen > 0 && transcriptLen <= 6000) return true;
 
   return false;
 }
@@ -83,6 +85,7 @@ function getGeminiAnalysisProfile(params: {
     timeoutMs: isShortForm ? 50000 : 55000,
     retries: 1,
     baseDelayMs: 800,
+    thinkingBudget: isShortForm ? 1024 : 2048,
   };
 }
 
@@ -686,7 +689,7 @@ export async function analyzeContent(
         temperature: 0.2,
         topP: 0.85,
         safetySettings,
-        thinkingConfig: { thinkingBudget: 8192 },
+        thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget },
         tools: [{ googleSearch: {} }],
       },
     }, {
