@@ -12,9 +12,21 @@ export async function GET(request: Request) {
     const oauthErrorDescription = searchParams.get('error_description')
     const oauthErrorUri = searchParams.get('error_uri')
 
-    // mall_id는 카페24가 콜백 URL에 동적으로 포함시켜 전달 (심사팀 테스트 mall_id 대응)
+    // mall_id 우선순위:
+    // 1) state.mall_id (start에서 인증 시 사용한 mall_id)
+    // 2) callback query mall_id
+    // 3) env CAFE24_MALL_ID
+    let mallIdFromState: string | null = null
+    if (state) {
+      try {
+        const parsed = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'))
+        if (parsed?.mall_id && typeof parsed.mall_id === 'string') mallIdFromState = parsed.mall_id.trim()
+      } catch {
+        mallIdFromState = null
+      }
+    }
     const mallIdFromParam = searchParams.get('mall_id')
-    const mallId = mallIdFromParam?.trim() || getCafe24MallId()
+    const mallId = mallIdFromState || mallIdFromParam?.trim() || getCafe24MallId()
 
     if (oauthError) {
       const redirectUri = process.env.CAFE24_REDIRECT_URI
@@ -75,6 +87,8 @@ export async function GET(request: Request) {
         error: `token exchange failed: ${res.status}`, 
         details: text,
         debug: {
+          usedMallId: mallId,
+          mallIdSource: mallIdFromState ? 'state' : mallIdFromParam ? 'query_param' : 'env',
           usedRedirectUri: redirectUri,
           clientIdPrefix: clientId.substring(0, 5) + '...'
         }
