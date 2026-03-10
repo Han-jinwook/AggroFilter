@@ -538,6 +538,13 @@ export async function POST(request: Request) {
     }
     console.log('자막 사용 여부:', hasTranscript);
 
+    // 자막 없는 영상은 분석 대상에서 제외
+    if (!hasTranscript) {
+      const err: any = new Error('자막이 없는 영상은 분석할 수 없습니다. 자막이 있는 영상만 분석 가능합니다.');
+      err.statusCode = 422;
+      throw err;
+    }
+
     if (isRecheck && !hasTranscript) {
       const err: any = new Error('자막을 가져오지 못해 재검수가 불가능합니다.');
       err.statusCode = 422;
