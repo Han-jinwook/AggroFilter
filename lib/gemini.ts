@@ -611,6 +611,7 @@ export async function analyzeContent(
     
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
+    **중요**: 모든 텍스트 필드는 반드시 **한국어**로 작성하라. 영어 사용 금지.
     
     {
       "is_valid_target": boolean, 
