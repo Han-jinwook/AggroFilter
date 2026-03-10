@@ -112,6 +112,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { url, userId: userIdFromBody, forceRecheck, isRecheck, clientTranscript, clientTranscriptItems } = body;
 
+    // 사용자 브라우저 언어 감지 (Accept-Language 헤더)
+    const acceptLanguage = request.headers.get('accept-language') || '';
+    const userLanguage = acceptLanguage.toLowerCase().includes('ko') ? 'korean' : 'english';
+
     const userIdFromBodyStr = typeof userIdFromBody === 'string' ? userIdFromBody : undefined;
     let userId = userIdFromBodyStr;
     try {
@@ -569,7 +573,8 @@ export async function POST(request: Request) {
         videoInfo.thumbnailUrl,
         videoInfo.duration,
         transcriptItems,
-        videoInfo.publishedAt
+        videoInfo.publishedAt,
+        userLanguage
       );
 
       // [V2.0] AI의 분석 대상 적합성 판단 처리

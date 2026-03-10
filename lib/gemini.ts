@@ -415,7 +415,8 @@ export async function analyzeContent(
   thumbnailUrl: string,
   duration?: string,
   transcriptItems?: { text: string; start: number; duration: number }[],
-  publishedAt?: string
+  publishedAt?: string,
+  userLanguage: 'korean' | 'english' = 'korean'
 ) {
   // .env 파일의 GOOGLE_API_KEY를 우선적으로 사용
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
@@ -611,6 +612,7 @@ export async function analyzeContent(
     
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
+    **중요**: 모든 텍스트 필드(evaluationReason, overallAssessment, recommendedTitle 등)는 반드시 **${userLanguage === 'korean' ? '한국어' : 'English'}**로 작성하라.
     
     {
       "is_valid_target": boolean, 
