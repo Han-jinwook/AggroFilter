@@ -24,17 +24,39 @@ function normalizeEvaluationReasonScores(
   })();
 
   if (Number.isFinite(accuracy)) {
-    out = out.replace(
+    // Try to replace existing score first
+    const replaced = out.replace(
       /(내용\s*정확성\s*검증\s*)\(\s*\d+\s*점\s*\)/g,
       `$1(${Math.round(accuracy)}점)`
     );
+    
+    // If no replacement happened, insert the score
+    if (replaced === out) {
+      out = out.replace(
+        /(1\.\s*내용\s*정확성\s*검증)(:)/,
+        `$1 (${Math.round(accuracy)}점)$2`
+      );
+    } else {
+      out = replaced;
+    }
   }
 
   if (Number.isFinite(clickbait)) {
-    out = out.replace(
+    // Try to replace existing score first
+    const replaced = out.replace(
       /(어그로성\s*평가\s*)\(\s*\d+\s*점\s*\)/g,
       `$1(${Math.round(clickbait)}점${clickbaitTierLabel ? ` / ${clickbaitTierLabel}` : ''})`
     );
+    
+    // If no replacement happened, insert the score
+    if (replaced === out) {
+      out = out.replace(
+        /(2\.\s*어그로성\s*평가)(:)/,
+        `$1 (${Math.round(clickbait)}점${clickbaitTierLabel ? ` / ${clickbaitTierLabel}` : ''})$2`
+      );
+    } else {
+      out = replaced;
+    }
 
     if (clickbaitTierLabel && !/2\.\s*어그로성\s*평가[\s\S]*?<br\s*\/>\s*이\s*점수는/g.test(out)) {
       out = out.replace(
@@ -45,10 +67,21 @@ function normalizeEvaluationReasonScores(
   }
 
   if (Number.isFinite(trust)) {
-    out = out.replace(
+    // Try to replace existing score first
+    const replaced = out.replace(
       /(신뢰도\s*총평\s*)\(\s*\d+\s*점/g,
       `$1(${Math.round(trust)}점`
     );
+    
+    // If no replacement happened, insert the score
+    if (replaced === out) {
+      out = out.replace(
+        /(3\.\s*신뢰도\s*총평)(:)/,
+        `$1 (${Math.round(trust)}점)$2`
+      );
+    } else {
+      out = replaced;
+    }
   }
 
   return out;

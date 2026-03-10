@@ -976,7 +976,16 @@ ${content}
               <p className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
                 {analysisData.evaluationReason
                   .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
-                  .split('<br />').join('\n')}
+                  .split('<br />').map((section, idx) => {
+                    // Add paragraph breaks within each section for readability
+                    const sentences = section.split(/\.\s+(?=[가-힣A-Z])/);
+                    const formatted = sentences.map((s, i) => {
+                      // Add line break after every 2-3 sentences
+                      if (i > 0 && i % 2 === 0) return '\n' + s.trim();
+                      return s.trim();
+                    }).join('. ');
+                    return idx === 0 ? formatted : '\n\n' + formatted;
+                  }).join('')}
                 {showMore && <span className="ml-1"> {analysisData.overallAssessment}</span>}
               </p>
               <button
