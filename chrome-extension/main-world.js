@@ -89,15 +89,31 @@
       }
     }
 
-    // 방법 B: JSON 전체에서 getTranscriptEndpoint 검색
+    // 방법 B: 재귀 탐색 - JSON 객체 전체에서 getTranscriptEndpoint.params 찾기
+    function deepFindTranscriptParams(obj, depth = 0) {
+      if (!obj || typeof obj !== 'object' || depth > 15) return null;
+      if (obj.getTranscriptEndpoint?.params) return obj.getTranscriptEndpoint.params;
+      for (const key of Object.keys(obj)) {
+        const found = deepFindTranscriptParams(obj[key], depth + 1);
+        if (found) return found;
+      }
+      return null;
+    }
+    const deepParams = deepFindTranscriptParams(data);
+    if (deepParams) {
+      console.log(TAG, 'transcript params 발견 (deep search):', deepParams.substring(0, 50) + '...');
+      return deepParams;
+    }
+
+    // 방법 C: JSON 문자열에서 regex (네스팅된 JSON도 처리)
     const jsonStr = JSON.stringify(data);
-    const match = jsonStr.match(/"getTranscriptEndpoint"\s*:\s*\{[^}]*"params"\s*:\s*"([^"]+)"/);
+    const match = jsonStr.match(/"getTranscriptEndpoint"\s*:\s*\{[^}]*?"params"\s*:\s*"([^"]+)"/);
     if (match) {
-      console.log(TAG, 'transcript params 발견 (JSON 검색):', match[1].substring(0, 50) + '...');
+      console.log(TAG, 'transcript params 발견 (JSON regex):', match[1].substring(0, 50) + '...');
       return match[1];
     }
 
-    console.log(TAG, 'transcript params를 찾을 수 없음');
+    console.log(TAG, 'transcript params를 찾을 수 없음 (패널 수:', panels.length, ')');
     return null;
   }
 
@@ -390,7 +406,26 @@
     return [...new Set(candidates)];
   }
 
+  // signatureTimestamp(sts) 추출 - YouTube가 /player 응답에 captions를 포함시키려면 필요할 수 있음
+  function getSignatureTimestamp() {
+    try {
+      // ytcfg에서 직접
+      if (typeof ytcfg !== 'undefined' && ytcfg.get) {
+        const sts = ytcfg.get('STS');
+        if (sts) return sts;
+      }
+      // ytplayer.config에서
+      if (window.ytplayer?.config?.args?.raw_player_response) {
+        const pr = window.ytplayer.config.args.raw_player_response;
+        const sts = pr?.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.match(/sts=([0-9]+)/);
+        if (sts) return parseInt(sts[1], 10);
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
   async function fetchPlayerWithContext(videoId, clientName, clientNameHeader, clientVersion, cfg) {
+    const sts = getSignatureTimestamp();
     const context = {
       client: {
         hl: cfg.hl,
@@ -400,6 +435,10 @@
         ...(cfg.visitorData ? { visitorData: cfg.visitorData } : {}),
       }
     };
+    const body = { context, videoId };
+    if (sts) {
+      body.playbackContext = { contentPlaybackContext: { signatureTimestamp: sts } };
+    }
     const resp = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${cfg.apiKey}&prettyPrint=false`, {
       method: 'POST',
       credentials: 'include',
@@ -411,7 +450,7 @@
         ...(cfg.visitorData ? { 'X-Goog-Visitor-Id': cfg.visitorData } : {}),
         'X-Youtube-Bootstrap-Logged-In': cfg.loggedIn ? 'true' : 'false',
       },
-      body: JSON.stringify({ context, videoId }),
+      body: JSON.stringify(body),
     });
     if (!resp.ok) return null;
     return resp.json();
@@ -420,8 +459,8 @@
   async function fetchCaptionTracksFromPlayerApi(videoId, cfg) {
     const clientContexts = [
       { name: 'WEB',     header: cfg.clientNameHeader, version: cfg.clientVersion },
-      { name: 'MWEB',    header: '2',                  version: '2.20240101.00.00' },
-      { name: 'ANDROID', header: '3',                  version: '19.09.37' },
+      { name: 'MWEB',    header: '2',                  version: '2.20250101.00.00' },
+      { name: 'ANDROID', header: '3',                  version: '19.29.37' },
     ];
 
     for (const ctx of clientContexts) {
@@ -439,19 +478,128 @@
     return [];
   }
 
+  // ytplayer 런타임 객체에서 captionTracks 추출 (SPA 전환 후에도 최신)
+  function getCaptionTracksFromRuntime() {
+    const sources = [
+      window.ytplayer?.config?.args?.raw_player_response,
+      window.ytplayer?.bootstrapPlayerResponse,
+      window.ytInitialPlayerResponse,
+    ];
+    for (const src of sources) {
+      if (!src) continue;
+      const tracks = src?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (tracks && tracks.length > 0) {
+        console.log(TAG, `captionTracks: 런타임 객체에서 ${tracks.length}개 발견`);
+        return tracks;
+      }
+    }
+    return [];
+  }
+
+  // watch 페이지 HTML을 직접 fetch해서 ytInitialPlayerResponse 파싱
+  async function fetchCaptionTracksFromPageSource(videoId) {
+    try {
+      console.log(TAG, 'captionTracks: watch 페이지 직접 fetch 시도...');
+      const resp = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=ko&gl=KR&has_verified=1`, {
+        credentials: 'include',
+        headers: { 'Accept-Language': 'ko-KR,ko;q=0.9' },
+      });
+      if (!resp.ok) {
+        console.log(TAG, 'watch 페이지 fetch 실패:', resp.status);
+        return [];
+      }
+      const html = await resp.text();
+
+      // ytInitialPlayerResponse에서 captionTracks 추출
+      const playerMatch = html.match(/var\s+ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*var\s/);
+      if (playerMatch) {
+        try {
+          const data = JSON.parse(playerMatch[1]);
+          const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+          console.log(TAG, `captionTracks: 페이지 소스에서 ${tracks.length}개 발견`);
+          if (tracks.length > 0) return tracks;
+        } catch (e) {
+          console.log(TAG, 'ytInitialPlayerResponse JSON 파싱 실패:', e?.message);
+        }
+      }
+
+      // 다른 패턴으로 시도
+      const altMatch = html.match(/"captions"\s*:\s*({"playerCaptionsTracklistRenderer".*?}})\s*,\s*"/);
+      if (altMatch) {
+        try {
+          const captionsData = JSON.parse(altMatch[1]);
+          const tracks = captionsData?.playerCaptionsTracklistRenderer?.captionTracks || [];
+          console.log(TAG, `captionTracks: 페이지 소스(alt)에서 ${tracks.length}개 발견`);
+          if (tracks.length > 0) return tracks;
+        } catch { /* ignore */ }
+      }
+    } catch (e) {
+      console.log(TAG, 'watch 페이지 fetch 예외:', e?.message);
+    }
+    return [];
+  }
+
+  // YouTube timedtext list API 직접 호출
+  async function fetchCaptionTracksFromTimedTextApi(videoId) {
+    try {
+      console.log(TAG, 'captionTracks: timedtext list API 시도...');
+      const resp = await fetch(`https://www.youtube.com/api/timedtext?v=${videoId}&type=list`, {
+        credentials: 'include',
+      });
+      if (!resp.ok) {
+        console.log(TAG, 'timedtext list 실패:', resp.status);
+        return [];
+      }
+      const xml = await resp.text();
+      // <track> 요소에서 lang_code와 name 추출
+      const trackMatches = [...xml.matchAll(/<track[^>]*\bid="([^"]*?)"[^>]*\blang_code="([^"]*?)"[^>]*(?:\bname="([^"]*?)")?[^>]*\/?>/gi)];
+      if (trackMatches.length === 0) {
+        // 더 단순한 패턴
+        const simpleMatches = [...xml.matchAll(/<track[^>]*\blang_code="([^"]*?)"[^>]*/gi)];
+        if (simpleMatches.length > 0) {
+          console.log(TAG, `timedtext list: ${simpleMatches.length}개 트랙 발견`);
+          return simpleMatches.map(m => ({
+            baseUrl: `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${m[1]}`,
+            languageCode: m[1],
+          }));
+        }
+        console.log(TAG, 'timedtext list: 트랙 없음');
+        return [];
+      }
+      console.log(TAG, `timedtext list: ${trackMatches.length}개 트랙 발견`);
+      return trackMatches.map(m => ({
+        baseUrl: `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${m[2]}${m[3] ? '&name=' + encodeURIComponent(m[3]) : ''}`,
+        languageCode: m[2],
+      }));
+    } catch (e) {
+      console.log(TAG, 'timedtext list 예외:', e?.message);
+      return [];
+    }
+  }
+
   async function extractCaptionTrackUrls(videoId, cfg) {
-    // SPA 전환 후 ytInitialPlayerResponse는 stale URL을 가질 수 있으므로
-    // 항상 /player API를 먼저 호출해 fresh captionTracks URL을 확보
+    // 1. /player API (signatureTimestamp 포함)
     const apiTracks = await fetchCaptionTracksFromPlayerApi(videoId, cfg);
     if (apiTracks.length > 0) {
       return buildCaptionTrackCandidates(apiTracks);
     }
 
-    // /player API 실패 시에만 ytInitialPlayerResponse 폴백 사용
-    const initialTracks = window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-    if (initialTracks.length > 0) {
-      console.log(TAG, 'captionTracks: ytInitialPlayerResponse 폴백 사용 (stale 가능성 있음)');
-      return buildCaptionTrackCandidates(initialTracks);
+    // 2. ytplayer 런타임 객체 (SPA 전환 시 최신 데이터)
+    const runtimeTracks = getCaptionTracksFromRuntime();
+    if (runtimeTracks.length > 0) {
+      return buildCaptionTrackCandidates(runtimeTracks);
+    }
+
+    // 3. watch 페이지 HTML 직접 fetch (가장 확실한 방법)
+    const pageTracks = await fetchCaptionTracksFromPageSource(videoId);
+    if (pageTracks.length > 0) {
+      return buildCaptionTrackCandidates(pageTracks);
+    }
+
+    // 4. timedtext list API
+    const ttTracks = await fetchCaptionTracksFromTimedTextApi(videoId);
+    if (ttTracks.length > 0) {
+      return buildCaptionTrackCandidates(ttTracks);
     }
 
     return [];

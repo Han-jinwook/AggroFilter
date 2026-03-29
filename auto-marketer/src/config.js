@@ -14,8 +14,8 @@ module.exports = {
   trackMPerCategory: parseInt(process.env.TRACK_M_PER_CATEGORY || '3', 10),
   // X: 채널 다양성 쿨타임 (일) - 최근 X일 이내 분석된 채널 스킵
   dedupDays: parseInt(process.env.DEDUP_DAYS || '7', 10),
-  // Type1 동일 채널 최대 허용 수 (N개 중 동일 채널은 최대 이 수만큼)
-  maxPerChannel: parseInt(process.env.MAX_PER_CHANNEL || '2', 10),
+  // 동일 채널 최대 허용 수 (기본 3)
+  maxPerChannel: parseInt(process.env.MAX_PER_CHANNEL || '3', 10),
   // 최소 조회수 하한 (이 수치 미만 영상은 수집 제외)
   minViewCount: parseInt(process.env.MIN_VIEW_COUNT || '1000', 10),
   // 최소 시간당 조회수(VPH) 하한 - 하꼬 영상 원천 차단
@@ -28,7 +28,7 @@ module.exports = {
   // K: 키워드당 검색 개수
   aggroSearchPerKeyword: parseInt(process.env.AGGRO_SEARCH_PER_KEYWORD || '30', 10),
   // 오픈소스 AI 사전필터 컷라인 (이 점수 이상만 유료 분석)
-  aggroPreScoreCutoff: parseInt(process.env.AGGRO_PRESCORE_CUTOFF || '60', 10),
+  aggroPreScoreCutoff: parseInt(process.env.AGGRO_PRESCORE_CUTOFF || '31', 10),
   // 유료 분석 일일 한도
   aggroDailyAnalysisLimit: parseInt(process.env.AGGRO_DAILY_ANALYSIS_LIMIT || '30', 10),
   // Ollama 엔드포인트 (로컬)
@@ -40,11 +40,19 @@ module.exports = {
   defaultAggroKeywordGroups: [
     {
       groupName: '일반/이슈/렉카',
-      keywords: ['단독', '충격', '폭로', '경악', '논란', '소름', '근황', '결말', '진실', '숨겨진', '참교육', '분노'],
+      keywords: ['단독', '충격', '폭로', '경악', '논란', '소름', '근황', '진실', '숨겨진', '참교육', '분노', '실체', '정체', '뒷이야기', '반전', '결국', '충격고백'],
     },
     {
       groupName: '금전손해/사기/코인',
-      keywords: ['폭락', '상폐', '먹튀', '전재산', '청산', '세력', '급등', '떡상', '사기', '피해자', '원금보장', '무조건', '폰지'],
+      keywords: ['폭락', '상폐', '먹튀', '전재산', '청산', '세력', '급등', '사기', '피해자', '원금보장', '폰지', '투자경고', '손실'],
+    },
+    {
+      groupName: '공포/경고/음모론',
+      keywords: ['경고', '위험', '비밀', '조심', '주의', '실화', '진짜', '모르는', '숨겨진 진실', '충격 실화', '이러면 큰일'],
+    },
+    {
+      groupName: '연예/가십/사생활',
+      keywords: ['열애설', '결별', '이별', '폭로전', '충격발언', '논란인', '저격', '갑질', '실망'],
     },
   ],
 

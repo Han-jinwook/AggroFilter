@@ -18,13 +18,13 @@
     }
     .logo { display: flex; align-items: center; gap: 10px; white-space: nowrap; flex-shrink: 0; text-decoration: none; }
     .logo img { width: 52px; height: 52px; border-radius: 10px; }
-    .logo-text { font-size: 22px; font-weight: 800; color: #a0aec0; letter-spacing: -.3px; }
-    .logo-sub { font-size: 26px; font-weight: 900; color: #63b3ed; letter-spacing: -.5px; margin-left: 4px; }
+    .logo-text { font-size: 21px; font-weight: 800; color: #a0aec0; letter-spacing: -.3px; }
+    .logo-sub { font-size: 25px; font-weight: 900; color: #63b3ed; letter-spacing: -.5px; margin-left: 4px; }
 
     /* 헤더 네비 탭 */
     .nav { display: flex; height: 100%; gap: 4px; align-items: center; position: absolute; left: 50%; transform: translateX(-50%); }
     .nav-btn {
-      height: 100%; padding: 0 22px; font-size: 15px; font-weight: 700;
+      height: 100%; padding: 0 22px; font-size: 14px; font-weight: 700;
       cursor: pointer; border: none; background: transparent; color: #a0aec0;
       border-bottom: 3px solid transparent;
       transition: color .15s, border-color .15s;
@@ -38,7 +38,7 @@
 
     /* 오토모드 토글 */
     .auto-toggle-wrap { display: flex; align-items: center; gap: 10px; background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 8px 14px; }
-    .auto-toggle-label { font-size: 17px; font-weight: 700; color: #a0aec0; }
+    .auto-toggle-label { font-size: 16px; font-weight: 700; color: #a0aec0; }
     .auto-toggle-label.on { color: #68d391; }
     .toggle-switch { position: relative; width: 44px; height: 24px; cursor: pointer; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -67,7 +67,7 @@
     }
     .collapse-header:hover .collapse-arrow { color: #90cdf4; }
     .collapse-arrow {
-      font-size: 16px; color: #4a5568; transition: transform .2s;
+      font-size: 15px; color: #4a5568; transition: transform .2s;
       display: inline-block;
     }
     .collapse-arrow.open { transform: rotate(180deg); }
@@ -85,9 +85,9 @@
       padding: 8px 0 6px; border-bottom: 1px solid #1e2335;
       margin-bottom: 4px;
     }
-    .always-val { font-size: 22px; font-weight: 900; color: #e2e8f0; }
-    .always-label { font-size: 17px; color: #718096; font-weight: 600; }
-    .always-unit { font-size: 17px; color: #4a5568; }
+    .always-val { font-size: 21px; font-weight: 900; color: #e2e8f0; }
+    .always-label { font-size: 16px; color: #718096; font-weight: 600; }
+    .always-unit { font-size: 16px; color: #4a5568; }
 
     /* 카드 공통 */
     .card {
@@ -95,7 +95,7 @@
       padding: 14px 16px;
     }
     .card-title {
-      font-size: 20px; font-weight: 800; color: #63b3ed;
+      font-size: 19px; font-weight: 800; color: #63b3ed;
       letter-spacing: .2px; margin-bottom: 12px;
     }
     /* 카드별 강조 테두리 */
@@ -103,15 +103,15 @@
     .card-trend   { border-color: #276749; }
     .card-category{ border-color: #6b46c1; }
     /* 서브 설명 텍스트 */
-    .sub-desc { font-size:15px; color:#718096; margin-top:4px; line-height:1.55; }
-    .sub-label { font-size:14px; color:#63b3ed; font-weight:600; background:#0d1829; border-radius:4px; padding:2px 7px; display:inline-block; margin-top:4px; }
+    .sub-desc { font-size:14px; color:#718096; margin-top:4px; line-height:1.55; }
+    .sub-label { font-size:13px; color:#63b3ed; font-weight:600; background:#0d1829; border-radius:4px; padding:2px 7px; display:inline-block; margin-top:4px; }
 
     /* 현황 카드 (좌) */
     .status-card { flex: 0 0 auto; min-width: 380px; }
     .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .stat-item { background: #0f1117; border-radius: 7px; padding: 8px 12px; }
-    .stat-label { font-size: 17px; color: #a0aec0; font-weight: 600; margin-bottom: 4px; }
-    .stat-value { font-size: 19px; font-weight: 700; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat-label { font-size: 16px; color: #a0aec0; font-weight: 600; margin-bottom: 4px; }
+    .stat-value { font-size: 18px; font-weight: 700; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stat-value.running { color: #63b3ed; }
     .stat-value.ok { color: #9ae6b4; }
     .stat-value.err { color: #fc8181; }
@@ -123,21 +123,21 @@
     .opt-grid-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
     .opt-sep-row { border-top: 1px solid #2d3748; margin: 10px 0 0; padding-top: 10px; }
     .opt-item { display: flex; flex-direction: column; gap: 5px; }
-    .opt-item label { font-size: 17px; color: #cbd5e0; font-weight: 600; }
+    .opt-item label { font-size: 16px; color: #cbd5e0; font-weight: 600; }
     .opt-item input {
       padding: 7px 8px; background: #0f1117; border: 1px solid #2d3748;
-      border-radius: 6px; color: #e2e8f0; font-size: 14px; text-align: center;
+      border-radius: 6px; color: #e2e8f0; font-size: 13px; text-align: center;
       width: 100%;
     }
     .opt-item input:focus { outline: none; border-color: #4299e1; }
-    .opt-item .hint { font-size: 16px; color: #63b3ed; line-height: 1.5; font-style: italic; }
+    .opt-item .hint { font-size: 15px; color: #63b3ed; line-height: 1.5; font-style: italic; }
     .settings-footer { margin-top: 10px; display: flex; align-items: center; gap: 8px; }
-    .schedule-note { font-size: 17px; color: #68d391; font-weight: 600; margin-left: auto; }
+    .schedule-note { font-size: 16px; color: #68d391; font-weight: 600; margin-left: auto; }
 
     /* 버튼 */
     .btn {
       display: inline-flex; align-items: center; gap: 5px;
-      padding: 8px 18px; border-radius: 7px; font-size: 17px;
+      padding: 8px 18px; border-radius: 7px; font-size: 16px;
       font-weight: 700; cursor: pointer; border: none; transition: opacity .15s;
       white-space: nowrap;
     }
@@ -147,7 +147,7 @@
     .btn-success { background: #276749; color: #9ae6b4; }
     .btn-danger  { background: #742a2a; color: #fc8181; }
     .btn-ghost   { background: #2d3748; color: #cbd5e0; border: 1px solid #4a5568; }
-    .btn-sm { padding: 6px 12px; font-size: 16px; }
+    .btn-sm { padding: 6px 12px; font-size: 15px; }
 
     /* ══ 메인 콘텐츠 ══ */
     .main-content {
@@ -158,23 +158,23 @@
     .tab-content.active { display: flex; }
 
     .table-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .table-toolbar span { font-size: 17px; color: #718096; }
+    .table-toolbar span { font-size: 16px; color: #718096; }
 
     /* 테이블 */
     .table-wrap { flex: 1; overflow-y: auto; border: 1px solid #2d3748; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 17px; }
+    table { width: 100%; border-collapse: collapse; font-size: 16px; }
     thead { position: sticky; top: 0; z-index: 1; }
     th {
       text-align: left; padding: 10px 12px;
-      background: #0d0f1a; color: #cbd5e0; font-weight: 700; font-size: 17px;
+      background: #0d0f1a; color: #cbd5e0; font-weight: 700; font-size: 16px;
       white-space: nowrap;
       border-bottom: 1px solid #2d3748;
     }
-    td { padding: 10px 12px; border-bottom: 1px solid #161928; vertical-align: middle; color: #e2e8f0; font-size: 17px; }
+    td { padding: 10px 12px; border-bottom: 1px solid #161928; vertical-align: middle; color: #e2e8f0; font-size: 16px; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #1a1d2e; }
 
-    .score { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 16px; }
+    .score { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 15px; }
     .score-high { background: #1c4532; color: #9ae6b4; }
     .score-mid  { background: #3d2b00; color: #fbd38d; }
     .score-low  { background: #3d0f0f; color: #fc8181; }
@@ -186,9 +186,9 @@
     .cell-ch { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cell-ch a { color: #a0aec0; text-decoration: none; }
     .cell-ch a:hover { color: #63b3ed; }
-    .cell-time { white-space: nowrap; color: #a0aec0; font-size: 16px; font-variant-numeric: tabular-nums; }
+    .cell-time { white-space: nowrap; color: #a0aec0; font-size: 15px; font-variant-numeric: tabular-nums; }
 
-    .empty { text-align: center; padding: 60px 0; color: #4a5568; font-size: 18px; }
+    .empty { text-align: center; padding: 60px 0; color: #4a5568; font-size: 17px; }
 
     /* 커뮤니티 */
     .community-wrap { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow: hidden; }
@@ -197,15 +197,22 @@
       padding: 10px 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
     }
     .add-form .fg { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-    .add-form .fg label { font-size: 16px; color: #a0aec0; font-weight: 600; }
+    .add-form .fg label { font-size: 15px; color: #a0aec0; font-weight: 600; }
     .add-form .fg input {
       padding: 8px 12px; background: #0f1117; border: 1px solid #2d3748;
-      border-radius: 6px; color: #e2e8f0; font-size: 16px;
+      border-radius: 6px; color: #e2e8f0; font-size: 15px;
     }
     .kw-badge {
       display: inline-block; background: #2d3748; color: #e2e8f0;
-      border-radius: 4px; padding: 3px 10px; font-size: 16px; margin: 2px;
+      border-radius: 4px; padding: 2px 8px; font-size: 13px; margin: 2px;
+      position: relative; padding-right: 24px;
     }
+    .kw-badge-del {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      cursor: pointer; color: #fc8181; font-size: 12px; font-weight: 700;
+      padding: 0 4px; border-radius: 3px;
+    }
+    .kw-badge-del:hover { background: #742a2a; }
 
     /* 댓글 로그 */
     .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
@@ -219,7 +226,7 @@
       position: fixed; bottom: 20px; right: 20px;
       background: #1a1d2e; border: 1px solid #4a5568;
       border-radius: 8px; padding: 10px 18px;
-      font-size: 16px; color: #e2e8f0;
+      font-size: 15px; color: #e2e8f0;
       box-shadow: 0 4px 24px rgba(0,0,0,.6);
       opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 9999;
     }
@@ -246,10 +253,10 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 18px 24px; border-bottom: 1px solid #2d3748;
     }
-    .modal-header h2 { font-size: 16px; font-weight: 700; color: #fff; }
+    .modal-header h2 { font-size: 15px; font-weight: 700; color: #fff; }
     .modal-close {
       background: none; border: none; color: #718096;
-      font-size: 20px; cursor: pointer; line-height: 1;
+      font-size: 19px; cursor: pointer; line-height: 1;
       padding: 4px 8px; border-radius: 4px;
     }
     .modal-close:hover { background: #2d3748; color: #fff; }
@@ -290,10 +297,10 @@
     }
     .btn-guide:hover { background: #4a5568; }
 
-    /* ══ 모듈1 설정 섹션 구분 ══ */
+    /* ══ 섹션1 설정 섹션 구분 ══ */
     .m1-section { padding: 10px 0; }
     .m1-section-title {
-      font-size: 19px; font-weight: 800; color: #90cdf4;
+      font-size: 18px; font-weight: 800; color: #90cdf4;
       letter-spacing: -.2px; margin-bottom: 4px;
       display: flex; align-items: center; gap: 6px;
     }
@@ -315,7 +322,8 @@
   </div>
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('collected',this)">📋 수집 리스트</button>
-    <button class="nav-btn" onclick="switchTab('community',this)">🎯 커뮤니티 타겟</button>
+    <button class="nav-btn" onclick="switchTab('keyword-hunt',this)">🎯 키워드 사냥</button>
+    <button class="nav-btn" onclick="switchTab('community',this)">� 커뮤니티 타겟</button>
     <button class="nav-btn" onclick="switchTab('comments',this)">💬 댓글 로그</button>
   </nav>
   <div class="header-right">
@@ -337,12 +345,12 @@
       <h3>🗂 전체 구조</h3>
       <ul>
         <li><strong>대시보드</strong>: 이 화면. 봇 상태 확인, 옵션 제어, 수집/댓글 현황 모니터링</li>
-        <li><strong>모듈1 — YouTube 수집·분석</strong>: 트렌드 영상을 수집해 AggroFilter 메인 앱에 분석 요청</li>
+        <li><strong>섹션1 — YouTube 수집·분석</strong>: 트렌드 영상을 수집해 AggroFilter 메인 앱에 분석 요청</li>
         <li><strong>모듈2 — 커뮤니티 타겟</strong>: 커뮤니티 사이트(일반/네이버카페) 등록 및 자동 수집 관리</li>
         <li><strong>모듈3 — 댓글 자동화</strong>: 분석 완료 영상에 유튜브 댓글 + 커뮤니티 댓글 자동 작성</li>
       </ul>
 
-      <h3>⚙️ 수집 옵션 (모듈1 — YouTube 수집)</h3>
+      <h3>⚙️ 수집 옵션 (섹션1 — YouTube 수집)</h3>
       <table class="guide-table">
         <thead><tr><th>파라미터</th><th>의미</th><th>기본값</th><th>권장 범위</th></tr></thead>
         <tbody>
@@ -374,7 +382,7 @@
       <table class="guide-table">
         <thead><tr><th>모듈</th><th>스케줄</th><th>오토모드 위치</th><th>특이사항</th></tr></thead>
         <tbody>
-          <tr><td><strong>모듈1</strong> YouTube 수집</td><td>매일 00:00 / 12:00 KST</td><td>모듈1 탭 좌측 현황카드</td><td>수집 → 중복제거 → 자막수집 → 분석등록</td></tr>
+          <tr><td><strong>섹션1</strong> YouTube 수집</td><td>매일 00:00 / 12:00 KST</td><td>섹션1 탭 좌측 현황카드</td><td>수집 → 중복제거 → 자막수집 → 분석등록</td></tr>
           <tr><td><strong>모듈2</strong> 커뮤니티 타겟</td><td>매일 00:00 / 12:00 KST</td><td>모듈2 탭 좌측 현황카드</td><td>타겟 커뮤니티 게시글 수집</td></tr>
         </tbody>
       </table>
@@ -463,14 +471,14 @@
 <!-- ══════════ 메인 콘텐츠 ══════════ -->
 <div class="main-content">
 
-  <!-- 탭1: 수집 리스트 (= 모듈1) -->
+  <!-- 탭1: 수집 리스트 (= 섹션1) -->
   <div id="tab-collected" class="tab-content active">
-    <!-- 모듈1 현황+설정 카드 -->
+    <!-- 섹션1 현황+설정 카드 -->
     <div class="control-bar" style="margin-bottom:14px">
 
       <!-- ── 섹션1: 현황 ── -->
       <div class="card card-status">
-        <div class="card-title">📊 모듈1 현황</div>
+        <div class="card-title">📊 섹션1 현황</div>
 
         <!-- 상시: 오토모드 + 현재상태 -->
         <div class="always-row">
@@ -603,7 +611,163 @@
     <div class="table-wrap" id="tableWrap"><div class="empty">로딩 중...</div></div>
   </div>
 
-  <!-- 탭2: 커뮤니티 세팅 (= 모듈2) -->
+  <!-- 탭2: 키워드 사냥 (= 섹션2) -->
+  <div id="tab-keyword-hunt" class="tab-content">
+    <!-- 섹션2 현황+키워드+설정 카드 -->
+    <div class="control-bar" style="margin-bottom:14px" id="s2ControlBar">
+
+      <!-- ── 현황 카드 ── -->
+      <div class="card card-status">
+        <div class="card-title">📊 섹션2 현황</div>
+
+        <!-- 상시: 오토모드 + 현재상태 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">오토모드</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <label class="toggle-switch">
+                <input type="checkbox" id="s2AutoToggle" onchange="toggleAutoMode2(this)" />
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="auto-toggle-label" id="s2AutoLabel" style="font-size:16px;font-weight:700">OFF</span>
+            </div>
+            <div style="margin-top:7px;font-size:14px;color:#68d391;font-weight:600;background:#0d1f17;border-radius:6px;padding:4px 9px;border-left:3px solid #276749;display:inline-block">🕐 자동: 00:00 / 12:00 KST</div>
+            <div style="margin-top:4px">
+              <span id="s2AutoBadge" style="font-size:14px;color:#68d391;font-weight:600"></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div class="always-label">현재 상태</div>
+            <div class="always-val" id="s2StatusText" style="font-size:18px;margin-top:4px">대기 중</div>
+          </div>
+        </div>
+
+        <!-- 실시간 진행 상황 (실행 중일 때만 표시) -->
+        <div id="s2ProgressBox" style="display:none;margin-top:12px;padding:10px;background:#0f1117;border:1px solid #2d3748;border-radius:6px">
+          <div style="font-size:14px;font-weight:700;color:#63b3ed;margin-bottom:8px" id="s2CurrentStep">—</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px">
+            <div>
+              <span style="color:#718096">수집:</span> 
+              <span style="color:#e2e8f0;font-weight:700" id="s2Collected">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">자막:</span> 
+              <span style="color:#e2e8f0;font-weight:700" id="s2Transcript">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">Ollama:</span> 
+              <span style="color:#e2e8f0;font-weight:700" id="s2PreScore">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">컷라인 통과:</span> 
+              <span style="color:#68d391;font-weight:700" id="s2Passed">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">LLM 분석:</span> 
+              <span style="color:#63b3ed;font-weight:700" id="s2Analyzing">0</span>/<span id="s2Total">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 수동 실행 섹션 (접기 가능) -->
+        <div class="collapse-header" onclick="toggleCollapse('s2StatusDetail', this)">
+          <span style="font-size:14px;color:#718096">수동 실행 / 이력</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s2StatusDetail">
+          <div class="status-grid" style="margin-top:8px">
+            <div class="stat-item">
+              <div class="stat-label">마지막 실행</div>
+              <div class="stat-value" id="s2LastRun">—</div>
+            </div>
+            <div class="stat-item" style="grid-column:1/-1">
+              <div class="stat-label">마지막 결과</div>
+              <div class="stat-value" id="s2LastResult">—</div>
+            </div>
+          </div>
+          <div class="run-btn-wrap" style="margin-top:10px">
+            <button class="btn btn-success" id="s2BtnRun" onclick="runSection2()">▶ 수동 실행</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadKeywordResults()" style="margin-left:auto">↻ 새로고침</button>
+          </div>
+          <div class="run-note">⚡ 키워드 검색 → 사전 스코어링 → 유료 분석</div>
+        </div>
+      </div>
+
+      <!-- ── 키워드 관리 카드 ── -->
+      <div class="card card-trend">
+        <div class="card-title">🔑 키워드 그룹 관리 <span style="font-size:13px;color:#718096">(<span id="kwGroupCount">0</span>개)</span></div>
+
+        <!-- 키워드 그룹 목록 (접기 가능) -->
+        <div class="collapse-header" onclick="toggleCollapse('s2KeywordList', this)">
+          <span style="font-size:14px;color:#718096">등록된 그룹</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s2KeywordList" style="margin-top:8px">
+        <div id="kwGroupItems">
+          <div class="empty" style="padding:20px 0">로딩 중...</div>
+        </div>
+        </div>
+      </div>
+
+      <!-- ── 설정 카드 ── -->
+      <div class="card card-category">
+        <div class="card-title">⚙️ 수집 설정</div>
+
+        <!-- 상시: K 값만 표시 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">키워드당 검색 (K)</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <input type="number" id="s2OptK" min="1" max="100"
+                style="width:90px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:21px;font-weight:900;text-align:center" />
+              <span class="always-unit">개</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 접기 가능한 상세 설정 -->
+        <div class="collapse-header" onclick="toggleCollapse('s2SettingsDetail', this)">
+          <span style="font-size:14px;color:#718096">상세 설정</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s2SettingsDetail">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+            <div class="opt-item">
+              <label>사전필터 컷라인</label>
+              <input type="number" id="s2OptCutline" min="0" max="100" placeholder="31" />
+              <div class="sub-desc" style="margin-top:4px;font-size:12px">Ollama 점수 N점 이상만</div>
+            </div>
+            <div class="opt-item">
+              <label>유료 분석 일일한도</label>
+              <input type="number" id="s2OptLimit" min="1" max="100" placeholder="30" />
+              <div class="sub-desc" style="margin-top:4px;font-size:12px">하루 최대 분석 횟수</div>
+            </div>
+            <div class="opt-item" style="grid-column:1/-1">
+              <label>📅 업로드 시작 시점</label>
+              <input type="number" id="s2OptPublishedAfterDays" min="1" max="30" placeholder="1" 
+                style="width:100px;padding:6px 10px;background:#0f1117;border:1px solid #4a5568;border-radius:6px;color:#e2e8f0;font-size:13px" />
+              <span style="color:#a0aec0;margin-left:6px">일 전부터</span>
+              <div class="sub-desc" style="margin-top:4px;font-size:12px">최근 N일 이내 업로드된 영상만 수집 (기본: 1일 = 24시간)</div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2d3748">
+            <button class="btn btn-primary btn-sm" onclick="saveSection2Options()">💾 설정 저장</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 수집 결과 테이블 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:17px;font-weight:700;color:#e2e8f0">키워드 사냥 결과 최신 200개</span>
+    </div>
+    <div class="table-wrap" id="keywordResultWrap"><div class="empty">로딩 중...</div></div>
+  </div>
+
+  <!-- 탭3: 커뮤니티 세팅 (= 모듈2) -->
   <div id="tab-community" class="tab-content">
 
     <!-- ══ 섹션A: 일반 커뮤니티 ══ -->
@@ -821,7 +985,7 @@
     try {
       const res = await fetch('/api/module1/automode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: checkbox.checked }) });
       const data = await res.json();
-      showToast(data.autoMode ? '모듈1 오토모드 ON' : '모듈1 오토모드 OFF', data.autoMode ? 'ok' : '');
+      showToast(data.autoMode ? '섹션1 오토모드 ON' : '섹션1 오토모드 OFF', data.autoMode ? 'ok' : '');
     } catch (e) { showToast('오류: ' + e.message, 'err'); }
   }
 
@@ -842,7 +1006,7 @@
       const res = await fetch('/api/module1/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const data = await res.json();
       if (data.ok) {
-        showToast('모듈1 설정 저장 완료', 'ok');
+        showToast('섹션1 설정 저장 완료', 'ok');
         m1OptionsLoaded = false; // 저장 후 다음 폴링에서 서버 데이터와 동기화 허용
         fetchModule1Status();
       }
@@ -1366,6 +1530,17 @@
     bodies.forEach(b => b.classList.toggle('open', isNowOpening));
   }
 
+  // 개별 접기/펴기 (특정 섹션만)
+  function toggleCollapseIndividual(bodyId, headerEl) {
+    const arrow = headerEl.querySelector('.collapse-arrow');
+    const body = document.getElementById(bodyId);
+    const isOpen = arrow.classList.contains('open');
+    
+    arrow.classList.toggle('open', !isOpen);
+    body.classList.toggle('open', !isOpen);
+  }
+
+
   // ────────── 가이드 모달 ──────────
   function openGuide() {
     document.getElementById('guideModal').classList.add('open');
@@ -1380,11 +1555,288 @@
     if (e.key === 'Escape') closeGuide();
   });
 
-  // 초기 로드
-  fetchModule1Status();
-  loadCollected();
+  // ────────── 섹션2 (키워드 사냥) ──────────
+  let s2OptionsLoaded = false;
+  async function fetchSection2Status() {
+    try {
+      const res = await fetch('/api/section2/status');
+      const { status, options } = await res.json();
+      const wasRunning = window._s2WasRunning ?? false;
+      window._s2WasRunning = status.running;
+      if (wasRunning && !status.running) {
+        loadKeywordResults();
+      }
+      // currentStep을 progress로 사용
+      const statusWithProgress = { ...status, progress: status.currentStep };
+      _applyModuleStatus(statusWithProgress, options, {
+        toggle: 's2AutoToggle', label: 's2AutoLabel', badge: 's2AutoBadge',
+        statusText: 's2StatusText', lastRun: 's2LastRun', lastResult: 's2LastResult', btn: 's2BtnRun'
+      });
+      
+      // 버튼 상태 업데이트
+      const btn = document.getElementById('s2BtnRun');
+      if (status.running) {
+        btn.textContent = '⏹ 중단';
+        btn.className = 'btn btn-danger';
+      } else {
+        btn.textContent = '▶ 수동 실행';
+        btn.className = 'btn btn-success';
+      }
+      
+      // 실시간 진행 상황 표시
+      const progressBox = document.getElementById('s2ProgressBox');
+      if (status.running && status.currentStep) {
+        progressBox.style.display = 'block';
+        document.getElementById('s2CurrentStep').textContent = status.currentStep || '—';
+        document.getElementById('s2Collected').textContent = status.collectedCount || 0;
+        document.getElementById('s2Transcript').textContent = status.transcriptCount || 0;
+        document.getElementById('s2PreScore').textContent = status.preScoreCount || 0;
+        document.getElementById('s2Passed').textContent = status.passedCutoff || 0;
+        document.getElementById('s2Analyzing').textContent = status.analyzingCount || 0;
+        document.getElementById('s2Total').textContent = status.totalToAnalyze || 0;
+      } else {
+        progressBox.style.display = 'none';
+      }
+      
+      if (options && !s2OptionsLoaded) {
+        document.getElementById('s2OptK').value = options.keywordSearchCount ?? 30;
+        document.getElementById('s2OptCutline').value = options.prefilterCutline ?? 31;
+        document.getElementById('s2OptLimit').value = options.dailyAnalysisLimit ?? 30;
+        document.getElementById('s2OptPublishedAfterDays').value = options.publishedAfterDays ?? 1;
+        s2OptionsLoaded = true;
+      }
+    } catch (e) {}
+  }
+
+  async function toggleAutoMode2(checkbox) {
+    try {
+      const res = await fetch('/api/section2/automode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: checkbox.checked }) });
+      const data = await res.json();
+      showToast(data.autoMode ? '섹션2 오토모드 ON' : '섹션2 오토모드 OFF', data.autoMode ? 'ok' : '');
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function saveSection2Options() {
+    const body = {
+      keywordSearchCount: document.getElementById('s2OptK').value,
+      prefilterCutline: document.getElementById('s2OptCutline').value,
+      dailyAnalysisLimit: document.getElementById('s2OptLimit').value,
+      publishedAfterDays: document.getElementById('s2OptPublishedAfterDays').value,
+    };
+    try {
+      const res = await fetch('/api/section2/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('섹션2 설정 저장 완료', 'ok');
+        s2OptionsLoaded = false;
+        fetchSection2Status();
+      }
+    } catch (e) { showToast('저장 실패: ' + e.message, 'err'); }
+  }
+
+  async function runSection2() {
+    const btn = document.getElementById('s2BtnRun');
+    const isRunning = btn.textContent.includes('⏹');
+    
+    if (isRunning) {
+      // 중단 요청
+      try {
+        const res = await fetch('/api/section2/abort', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || '작업 중단 요청', 'ok');
+      } catch (e) { showToast('중단 실패: ' + e.message, 'err'); }
+    } else {
+      // 실행 요청
+      try {
+        const res = await fetch('/api/section2/run', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          showToast(data.message || '섹션2 실행 시작', 'ok');
+          btn.textContent = '⏹ 중단';
+          btn.className = 'btn btn-danger';
+        } else {
+          showToast(data.message || '실행 실패', 'err');
+        }
+      } catch (e) { showToast('실행 실패: ' + e.message, 'err'); }
+    }
+  }
+
+  // 키워드 그룹 관리
+  async function loadKeywordGroups() {
+    try {
+      const res = await fetch('/api/keyword-groups');
+      const data = await res.json();
+      const groups = data.groups || [];
+      document.getElementById('kwGroupCount').textContent = groups.length;
+      
+      const container = document.getElementById('kwGroupItems');
+      if (groups.length === 0) {
+        container.innerHTML = '<div class="empty" style="padding:20px 0">등록된 그룹이 없습니다</div>';
+        return;
+      }
+
+      container.innerHTML = groups.map(g => `
+        <div style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px 12px;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:14px;font-weight:700;color:#63b3ed">${g.group_name}</span>
+            <label class="toggle-switch" style="width:36px;height:20px;margin-left:auto">
+              <input type="checkbox" ${g.is_active ? 'checked' : ''} onchange="toggleKeywordGroup(${g.id}, this.checked)" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb" style="width:14px;height:14px"></div>
+            </label>
+            <button class="btn btn-danger btn-sm" onclick="deleteKeywordGroup(${g.id})" style="padding:4px 8px;font-size:12px">삭제</button>
+          </div>
+          <div style="font-size:13px;color:#a0aec0;line-height:1.8;margin-bottom:6px">
+            ${(g.keywords || []).map(kw => `<span class="kw-badge">${escHtml(kw)}<span class="kw-badge-del" onclick="deleteKeyword(${g.id}, '${escHtml(kw).replace(/'/g, "\\'")}')">×</span></span>`).join(' ')}
+          </div>
+          <div style="display:flex;gap:4px">
+            <input type="text" id="kwAdd_${g.id}" placeholder="키워드 추가" style="flex:1;padding:4px 8px;background:#1a1d2e;border:1px solid #2d3748;border-radius:4px;color:#e2e8f0;font-size:12px" onkeypress="if(event.key==='Enter') addKeywordToGroup(${g.id})" />
+            <button class="btn btn-success btn-sm" onclick="addKeywordToGroup(${g.id})" style="padding:4px 8px;font-size:12px">+</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      document.getElementById('kwGroupItems').innerHTML = '<div class="empty" style="padding:20px 0;color:#fc8181">로드 실패</div>';
+    }
+  }
+
+  async function addKeywordGroup() {
+    const groupName = document.getElementById('kwGroupName').value.trim();
+    const keywordsStr = document.getElementById('kwGroupKeywords').value.trim();
+    if (!groupName || !keywordsStr) { showToast('그룹명과 키워드를 입력해 주세요', 'err'); return; }
+    
+    const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k);
+    try {
+      const res = await fetch('/api/keyword-groups', { 
+        method: 'POST', 
+        headers: {'Content-Type':'application/json'}, 
+        body: JSON.stringify({ group_name: groupName, keywords, is_active: true }) 
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('kwGroupName').value = '';
+        document.getElementById('kwGroupKeywords').value = '';
+        showToast('키워드 그룹 추가 완료', 'ok');
+        loadKeywordGroups();
+      } else { showToast('추가 실패: ' + (data.error || ''), 'err'); }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function toggleKeywordGroup(id, active) {
+    try {
+      await fetch('/api/keyword-groups/' + id, { 
+        method: 'PATCH', 
+        headers: {'Content-Type':'application/json'}, 
+        body: JSON.stringify({ is_active: active }) 
+      });
+      showToast(active ? '활성화됨' : '비활성화됨', 'ok');
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function deleteKeywordGroup(id) {
+    if (!confirm('이 키워드 그룹을 삭제하시겠습니까?')) return;
+    try {
+      await fetch('/api/keyword-groups/' + id, { method: 'DELETE' });
+      showToast('삭제 완료', 'ok');
+      loadKeywordGroups();
+    } catch (e) { showToast('삭제 실패: ' + e.message, 'err'); }
+  }
+
+  // 키워드 개별 삭제
+  async function deleteKeyword(groupId, keyword) {
+    try {
+      const res = await fetch('/api/keyword-groups');
+      const data = await res.json();
+      const group = (data.groups || []).find(g => g.id === groupId);
+      if (!group) { showToast('그룹을 찾을 수 없습니다', 'err'); return; }
+      
+      const newKeywords = (group.keywords || []).filter(k => k !== keyword);
+      await fetch('/api/keyword-groups/' + groupId, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ keywords: newKeywords })
+      });
+      showToast('키워드 삭제 완료', 'ok');
+      loadKeywordGroups();
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  // 키워드 개별 추가
+  async function addKeywordToGroup(groupId) {
+    const input = document.getElementById('kwAdd_' + groupId);
+    const keyword = input.value.trim();
+    if (!keyword) return;
+    
+    try {
+      const res = await fetch('/api/keyword-groups');
+      const data = await res.json();
+      const group = (data.groups || []).find(g => g.id === groupId);
+      if (!group) { showToast('그룹을 찾을 수 없습니다', 'err'); return; }
+      
+      const newKeywords = [...(group.keywords || []), keyword];
+      await fetch('/api/keyword-groups/' + groupId, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ keywords: newKeywords })
+      });
+      input.value = '';
+      showToast('키워드 추가 완료', 'ok');
+      loadKeywordGroups();
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function loadKeywordResults() {
+    const wrap = document.getElementById('keywordResultWrap');
+    wrap.innerHTML = '<div class="empty">로딩 중...</div>';
+    try {
+      const res = await fetch('/api/section2/results');
+      const data = await res.json();
+      const rows = data.results || [];
+      if (rows.length === 0) {
+        wrap.innerHTML = '<div class="empty">수집된 결과가 없습니다</div>';
+        return;
+      }
+      wrap.innerHTML = `<table><thead><tr>
+        <th style="width:130px">수집일시</th>
+        <th style="width:110px;white-space:nowrap;">키워드</th>
+        <th style="width:35%">제목</th>
+        <th>채널</th>
+        <th>Ollama</th><th>정확성</th><th>어그로</th><th>신뢰도</th>
+      </tr></thead><tbody>${rows.map(r => {
+        const hasAnalysis = r.accuracy !== null && r.accuracy !== undefined;
+        const ollamaScore = Number(r.ollama_score);
+        const ollamaValid = Number.isFinite(ollamaScore) && ollamaScore >= 0;
+        const ollamaClass = !ollamaValid
+          ? 'score-none'
+          : (ollamaScore >= 61 ? 'score-low' : ollamaScore >= 31 ? 'score-mid' : 'score-high');
+        const collectedAt = r.collected_at || r.created_at || r.analyzed_at;
+        return `<tr>
+        <td class="cell-time">${collectedAt ? new Date(collectedAt).toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-'}</td>
+        <td><span class="kw-badge">${r.keyword || '-'}</span></td>
+        <td class="cell-title"><a href="https://youtube.com/watch?v=${r.video_id}" target="_blank">${r.title}</a></td>
+        <td class="cell-ch"><a href="https://youtube.com/channel/${r.channel_id}" target="_blank">${r.channel_name}</a></td>
+        <td><span class="score ${ollamaClass}">${ollamaValid ? ollamaScore : '-'}</span></td>
+        <td><span class="score ${hasAnalysis ? (r.accuracy >= 70 ? 'score-high' : r.accuracy >= 40 ? 'score-mid' : 'score-low') : ''}">${r.accuracy ?? '-'}</span></td>
+        <td><span class="score ${hasAnalysis ? (r.clickbait >= 61 ? 'score-low' : r.clickbait >= 31 ? 'score-mid' : 'score-high') : ''}">${r.clickbait ?? '-'}</span></td>
+        <td><span class="score ${hasAnalysis ? (r.reliability >= 70 ? 'score-high' : r.reliability >= 40 ? 'score-mid' : 'score-low') : ''}">${r.reliability ?? '-'}</span></td>
+      </tr>`;
+      }).join('')}</tbody></table>`;
+    } catch (e) {
+      wrap.innerHTML = '<div class="empty" style="color:#fc8181">로드 실패</div>';
+    }
+  }
+
+  // 초기 로드: 섹션2 설정값을 먼저 가져와 입력칸이 지연 표시되지 않도록 우선 처리
+  (async () => {
+    await fetchSection2Status();
+    fetchModule1Status();
+    fetchModule2Status();
+    setTimeout(loadCollected, 0);
+    setTimeout(loadKeywordGroups, 0);
+  })();
   setInterval(fetchModule1Status, 10000);
   setInterval(fetchModule2Status, 10000);
+  setInterval(fetchSection2Status, 10000);
 </script>
 </body>
 </html>

@@ -625,6 +625,7 @@ export async function analyzeContent(
       "clickbaitTierLabel": "일치/마케팅/훅|과장(오해/시간적 피해/낚임 수준)|왜곡(혼란/짜증)|허위/조작(실질 손실 가능)",
       "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
       "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용...<br /><br />2. 어그로성 평가 (XX점):<br />내용...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green):<br />내용...",
+      // ⚠️ evaluationReason은 반드시 1번, 2번, 3번 세 항목을 모두 포함해야 한다. 3번(신뢰도 총평)을 절대 생략하지 마라.
       "overallAssessment": "전반적인 평가",
       "recommendedTitle": "추천 제목"
     }
@@ -638,6 +639,12 @@ export async function analyzeContent(
     - 🟢 Green: 70점 이상
     - 🟡 Yellow: 40~69점
     - 🔴 Red: 39점 이하
+
+    **[evaluationReason 필수 규칙]**:
+    evaluationReason 필드는 반드시 아래 3개 항목을 **빠짐없이** 포함해야 한다. 항목 하나라도 누락하면 불합격 응답이다.
+    1. 내용 정확성 검증 (XX점): ...
+    2. 어그로성 평가 (XX점): ...
+    3. 신뢰도 총평 (XX점 / 🟢🟡🔴): ...
     `;
 
   // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
@@ -833,6 +840,19 @@ export async function analyzeContent(
 
     if (subtitleSummaryOverride) {
       analysisData.subtitleSummary = subtitleSummaryOverride;
+    }
+
+    // [Post-processing] evaluationReason에 3번(신뢰도 총평)이 누락된 경우 자동 보완
+    if (analysisData.evaluationReason && typeof analysisData.evaluationReason === 'string') {
+      const hasSection3 = /3\.\s*신뢰도\s*총평/.test(analysisData.evaluationReason);
+      if (!hasSection3 && analysisData.reliability != null) {
+        const rel = Number(analysisData.reliability);
+        const emoji = rel >= 70 ? '🟢' : rel >= 40 ? '🟡' : '🔴';
+        const colorLabel = rel >= 70 ? 'Green' : rel >= 40 ? 'Yellow' : 'Red';
+        const section3 = `<br /><br />3. 신뢰도 총평 (${rel}점 / ${emoji} ${colorLabel}):<br />종합 신뢰도 ${rel}점으로 ${colorLabel} 등급입니다.`;
+        analysisData.evaluationReason = analysisData.evaluationReason.trimEnd() + section3;
+        console.log('[Post-processing] evaluationReason에 누락된 3번(신뢰도 총평) 자동 보완');
+      }
     }
 
     // [Final Safety Check] 삭제

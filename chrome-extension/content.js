@@ -211,22 +211,93 @@
     return null;
   }
 
+  // 열려있는 유튜브 패널(설명, 자막 등) 닫기
+  function closeEngagementPanels() {
+    const panels = document.querySelectorAll('ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]');
+    for (const panel of panels) {
+      const closeBtn = panel.querySelector('#visibility-button button, button[aria-label="닫기"], button[aria-label="Close"], button[aria-label="Close transcript"]');
+      if (closeBtn) {
+        closeBtn.click();
+        log('열려있는 패널 닫기 완료');
+      }
+    }
+    
+    const modalCloseBtns = document.querySelectorAll('tp-yt-paper-dialog button[aria-label="닫기"], tp-yt-paper-dialog button[aria-label="Close"]');
+    for (const btn of modalCloseBtns) {
+      btn.click();
+    }
+
+    // 더보기 메뉴 등의 드롭다운을 닫기 위해 빈 공간 클릭 및 ESC 키 이벤트 발생
+    document.body.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+
+    // 화면에 남은 검은 막(backdrop)이나 찌꺼기 팝업 강제 제거 (최후의 수단)
+    const backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+    backdrops.forEach(el => {
+      el.click(); // 자연스럽게 닫히도록 유도
+      el.removeAttribute('opened');
+      el.style.display = 'none';
+      el.style.opacity = '0';
+      el.style.visibility = 'hidden';
+      setTimeout(() => { if (el.parentNode) el.remove(); }, 50);
+    });
+    
+    const dropdowns = document.querySelectorAll('tp-yt-iron-dropdown');
+    dropdowns.forEach(el => {
+      el.removeAttribute('opened');
+      if (el.style.display !== 'none') {
+        el.style.display = 'none';
+      }
+    });
+
+    // 스크롤 잠금 해제 (모달이 남긴 부작용 처리)
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }
+
   // 방법 2: 자막 패널 자동 오픈 후 텍스트 추출 (최후 폴백)
   async function method2_panel() {
     log('[방법2] 자막 패널 시도...');
+
+    // 깜빡임 방지를 위해 실행 동안만 백드롭(검은막) 강제 숨김 CSS 주입
+    const styleId = 'aggro-hide-backdrop-temp';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      styleEl.textContent = `
+        tp-yt-iron-overlay-backdrop {
+          display: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    const cleanupTempStyle = () => {
+      if (styleEl && styleEl.parentNode) {
+        styleEl.parentNode.removeChild(styleEl);
+      }
+    };
 
     // 이미 열려있는 경우
     const already = collectPanelItems();
     if (already && already.length > 0) {
       log(`[방법2] 자막 패널에서 추출: ${already.length}개 항목`);
+      cleanupTempStyle();
       return already;
     }
 
+    const transcriptKeywords = ['show transcript', 'transcript', '스크립트 표시', '대본 보기', '자막 표시', '자막 보기'];
+
     // 1) "스크립트 표시 / Show transcript" 직접 클릭 시도
-    const transcriptDirect = findClickableByText(['show transcript', 'transcript', '스크립트 표시', '대본 보기']);
+    const transcriptDirect = findClickableByText(transcriptKeywords);
     if (transcriptDirect) {
       transcriptDirect.click();
       const items = await waitForPanelItems(5000);
+      closeEngagementPanels();
+      cleanupTempStyle();
       if (items && items.length > 0) {
         log(`[방법2] 자막 패널(직접 오픈) 추출: ${items.length}개 항목`);
         return items;
@@ -241,17 +312,23 @@
       moreButton.click();
       await sleep(300);
 
-      const transcriptMenu = findClickableByText(['show transcript', 'transcript', '스크립트 표시', '대본 보기']);
+      const transcriptMenu = findClickableByText(transcriptKeywords);
       if (transcriptMenu) {
         transcriptMenu.click();
         const items = await waitForPanelItems(6000);
+        closeEngagementPanels();
+        cleanupTempStyle();
         if (items && items.length > 0) {
           log(`[방법2] 자막 패널(메뉴 오픈) 추출: ${items.length}개 항목`);
           return items;
         }
       }
+      
+      // 추출 실패했거나 메뉴가 없어도 열려있는 패널 닫기
+      closeEngagementPanels();
     }
 
+    cleanupTempStyle();
     log('[방법2] 자막 패널 없음');
     return null;
   }
@@ -327,6 +404,17 @@
         // 2. 자막 추출
         setButtonState('loading');
         const transcriptItems = await extractTranscript();
+
+        if (!transcriptItems || transcriptItems.length === 0) {
+          alert('이 영상은 자막(스크립트)이 제공되지 않아 어그로 분석을 할 수 없습니다.');
+          setButtonState('error');
+          btn.classList.remove('analyzing');
+          setTimeout(() => {
+            setButtonState('idle');
+          }, 3000);
+          return;
+        }
+
         const transcript = transcriptItems.map(item => item.text).join(' ');
 
         log(`자막: ${transcript.length}자, ${transcriptItems.length}개 항목`);

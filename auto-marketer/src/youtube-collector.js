@@ -4,6 +4,22 @@ const config = require('./config');
 const YT_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search';
 const YT_VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos';
 
+// 본진(/api/analysis/request) liveKeywords 차단 규칙 동기화 (Section2 사전 제외용)
+const MAIN_APP_LIVE_KEYWORDS = [
+  '라이브', '생방송', '생중계', '실시간 방송',
+  ' live', '(live)', '[live]',
+  'live stream', 'livestream', 'streaming', 'streamer', '스트리밍', '스트리머',
+  '다시보기', '풀영상', '전편', '녹화본', '방송분', '(녹)',
+  '무대영상', '공연영상', '콘서트', 'fancam', '직캠',
+  '하이라이트', '풀 하이라이트', 'highlight', 'highlights',
+  ' h/l', '[h/l]', '(h/l)', ' hl ', '[hl]', '(hl)',
+  '득점장면', '골장면', '명장면', '주요장면', '전반전', '후반전',
+  '모든 골', '전경기', '경기 요약',
+  '정주행', '연속보기', '모음집', '모음', '클립', 'clips',
+  '실시간', '방송중', '달립시다', '탐방',
+  '역대급', '최신판', '멸망전', '대회', '스크림', '내전', '자랭',
+];
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -37,6 +53,16 @@ function isExcludedVideo(v) {
   if (liveKeywords.some(kw => title.includes(kw))) return { excluded: true, reason: 'live_format' };
 
   return { excluded: false };
+}
+
+function isLikelyRejectedByMainAppLiveFilter(v) {
+  const title = (v?.snippet?.title || '').toLowerCase();
+  if (!title) return { rejected: false };
+
+  const matched = MAIN_APP_LIVE_KEYWORDS.find((kw) => title.includes(kw));
+  if (!matched) return { rejected: false };
+
+  return { rejected: true, reason: 'main_app_live_filter', matchedKeyword: matched };
 }
 
 
@@ -194,11 +220,12 @@ async function collectType1(n, recentVideoIds, recentChannelMap, seenVideoIds) {
         const vc = parseInt(v.statistics?.viewCount || '0', 10);
         if (vc < config.minViewCount) continue;
 
-        const excl = isExcludedVideo(v);
-        if (excl.excluded) {
-          console.log(`  [Type1][SKIP-${excl.reason.toUpperCase()}] 필터 제외: ${title}`);
-          continue;
-        }
+        if (isExcludedVideo(v).excluded) continue;
+
+        // Type1 (전체 트렌딩)도 핵심 카테고리 7개(22,24,25,26,27,28,29)만 수집하여 무의미한 영상 필터링
+        const catId = (v.snippet?.categoryId || '').toString();
+        const allowedCategories = ['22', '24', '25', '26', '27', '28', '29'];
+        if (!allowedCategories.includes(catId)) continue;
 
         candidates.push(normalizeVideo(v, 'type1', '전체 트렌드'));
         if (candidates.length >= targetWithBuffer) break;
@@ -453,24 +480,31 @@ async function collectType2(m, recentVideoIds, recentChannelMap, seenVideoIds, o
 }
 
 /**
- * [Type3] 어그로 키워드 사냥 — 섹션2 핵심
+ * [섹션2] 어그로 키워드 사냥 — 섹션2 핵심
  * DB의 bot_aggro_keywords에서 키워드 그룹을 가져와 각 키워드로 YouTube 검색.
  * 기본 필터링만 수행하고 후보를 모두 반환 (사전 스코어링은 job에서 처리).
  */
-async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, options = {}) {
+async function collectSection2(recentVideoIds, recentChannelMap, seenVideoIds, options = {}) {
   const { getAggroKeywordGroups } = require('./db');
-  const k = options.aggroSearchPerKeyword ?? config.aggroSearchPerKeyword ?? 30;
-  const publishedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const maxPerChannel = config.maxPerChannel ?? 2;
 
-  console.log(`\n[Collector][Type3] 어그로 키워드 사냥 시작 (키워드당 최대 ${k}개)...`);
+  const kRaw = Number(options.keywordSearchCount ?? options.aggroSearchPerKeyword ?? config.aggroSearchPerKeyword ?? 30);
+  const k = Number.isFinite(kRaw) ? Math.max(1, Math.min(50, Math.floor(kRaw))) : 30;
+  
+  // publishedAfter: 최근 N일 이내 (기본 5일)
+  const days = options.publishedAfterDays ?? 5;
+  const publishedAfter = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  
+  const maxPerChannel = config.maxPerChannel ?? 3;
+
+  console.log(`\n[Collector][Section2] 어그로 키워드 사냥 시작 (키워드당 최대 ${k}개)`);
+  console.log(`  업로드 범위: 최근 ${days}일 (${new Date(publishedAfter).toLocaleString('ko-KR')} ~ 현재)`);
 
   // DB에서 활성 키워드 그룹 로드
   let keywordGroups;
   try {
     keywordGroups = await getAggroKeywordGroups(true);
   } catch (err) {
-    console.warn('[Collector][Type3] DB 키워드 로드 실패, config 폴백 사용:', err.message);
+    console.warn('[Collector][Section2] DB 키워드 로드 실패, config 폴백 사용:', err.message);
     keywordGroups = (config.defaultAggroKeywordGroups || []).map(g => ({
       group_name: g.groupName,
       keywords: g.keywords,
@@ -478,21 +512,28 @@ async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, opti
   }
 
   if (keywordGroups.length === 0) {
-    console.log('[Collector][Type3] 활성 키워드 그룹 없음. 스킵.');
+    console.log('[Collector][Section2] 활성 키워드 그룹 없음. 스킵.');
     return [];
   }
 
   const allKeywords = [];
+  const seenKeywordSet = new Set();
   for (const group of keywordGroups) {
     const kws = Array.isArray(group.keywords) ? group.keywords : [];
-    console.log(`  [Type3] 그룹 "${group.group_name}": ${kws.length}개 키워드`);
+    console.log(`  [Section2] 그룹 "${group.group_name}": ${kws.length}개 키워드`);
     for (const kw of kws) {
-      allKeywords.push({ keyword: kw, groupName: group.group_name });
+      const keyword = String(kw || '').trim();
+      if (!keyword) continue;
+      const norm = keyword.toLowerCase();
+      if (seenKeywordSet.has(norm)) continue;
+      seenKeywordSet.add(norm);
+      allKeywords.push({ keyword, groupName: group.group_name });
     }
   }
 
   const candidates = [];
   const channelCount = {};
+  let preRejectedByMainApp = 0;
 
   for (const { keyword, groupName } of allKeywords) {
     try {
@@ -506,14 +547,14 @@ async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, opti
           relevanceLanguage: 'ko',
           publishedAfter,
           order: 'viewCount',
-          maxResults: Math.min(k, 50),
+          maxResults: 50,
           videoDuration: 'medium',
         },
       });
 
       const rawIds = (searchRes.data.items || []).map(i => i.id.videoId).filter(Boolean);
       if (rawIds.length === 0) {
-        console.log(`  [Type3] "${keyword}" → 결과 없음`);
+        console.log(`  [Section2] "${keyword}" → 결과 없음`);
         continue;
       }
 
@@ -521,6 +562,7 @@ async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, opti
       let added = 0;
 
       for (const v of details) {
+        if (added >= k) break;
         const vId = v.id;
         if (isShorts(v.contentDetails?.duration)) continue;
         if (recentVideoIds.has(vId)) continue;
@@ -531,27 +573,37 @@ async function collectType3(recentVideoIds, recentChannelMap, seenVideoIds, opti
         const excl = isExcludedVideo(v);
         if (excl.excluded) continue;
 
+        const mainReject = isLikelyRejectedByMainAppLiveFilter(v);
+        if (mainReject.rejected) {
+          preRejectedByMainApp++;
+          const title = v?.snippet?.title || '';
+          console.log(`  [Section2][SKIP-MAIN-LIVE] 키워드="${mainReject.matchedKeyword}" 제목="${title.substring(0, 90)}"`);
+          continue;
+        }
+
         const chId = v.snippet.channelId;
         if ((channelCount[chId] || 0) >= maxPerChannel) continue;
 
-        const normalized = normalizeVideo(v, 'type3', `어그로:${groupName}:${keyword}`);
+        const normalized = normalizeVideo(v, 'section2', `어그로:${groupName}:${keyword}`);
+        normalized.keyword = keyword;
+        normalized.keywordGroup = groupName;
         candidates.push(normalized);
         seenVideoIds.add(vId);
         channelCount[chId] = (channelCount[chId] || 0) + 1;
         added++;
       }
 
-      console.log(`  [Type3] "${keyword}" → ${rawIds.length}건 검색, ${added}건 후보 추가`);
+      console.log(`  [Section2] "${keyword}" → ${rawIds.length}건 검색, ${added}건 후보 추가`);
       await sleep(300);
     } catch (err) {
-      console.error(`  [Type3] "${keyword}" 검색 실패:`, err.response?.data?.error?.message || err.message);
+      console.error(`  [Section2] "${keyword}" 검색 실패:`, err.response?.data?.error?.message || err.message);
     }
   }
 
   // VPH 내림차순 정렬
   candidates.sort((a, b) => b.viewsPerHour - a.viewsPerHour);
 
-  console.log(`[Collector][Type3] 어그로 키워드 사냥 완료: ${candidates.length}개 후보 확보`);
+  console.log(`[Collector][Section2] 어그로 키워드 사냥 완료: ${candidates.length}개 후보 확보 (본진 live 필터 사전제외: ${preRejectedByMainApp}개)`);
   return candidates;
 }
 
@@ -600,13 +652,83 @@ async function collectType2Only(recentVideoIds, recentChannelMap, options = {}) 
 }
 
 /**
- * Type3 전용 수집 — 어그로 키워드 사냥 (수동 실행용)
+ * [섹션2] 트렌딩 사냥 — videos.list mostPopular 기반 (쿼터: 카테고리당 1유닛)
+ * 키워드 검색(100유닛/키워드)보다 약 100배 쿼터 절약
  */
-async function collectType3Only(recentVideoIds, recentChannelMap, options = {}) {
-  const seenVideoIds = new Set();
-  const type3 = await collectType3(recentVideoIds, recentChannelMap, seenVideoIds, options);
-  console.log(`\n[Collector] Type3 전용 수집 (어그로 키워드): ${type3.length}개`);
-  return type3;
+async function collectSection2Trending(recentVideoIds, recentChannelMap, seenVideoIds, options = {}) {
+  const days = options.publishedAfterDays ?? 7;
+  const maxPerChannel = config.maxPerChannel ?? 3;
+  const publishedAfterCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const candidates = [];
+  const channelCount = {};
+
+  console.log(`\n[Collector][Section2-Trend] 트렌딩 사냥 시작 (${days}일 이내, ${config.targetCategories.length}개 카테고리)`);
+
+  for (const category of config.targetCategories) {
+    try {
+      const res = await axios.get(YT_VIDEOS_URL, {
+        params: {
+          key: config.youtubeApiKey,
+          part: 'snippet,contentDetails,statistics',
+          chart: 'mostPopular',
+          regionCode: 'KR',
+          videoCategoryId: category.id,
+          maxResults: 50,
+          hl: 'ko',
+        },
+      });
+
+      const items = res.data.items || [];
+      let added = 0;
+
+      for (const v of items) {
+        if (isShorts(v.contentDetails?.duration)) continue;
+        if (new Date(v.snippet.publishedAt) < publishedAfterCutoff) continue;
+        if (recentVideoIds.has(v.id)) continue;
+        if (seenVideoIds.has(v.id)) continue;
+        if (isChannelExcluded(recentChannelMap, v.snippet.channelId)) continue;
+        if (!isKoreanVideo(v)) continue;
+
+        const excl = isExcludedVideo(v);
+        if (excl.excluded) continue;
+
+        const mainReject = isLikelyRejectedByMainAppLiveFilter(v);
+        if (mainReject.rejected) continue;
+
+        const chId = v.snippet.channelId;
+        if ((channelCount[chId] || 0) >= maxPerChannel) continue;
+
+        const normalized = normalizeVideo(v, 'section2', category.name);
+        normalized.keyword = '트렌딩';
+        normalized.keywordGroup = '트렌딩';
+        candidates.push(normalized);
+        seenVideoIds.add(v.id);
+        channelCount[chId] = (channelCount[chId] || 0) + 1;
+        added++;
+      }
+
+      console.log(`  [Section2-Trend] "${category.name}" → ${items.length}건 수신, ${added}건 후보`);
+      await sleep(100);
+    } catch (err) {
+      console.error(`  [Section2-Trend] "${category.name}" 실패:`, err.response?.data?.error?.message || err.message);
+    }
+  }
+
+  console.log(`[Collector][Section2-Trend] 완료: ${candidates.length}개`);
+  return candidates;
 }
 
-module.exports = { collectTargetVideos, collectType1Only, collectType2Only, collectType3, collectType3Only };
+/**
+ * 섹션2 전용 수집 — 키워드 사냥 (트렌딩 제거, 순수 키워드 검색만 수행)
+ */
+async function collectSection2Only(recentVideoIds, recentChannelMap, options = {}) {
+  const seenVideoIds = new Set();
+
+  const keywordResults = await collectSection2(recentVideoIds, recentChannelMap, seenVideoIds, options);
+
+  console.log(`\n[Collector] 섹션2 전용 수집: 순수 키워드 검색 ${keywordResults.length}개`);
+  return keywordResults;
+}
+
+module.exports = { collectTargetVideos, collectType1Only, collectType2Only, collectSection2, collectSection2Only };
