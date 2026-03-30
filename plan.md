@@ -654,3 +654,43 @@ const systemPrompt = `
 
 ### 비고
 - 이번 변경은 **분석 품질(점수/챕터 로직) 저하 없이** 안정성과 응답 속도 개선을 목표로 적용.
+
+---
+
+## 18. 2026-03-30 00:50 KST — 확장팩 자막 추출 대폭 강화 + 분석이유서 3항 누락 수정 + 보안
+
+### Chrome Extension — 자막 추출 5단계 폴백 (`main-world.js`)
+기존 `/player` API + `ytInitialPlayerResponse` 2단계에서 **5단계**로 확장:
+1. `/player` API + `signatureTimestamp(sts)` 포함 → 캡션 응답 완전성 확보
+2. `ytplayer` 런타임 객체 (`raw_player_response`, `bootstrapPlayerResponse`) → SPA 전환 후에도 최신 데이터
+3. watch 페이지 HTML 직접 fetch → `ytInitialPlayerResponse` 파싱 (가장 확실)
+4. YouTube `timedtext` list API 직접 호출 (`/api/timedtext?type=list`)
+5. `/next` 응답 재귀 deep search → YouTube 구조 변경에도 `getTranscriptEndpoint.params` 탐색
+
+- MWEB 클라이언트 버전: `2.20240101` → `2.20250101`
+- ANDROID 클라이언트 버전: `19.09.37` → `19.29.37`
+
+### Chrome Extension — 검은 오버레이 제거 + UX (`content.js`)
+- `method2_panel` 실행 중 `tp-yt-iron-overlay-backdrop` CSS 강제 숨김 주입 → 검은막 깜빡임 완전 제거
+- `closeEngagementPanels()` 공격적 정리 (click, Escape, backdrop remove, dropdown hide, body overflow 복원)
+- 자막 없는 영상 조기 차단: `alert('이 영상은 자막이 제공되지 않아...')` + 분석 중단 (서버 요청 방지)
+
+### Chrome Extension — 스토어 리젝 대응 (`manifest.json`)
+- 미사용 `scripting` 권한 제거 → 정책 위반 해소
+- v1.0.0 → v1.0.1 버전 업 후 Chrome Web Store 재제출 완료 (검토 대기 중)
+
+### 본진 — evaluationReason 3번(신뢰도 총평) 누락 수정 (`lib/gemini.ts`)
+- **프롬프트 강화**: JSON 스키마 내 주석 + `[evaluationReason 필수 규칙]` 섹션 추가 ("항목 하나라도 누락하면 불합격")
+- **후처리 자동 보완**: Gemini가 3번 누락 시 `reliability` 점수 기반으로 자동 생성 (`/3\.\s*신뢰도\s*총평/` 체크)
+
+### 본진 — Supabase RLS 보안 수정
+- **RLS 활성화** (에러 3건): `t_video_subscriptions`, `bot_aggro_keywords`, `bot_keyword_videos`
+- **과도한 정책 제거** (경고 3건):
+  - `t_analyses`: 중복 SELECT 정책 4개 + INSERT 정책 1개 삭제 (all `USING(true)`)
+  - `t_magic_links`: `authenticated_all`, `service_role_all` 삭제
+  - `t_payment_logs`: `authenticated_all`, `service_role_all` 삭제
+- 3개 테이블 모두 서버(service_role)에서만 접근하므로 클라이언트 차단, 기능 영향 없음
+
+### 커밋
+- `28c148f`: 본진 + 확장팩 + 오토마케터 일괄 배포
+- `37e2527`: v1.0.1 버전 업

@@ -1,9 +1,14 @@
-const { collectTargetVideos, collectType1Only, collectType2Only, collectType3Only } = require('./youtube-collector');
+const { collectTargetVideos, collectType1Only, collectType2Only, collectSection2Only } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
 const { getTranscriptData } = require('./youtube-meta');
 const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, getRecentlyAnalyzedChannelsByCategoryMap } = require('./db');
 const { batchScoreAggro, checkOllamaConnection } = require('./aggro-prescorer');
 const defaultConfig = require('./config');
+
+// 섹션2 작업 중단 플래그
+let section2AbortFlag = false;
+function abortSection2() { section2AbortFlag = true; }
+function resetSection2Abort() { section2AbortFlag = false; }
 
 /**
  * 공통: 자막 수집 + 자막없는 영상 필터링 + 분석 실행
@@ -183,53 +188,91 @@ async function runJobType2(options = {}) {
 }
 
 /**
- * Type3 실행 — 어그로 키워드 사냥 (섹션2 핵심)
+ * 섹션2 실행 — 어그로 키워드 사냥 (섹션2 핵심)
  * 파이프라인: 수집 → 자막 → 오픈소스 AI 사전 스코어링 → 컷라인 필터 → 유료 분석
  */
-async function runJobType3(options = {}) {
+async function runJobSection2(options = {}, statusCallback = null) {
   const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
-  const cutoff = options.aggroPreScoreCutoff ?? defaultConfig.aggroPreScoreCutoff ?? 60;
+  const cutoff = options.aggroPreScoreCutoff ?? defaultConfig.aggroPreScoreCutoff ?? 31;
   const dailyLimit = options.aggroDailyAnalysisLimit ?? defaultConfig.aggroDailyAnalysisLimit ?? 30;
   const startTime = Date.now();
 
   console.log(`\n${'='.repeat(60)}`);
-  console.log(`[Job][Type3] 어그로 키워드 사냥 시작: ${new Date().toLocaleString('ko-KR')}`);
-  console.log(`[Job][Type3] 사전필터 컷라인: ${cutoff}점, 유료분석 일일한도: ${dailyLimit}개`);
+  console.log(`[Job][Section2] 어그로 키워드 사냥 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`[Job][Section2] 사전필터 컷라인: ${cutoff}점, 유료분석 일일한도: ${dailyLimit}개`);
   console.log(`${'='.repeat(60)}`);
 
+  // 중단 플래그 초기화
+  resetSection2Abort();
+
+  // 상태 초기화
+  if (statusCallback) {
+    statusCallback({ 
+      currentStep: '초기화 중', 
+      collectedCount: 0, 
+      transcriptCount: 0, 
+      preScoreCount: 0, 
+      passedCutoff: 0, 
+      analyzingCount: 0,
+      totalToAnalyze: 0
+    });
+  }
+
   try {
+    // 중단 체크
+    if (section2AbortFlag) {
+      console.log(`[Job][Section2] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
     // 0. Ollama 연결 확인
     const ollamaStatus = await checkOllamaConnection();
     if (!ollamaStatus.connected) {
-      console.error(`[Job][Type3] ❌ Ollama 미연결: ${ollamaStatus.error}`);
+      console.error(`[Job][Section2] ❌ Ollama 미연결: ${ollamaStatus.error}`);
       console.error(`  → Ollama 설치/실행 후 재시도. 설치: https://ollama.com`);
       return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'ollama', error: ollamaStatus.error }] };
     }
     if (!ollamaStatus.hasRequiredModel) {
-      console.error(`[Job][Type3] ❌ 필요 모델 없음: ${ollamaStatus.requiredModel}`);
+      console.error(`[Job][Section2] ❌ 필요 모델 없음: ${ollamaStatus.requiredModel}`);
       console.error(`  → ollama pull ${ollamaStatus.requiredModel} 실행 필요`);
       console.error(`  → 보유 모델: ${ollamaStatus.models.join(', ') || '없음'}`);
       return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'model', error: `${ollamaStatus.requiredModel} 없음` }] };
     }
-    console.log(`[Job][Type3] ✅ Ollama 연결 OK (모델: ${ollamaStatus.requiredModel})`);
+    console.log(`[Job][Section2] ✅ Ollama 연결 OK (모델: ${ollamaStatus.requiredModel})`);
 
     // 1. 중복 체크
-    console.log(`\n[Job][Type3] 중복 체크 (최근 ${dedupDays}일)...`);
+    console.log(`\n[Job][Section2] 중복 체크 (최근 ${dedupDays}일)...`);
     const [recentVideoIds, recentChannelMap] = await Promise.all([
       getRecentlyAnalyzedVideoIds(dedupDays),
       getRecentlyAnalyzedChannelIds(dedupDays),
     ]);
-    console.log(`[Job][Type3] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelMap.size}개`);
+    console.log(`[Job][Section2] 기분석 영상: ${recentVideoIds.size}개, 채널: ${recentChannelMap.size}개`);
+
+    // 중단 체크
+    if (section2AbortFlag) {
+      console.log(`[Job][Section2] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
 
     // 2. 어그로 키워드 수집
-    const videos = await collectType3Only(recentVideoIds, recentChannelMap, options);
+    if (statusCallback) statusCallback({ currentStep: '키워드 수집 중', collectedCount: 0 });
+    const videos = await collectSection2Only(recentVideoIds, recentChannelMap, options);
+    if (statusCallback) statusCallback({ collectedCount: videos.length });
+    
     if (videos.length === 0) {
-      console.log(`[Job][Type3] 수집된 후보 없음. 종료.`);
+      console.log(`[Job][Section2] 수집된 후보 없음. 종료.`);
       return { success: 0, fail: 0, skipped: 0, errors: [] };
     }
 
+    // 중단 체크
+    if (section2AbortFlag) {
+      console.log(`[Job][Section2] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
     // 3. 자막 수집
-    console.log(`\n[Job][Type3] 자막 수집 시작 (${videos.length}개)...`);
+    if (statusCallback) statusCallback({ currentStep: '자막 수집 중', transcriptCount: 0 });
+    console.log(`\n[Job][Section2] 자막 수집 시작 (${videos.length}개)...`);
     const BLACKLIST_CATEGORY_IDS = new Set(['1','2','10','15','17','19','20','23','43']);
     const withTranscript = [];
     let noTranscriptCount = 0;
@@ -248,19 +291,33 @@ async function runJobType3(options = {}) {
         v.transcript = meta.transcript;
         v.transcriptItems = meta.transcriptItems;
         withTranscript.push(v);
+        if (statusCallback) statusCallback({ transcriptCount: withTranscript.length });
       } else {
         noTranscriptCount++;
       }
     }
-    console.log(`[Job][Type3] 자막 있는 후보: ${withTranscript.length}개 (자막없음: ${noTranscriptCount}개)`);
+    console.log(`[Job][Section2] 자막 있는 후보: ${withTranscript.length}개 (자막없음: ${noTranscriptCount}개)`);
 
     if (withTranscript.length === 0) {
       return { success: 0, fail: 0, skipped: noTranscriptCount, errors: [] };
     }
 
+    // 중단 체크
+    if (section2AbortFlag) {
+      console.log(`[Job][Section2] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
     // 4. 오픈소스 AI 사전 스코어링
-    console.log(`\n[Job][Type3] 오픈소스 AI 사전 스코어링 시작...`);
-    const scores = await batchScoreAggro(withTranscript);
+    if (statusCallback) statusCallback({ currentStep: 'Ollama 사전 스코어링 중', preScoreCount: 0 });
+    console.log(`\n[Job][Section2] 오픈소스 AI 사전 스코어링 시작...`);
+    const scores = await batchScoreAggro(withTranscript, (progress) => {
+      if (statusCallback) statusCallback({ preScoreCount: progress });
+    });
+
+    // Ollama 점수를 DB에 저장
+    const { saveOllamaScores } = require('./db');
+    await saveOllamaScores(withTranscript, scores);
 
     // 5. 컷라인 필터
     const scoreMap = new Map(scores.map(s => [s.videoId, s]));
@@ -272,20 +329,30 @@ async function runJobType3(options = {}) {
     // 일일 한도 적용
     const toAnalyze = filtered.slice(0, dailyLimit);
 
-    console.log(`\n[Job][Type3] 사전필터 결과: ${scores.length}건 스코어링 → ${filtered.length}건 컷라인(${cutoff}점) 통과 → ${toAnalyze.length}건 유료분석 대상`);
+    if (statusCallback) statusCallback({ passedCutoff: filtered.length, totalToAnalyze: toAnalyze.length });
+    console.log(`\n[Job][Section2] 사전필터 결과: ${scores.length}건 스코어링 → ${filtered.length}건 컷라인(${cutoff}점) 통과 → ${toAnalyze.length}건 유료분석 대상`);
 
     if (toAnalyze.length === 0) {
-      console.log(`[Job][Type3] 컷라인 통과 영상 없음. 종료.`);
+      console.log(`[Job][Section2] 컷라인 통과 영상 없음. 종료.`);
       return { success: 0, fail: 0, skipped: withTranscript.length, preScored: scores.length, errors: [] };
     }
 
+    // 중단 체크
+    if (section2AbortFlag) {
+      console.log(`[Job][Section2] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
     // 6. 유료 정식 AI 분석
-    console.log(`\n[Job][Type3] 유료 분석 시작 (${toAnalyze.length}개)...`);
-    const results = await analyzeVideos(toAnalyze, options);
+    if (statusCallback) statusCallback({ currentStep: 'LLM 유료 분석 중', analyzingCount: 0 });
+    console.log(`\n[Job][Section2] 유료 분석 시작 (${toAnalyze.length}개)...`);
+    const results = await analyzeVideos(toAnalyze, options, (progress) => {
+      if (statusCallback) statusCallback({ analyzingCount: progress });
+    });
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`[Job][Type3] 완료 — 소요: ${elapsed}초`);
+    console.log(`[Job][Section2] 완료 — 소요: ${elapsed}초`);
     console.log(`  수집: ${videos.length}개 → 자막: ${withTranscript.length}개 → 사전스코어: ${scores.length}건 → 컷라인통과: ${filtered.length}건 → 유료분석: ${toAnalyze.length}개`);
     console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개`);
     if (results.errors?.length > 0) {
@@ -300,9 +367,9 @@ async function runJobType3(options = {}) {
       passedCutoff: filtered.length,
     };
   } catch (err) {
-    console.error('[Job][Type3] 치명적 오류:', err);
+    console.error('[Job][Section2] 치명적 오류:', err);
     return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
   }
 }
 
-module.exports = { runJob, runJobType1, runJobType2, runJobType3 };
+module.exports = { runJob, runJobType1, runJobType2, runJobSection2, abortSection2 };

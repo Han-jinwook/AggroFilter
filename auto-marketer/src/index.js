@@ -23,6 +23,15 @@ console.log('========================================\n');
 startDashboard();
 
 async function scheduledRun(label) {
+  const { getModule1Status } = require('./dashboard/server');
+  const status = getModule1Status();
+  
+  // 오토모드 OFF면 스킵
+  if (!status.autoMode) {
+    console.log(`[Cron] ${label} 잡 스킵 (오토모드 OFF)`);
+    return;
+  }
+  
   const opts = getRuntimeOptions();
   console.log(`[Cron] ${label} 잡 트리거 (N=${opts.trackNTotal}, M=${opts.trackMPerCategory}, X=${opts.dedupDays}일)`);
   setBotStatus({ running: true });

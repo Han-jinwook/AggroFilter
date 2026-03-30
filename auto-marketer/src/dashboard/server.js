@@ -7,11 +7,20 @@ const {
   upsertCommunityTarget,
   deleteCommunityTarget,
   getCommentLogs,
+  getAggroKeywordGroups,
+  upsertAggroKeywordGroup,
+  deleteAggroKeywordGroup,
 } = require('../db');
 const config = require('../config');
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ────────────── 옵션 저장/로드 헬퍼 ──────────────
@@ -51,6 +60,52 @@ const M2_DEFAULTS = {
 let module2Options = loadJsonFile(M2_OPTS_FILE, M2_DEFAULTS);
 let module2Status = { running: false, lastRun: null, lastResult: null, progress: null, autoMode: false };
 function setModule2Status(s) { Object.assign(module2Status, s); }
+
+// ────────────── 섹션2 (키워드 사냥) ──────────────
+const S2_OPTS_FILE = path.join(DATA_DIR, 'section2_options.json');
+const S2_DEFAULTS = {
+  keywordSearchCount: 30,
+  prefilterCutline: 31,
+  dailyAnalysisLimit: 30,
+  publishedAfterDays: 1, // 최근 N일 이내 (1=24시간, 2=48시간)
+};
+function toValidInt(value, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'string' && value.trim() === '') return fallback;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const v = Math.floor(n);
+  if (v < min || v > max) return fallback;
+  return v;
+}
+
+function normalizeSection2Options(raw = {}) {
+  return {
+    keywordSearchCount: toValidInt(raw.keywordSearchCount, S2_DEFAULTS.keywordSearchCount, { min: 1, max: 50 }),
+    prefilterCutline: toValidInt(raw.prefilterCutline, S2_DEFAULTS.prefilterCutline, { min: 0, max: 100 }),
+    dailyAnalysisLimit: toValidInt(raw.dailyAnalysisLimit, S2_DEFAULTS.dailyAnalysisLimit, { min: 1, max: 100 }),
+    publishedAfterDays: toValidInt(raw.publishedAfterDays, S2_DEFAULTS.publishedAfterDays, { min: 1, max: 30 }),
+  };
+}
+
+let section2Options = normalizeSection2Options(loadJsonFile(S2_OPTS_FILE, S2_DEFAULTS));
+let section2Status = { 
+  running: false, 
+  lastRun: null, 
+  lastResult: null, 
+  progress: null, 
+  autoMode: false,
+  // 실시간 진행 정보
+  currentStep: null,           // '수집중', 'Ollama 분석중', 'LLM 분석중'
+  currentKeyword: null,        // 현재 처리 중인 키워드
+  collectedCount: 0,           // 수집된 영상 수
+  transcriptCount: 0,          // 자막 수집 완료 수
+  preScoreCount: 0,            // Ollama 사전 스코어링 완료 수
+  passedCutoff: 0,             // 컷라인 통과 수
+  analyzingCount: 0,           // 유료 분석 중/완료 수
+  totalToAnalyze: 0            // 유료 분석 대상 총 수
+};
+function setSection2Status(s) { Object.assign(section2Status, s); }
 
 // 하위호환: 기존 코드가 참조하는 runtimeOptions/botStatus
 let runtimeOptions = module1Options;
@@ -157,6 +212,80 @@ app.post('/api/module2/run', (req, res) => {
   _runJobAsync(() => Promise.resolve({ success: 0, fail: 0, skipped: 0 }), '모듈2', '커뮤니티 수집 중...', module2Options, setModule2Status);
 });
 
+// ────────────── 섹션2 전용 API ──────────────
+
+// GET /api/section2/status
+app.get('/api/section2/status', (req, res) => {
+  res.json({ status: section2Status, options: section2Options });
+});
+
+// POST /api/section2/automode
+app.post('/api/section2/automode', (req, res) => {
+  const { enabled } = req.body;
+  section2Status.autoMode = !!enabled;
+  res.json({ ok: true, autoMode: section2Status.autoMode });
+});
+
+// POST /api/section2/options
+app.post('/api/section2/options', (req, res) => {
+  const { keywordSearchCount, prefilterCutline, dailyAnalysisLimit, publishedAfterDays } = req.body;
+  if (keywordSearchCount !== undefined) {
+    section2Options.keywordSearchCount = toValidInt(keywordSearchCount, section2Options.keywordSearchCount, { min: 1, max: 50 });
+  }
+  if (prefilterCutline !== undefined) {
+    section2Options.prefilterCutline = toValidInt(prefilterCutline, section2Options.prefilterCutline, { min: 0, max: 100 });
+  }
+  if (dailyAnalysisLimit !== undefined) {
+    section2Options.dailyAnalysisLimit = toValidInt(dailyAnalysisLimit, section2Options.dailyAnalysisLimit, { min: 1, max: 100 });
+  }
+  if (publishedAfterDays !== undefined) {
+    section2Options.publishedAfterDays = toValidInt(publishedAfterDays, section2Options.publishedAfterDays, { min: 1, max: 30 });
+  }
+
+  section2Options = normalizeSection2Options(section2Options);
+  saveJsonFile(S2_OPTS_FILE, section2Options);
+  res.json({ ok: true, options: section2Options });
+});
+
+// POST /api/section2/run
+app.post('/api/section2/run', (req, res) => {
+  if (section2Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  res.json({ ok: true, message: '섹션2 키워드 사냥 시작' });
+  const { runJobSection2 } = require('../job');
+  
+  // statusCallback으로 실시간 진행 상황 업데이트
+  const statusCallback = (updates) => {
+    setSection2Status(updates);
+  };
+  
+  _runJobAsync(
+    (opts) => runJobSection2(opts, statusCallback), 
+    '섹션2', 
+    '키워드 검색 → 사전 스코어링 → 유료 분석 중...', 
+    section2Options, 
+    setSection2Status
+  );
+});
+
+// POST /api/section2/abort - 섹션2 작업 중단
+app.post('/api/section2/abort', (req, res) => {
+  const { abortSection2 } = require('../job');
+  abortSection2();
+  console.log('[Dashboard] 섹션2 작업 중단 요청됨');
+  res.json({ ok: true, message: '작업 중단 요청됨' });
+});
+
+// GET /api/section2/results — 섹션2 수집 결과 조회
+app.get('/api/section2/results', async (req, res) => {
+  try {
+    const { getKeywordVideos } = require('../db');
+    const videos = await getKeywordVideos(200);
+    res.json({ results: videos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 공통: job 실행 후 상태 업데이트 (opts, statusSetter 파라미터로 모듈별 독립 실행)
 function _runJobAsync(jobFn, label, progressMsg, opts, statusSetter) {
   const _opts = opts || module1Options;
@@ -172,6 +301,14 @@ function _runJobAsync(jobFn, label, progressMsg, opts, statusSetter) {
         lastRun: new Date().toISOString(),
         lastResult: { ...result, summary },
         progress: null,
+        currentStep: null,
+        currentKeyword: null,
+        collectedCount: 0,
+        transcriptCount: 0,
+        preScoreCount: 0,
+        passedCutoff: 0,
+        analyzingCount: 0,
+        totalToAnalyze: 0,
       });
     } catch (e) {
       _set({
@@ -180,6 +317,14 @@ function _runJobAsync(jobFn, label, progressMsg, opts, statusSetter) {
         lastRun: new Date().toISOString(),
         lastResult: { error: e.message, summary: '❌ ' + e.message },
         progress: null,
+        currentStep: null,
+        currentKeyword: null,
+        collectedCount: 0,
+        transcriptCount: 0,
+        preScoreCount: 0,
+        passedCutoff: 0,
+        analyzingCount: 0,
+        totalToAnalyze: 0,
       });
     }
   });
@@ -248,6 +393,73 @@ app.delete('/api/collected', async (req, res) => {
     } finally {
       client.release();
     }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ────────────── 키워드 그룹 API ──────────────
+
+// GET /api/keyword-groups
+app.get('/api/keyword-groups', async (req, res) => {
+  try {
+    const groups = await getAggroKeywordGroups(false); // 비활성 포함 전체
+    res.json({ groups });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/keyword-groups — 추가
+app.post('/api/keyword-groups', async (req, res) => {
+  try {
+    const { group_name, keywords, is_active } = req.body;
+    if (!group_name || !keywords) return res.status(400).json({ error: 'group_name과 keywords 필수' });
+    const kwArr = Array.isArray(keywords) ? keywords : keywords.split(',').map(k => k.trim()).filter(Boolean);
+    const row = await upsertAggroKeywordGroup({ group_name, keywords: kwArr, is_active: is_active ?? true });
+    res.json({ ok: true, group: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/keyword-groups/:id — 수정 (활성화/비활성화)
+app.patch('/api/keyword-groups/:id', async (req, res) => {
+  try {
+    const { is_active, group_name, keywords } = req.body;
+    const id = parseInt(req.params.id, 10);
+    
+    // 기존 데이터 조회
+    const client = await pool.connect();
+    try {
+      const existing = await client.query('SELECT * FROM bot_aggro_keywords WHERE id=$1', [id]);
+      if (existing.rows.length === 0) return res.status(404).json({ error: '그룹을 찾을 수 없습니다' });
+      
+      const current = existing.rows[0];
+      const kwArr = keywords 
+        ? (Array.isArray(keywords) ? keywords : keywords.split(',').map(k => k.trim()).filter(Boolean))
+        : current.keywords;
+      
+      const row = await upsertAggroKeywordGroup({
+        id,
+        group_name: group_name || current.group_name,
+        keywords: kwArr,
+        is_active: is_active !== undefined ? is_active : current.is_active
+      });
+      res.json({ ok: true, group: row });
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/keyword-groups/:id
+app.delete('/api/keyword-groups/:id', async (req, res) => {
+  try {
+    await deleteAggroKeywordGroup(req.params.id);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -322,4 +534,4 @@ function startDashboard() {
   });
 }
 
-module.exports = { startDashboard, getRuntimeOptions, setBotStatus, getBotStatus };
+module.exports = { startDashboard, getRuntimeOptions, setBotStatus, getBotStatus, getModule1Status: () => module1Status };

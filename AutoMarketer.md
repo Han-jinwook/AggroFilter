@@ -176,7 +176,63 @@ Version: 7.0 (2026-03-09 — 어그로 사냥 전술 개편)
 |------|------|------|
 | 1순위 | 섹션 1: 2-Track 트렌딩 수집 엔진 | ✅ 완료 |
 | 2순위 | 섹션 0: 대시보드 UI (섹션1 연동) | ✅ 완료 |
-| **3순위** | **섹션 2: 어그로 키워드 사냥 (Type3)** | 🔥 진행 중 |
+| **3순위** | **섹션 2: 어그로 키워드 사냥 (Type3)** | ✅ 완료 (2026-03-12) |
 | 4순위 | 섹션 3: 요주의 채널 딥다이브 | 대기 |
 | 5순위 | 섹션 0: 대시보드 확장 (섹션2·3 연동) | 대기 |
 | 6순위 | 섹션 4: 커뮤니티 댓글 + 발화점 감시 | 대기 |
+
+---
+
+## 8. 섹션 2 구현 완료 내역 (2026-03-12)
+
+### 8.1 대시보드 UI
+- **탭 추가**: "🎯 키워드 사냥" 탭 신설
+- **3개 카드 구성**:
+  - 📊 현황 카드: 오토모드, 실행 상태, 수동 실행 버튼
+  - 🔑 키워드 관리 카드: 그룹 추가/수정/삭제, 활성화 토글
+  - ⚙️ 설정 카드: K(키워드당 검색 개수), 사전필터 컷라인, 유료 분석 일일한도
+- **결과 테이블**: 키워드별 수집 결과 최신 200개 표시
+
+### 8.2 백엔드 API
+- `GET /api/section2/status` - 상태 조회
+- `POST /api/section2/automode` - 오토모드 토글
+- `POST /api/section2/options` - 설정 저장
+- `POST /api/section2/run` - 수동 실행 (runJobType3 연결)
+- `GET /api/section2/results` - 수집 결과 조회
+- `GET /api/keyword-groups` - 키워드 그룹 목록
+- `POST /api/keyword-groups` - 키워드 그룹 추가
+- `PATCH /api/keyword-groups/:id` - 키워드 그룹 수정
+- `DELETE /api/keyword-groups/:id` - 키워드 그룹 삭제
+
+### 8.3 수집 로직
+- **YouTube 검색**: `collectSection2` 함수 (youtube-collector.js)
+  - DB에서 활성 키워드 그룹 로드
+  - 각 키워드로 YouTube 검색 (24시간 이내, 조회수 순)
+  - 기본 필터링 (쇼츠 제외, 한국어, 중복, 채널 쿨타임)
+- **사전 스코어링**: `aggro-prescorer.js`
+  - Ollama + Qwen 2.5 7B 로컬 추론
+  - 어그로성 점수 0~100 산출 (비용 0원)
+  - 컷라인 이상만 유료 분석 대상 선정
+- **유료 분석**: `runJobSection2` 함수 (job.js)
+  - 자막 수집 → 사전 스코어링 → 컷라인 필터 → 일일한도 적용 → 유료 AI 분석
+  - 결과 DB 저장 (`f_requester_id = 'bot-section2'`)
+
+### 8.6 함수 네이밍 규칙 (2026-03-12 정리)
+- **섹션 구분 명확화**: Type3 → Section2로 변경
+  - `collectType3` → `collectSection2`
+  - `collectType3Only` → `collectSection2Only`
+  - `runJobType3` → `runJobSection2`
+- **이유**: 섹션 번호와 타입 번호 혼동 방지, 코드 가독성 향상
+
+### 8.4 데이터베이스
+- `bot_aggro_keywords` 테이블: 키워드 그룹 관리
+  - `id`, `group_name`, `keywords` (text[]), `is_active`, `created_at`, `updated_at`
+- `t_analyses` 테이블: 분석 결과 저장
+  - 섹션2 수집 영상은 `f_requester_id = 'bot-section2'`로 구분
+  - `f_keyword` 컬럼에 검색 키워드 저장
+
+### 8.5 설정 파일
+- `auto-marketer/data/section2_options.json`:
+  - `keywordSearchCount`: 키워드당 검색 개수 (기본값: 30)
+  - `prefilterCutline`: 사전필터 컷라인 (기본값: 60)
+  - `dailyAnalysisLimit`: 유료 분석 일일한도 (기본값: 30)

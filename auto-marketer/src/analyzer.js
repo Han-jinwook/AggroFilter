@@ -5,19 +5,41 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function toNumberOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractReliabilityScore(result) {
+  if (!result || typeof result !== 'object') return null;
+  return (
+    toNumberOrNull(result.reliabilityScore) ??
+    toNumberOrNull(result.reliability) ??
+    toNumberOrNull(result.score) ??
+    toNumberOrNull(result.f_reliability_score)
+  );
+}
+
+function isTransientRequestError(err) {
+  const status = err?.response?.status;
+  const code = err?.code;
+  if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
+  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'EAI_AGAIN', 'ENOTFOUND'].includes(code)) return true;
+  return false;
+}
+
 /**
  * 분석 완료 여부를 폴링으로 확인 (최대 10분, 15초 간격)
  */
 async function pollUntilComplete(videoId, maxWaitMs = 600000) {
   const cleanVideoId = (videoId || '').toString().trim();
-  const interval = 15000;
+  const interval = 8000;
   const start = Date.now();
   let attempt = 0;
 
   while (Date.now() - start < maxWaitMs) {
     attempt++;
     process.stdout.write(`  [Analyzer] 폴링 중... (${attempt}회차, ${(Math.round((Date.now() - start) / 1000))}초 경과)\r`);
-    await sleep(interval);
     try {
       const res = await axios.get(`${mainAppUrl}/api/analysis/status`, {
         params: { videoId: cleanVideoId },
@@ -30,6 +52,7 @@ async function pollUntilComplete(videoId, maxWaitMs = 600000) {
     } catch (e) {
       // 폴링 실패는 무시하고 재시도
     }
+    await sleep(interval);
   }
   process.stdout.write('\n');
   return { completed: false };
@@ -77,66 +100,80 @@ async function analyzeVideo(video) {
     : '없음 (제목+썸네일 기반 분석)'}`);
 
   // 1. 분석 요청 (504가 와도 서버는 백그라운드에서 계속 처리 중)
-  try {
-    const res = await axios.post(
-      `${mainAppUrl}/api/analysis/request`,
-      {
-        url: video.url,
-        videoId: cleanVideoId,
-        userId: 'bot',
-        isRecheck: false,
-        forceRecheck: false,
-        ...(hasTranscript && {
-          clientTranscript: trimmedTranscript,
-          clientTranscriptItems: trimmedItems,
-        }),
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 320000,
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await axios.post(
+        `${mainAppUrl}/api/analysis/request`,
+        {
+          url: video.url,
+          videoId: cleanVideoId,
+          userId: 'bot',
+          isRecheck: false,
+          forceRecheck: false,
+          ...(hasTranscript && {
+            clientTranscript: trimmedTranscript,
+            clientTranscriptItems: trimmedItems,
+          }),
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept-Language': 'ko-KR,ko;q=0.9'
+          },
+          timeout: 320000,
+        }
+      );
+
+      const data = res.data;
+      if (data.error) {
+        console.warn(`  [Analyzer] 분석 오류 (${video.title}): ${data.error}`);
+        return { success: false, video, error: data.error };
       }
-    );
+      const reliability = extractReliabilityScore(data);
+      console.log(`  [Analyzer] 완료 (신뢰도: ${reliability ?? '-'}) — ${video.title}`);
+      return { success: true, video, result: { ...data, polled: false } };
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = err.response?.data?.error || err.message;
 
-    const data = res.data;
-    if (data.error) {
-      console.warn(`  [Analyzer] 분석 오류 (${video.title}): ${data.error}`);
-      return { success: false, video, error: data.error };
-    }
-    console.log(`  [Analyzer] 완료 (신뢰도: ${data.reliabilityScore ?? data.score ?? '?'}) — ${video.title}`);
-    return { success: true, video, result: data };
+      // 422 = 서버가 필터로 즉시 차단 (분석 완료가 아님) → 폴링 불필요, 즉시 실패
+      if (status === 422) {
+        console.warn(`  [Analyzer] 실패 (${video.title}): ${msg}`);
+        return { success: false, video, error: msg };
+      }
 
-  } catch (err) {
-    const status = err.response?.status;
-    const msg = err.response?.data?.error || err.message;
+      // 504/타임아웃 = 서버는 백그라운드에서 계속 처리 중 → 폴링으로 완료 대기
+      if (status === 504 || err.code === 'ECONNABORTED') {
+        console.warn(`  [Analyzer] 504/타임아웃 → 폴링 대기 시작: ${video.title}`);
+        const poll = await pollUntilComplete(video.videoId);
+        if (poll.completed) {
+          console.log(`  [Analyzer] 완료 (폴링 확인) — ${video.title}`);
+          return { success: true, video, result: { analysisId: poll.analysisId, polled: true } };
+        }
+        console.error(`  [Analyzer] 폴링 타임아웃 (10분 초과) — ${video.title}`);
+        return { success: false, video, error: '폴링 타임아웃' };
+      }
 
-    // 422 = 서버가 필터로 즉시 차단 (분석 완료가 아님) → 폴링 불필요, 즉시 실패
-    if (status === 422) {
-      console.warn(`  [Analyzer] 실패 (${video.title}): ${msg}`);
+      const canRetry = attempt < maxAttempts && isTransientRequestError(err);
+      if (canRetry) {
+        console.warn(`  [Analyzer] 일시 오류 재시도 ${attempt}/${maxAttempts - 1}: ${msg}`);
+        await sleep(3000);
+        continue;
+      }
+
+      console.error(`  [Analyzer] 실패 (${video.title}): ${msg}`);
       return { success: false, video, error: msg };
     }
-
-    // 504/타임아웃 = 서버는 백그라운드에서 계속 처리 중 → 폴링으로 완료 대기
-    if (status === 504 || err.code === 'ECONNABORTED') {
-      console.warn(`  [Analyzer] 504/타임아웃 → 폴링 대기 시작: ${video.title}`);
-      const poll = await pollUntilComplete(video.videoId);
-      if (poll.completed) {
-        console.log(`  [Analyzer] 폴링 완료 확인 — ${video.title}`);
-        return { success: true, video, result: { analysisId: poll.analysisId } };
-      }
-      console.error(`  [Analyzer] 폴링 타임아웃 (10분 초과) — ${video.title}`);
-      return { success: false, video, error: '폴링 타임아웃' };
-    }
-
-    console.error(`  [Analyzer] 실패 (${video.title}): ${msg}`);
-    return { success: false, video, error: msg };
   }
 }
 
 /**
  * 수집된 영상 목록을 순차적으로 분석
  * Rate Limit 방어: 각 요청 사이 analysisDelayMs 딜레이
+ * @param {Function} progressCallback - 진행 상황 콜백 (현재 완료 개수)
  */
-async function analyzeVideos(videos, options = {}) {
+async function analyzeVideos(videos, options = {}, progressCallback = null) {
   const delay = options.analysisDelayMs ?? analysisDelayMs;
   const results = { success: 0, fail: 0, errors: [], analyzed: [] };
 
@@ -149,17 +186,30 @@ async function analyzeVideos(videos, options = {}) {
     if (result.success) {
       results.success++;
       // 댓글 큐 적재를 위해 분석 성공 영상 저장 (신뢰도 점수 포함)
-      const trustScore = result.result?.reliabilityScore ?? result.result?.score ?? 50;
-      results.analyzed.push({ ...video, trustScore });
+      const trustScore = extractReliabilityScore(result.result) ?? 50;
+      results.analyzed.push({
+        videoId: video.videoId,
+        title: video.title,
+        url: video.url,
+        channelId: video.channelId,
+        channelTitle: video.channelTitle,
+        trustScore,
+      });
     } else {
       results.fail++;
       results.errors.push({ title: video.title, error: result.error });
     }
+    
+    // 진행 상황 콜백
+    if (progressCallback) {
+      progressCallback(i + 1);
+    }
 
     // 마지막 영상이 아닐 때만 딜레이
     if (i < videos.length - 1) {
-      console.log(`  [Analyzer] ${delay / 1000}초 대기 중...`);
-      await sleep(delay);
+      const waitMs = result.result?.polled ? Math.min(delay, 1000) : delay;
+      console.log(`  [Analyzer] ${waitMs / 1000}초 대기 중...`);
+      await sleep(waitMs);
     }
   }
 
