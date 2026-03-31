@@ -532,11 +532,23 @@ export async function analyzeContent(
     너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
     유튜브 특유의 표현 방식을 이해하되, 시청자가 실제로 **"속았다"**고 느끼는지 여부를 핵심 기준으로 점수를 매겨라.
     
-    ## 검색 도구 활용 가이드 (Google Search)
+    ## 검색 도구 활용 가이드 (Google Search) — ⚠️ 최우선 규칙
     - **필수 검색 대상**: 인물의 현재 직책/직위, 최신 기술/제품, 2024년 11월 이후 사건·정책·논란
     - **검색 결과 절대 우선**: 검색 결과와 너의 학습 데이터(2024년 10월)가 충돌하면 **무조건 검색 결과를 따르라**.
     - **정확성 판단**: 영상의 주장과 검색 결과를 비교하여 일치하면 정확, 불일치하면 부정확으로 판단하라.
     - **사용 안 함**: 일반 상식, 오래된 역사, 유머/엔터테인먼트
+
+    ### ⚠️ 필수 검색 트리거 (MANDATORY SEARCH — 위반 시 분석 무효)
+    아래 키워드가 제목 또는 자막에 **하나라도** 포함되면 **반드시** Google Search를 실행한 후 사실 판단하라. 검색 없이 정확성 점수를 매기면 안 된다:
+    - **선거/정치**: 선거, 경선, 투표, 대선, 총선, 보궐, 지방선거, 당선, 낙선, 출마, 사퇴, 탄핵, 임명, 해임, 국회, 여당, 야당, 민주당, 국민의힘, 대통령, 지사, 시장, 의원
+    - **시사/사건**: 속보, 긴급, 논란, 수사, 체포, 구속, 판결, 기소, 제재, 전쟁, 외교
+    - **시간 표현**: "현재", "최근", "오늘", "방금", "올해", 구체적 연도(2025, 2026 등)
+    - **인물+행동**: 정치인/공인 이름 + 직책 변동이나 발언 언급
+
+    ### 🚫 "없다/아니다" 주장 금지 규칙 (NEVER-WITHOUT-SEARCH)
+    - **"X는 진행 중이 아니다", "X는 사실이 아니다", "X는 존재하지 않는다"**와 같은 부정 판단을 내리기 전에 **반드시 Google Search로 확인**하라.
+    - 너의 학습 데이터에 없다고 해서 현실에서 일어나지 않는 것이 아니다. **검색 없이 "사실이 아니다"라고 단정하는 것은 최악의 오류다.**
+    - 검색 결과에서도 확인되지 않을 때만 "확인되지 않음"이라고 서술하라.
 
     --- 
 
@@ -864,6 +876,13 @@ export async function analyzeContent(
     const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? []
     const groundingUsed = groundingQueries.length > 0
     console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`)
+
+    // ⚠️ 정치/시사 키워드가 있는데 grounding 미사용 시 경고
+    const POLITICAL_KEYWORDS = /선거|경선|투표|대선|총선|보궐|지방선거|당선|낙선|출마|사퇴|탄핵|임명|해임|국회|여당|야당|민주당|국민의힘|대통령|지사|시장|의원|속보|긴급|수사|체포|구속|판결|기소/
+    const hasPoliticalKeyword = POLITICAL_KEYWORDS.test(title) || POLITICAL_KEYWORDS.test(transcript?.substring(0, 2000) || '')
+    if (hasPoliticalKeyword && !groundingUsed) {
+      console.error(`🚨 [GROUNDING MISS] 정치/시사 콘텐츠인데 Google Search 미사용! 제목: "${title}" — 분석 결과가 부정확할 수 있음`)
+    }
 
     return { ...analysisData, groundingUsed, groundingQueries };
 
