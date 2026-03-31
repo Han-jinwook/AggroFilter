@@ -636,7 +636,7 @@ export async function analyzeContent(
       "reliability": 0-100,
       "clickbaitTierLabel": "일치/마케팅/훅|과장(오해/시간적 피해/낚임 수준)|왜곡(혼란/짜증)|허위/조작(실질 손실 가능)",
       "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
-      "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용...<br /><br />2. 어그로성 평가 (XX점):<br />내용...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green):<br />내용...",
+      "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용...<br /><br />2. 어그로성 평가 (XX점):<br />내용...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green 또는 🟡Yellow 또는 🔴Red):<br />내용...",
       // ⚠️ evaluationReason은 반드시 1번, 2번, 3번 세 항목을 모두 포함해야 한다. 3번(신뢰도 총평)을 절대 생략하지 마라.
       "overallAssessment": "전반적인 평가",
       "recommendedTitle": "추천 제목"
