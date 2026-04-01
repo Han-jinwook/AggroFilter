@@ -6,7 +6,7 @@ export function Footer() {
         <p>사업자등록번호: 333-87-00482</p>
         <p>© {new Date().getFullYear()} 어그로필터 (AggroFilter). All rights reserved.</p>
         <p className="pt-2 text-[10px] text-slate-400">
-          문의: support@aggrofilter.com
+          문의: chiu3@naver.com
         </p>
       </div>
     </footer>
