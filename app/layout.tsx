@@ -8,6 +8,7 @@ import { BottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
+import { Footer } from "@/components/c-footer"
 
 interface TRootLayoutProps {
   children: React.ReactNode
@@ -80,7 +81,12 @@ export default function RootLayout({ children }: TRootLayoutProps) {
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <div className="flex min-h-screen flex-col">
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+          </div>
           <GlobalLoginModal />
           <ToastContainer />
           <SideWingAds />
