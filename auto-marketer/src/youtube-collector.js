@@ -731,4 +731,85 @@ async function collectSection2Only(recentVideoIds, recentChannelMap, options = {
   return keywordResults;
 }
 
-module.exports = { collectTargetVideos, collectType1Only, collectType2Only, collectSection2, collectSection2Only };
+/**
+ * [섹션3] 요주의 채널 딥다이브 — 워치리스트 채널의 최신/인기 영상 수집
+ * @param {Array} watchlistChannels - bot_watchlist_channels 행 배열
+ * @param {Set} recentVideoIds - 기분석 영상 ID Set
+ * @param {Object} options - { searchDays, searchMode, maxPerChannel }
+ * @returns {Array} 수집된 영상 배열
+ */
+async function collectSection3(watchlistChannels, recentVideoIds, options = {}) {
+  const searchDays = options.searchDays ?? 3;
+  const searchMode = options.searchMode ?? 'viewCount'; // 'viewCount' | 'date'
+  const maxPerCh = options.maxPerChannel ?? 3;
+  const publishedAfter = new Date(Date.now() - searchDays * 24 * 60 * 60 * 1000).toISOString();
+
+  console.log(`\n[Collector][Section3] 요주의 채널 딥다이브 시작 (${watchlistChannels.length}개 채널, ${searchDays}일, 모드: ${searchMode})`);
+
+  const candidates = [];
+  const seenVideoIds = new Set();
+
+  for (const ch of watchlistChannels) {
+    const channelId = ch.channel_id;
+    const channelName = ch.channel_name || channelId;
+
+    try {
+      const searchRes = await axios.get(YT_SEARCH_URL, {
+        params: {
+          key: config.youtubeApiKey,
+          part: 'snippet',
+          type: 'video',
+          channelId,
+          publishedAfter,
+          order: searchMode, // 'viewCount' 또는 'date'
+          maxResults: 20,
+          videoDuration: 'medium',
+        },
+      });
+
+      const rawIds = (searchRes.data.items || []).map(i => i.id.videoId).filter(Boolean);
+      if (rawIds.length === 0) {
+        console.log(`  [Section3] "${channelName}" → 결과 없음`);
+        continue;
+      }
+
+      const details = await fetchVideoDetails(rawIds);
+      let added = 0;
+
+      for (const v of details) {
+        if (added >= maxPerCh) break;
+        const vId = v.id;
+        if (isShorts(v.contentDetails?.duration)) continue;
+        if (recentVideoIds.has(vId)) continue;
+        if (seenVideoIds.has(vId)) continue;
+        if (!isKoreanVideo(v)) continue;
+
+        const excl = isExcludedVideo(v);
+        if (excl.excluded) continue;
+
+        const mainReject = isLikelyRejectedByMainAppLiveFilter(v);
+        if (mainReject.rejected) continue;
+
+        const normalized = normalizeVideo(v, 'section3', '딥다이브');
+        normalized.watchlistChannelId = channelId;
+        normalized.watchlistChannelName = channelName;
+        candidates.push(normalized);
+        seenVideoIds.add(vId);
+        added++;
+      }
+
+      console.log(`  [Section3] "${channelName}" → ${rawIds.length}건 검색, ${added}건 후보`);
+      await sleep(300);
+    } catch (err) {
+      console.error(`  [Section3] "${channelName}" 검색 실패:`, err.response?.data?.error?.message || err.message);
+    }
+  }
+
+  // VPH 내림차순 정렬
+  candidates.sort((a, b) => b.viewsPerHour - a.viewsPerHour);
+
+  console.log(`[Collector][Section3] 딥다이브 완료: ${candidates.length}개 후보 확보`);
+  return candidates;
+}
+
+module.exports = { collectTargetVideos, collectType1Only, collectType2Only, collectSection2, collectSection2Only, collectSection3 };

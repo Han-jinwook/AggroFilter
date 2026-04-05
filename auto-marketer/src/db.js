@@ -411,6 +411,154 @@ async function getKeywordVideos(limit = 200) {
   }
 }
 
+// ────────────── bot_watchlist_channels (섹션3: 요주의 채널 딥다이브) ──────────────
+
+async function ensureWatchlistTable() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bot_watchlist_channels (
+        id SERIAL PRIMARY KEY,
+        channel_id VARCHAR(50) NOT NULL UNIQUE,
+        channel_name TEXT,
+        reason TEXT,
+        avg_clickbait NUMERIC(5,1),
+        analysis_count INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        is_auto BOOLEAN DEFAULT TRUE,
+        last_searched_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * 요주의 채널 목록 조회 (활성화된 것만 or 전체)
+ */
+async function getWatchlistChannels(activeOnly = true) {
+  await ensureWatchlistTable();
+  const client = await pool.connect();
+  try {
+    const where = activeOnly ? 'WHERE is_active = true' : '';
+    const result = await client.query(
+      `SELECT * FROM bot_watchlist_channels ${where} ORDER BY avg_clickbait DESC NULLS LAST, id ASC`
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * DB에서 f_clickbait_score >= cutoff 인 채널을 자동 리스트업
+ * 이미 등록된 채널은 스킵 (ON CONFLICT DO NOTHING)
+ * @param {number} cutoff - 어그로 임계값 (기본 80)
+ * @returns {number} 신규 등록된 채널 수
+ */
+async function autoPopulateWatchlist(cutoff = 80) {
+  await ensureWatchlistTable();
+  const client = await pool.connect();
+  try {
+    // 어그로 점수가 높은 채널 + 평균/건수 집계
+    const result = await client.query(`
+      WITH high_aggro AS (
+        SELECT
+          f_channel_id,
+          COALESCE(NULLIF(c.f_title, ''), a.f_channel_id) AS channel_name,
+          AVG(a.f_clickbait_score) AS avg_cb,
+          COUNT(*) AS cnt
+        FROM t_analyses a
+        LEFT JOIN t_channels c ON a.f_channel_id = c.f_channel_id
+        WHERE a.f_clickbait_score >= $1
+          AND a.f_channel_id IS NOT NULL
+        GROUP BY a.f_channel_id, c.f_title
+        HAVING COUNT(*) >= 1
+      )
+      INSERT INTO bot_watchlist_channels (channel_id, channel_name, reason, avg_clickbait, analysis_count, is_auto)
+      SELECT
+        f_channel_id,
+        channel_name,
+        '자동등록: 평균 어그로 ' || ROUND(avg_cb, 1) || '점 (' || cnt || '건)',
+        ROUND(avg_cb, 1),
+        cnt,
+        TRUE
+      FROM high_aggro
+      ON CONFLICT (channel_id) DO UPDATE SET
+        channel_name = EXCLUDED.channel_name,
+        avg_clickbait = EXCLUDED.avg_clickbait,
+        analysis_count = EXCLUDED.analysis_count,
+        reason = EXCLUDED.reason,
+        updated_at = NOW()
+      RETURNING *
+    `, [cutoff]);
+    return result.rowCount;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * 요주의 채널 추가/수정
+ */
+async function upsertWatchlistChannel({ id, channel_id, channel_name, reason, is_active }) {
+  await ensureWatchlistTable();
+  const client = await pool.connect();
+  try {
+    if (id) {
+      const result = await client.query(
+        `UPDATE bot_watchlist_channels
+         SET channel_name=$1, reason=$2, is_active=$3, updated_at=NOW()
+         WHERE id=$4 RETURNING *`,
+        [channel_name, reason ?? null, is_active ?? true, id]
+      );
+      return result.rows[0];
+    } else {
+      const result = await client.query(
+        `INSERT INTO bot_watchlist_channels (channel_id, channel_name, reason, is_active, is_auto)
+         VALUES ($1, $2, $3, $4, FALSE)
+         ON CONFLICT (channel_id) DO UPDATE
+           SET channel_name=$2, reason=$3, is_active=$4, updated_at=NOW()
+         RETURNING *`,
+        [channel_id, channel_name ?? null, reason ?? '수동 추가', is_active ?? true]
+      );
+      return result.rows[0];
+    }
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * 요주의 채널 삭제
+ */
+async function deleteWatchlistChannel(id) {
+  const client = await pool.connect();
+  try {
+    await client.query('DELETE FROM bot_watchlist_channels WHERE id=$1', [id]);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * 요주의 채널의 마지막 서칭일 업데이트
+ */
+async function updateWatchlistLastSearched(channelId) {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE bot_watchlist_channels SET last_searched_at=NOW(), updated_at=NOW() WHERE channel_id=$1`,
+      [channelId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   getRecentlyAnalyzedVideoIds,
@@ -427,4 +575,9 @@ module.exports = {
   getCommentLogs,
   saveOllamaScores,
   getKeywordVideos,
+  getWatchlistChannels,
+  autoPopulateWatchlist,
+  upsertWatchlistChannel,
+  deleteWatchlistChannel,
+  updateWatchlistLastSearched,
 };

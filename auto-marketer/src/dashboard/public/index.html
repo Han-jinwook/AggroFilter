@@ -323,7 +323,8 @@
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('collected',this)">📋 수집 리스트</button>
     <button class="nav-btn" onclick="switchTab('keyword-hunt',this)">🎯 키워드 사냥</button>
-    <button class="nav-btn" onclick="switchTab('community',this)">� 커뮤니티 타겟</button>
+    <button class="nav-btn" onclick="switchTab('deepdive',this)">🕵️ 채널 딥다이브</button>
+    <button class="nav-btn" onclick="switchTab('community',this)">🏘 커뮤니티 타겟</button>
     <button class="nav-btn" onclick="switchTab('comments',this)">💬 댓글 로그</button>
   </nav>
   <div class="header-right">
@@ -765,6 +766,179 @@
       <span style="font-size:17px;font-weight:700;color:#e2e8f0">키워드 사냥 결과 최신 200개</span>
     </div>
     <div class="table-wrap" id="keywordResultWrap"><div class="empty">로딩 중...</div></div>
+  </div>
+
+  <!-- 탭: 채널 딥다이브 (= 섹션3) -->
+  <div id="tab-deepdive" class="tab-content">
+    <!-- 섹션3 현황+워치리스트+설정 카드 -->
+    <div class="control-bar" style="margin-bottom:14px" id="s3ControlBar">
+
+      <!-- ── 현황 카드 ── -->
+      <div class="card card-status">
+        <div class="card-title">📊 섹션3 현황</div>
+
+        <!-- 상시: 오토모드 + 현재상태 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">오토모드</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <label class="toggle-switch">
+                <input type="checkbox" id="s3AutoToggle" onchange="toggleAutoMode3(this)" />
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="auto-toggle-label" id="s3AutoLabel" style="font-size:16px;font-weight:700">OFF</span>
+            </div>
+            <div style="margin-top:7px;font-size:14px;color:#68d391;font-weight:600;background:#0d1f17;border-radius:6px;padding:4px 9px;border-left:3px solid #276749;display:inline-block">🕐 자동: 00:00 / 12:00 KST</div>
+            <div style="margin-top:4px">
+              <span id="s3AutoBadge" style="font-size:14px;color:#68d391;font-weight:600"></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div class="always-label">현재 상태</div>
+            <div class="always-val" id="s3StatusText" style="font-size:18px;margin-top:4px">대기 중</div>
+          </div>
+        </div>
+
+        <!-- 실시간 진행 상황 -->
+        <div id="s3ProgressBox" style="display:none;margin-top:12px;padding:10px;background:#0f1117;border:1px solid #2d3748;border-radius:6px">
+          <div style="font-size:14px;font-weight:700;color:#63b3ed;margin-bottom:8px" id="s3CurrentStep">—</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px">
+            <div>
+              <span style="color:#718096">채널:</span>
+              <span style="color:#e2e8f0;font-weight:700" id="s3Watchlist">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">수집:</span>
+              <span style="color:#e2e8f0;font-weight:700" id="s3Collected">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">자막:</span>
+              <span style="color:#e2e8f0;font-weight:700" id="s3Transcript">0</span>개
+            </div>
+            <div>
+              <span style="color:#718096">LLM 분석:</span>
+              <span style="color:#63b3ed;font-weight:700" id="s3Analyzing">0</span>/<span id="s3Total">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 수동 실행 / 이력 -->
+        <div class="collapse-header" onclick="toggleCollapse('s3StatusDetail', this)">
+          <span style="font-size:14px;color:#718096">수동 실행 / 이력</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s3StatusDetail">
+          <div class="status-grid" style="margin-top:8px">
+            <div class="stat-item">
+              <div class="stat-label">마지막 실행</div>
+              <div class="stat-value" id="s3LastRun">—</div>
+            </div>
+            <div class="stat-item" style="grid-column:1/-1">
+              <div class="stat-label">마지막 결과</div>
+              <div class="stat-value" id="s3LastResult">—</div>
+            </div>
+          </div>
+          <div class="run-btn-wrap" style="margin-top:10px">
+            <button class="btn btn-success" id="s3BtnRun" onclick="runSection3()">▶ 수동 실행</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadWatchlist()" style="margin-left:auto">↻ 새로고침</button>
+          </div>
+          <div class="run-note">⚡ 워치리스트 갱신 → 채널별 수집 → 자막 → 유료 분석</div>
+        </div>
+      </div>
+
+      <!-- ── 워치리스트 관리 카드 ── -->
+      <div class="card card-trend">
+        <div class="card-title">🕵️ 요주의 채널 <span style="font-size:13px;color:#718096">(<span id="wlCount">0</span>개)</span></div>
+
+        <!-- 자동 갱신 버튼 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <button class="btn btn-primary btn-sm" onclick="refreshWatchlist()">🔄 자동 갱신</button>
+          <span style="font-size:13px;color:#718096">DB에서 어그로 점수 높은 채널 자동 추가</span>
+        </div>
+
+        <!-- 수동 추가 -->
+        <div class="add-form" style="flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <div class="fg" style="max-width:180px">
+            <label>채널 ID</label>
+            <input type="text" id="wl_channel_id" placeholder="UC..." />
+          </div>
+          <div class="fg">
+            <label>채널명 (선택)</label>
+            <input type="text" id="wl_channel_name" placeholder="채널 이름" />
+          </div>
+          <div class="fg">
+            <label>사유 (선택)</label>
+            <input type="text" id="wl_reason" placeholder="수동 추가" />
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-success" onclick="addWatchlistChannel()">+ 추가</button>
+          </div>
+        </div>
+
+        <!-- 채널 목록 -->
+        <div class="collapse-header" onclick="toggleCollapse('s3WatchlistBody', this)">
+          <span style="font-size:14px;color:#718096">등록된 채널</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s3WatchlistBody" style="margin-top:8px">
+          <div class="table-wrap" id="watchlistWrap" style="max-height:300px"><div class="empty">로딩 중...</div></div>
+        </div>
+      </div>
+
+      <!-- ── 설정 카드 ── -->
+      <div class="card card-category">
+        <div class="card-title">⚙️ 딥다이브 설정</div>
+
+        <!-- 상시: 어그로 임계값 -->
+        <div class="always-row">
+          <div>
+            <div class="always-label">어그로 임계값</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <input type="number" id="s3OptCutoff" min="0" max="100"
+                style="width:90px;padding:5px 8px;background:#0f1117;border:1px solid #4299e1;border-radius:6px;color:#e2e8f0;font-size:21px;font-weight:900;text-align:center" />
+              <span class="always-unit">점 이상</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 상세 설정 -->
+        <div class="collapse-header" onclick="toggleCollapse('s3SettingsDetail', this)">
+          <span style="font-size:14px;color:#718096">상세 설정</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapse-body open" id="s3SettingsDetail">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+            <div class="opt-item">
+              <label>서칭 범위 (일)</label>
+              <input type="number" id="s3OptDays" min="1" max="30" placeholder="3" />
+              <div class="sub-desc" style="margin-top:4px;font-size:12px">최근 N일 내 영상 검색</div>
+            </div>
+            <div class="opt-item">
+              <label>채널당 최대</label>
+              <input type="number" id="s3OptMaxPerCh" min="1" max="20" placeholder="3" />
+              <div class="sub-desc" style="margin-top:4px;font-size:12px">채널당 수집 영상 수</div>
+            </div>
+            <div class="opt-item">
+              <label>검색 모드</label>
+              <select id="s3OptMode" style="padding:7px 8px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;color:#e2e8f0;font-size:13px">
+                <option value="viewCount">조회수 순</option>
+                <option value="date">최신순</option>
+              </select>
+            </div>
+            <div class="opt-item">
+              <label>유료 분석 일일한도</label>
+              <input type="number" id="s3OptLimit" min="1" max="100" placeholder="20" />
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2d3748">
+            <button class="btn btn-primary btn-sm" onclick="saveSection3Options()">💾 설정 저장</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <!-- 탭3: 커뮤니티 세팅 (= 모듈2) -->
@@ -1275,6 +1449,8 @@
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'collected') { fetchModule1Status(); loadCollected(); }
+    if (name === 'keyword-hunt') { fetchSection2Status(); loadKeywordResults(); loadKeywordGroups(); }
+    if (name === 'deepdive') { fetchSection3Status(); loadWatchlist(); }
     if (name === 'community') { loadTargets(); }
     if (name === 'comments') loadCommentLogs();
   }
@@ -1826,9 +2002,192 @@
     }
   }
 
-  // 초기 로드: 섹션2 설정값을 먼저 가져와 입력칸이 지연 표시되지 않도록 우선 처리
+  // ────────── 섹션3 (채널 딥다이브) ──────────
+  let s3OptionsLoaded = false;
+  async function fetchSection3Status() {
+    try {
+      const res = await fetch('/api/section3/status');
+      const { status, options } = await res.json();
+      const wasRunning = window._s3WasRunning ?? false;
+      window._s3WasRunning = status.running;
+      if (wasRunning && !status.running) loadWatchlist();
+      const statusWithProgress = { ...status, progress: status.currentStep };
+      _applyModuleStatus(statusWithProgress, options, {
+        toggle: 's3AutoToggle', label: 's3AutoLabel', badge: 's3AutoBadge',
+        statusText: 's3StatusText', lastRun: 's3LastRun', lastResult: 's3LastResult', btn: 's3BtnRun'
+      });
+      const btn = document.getElementById('s3BtnRun');
+      if (status.running) {
+        btn.textContent = '⏹ 중단';
+        btn.className = 'btn btn-danger';
+      } else {
+        btn.textContent = '▶ 수동 실행';
+        btn.className = 'btn btn-success';
+      }
+      const progressBox = document.getElementById('s3ProgressBox');
+      if (status.running && status.currentStep) {
+        progressBox.style.display = 'block';
+        document.getElementById('s3CurrentStep').textContent = status.currentStep || '—';
+        document.getElementById('s3Watchlist').textContent = status.watchlistCount || 0;
+        document.getElementById('s3Collected').textContent = status.collectedCount || 0;
+        document.getElementById('s3Transcript').textContent = status.transcriptCount || 0;
+        document.getElementById('s3Analyzing').textContent = status.analyzingCount || 0;
+        document.getElementById('s3Total').textContent = status.totalToAnalyze || 0;
+      } else {
+        progressBox.style.display = 'none';
+      }
+      if (options && !s3OptionsLoaded) {
+        document.getElementById('s3OptCutoff').value = options.aggroCutoff ?? 80;
+        document.getElementById('s3OptDays').value = options.searchDays ?? 3;
+        document.getElementById('s3OptMaxPerCh').value = options.maxPerChannel ?? 3;
+        document.getElementById('s3OptMode').value = options.searchMode ?? 'viewCount';
+        document.getElementById('s3OptLimit').value = options.dailyAnalysisLimit ?? 20;
+        s3OptionsLoaded = true;
+      }
+    } catch (e) {}
+  }
+
+  async function toggleAutoMode3(checkbox) {
+    try {
+      const res = await fetch('/api/section3/automode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: checkbox.checked }) });
+      const data = await res.json();
+      showToast(data.autoMode ? '섹션3 오토모드 ON' : '섹션3 오토모드 OFF', data.autoMode ? 'ok' : '');
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function saveSection3Options() {
+    const body = {
+      aggroCutoff: document.getElementById('s3OptCutoff').value,
+      searchDays: document.getElementById('s3OptDays').value,
+      searchMode: document.getElementById('s3OptMode').value,
+      maxPerChannel: document.getElementById('s3OptMaxPerCh').value,
+      dailyAnalysisLimit: document.getElementById('s3OptLimit').value,
+    };
+    try {
+      const res = await fetch('/api/section3/options', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('섹션3 설정 저장 완료', 'ok');
+        s3OptionsLoaded = false;
+        fetchSection3Status();
+      }
+    } catch (e) { showToast('저장 실패: ' + e.message, 'err'); }
+  }
+
+  async function runSection3() {
+    const btn = document.getElementById('s3BtnRun');
+    const isRunning = btn.textContent.includes('⏹');
+    if (isRunning) {
+      try {
+        const res = await fetch('/api/section3/abort', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || '작업 중단 요청', 'ok');
+      } catch (e) { showToast('중단 실패: ' + e.message, 'err'); }
+    } else {
+      try {
+        const res = await fetch('/api/section3/run', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          showToast(data.message || '섹션3 실행 시작', 'ok');
+          btn.textContent = '⏹ 중단';
+          btn.className = 'btn btn-danger';
+        } else {
+          showToast(data.message || '실행 실패', 'err');
+        }
+      } catch (e) { showToast('실행 실패: ' + e.message, 'err'); }
+    }
+  }
+
+  async function refreshWatchlist() {
+    try {
+      const res = await fetch('/api/section3/refresh-watchlist', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`워치리스트 갱신: ${data.updated}개 채널`, 'ok');
+        loadWatchlist();
+      } else { showToast('갱신 실패: ' + (data.error || ''), 'err'); }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function loadWatchlist() {
+    const wrap = document.getElementById('watchlistWrap');
+    try {
+      const res = await fetch('/api/watchlist');
+      const { channels } = await res.json();
+      document.getElementById('wlCount').textContent = channels.length;
+      if (!channels || channels.length === 0) {
+        wrap.innerHTML = '<div class="empty">등록된 요주의 채널이 없습니다. "🔄 자동 갱신" 버튼을 눌러보세요.</div>';
+        return;
+      }
+      const rows = channels.map(ch => {
+        const activeLabel = ch.is_active
+          ? '<span style="color:#48bb78;font-size:13px">● 활성</span>'
+          : '<span style="color:#718096;font-size:13px">○ 비활성</span>';
+        const autoLabel = ch.is_auto ? '자동' : '수동';
+        const lastSearch = ch.last_searched_at ? fmt24(ch.last_searched_at) : '—';
+        const chUrl = `https://www.youtube.com/channel/${ch.channel_id}`;
+        return `<tr>
+          <td class="cell-ch"><a href="${chUrl}" target="_blank">${escHtml(ch.channel_name || ch.channel_id.substring(0,14))}</a></td>
+          <td>${aggroCell(ch.avg_clickbait)}</td>
+          <td style="font-size:13px;color:#a0aec0">${ch.analysis_count || 0}건</td>
+          <td style="font-size:13px;color:#718096">${escHtml(ch.reason || '—')}</td>
+          <td style="font-size:12px;color:#718096">${autoLabel}</td>
+          <td class="cell-time" style="font-size:12px">${lastSearch}</td>
+          <td style="white-space:nowrap">${activeLabel}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#2d3748;color:#e2e8f0;padding:4px 8px;font-size:12px"
+              onclick="toggleWatchlist(${ch.id}, ${!ch.is_active})">${ch.is_active ? '비활성화' : '활성화'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteWatchlist(${ch.id})" style="margin-left:4px;padding:4px 8px;font-size:12px">삭제</button>
+          </td>
+        </tr>`;
+      }).join('');
+      wrap.innerHTML = `<table><thead><tr>
+        <th>채널</th><th>평균 어그로</th><th>분석수</th><th>사유</th><th>등록</th><th>마지막 서칭</th><th>상태</th><th>관리</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    } catch (e) {
+      wrap.innerHTML = `<div class="empty" style="color:#fc8181">오류: ${e.message}</div>`;
+    }
+  }
+
+  async function addWatchlistChannel() {
+    const channel_id = document.getElementById('wl_channel_id').value.trim();
+    if (!channel_id) { showToast('채널 ID를 입력해 주세요.', 'err'); return; }
+    const body = {
+      channel_id,
+      channel_name: document.getElementById('wl_channel_name').value.trim() || null,
+      reason: document.getElementById('wl_reason').value.trim() || '수동 추가',
+    };
+    try {
+      const res = await fetch('/api/watchlist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok) {
+        ['wl_channel_id','wl_channel_name','wl_reason'].forEach(id => { document.getElementById(id).value = ''; });
+        showToast('채널 추가 완료', 'ok');
+        loadWatchlist();
+      } else { showToast('추가 실패: ' + (data.error || ''), 'err'); }
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function toggleWatchlist(id, newActive) {
+    try {
+      await fetch('/api/watchlist/' + id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ is_active: newActive }) });
+      loadWatchlist();
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  async function deleteWatchlist(id) {
+    if (!confirm('이 채널을 워치리스트에서 삭제하시겠습니까?')) return;
+    try {
+      await fetch('/api/watchlist/' + id, { method: 'DELETE' });
+      showToast('삭제 완료', 'ok');
+      loadWatchlist();
+    } catch (e) { showToast('오류: ' + e.message, 'err'); }
+  }
+
+  // 초기 로드
   (async () => {
     await fetchSection2Status();
+    await fetchSection3Status();
     fetchModule1Status();
     fetchModule2Status();
     setTimeout(loadCollected, 0);
@@ -1837,6 +2196,7 @@
   setInterval(fetchModule1Status, 10000);
   setInterval(fetchModule2Status, 10000);
   setInterval(fetchSection2Status, 10000);
+  setInterval(fetchSection3Status, 10000);
 </script>
 </body>
 </html>

@@ -10,6 +10,10 @@ const {
   getAggroKeywordGroups,
   upsertAggroKeywordGroup,
   deleteAggroKeywordGroup,
+  getWatchlistChannels,
+  autoPopulateWatchlist,
+  upsertWatchlistChannel,
+  deleteWatchlistChannel,
 } = require('../db');
 const config = require('../config');
 
@@ -106,6 +110,31 @@ let section2Status = {
   totalToAnalyze: 0            // 유료 분석 대상 총 수
 };
 function setSection2Status(s) { Object.assign(section2Status, s); }
+
+// ────────────── 섹션3 (요주의 채널 딥다이브) ──────────────
+const S3_OPTS_FILE = path.join(DATA_DIR, 'section3_options.json');
+const S3_DEFAULTS = {
+  aggroCutoff: 80,
+  searchDays: 3,
+  searchMode: 'viewCount',
+  maxPerChannel: 3,
+  dailyAnalysisLimit: 20,
+};
+let section3Options = loadJsonFile(S3_OPTS_FILE, S3_DEFAULTS);
+let section3Status = {
+  running: false,
+  lastRun: null,
+  lastResult: null,
+  progress: null,
+  autoMode: false,
+  currentStep: null,
+  watchlistCount: 0,
+  collectedCount: 0,
+  transcriptCount: 0,
+  analyzingCount: 0,
+  totalToAnalyze: 0,
+};
+function setSection3Status(s) { Object.assign(section3Status, s); }
 
 // 하위호환: 기존 코드가 참조하는 runtimeOptions/botStatus
 let runtimeOptions = module1Options;
@@ -273,6 +302,112 @@ app.post('/api/section2/abort', (req, res) => {
   abortSection2();
   console.log('[Dashboard] 섹션2 작업 중단 요청됨');
   res.json({ ok: true, message: '작업 중단 요청됨' });
+});
+
+// ────────────── 섹션3 전용 API ──────────────
+
+// GET /api/section3/status
+app.get('/api/section3/status', (req, res) => {
+  res.json({ status: section3Status, options: section3Options });
+});
+
+// POST /api/section3/automode
+app.post('/api/section3/automode', (req, res) => {
+  const { enabled } = req.body;
+  section3Status.autoMode = !!enabled;
+  res.json({ ok: true, autoMode: section3Status.autoMode });
+});
+
+// POST /api/section3/options
+app.post('/api/section3/options', (req, res) => {
+  const { aggroCutoff, searchDays, searchMode, maxPerChannel, dailyAnalysisLimit } = req.body;
+  if (aggroCutoff !== undefined) section3Options.aggroCutoff = toValidInt(aggroCutoff, section3Options.aggroCutoff, { min: 0, max: 100 });
+  if (searchDays !== undefined) section3Options.searchDays = toValidInt(searchDays, section3Options.searchDays, { min: 1, max: 30 });
+  if (searchMode !== undefined && ['viewCount', 'date'].includes(searchMode)) section3Options.searchMode = searchMode;
+  if (maxPerChannel !== undefined) section3Options.maxPerChannel = toValidInt(maxPerChannel, section3Options.maxPerChannel, { min: 1, max: 20 });
+  if (dailyAnalysisLimit !== undefined) section3Options.dailyAnalysisLimit = toValidInt(dailyAnalysisLimit, section3Options.dailyAnalysisLimit, { min: 1, max: 100 });
+  saveJsonFile(S3_OPTS_FILE, section3Options);
+  res.json({ ok: true, options: section3Options });
+});
+
+// POST /api/section3/run
+app.post('/api/section3/run', (req, res) => {
+  if (section3Status.running) return res.json({ ok: false, message: '이미 실행 중입니다.' });
+  res.json({ ok: true, message: '섹션3 딥다이브 시작' });
+  const { runJobSection3 } = require('../job');
+  const statusCallback = (updates) => { setSection3Status(updates); };
+  _runJobAsync(
+    (opts) => runJobSection3(opts, statusCallback),
+    '섹션3',
+    '요주의 채널 수집 → 자막 → 분석 중...',
+    section3Options,
+    setSection3Status
+  );
+});
+
+// POST /api/section3/abort
+app.post('/api/section3/abort', (req, res) => {
+  const { abortSection3 } = require('../job');
+  abortSection3();
+  console.log('[Dashboard] 섹션3 작업 중단 요청됨');
+  res.json({ ok: true, message: '작업 중단 요청됨' });
+});
+
+// POST /api/section3/refresh-watchlist — 워치리스트 자동 갱신
+app.post('/api/section3/refresh-watchlist', async (req, res) => {
+  try {
+    const cutoff = section3Options.aggroCutoff ?? 80;
+    const count = await autoPopulateWatchlist(cutoff);
+    res.json({ ok: true, updated: count });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ────────────── 워치리스트 채널 API ──────────────
+
+// GET /api/watchlist
+app.get('/api/watchlist', async (req, res) => {
+  try {
+    const channels = await getWatchlistChannels(false);
+    res.json({ channels });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/watchlist — 수동 추가
+app.post('/api/watchlist', async (req, res) => {
+  try {
+    const { channel_id, channel_name, reason } = req.body;
+    if (!channel_id) return res.status(400).json({ error: 'channel_id 필수' });
+    const row = await upsertWatchlistChannel({ channel_id, channel_name, reason });
+    res.json({ ok: true, channel: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/watchlist/:id
+app.patch('/api/watchlist/:id', async (req, res) => {
+  try {
+    const { is_active, channel_name, reason } = req.body;
+    const id = parseInt(req.params.id, 10);
+    const row = await upsertWatchlistChannel({ id, channel_name, reason, is_active });
+    res.json({ ok: true, channel: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/watchlist/:id
+app.delete('/api/watchlist/:id', async (req, res) => {
+  try {
+    await deleteWatchlistChannel(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/section2/results — 섹션2 수집 결과 조회

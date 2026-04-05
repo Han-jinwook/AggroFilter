@@ -1,7 +1,7 @@
-const { collectTargetVideos, collectType1Only, collectType2Only, collectSection2Only } = require('./youtube-collector');
+const { collectTargetVideos, collectType1Only, collectType2Only, collectSection2Only, collectSection3 } = require('./youtube-collector');
 const { analyzeVideos } = require('./analyzer');
 const { getTranscriptData } = require('./youtube-meta');
-const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, getRecentlyAnalyzedChannelsByCategoryMap } = require('./db');
+const { getRecentlyAnalyzedVideoIds, getRecentlyAnalyzedChannelIds, getRecentlyAnalyzedChannelsByCategoryMap, getWatchlistChannels, autoPopulateWatchlist, updateWatchlistLastSearched } = require('./db');
 const { batchScoreAggro, checkOllamaConnection } = require('./aggro-prescorer');
 const defaultConfig = require('./config');
 
@@ -9,6 +9,11 @@ const defaultConfig = require('./config');
 let section2AbortFlag = false;
 function abortSection2() { section2AbortFlag = true; }
 function resetSection2Abort() { section2AbortFlag = false; }
+
+// 섹션3 작업 중단 플래그
+let section3AbortFlag = false;
+function abortSection3() { section3AbortFlag = true; }
+function resetSection3Abort() { section3AbortFlag = false; }
 
 /**
  * 공통: 자막 수집 + 자막없는 영상 필터링 + 분석 실행
@@ -372,4 +377,162 @@ async function runJobSection2(options = {}, statusCallback = null) {
   }
 }
 
-module.exports = { runJob, runJobType1, runJobType2, runJobSection2, abortSection2 };
+/**
+ * 섹션3 실행 — 요주의 채널 딥다이브
+ * 파이프라인: 워치리스트 자동채움 → 채널별 수집 → 자막 → 분석
+ */
+async function runJobSection3(options = {}, statusCallback = null) {
+  const dedupDays = options.dedupDays ?? defaultConfig.dedupDays;
+  const cutoff = options.aggroCutoff ?? 80;
+  const searchDays = options.searchDays ?? 3;
+  const searchMode = options.searchMode ?? 'viewCount';
+  const maxPerChannel = options.maxPerChannel ?? 3;
+  const dailyLimit = options.dailyAnalysisLimit ?? 20;
+  const startTime = Date.now();
+
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[Job][Section3] 요주의 채널 딥다이브 시작: ${new Date().toLocaleString('ko-KR')}`);
+  console.log(`[Job][Section3] 어그로 임계값: ${cutoff}점, 서칭 범위: ${searchDays}일, 모드: ${searchMode}`);
+  console.log(`${'='.repeat(60)}`);
+
+  resetSection3Abort();
+
+  if (statusCallback) {
+    statusCallback({
+      currentStep: '초기화 중',
+      watchlistCount: 0,
+      collectedCount: 0,
+      transcriptCount: 0,
+      analyzingCount: 0,
+      totalToAnalyze: 0,
+    });
+  }
+
+  try {
+    if (section3AbortFlag) {
+      console.log(`[Job][Section3] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
+    // 1. 워치리스트 자동 채움
+    if (statusCallback) statusCallback({ currentStep: '워치리스트 자동 갱신 중' });
+    console.log(`\n[Job][Section3] 워치리스트 자동 갱신 (cutoff: ${cutoff}점)...`);
+    const populated = await autoPopulateWatchlist(cutoff);
+    console.log(`[Job][Section3] 워치리스트 갱신: ${populated}개 채널 업데이트`);
+
+    // 2. 활성 채널 로드 + 서칭 주기 필터
+    const allChannels = await getWatchlistChannels(true);
+    const now = Date.now();
+    const searchCooldownMs = searchDays * 24 * 60 * 60 * 1000;
+    const channels = allChannels.filter(ch => {
+      if (!ch.last_searched_at) return true;
+      return (now - new Date(ch.last_searched_at).getTime()) >= searchCooldownMs;
+    });
+
+    if (statusCallback) statusCallback({ watchlistCount: channels.length });
+    console.log(`[Job][Section3] 활성 채널: ${allChannels.length}개 중 서칭 대상: ${channels.length}개`);
+
+    if (channels.length === 0) {
+      console.log(`[Job][Section3] 서칭 대상 채널 없음. 종료.`);
+      return { success: 0, fail: 0, skipped: 0, watchlistTotal: allChannels.length };
+    }
+
+    if (section3AbortFlag) {
+      console.log(`[Job][Section3] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
+    // 3. 중복 체크
+    const recentVideoIds = await getRecentlyAnalyzedVideoIds(dedupDays);
+
+    // 4. 채널별 영상 수집
+    if (statusCallback) statusCallback({ currentStep: '채널별 영상 수집 중' });
+    const videos = await collectSection3(channels, recentVideoIds, { searchDays, searchMode, maxPerChannel });
+    if (statusCallback) statusCallback({ collectedCount: videos.length });
+
+    // 서칭 완료한 채널의 last_searched_at 업데이트
+    for (const ch of channels) {
+      await updateWatchlistLastSearched(ch.channel_id);
+    }
+
+    if (videos.length === 0) {
+      console.log(`[Job][Section3] 수집된 영상 없음. 종료.`);
+      return { success: 0, fail: 0, skipped: 0, watchlistTotal: allChannels.length };
+    }
+
+    if (section3AbortFlag) {
+      console.log(`[Job][Section3] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
+    // 5. 자막 수집
+    if (statusCallback) statusCallback({ currentStep: '자막 수집 중', transcriptCount: 0 });
+    console.log(`\n[Job][Section3] 자막 수집 시작 (${videos.length}개)...`);
+    const BLACKLIST_CATEGORY_IDS = new Set(['1','2','10','15','17','19','20','23','43']);
+    const withTranscript = [];
+    let noTranscriptCount = 0;
+
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
+      const catId = String(v.categoryId || '');
+      if (catId && BLACKLIST_CATEGORY_IDS.has(catId)) {
+        noTranscriptCount++;
+        continue;
+      }
+
+      console.log(`  자막 (${i + 1}/${videos.length}): ${v.title.substring(0, 40)}...`);
+      const meta = await getTranscriptData(v.videoId);
+      if (meta.hasTranscript) {
+        v.transcript = meta.transcript;
+        v.transcriptItems = meta.transcriptItems;
+        withTranscript.push(v);
+        if (statusCallback) statusCallback({ transcriptCount: withTranscript.length });
+      } else {
+        noTranscriptCount++;
+      }
+    }
+    console.log(`[Job][Section3] 자막 있는 후보: ${withTranscript.length}개 (자막없음: ${noTranscriptCount}개)`);
+
+    if (withTranscript.length === 0) {
+      return { success: 0, fail: 0, skipped: noTranscriptCount, watchlistTotal: allChannels.length };
+    }
+
+    // 일일 한도 적용
+    const toAnalyze = withTranscript.slice(0, dailyLimit);
+    if (statusCallback) statusCallback({ totalToAnalyze: toAnalyze.length });
+
+    if (section3AbortFlag) {
+      console.log(`[Job][Section3] ⏹️ 사용자가 작업을 중단했습니다.`);
+      return { success: 0, fail: 0, skipped: 0, aborted: true };
+    }
+
+    // 6. 유료 분석
+    if (statusCallback) statusCallback({ currentStep: 'LLM 유료 분석 중', analyzingCount: 0 });
+    console.log(`\n[Job][Section3] 유료 분석 시작 (${toAnalyze.length}개)...`);
+    const results = await analyzeVideos(toAnalyze, options, (progress) => {
+      if (statusCallback) statusCallback({ analyzingCount: progress });
+    });
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[Job][Section3] 완료 — 소요: ${elapsed}초`);
+    console.log(`  워치리스트: ${allChannels.length}개 → 서칭: ${channels.length}개 → 수집: ${videos.length}개 → 자막: ${withTranscript.length}개 → 분석: ${toAnalyze.length}개`);
+    console.log(`  분석 성공: ${results.success}개 / 실패: ${results.fail}개`);
+    if (results.errors?.length > 0) {
+      results.errors.forEach(e => console.log(`    - ${e.title}: ${e.error}`));
+    }
+    console.log(`${'='.repeat(60)}\n`);
+
+    return {
+      ...results,
+      skipped: noTranscriptCount,
+      watchlistTotal: allChannels.length,
+      searchedChannels: channels.length,
+    };
+  } catch (err) {
+    console.error('[Job][Section3] 치명적 오류:', err);
+    return { success: 0, fail: 0, skipped: 0, errors: [{ title: 'fatal', error: err.message }] };
+  }
+}
+
+module.exports = { runJob, runJobType1, runJobType2, runJobSection2, abortSection2, runJobSection3, abortSection3 };
