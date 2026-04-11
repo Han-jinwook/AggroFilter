@@ -5,7 +5,7 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
+import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname, getOrCreateAnonId } from "@/lib/anon"
 
@@ -31,6 +31,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [anonEmoji, setAnonEmoji] = useState("")
   const [anonNickname, setAnonNickname] = useState("")
+  const [credits, setCredits] = useState<number | null>(null)
 
   const isLoggedIn = nickname.length > 0
 
@@ -122,6 +123,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     if (typeof window === 'undefined') return
     if (!isLoggedIn) {
       setUnreadCount(0)
+      setCredits(null)
       return
     }
 
@@ -137,10 +139,26 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
       }
     }
 
+    const fetchCredits = async () => {
+      try {
+        const res = await fetch('/api/user/credits', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (typeof data.credits === 'number') setCredits(data.credits)
+      } catch {}
+    }
+
     fetchUnreadCount()
+    fetchCredits()
     const interval = window.setInterval(fetchUnreadCount, 30000)
 
-    return () => window.clearInterval(interval)
+    const handleCreditsUpdated = () => fetchCredits()
+    window.addEventListener('creditsUpdated', handleCreditsUpdated)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('creditsUpdated', handleCreditsUpdated)
+    }
   }, [isLoggedIn])
 
   const isActive = (path: string) => {
@@ -284,6 +302,19 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </div>
               <span className="text-[10px] font-bold text-slate-500">알림</span>
             </button>
+          )}
+
+          {/* 크레딧 */}
+          {isLoggedIn && credits !== null && (
+            <Link
+              href="/payment/mock"
+              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+            >
+              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
+                <Coins className="h-5 w-5" />
+              </div>
+              <span className="text-[10px] font-black text-amber-600">{credits} C</span>
+            </Link>
           )}
 
           {/* 프로필 */}

@@ -1,10 +1,32 @@
 "use client"
 
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export function SideWingAds() {
   const pathname = usePathname();
+  const [adFree, setAdFree] = useState(false);
+
+  useEffect(() => {
+    const checkAdFree = () => {
+      fetch('/api/user/credits', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.adFreeUntil && new Date(d.adFreeUntil) > new Date()) {
+            setAdFree(true);
+          } else {
+            setAdFree(false);
+          }
+        })
+        .catch(() => {});
+    };
+    checkAdFree();
+    window.addEventListener('creditsUpdated', checkAdFree);
+    return () => window.removeEventListener('creditsUpdated', checkAdFree);
+  }, []);
+
   if (pathname?.startsWith('/p-admin')) return null;
+  if (adFree) return null;
   return (
     <>
       <div

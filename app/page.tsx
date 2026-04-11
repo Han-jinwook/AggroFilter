@@ -201,6 +201,13 @@ export default function MainPage() {
         const statusCode = Number((firstError as any)?.statusCode)
         const errorData = (firstError as any)?.data
 
+        // [크레딧 부족] 충전 페이지로 리다이렉트
+        if (statusCode === 402 && errorData?.insufficientCredits === true) {
+          alert('크레딧이 부족합니다. 충전 페이지로 이동합니다.')
+          router.push(errorData.redirectUrl || '/payment/mock')
+          return
+        }
+
         // [cached notAnalyzable] UX 연출: 캐시로 즉시 컷되더라도 촉퀴즈를 10초 정도 유지 후 안내
         if (statusCode === 422 && errorData?.cached === true) {
           const minEndTime = quizStartTime + 10000

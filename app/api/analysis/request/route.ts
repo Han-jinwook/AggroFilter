@@ -238,6 +238,27 @@ export async function POST(request: Request) {
         // Continue to fresh analysis if lock/check fails
       }
 
+    // ── 크레딧 잔액 체크 (새 분석 시에만, 캐시 히트는 무료) ──
+    if (!isRecheck && userId && !userId.startsWith('anon_')) {
+      const creditCheckClient = await pool.connect();
+      try {
+        await creditCheckClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+        const creditCheckRes = await creditCheckClient.query(
+          'SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1',
+          [userId]
+        );
+        const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
+        if (!Number.isFinite(userCredits) || userCredits <= 0) {
+          return NextResponse.json(
+            { error: '크레딧이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
+            { status: 402, headers: corsHeaders }
+          );
+        }
+      } finally {
+        creditCheckClient.release();
+      }
+    }
+
     // 2. YouTube API로 영상 정보 가져오기
     const videoInfo = await getVideoInfo(videoId);
     console.log('영상 정보:', videoInfo.title);
@@ -955,6 +976,27 @@ export async function POST(request: Request) {
         }
 
         creditDeducted = true;
+      }
+
+      // ── 일반 크레딧 차감 + 타임패스(ad_free_until) 갱신 ──
+      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_')) {
+        await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+        await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
+
+        const deductRes = await client.query(
+          `UPDATE t_users
+           SET f_credits = COALESCE(f_credits, 0) - 1,
+               f_ad_free_until = NOW() + INTERVAL '10 minutes',
+               f_updated_at = NOW()
+           WHERE f_id = $1 AND COALESCE(f_credits, 0) > 0
+           RETURNING f_credits, f_ad_free_until`,
+          [actualUserId]
+        );
+
+        if (deductRes.rows.length > 0) {
+          creditDeducted = true;
+          console.log(`[Credit] userId=${actualUserId}, -1C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
+        }
       }
 
       // 5-5. 채널 구독 처리
