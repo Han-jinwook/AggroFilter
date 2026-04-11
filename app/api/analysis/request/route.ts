@@ -850,7 +850,8 @@ export async function POST(request: Request) {
             f_is_latest, f_language,
             f_grounding_used, f_grounding_queries,
             f_published_at,
-            f_is_valid, f_needs_review, f_review_reason
+            f_is_valid, f_needs_review, f_review_reason,
+            f_fact_spoiler, f_fact_timestamp
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             1, $23, NOW(), NOW(),
@@ -858,7 +859,8 @@ export async function POST(request: Request) {
             TRUE, $20,
             $21, $22,
             $24,
-            $25, $26, $27
+            $25, $26, $27,
+            $28, $29
           )
         `, [
           analysisId,
@@ -887,7 +889,9 @@ export async function POST(request: Request) {
           videoInfo.publishedAt || null,
           isValidTarget,
           needsReview,
-          reviewReason
+          reviewReason,
+          analysisResult.fact_spoiler || null,
+          analysisResult.fact_timestamp || null
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용

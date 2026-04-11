@@ -725,6 +725,22 @@ export default function ResultClient() {
     });
   };
 
+  const renderHighlightedText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const inner = part.slice(2, -2);
+        return (
+          <mark key={i} className="bg-yellow-200 text-gray-900 px-0.5 rounded-sm font-semibold" style={{ textDecoration: 'none' }}>
+            {inner}
+          </mark>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   const handleYouthService = () => {
     const age = Number.parseInt(youthAge)
     if (isNaN(age) || age < 8 || age > 18) {
@@ -971,14 +987,37 @@ ${content}
                 />
               }
             />
+          {analysisData.factSpoiler && (
+            <div className="rounded-3xl border-4 border-amber-400 bg-amber-50 px-3 py-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                <h3 className="text-base font-bold text-gray-900">팩트 스포일러</h3>
+                <span className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">결론 먼저!</span>
+              </div>
+              <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
+                <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.factSpoiler}</p>
+                {analysisData.factTimestamp && (
+                  <button
+                    onClick={() => handleTimestampClick(analysisData.factTimestamp!)}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    {analysisData.factTimestamp} 부터 보기
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
-              <p className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
-                {analysisData.evaluationReason
-                  .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
-                  .split('<br />').join('\n')}
+              <div className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
+                {renderHighlightedText(
+                  analysisData.evaluationReason
+                    .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
+                    .split('<br />').join('\n')
+                )}
                 {showMore && <span className="ml-1"> {analysisData.overallAssessment}</span>}
-              </p>
+              </div>
               <button
                 onClick={() => setShowMore(!showMore)}
                 className="mt-2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

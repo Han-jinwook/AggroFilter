@@ -622,9 +622,23 @@ export async function analyzeContent(
     - 스포츠 경기 분석·전술 해설
     - 게임하면서 스토리·사회현상을 직접 언급하는 영상 (예: "수술 후 퇴원하자마자 파피 플레이타임 5를 플레이한다")
     
+    ## 팩트 스포일러 (Fact Spoiler) — 핵심 떡밥 추출
+    영상의 제목과 썸네일이 시청자에게 던진 **핵심 떡밥(질문/궁금증)**을 파악하고,
+    전체 자막에서 그 떡밥에 대한 **정확한 팩트(대답)** 부분만 핀셋처럼 추출하라.
+    - 장황한 요약이나 너의 주관적 논평은 절대 섞지 마라. 영상 속 발화자의 원문에 가깝게 인용하라.
+    - 만약 어그로 낚시라서 제목이 약속한 정확한 팩트가 없다면, "정확히 일치하는 팩트 언급은 없으나, ~라는 언급이 가장 유사함"이라고 아주 건조하게 팩트폭행하라.
+    - 팩트가 등장하는 자막의 시작 시간을 "MM:SS" 형식으로 함께 추출하라.
+    - 자막 데이터에 타임스탬프가 없는 경우, fact_timestamp는 null로 설정하라.
+
+    ## 형광펜 하이라이팅 (evaluationReason 작성 규칙 추가)
+    evaluationReason의 1번(정확성), 2번(어그로성), 3번(신뢰도 총평) 각 섹션에서
+    **가장 뼈 때리는 핵심 1~2문장**의 양끝에 마크다운 볼드체 기호(**)를 씌워라.
+    예시: "이 영상은 **제목에서 '충격 폭로'라고 했지만 실제로는 이미 알려진 사실을 반복할 뿐이다.** 나머지 내용은..."
+    모든 문장이 아닌, 정말 핵심인 1~2문장만 볼드 처리하라.
+
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
-    **중요**: 모든 텍스트 필드(evaluationReason, overallAssessment, recommendedTitle 등)는 반드시 **${userLanguage === 'korean' ? '한국어' : 'English'}**로 작성하라.
+    **중요**: 모든 텍스트 필드(evaluationReason, overallAssessment, recommendedTitle, fact_spoiler 등)는 반드시 **${userLanguage === 'korean' ? '한국어' : 'English'}**로 작성하라.
     
     {
       "is_valid_target": boolean, 
@@ -635,8 +649,10 @@ export async function analyzeContent(
       "clickbait": 0-100,
       "reliability": 0-100,
       "clickbaitTierLabel": "일치/마케팅/훅|과장(오해/시간적 피해/낚임 수준)|왜곡(혼란/짜증)|허위/조작(실질 손실 가능)",
+      "fact_spoiler": "제목/썸네일이 던진 떡밥에 대한 핵심 팩트 1~3문장",
+      "fact_timestamp": "12:34 (팩트가 등장하는 시점, MM:SS 형식. 없으면 null)",
       "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
-      "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용...<br /><br />2. 어그로성 평가 (XX점):<br />내용...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green 또는 🟡Yellow 또는 🔴Red):<br />내용...",
+      "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />2. 어그로성 평가 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green 또는 🟡Yellow 또는 🔴Red):<br />내용... **핵심 문장은 볼드** ...",
       // ⚠️ evaluationReason은 반드시 1번, 2번, 3번 세 항목을 모두 포함해야 한다. 3번(신뢰도 총평)을 절대 생략하지 마라.
       "overallAssessment": "전반적인 평가",
       "recommendedTitle": "추천 제목"
@@ -831,6 +847,8 @@ export async function analyzeContent(
             clickbait: getNum('clickbait'),
             reliability: getNum('reliability'),
             clickbaitTierLabel: getStr('clickbaitTierLabel'),
+            fact_spoiler: getLongStr('fact_spoiler', 'fact_timestamp') || getStr('fact_spoiler'),
+            fact_timestamp: getStr('fact_timestamp'),
             subtitleSummary: getLongStr('subtitleSummary', 'evaluationReason') || getStr('subtitleSummary'),
             evaluationReason: getLongStr('evaluationReason', 'overallAssessment') || getStr('evaluationReason'),
             overallAssessment: getLongStr('overallAssessment', 'recommendedTitle') || getStr('overallAssessment'),

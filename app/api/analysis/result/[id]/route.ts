@@ -397,6 +397,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
           aiRecommendedTitle: analysis.f_ai_title_recommendation,
           fullSubtitle: analysis.f_transcript,
           summarySubtitle: analysis.f_summary,
+          factSpoiler: analysis.f_fact_spoiler || null,
+          factTimestamp: analysis.f_fact_timestamp || null,
         },
         comments: formattedComments,
         interaction: interaction,
