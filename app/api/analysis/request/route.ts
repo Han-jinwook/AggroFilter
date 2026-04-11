@@ -609,8 +609,8 @@ export async function POST(request: Request) {
         groundingQueries: analysis.groundingQueries,
         notAnalyzable: analysis.notAnalyzable,
         notAnalyzableReason: analysis.notAnalyzableReason,
-        fact_spoiler: analysis.fact_spoiler,
-        fact_timestamp: analysis.fact_timestamp,
+        thumbnail_spoiler: analysis.thumbnail_spoiler,
+        thumbnail_spoiler_ts: analysis.thumbnail_spoiler_ts,
       };
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
@@ -892,8 +892,8 @@ export async function POST(request: Request) {
           isValidTarget,
           needsReview,
           reviewReason,
-          analysisResult.fact_spoiler || null,
-          analysisResult.fact_timestamp || null
+          analysisResult.thumbnail_spoiler || null,
+          analysisResult.thumbnail_spoiler_ts || null
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용

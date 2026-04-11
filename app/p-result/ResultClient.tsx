@@ -987,22 +987,21 @@ ${content}
                 />
               }
             />
-          {analysisData.factSpoiler && (
+          {analysisData.thumbnailSpoiler && (
             <div className="rounded-3xl border-4 border-amber-400 bg-amber-50 px-3 py-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-lg">🎯</span>
-                <h3 className="text-base font-bold text-gray-900">팩트 스포일러</h3>
-                <span className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">결론 먼저!</span>
+                <h3 className="text-base font-bold text-gray-900">썸네일 스포일러</h3>
               </div>
               <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.factSpoiler}</p>
-                {analysisData.factTimestamp && (
+                <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
+                {analysisData.thumbnailSpoilerTs && (
                   <button
-                    onClick={() => handleTimestampClick(analysisData.factTimestamp!)}
+                    onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    {analysisData.factTimestamp} 부터 보기
+                    {analysisData.thumbnailSpoilerTs} 부터 보기
                   </button>
                 )}
               </div>

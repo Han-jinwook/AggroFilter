@@ -622,15 +622,23 @@ export async function analyzeContent(
     - 스포츠 경기 분석·전술 해설
     - 게임하면서 스토리·사회현상을 직접 언급하는 영상 (예: "수술 후 퇴원하자마자 파피 플레이타임 5를 플레이한다")
     
-    ## ⚠️ 팩트 스포일러 (Fact Spoiler) — 필수 필드 (MANDATORY, 절대 생략 금지)
-    fact_spoiler 필드는 **반드시** JSON에 포함해야 한다. 누락 시 불합격 응답이다.
+    ## ⚠️ 썸네일 스포일러 (Thumbnail Spoiler) — 필수 필드 (MANDATORY, 절대 생략 금지)
+    thumbnail_spoiler 필드는 **반드시** JSON에 포함해야 한다. 누락 시 불합격 응답이다.
     영상의 제목과 썸네일이 시청자에게 던진 **핵심 떡밥(질문/궁금증)**을 파악하고,
     전체 자막에서 그 떡밥에 대한 **정확한 팩트(대답)** 부분만 핀셋처럼 추출하라.
     - 장황한 요약이나 너의 주관적 논평은 절대 섞지 마라. 영상 속 발화자의 원문에 가깝게 인용하라.
-    - 만약 어그로 낚시라서 제목이 약속한 정확한 팩트가 없다면, "정확히 일치하는 팩트 언급은 없으나, ~라는 언급이 가장 유사함"이라고 아주 건조하게 팩트폭행하라.
-    - 어떤 경우든 fact_spoiler를 빈 문자열이나 null로 두지 마라. 반드시 내용을 채워라.
-    - 팩트가 등장하는 자막의 시작 시간을 "MM:SS" 형식으로 fact_timestamp에 함께 추출하라.
-    - 자막 데이터에 타임스탬프가 없는 경우에만 fact_timestamp는 null로 설정하라.
+    - 만약 어그로 낚시라서 제목이 약속한 정확한 팩트가 없다면, "[출처: 확인 불가] 정확히 일치하는 팩트 언급은 없으나, ~라는 언급이 가장 유사함"이라고 아주 건조하게 팩트폭행하라.
+    - 어떤 경우든 thumbnail_spoiler를 빈 문자열이나 null로 두지 마라. 반드시 내용을 채워라.
+    - 팩트가 등장하는 자막의 시작 시간을 "MM:SS" 형식으로 thumbnail_spoiler_ts에 함께 추출하라.
+    - 자막 데이터에 타임스탬프가 없는 경우에만 thumbnail_spoiler_ts는 null로 설정하라.
+
+    ### 출처 명시 규칙 (thumbnail_spoiler 작성 시 반드시 준수)
+    썸네일/제목이 던진 떡밥에 대한 내용을 자막에서 추출할 때, 해당 내용의 **출처나 발화자의 성격**을 파악해서 문장 맨 앞에 반드시 [출처: ...] 태그로 명시하라.
+    - 예시 1 (유튜버 생각): [출처: 유튜버의 개인 주장] 미국이 전쟁으로 노리는 진짜 돈줄은...
+    - 예시 2 (뉴스 인용): [출처: 공식 언론 보도 인용] 구글이 공식 블로그를 통해...
+    - 예시 3 (전문가 인용): [출처: 전문가 인터뷰 인용] 김OO 교수에 따르면...
+    - 예시 4 (낚시): [출처: 확인 불가] 정확히 일치하는 팩트 언급은 없으나...
+    출처 태그 없이 내용만 쓰는 것은 금지. 반드시 [출처: ...] 로 시작하라.
 
     ## 형광펜 하이라이팅 (evaluationReason 작성 규칙 추가)
     evaluationReason의 1번(정확성), 2번(어그로성), 3번(신뢰도 총평) 각 섹션에서
@@ -644,7 +652,7 @@ export async function analyzeContent(
 
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
-    **중요**: 모든 텍스트 필드(evaluationReason, overallAssessment, recommendedTitle, fact_spoiler 등)는 반드시 **${userLanguage === 'korean' ? '한국어' : 'English'}**로 작성하라.
+    **중요**: 모든 텍스트 필드(evaluationReason, overallAssessment, recommendedTitle, thumbnail_spoiler 등)는 반드시 **${userLanguage === 'korean' ? '한국어' : 'English'}**로 작성하라.
     
     {
       "is_valid_target": boolean, 
@@ -655,8 +663,8 @@ export async function analyzeContent(
       "clickbait": 0-100,
       "reliability": 0-100,
       "clickbaitTierLabel": "일치/마케팅/훅|과장(오해/시간적 피해/낚임 수준)|왜곡(혼란/짜증)|허위/조작(실질 손실 가능)",
-      "fact_spoiler": "제목/썸네일이 던진 떡밥에 대한 핵심 팩트 1~3문장",
-      "fact_timestamp": "12:34 (팩트가 등장하는 시점, MM:SS 형식. 없으면 null)",
+      "thumbnail_spoiler": "[출처: ...] 제목/썸네일이 던진 떡밥에 대한 핵심 팩트 1~3문장",
+      "thumbnail_spoiler_ts": "12:34 (팩트가 등장하는 시점, MM:SS 형식. 없으면 null)",
       "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
       "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />2. 어그로성 평가 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green 또는 🟡Yellow 또는 🔴Red):<br />내용... **핵심 문장은 볼드** ...",
       // ⚠️ evaluationReason은 반드시 1번, 2번, 3번 세 항목을 모두 포함해야 한다. 3번(신뢰도 총평)을 절대 생략하지 마라.
@@ -853,8 +861,8 @@ export async function analyzeContent(
             clickbait: getNum('clickbait'),
             reliability: getNum('reliability'),
             clickbaitTierLabel: getStr('clickbaitTierLabel'),
-            fact_spoiler: getLongStr('fact_spoiler', 'fact_timestamp') || getStr('fact_spoiler'),
-            fact_timestamp: getStr('fact_timestamp'),
+            thumbnail_spoiler: getLongStr('thumbnail_spoiler', 'thumbnail_spoiler_ts') || getStr('thumbnail_spoiler'),
+            thumbnail_spoiler_ts: getStr('thumbnail_spoiler_ts'),
             subtitleSummary: getLongStr('subtitleSummary', 'evaluationReason') || getStr('subtitleSummary'),
             evaluationReason: getLongStr('evaluationReason', 'overallAssessment') || getStr('evaluationReason'),
             overallAssessment: getLongStr('overallAssessment', 'recommendedTitle') || getStr('overallAssessment'),
