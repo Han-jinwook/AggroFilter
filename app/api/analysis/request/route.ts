@@ -206,7 +206,44 @@ export async function POST(request: Request) {
 
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
             console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
-            
+
+            // ── 캐시 히트에도 크레딧 차감 (유료 콘텐츠 열람 Paywall) ──
+            let cachedCreditDeducted = false;
+            if (userId && !userId.startsWith('anon_')) {
+              await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+              await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
+
+              const creditCheckRes = await lockClient.query(
+                'SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1',
+                [userId]
+              );
+              const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
+              if (!Number.isFinite(userCredits) || userCredits <= 0) {
+                await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+                lockClient.release();
+                lockClient = null;
+                lockedVideoId = null;
+                return NextResponse.json(
+                  { error: '크레딧이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
+                  { status: 402, headers: corsHeaders }
+                );
+              }
+
+              const deductRes = await lockClient.query(
+                `UPDATE t_users
+                 SET f_credits = COALESCE(f_credits, 0) - 1,
+                     f_ad_free_until = NOW() + INTERVAL '10 minutes',
+                     f_updated_at = NOW()
+                 WHERE f_id = $1 AND COALESCE(f_credits, 0) > 0
+                 RETURNING f_credits, f_ad_free_until`,
+                [userId]
+              );
+              if (deductRes.rows.length > 0) {
+                cachedCreditDeducted = true;
+                console.log(`[Credit·Cache] userId=${userId}, -1C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
+              }
+            }
+
             await lockClient.query(`
               UPDATE t_analyses 
               SET f_request_count = COALESCE(f_request_count, 0) + 1,
@@ -223,7 +260,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ 
               message: '이미 분석된 영상입니다.',
               analysisId: row.f_id,
-              cached: true
+              cached: true,
+              creditDeducted: cachedCreditDeducted,
             }, { headers: corsHeaders });
           }
         }
