@@ -1026,7 +1026,7 @@ ${content}
               </button>
             </div>
           </div>
-          {analysisData.scores.clickbait >= 30 && (
+          {analysisData.scores.clickbait >= 30 && analysisData.aiRecommendedTitle && (
             <div className="rounded-3xl border-4 border-gray-300 bg-blue-50 px-3 py-2">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-base font-bold">AI 추천 제목</h3>

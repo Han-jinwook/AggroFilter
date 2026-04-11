@@ -609,6 +609,8 @@ export async function POST(request: Request) {
         groundingQueries: analysis.groundingQueries,
         notAnalyzable: analysis.notAnalyzable,
         notAnalyzableReason: analysis.notAnalyzableReason,
+        fact_spoiler: analysis.fact_spoiler,
+        fact_timestamp: analysis.fact_timestamp,
       };
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
