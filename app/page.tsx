@@ -163,7 +163,7 @@ export default function MainPage() {
         if (anonCount >= 1) {
           const doSignup = confirm(
             '무료 체험이 끝났습니다!\n\n' +
-            '📧 이메일 인증하면 3,000 C (300회 분석) 무료 지급!\n\n' +
+            '📧 이메일 인증하면 3,000 C (100회 분석) 무료 지급!\n\n' +
             '지금 인증하시겠습니까?'
           )
           if (doSignup) {
@@ -333,7 +333,7 @@ export default function MainPage() {
       })
       const bonusData = await bonusRes.json()
       if (bonusData.bonus > 0) {
-        alert(`🎉 가입 축하 보너스!\n\n${bonusData.bonus.toLocaleString()} C 가 지급되었습니다.\n(${Math.floor(bonusData.bonus / 10)}회 분석 가능)`)
+        alert(`🎉 가입 축하 보너스!\n\n${bonusData.bonus.toLocaleString()} C 가 지급되었습니다.\n(${Math.floor(bonusData.bonus / 30)}회 분석 가능)`)
       }
       window.dispatchEvent(new CustomEvent('creditsUpdated'))
     } catch {}

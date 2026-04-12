@@ -73,9 +73,9 @@ function MockPaymentContent() {
 
   const options = useMemo(
     () => [
-      { credits: 100, price: '1,000원', label: '100 C', desc: '10회 분석' },
-      { credits: 500, price: '4,500원', label: '500 C', desc: '50회 분석 · 10% 할인' },
-      { credits: 1000, price: '8,000원', label: '1,000 C', desc: '100회 분석 · 20% 할인' },
+      { credits: 1000, price: '1,000원', label: '1,000 C', desc: '33회 분석' },
+      { credits: 5000, price: '4,500원', label: '5,000 C', desc: '166회 분석 · 10% 할인' },
+      { credits: 10000, price: '9,000원', label: '10,000 C', desc: '333회 분석 · 10% 할인' },
     ],
     []
   )
@@ -137,7 +137,7 @@ function MockPaymentContent() {
                 <span className="text-sm font-bold text-slate-500">C</span>
               </div>
               <div className="mt-1 text-xs text-slate-400">
-                {balance !== null ? `${Math.floor(balance / 10)}회 분석 가능` : ''}
+                {balance !== null ? `${Math.floor(balance / 30)}회 분석 가능` : ''}
               </div>
             </div>
             <div className="text-4xl">💰</div>

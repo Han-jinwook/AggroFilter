@@ -218,7 +218,7 @@ export async function POST(request: Request) {
                 [userId]
               );
               const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
-              if (!Number.isFinite(userCredits) || userCredits < 10) {
+              if (!Number.isFinite(userCredits) || userCredits < 30) {
                 await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
                 lockClient.release();
                 lockClient = null;
@@ -231,21 +231,21 @@ export async function POST(request: Request) {
 
               const deductRes = await lockClient.query(
                 `UPDATE t_users
-                 SET f_credits = COALESCE(f_credits, 0) - 10,
+                 SET f_credits = COALESCE(f_credits, 0) - 30,
                      f_ad_free_until = NOW() + INTERVAL '10 minutes',
                      f_updated_at = NOW()
-                 WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 10
+                 WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 30
                  RETURNING f_credits, f_ad_free_until`,
                 [userId]
               );
               if (deductRes.rows.length > 0) {
                 cachedCreditDeducted = true;
-                console.log(`[Credit·Cache] userId=${userId}, -10C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
+                console.log(`[Credit·Cache] userId=${userId}, -30C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
                 // 이력 기록
                 await lockClient.query(`CREATE TABLE IF NOT EXISTS t_credit_history (f_id BIGSERIAL PRIMARY KEY, f_user_id TEXT NOT NULL, f_type TEXT NOT NULL, f_amount INTEGER NOT NULL, f_balance INTEGER NOT NULL, f_description TEXT, f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())`);
                 await lockClient.query(
                   `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description) VALUES ($1, 'analysis', $2, $3, $4)`,
-                  [userId, -10, deductRes.rows[0].f_credits, '영상 분석 (캐시)']
+                  [userId, -30, deductRes.rows[0].f_credits, '영상 분석 (캐시)']
                 );
               }
             }
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
           [userId]
         );
         const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
-        if (!Number.isFinite(userCredits) || userCredits < 10) {
+        if (!Number.isFinite(userCredits) || userCredits < 30) {
           return NextResponse.json(
             { error: '크레딧이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
             { status: 402, headers: corsHeaders }
@@ -1029,22 +1029,22 @@ export async function POST(request: Request) {
 
         const deductRes = await client.query(
           `UPDATE t_users
-           SET f_credits = COALESCE(f_credits, 0) - 10,
+           SET f_credits = COALESCE(f_credits, 0) - 30,
                f_ad_free_until = NOW() + INTERVAL '10 minutes',
                f_updated_at = NOW()
-           WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 10
+           WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 30
            RETURNING f_credits, f_ad_free_until`,
           [actualUserId]
         );
 
         if (deductRes.rows.length > 0) {
           creditDeducted = true;
-          console.log(`[Credit] userId=${actualUserId}, -10C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
+          console.log(`[Credit] userId=${actualUserId}, -30C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
           // 이력 기록
           await client.query(`CREATE TABLE IF NOT EXISTS t_credit_history (f_id BIGSERIAL PRIMARY KEY, f_user_id TEXT NOT NULL, f_type TEXT NOT NULL, f_amount INTEGER NOT NULL, f_balance INTEGER NOT NULL, f_description TEXT, f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())`);
           await client.query(
             `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description) VALUES ($1, 'analysis', $2, $3, $4)`,
-            [actualUserId, -10, deductRes.rows[0].f_credits, '영상 분석']
+            [actualUserId, -30, deductRes.rows[0].f_credits, '영상 분석']
           );
         }
       }
