@@ -201,10 +201,11 @@ export default function MainPage() {
         const statusCode = Number((firstError as any)?.statusCode)
         const errorData = (firstError as any)?.data
 
-        // [크레딧 부족] 충전 페이지로 리다이렉트
+        // [크레딧 부족] 충전 페이지로 리다이렉트 (충전 후 자동 복귀)
         if (statusCode === 402 && errorData?.insufficientCredits === true) {
           alert('크레딧이 부족합니다. 충전 페이지로 이동합니다.')
-          router.push(errorData.redirectUrl || '/payment/mock')
+          const returnUrl = encodeURIComponent(window.location.pathname)
+          router.push(`/payment/mock?redirectUrl=${returnUrl}`)
           return
         }
 
@@ -259,6 +260,9 @@ export default function MainPage() {
       // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
+
+      // 크레딧 차감 후 헤더 + 광고 컴포넌트 갱신
+      window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
       // 익명 사용자 분석 횟수 추적 (모달은 결과 페이지에서 표시)
       if (isAnonymousUser()) {

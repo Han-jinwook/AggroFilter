@@ -307,7 +307,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           )}
 
           {/* 크레딧 */}
-          {isLoggedIn && credits !== null && (
+          {isLoggedIn && (
             <Link
               href="/payment/mock"
               className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
@@ -315,7 +315,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
                 <Coins className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-black text-amber-600">{credits} C</span>
+              <span className="text-[10px] font-black text-amber-600">{credits !== null ? `${credits} C` : '…'}</span>
             </Link>
           )}
 
