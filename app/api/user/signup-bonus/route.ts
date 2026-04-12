@@ -4,12 +4,13 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
+const BONUS_AMOUNT = 3000;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const credits = Number(body.credits);
 
-    // Supabase 서버 인증 → 실패 시 body.userId fallback
+    // Supabase 서버 인증 → fallback
     let userId: string | undefined;
     try {
       const supabase = createClient();
@@ -25,29 +26,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    if (!Number.isFinite(credits) || credits <= 0 || credits > 10000) {
-      return NextResponse.json({ error: '유효하지 않은 크레딧 수량입니다.' }, { status: 400 });
-    }
-
     const client = await pool.connect();
     try {
       await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_signup_bonus_given BOOLEAN DEFAULT FALSE`);
 
+      // 이미 보너스를 받았는지 확인
+      const checkRes = await client.query(
+        'SELECT COALESCE(f_signup_bonus_given, false) as given FROM t_users WHERE f_id = $1',
+        [userId]
+      );
+
+      if (checkRes.rows.length === 0) {
+        return NextResponse.json({ bonus: 0, alreadyGiven: false, message: '사용자를 찾을 수 없습니다.' });
+      }
+
+      if (checkRes.rows[0].given === true) {
+        // 이미 받은 유저 → 크레딧만 반환
+        const balRes = await client.query('SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1', [userId]);
+        return NextResponse.json({ bonus: 0, alreadyGiven: true, balance: Number(balRes.rows[0].credits) });
+      }
+
+      // 보너스 지급
       const res = await client.query(
         `UPDATE t_users
          SET f_credits = COALESCE(f_credits, 0) + $1,
+             f_signup_bonus_given = TRUE,
              f_updated_at = NOW()
          WHERE f_id = $2
          RETURNING f_credits`,
-        [credits, userId]
+        [BONUS_AMOUNT, userId]
       );
 
-      if (res.rows.length === 0) {
-        return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
-      }
-
       const newBalance = Number(res.rows[0].f_credits);
-      console.log(`[Mock Charge] userId=${userId}, +${credits}C → balance=${newBalance}C`);
 
       // 이력 기록
       await client.query(`
@@ -63,20 +74,22 @@ export async function POST(request: Request) {
       `);
       await client.query(
         `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
-         VALUES ($1, 'charge', $2, $3, $4)`,
-        [userId, credits, newBalance, `Mock 충전 +${credits}C`]
+         VALUES ($1, 'signup_bonus', $2, $3, $4)`,
+        [userId, BONUS_AMOUNT, newBalance, `가입 보너스 +${BONUS_AMOUNT}C`]
       );
 
+      console.log(`[Signup Bonus] userId=${userId}, +${BONUS_AMOUNT}C → balance=${newBalance}C`);
+
       return NextResponse.json({
-        success: true,
-        charged: credits,
+        bonus: BONUS_AMOUNT,
+        alreadyGiven: false,
         balance: newBalance,
       });
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('POST /api/payment/mock-charge error:', error);
+    console.error('POST /api/user/signup-bonus error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

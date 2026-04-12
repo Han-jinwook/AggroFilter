@@ -158,7 +158,19 @@ export default function MainPage() {
         // 로그인 유저: UUID 사용
         analysisUserId = localStorage.getItem('userId') || getUserId()
       } else {
-        // 익명 유저: anonId 명시적 생성/저장 (merge를 위해 localStorage.anonId 보장)
+        // 익명 유저: 1회 무료 분석 제한
+        const anonCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
+        if (anonCount >= 1) {
+          const doSignup = confirm(
+            '무료 체험이 끝났습니다!\n\n' +
+            '📧 이메일 인증하면 3,000 C (300회 분석) 무료 지급!\n\n' +
+            '지금 인증하시겠습니까?'
+          )
+          if (doSignup) {
+            window.dispatchEvent(new CustomEvent('openLoginModal'))
+          }
+          return
+        }
         analysisUserId = getOrCreateAnonId()
       }
       const body: any = { 
@@ -311,6 +323,20 @@ export default function MainPage() {
     }
 
     window.dispatchEvent(new CustomEvent("profileUpdated"))
+
+    // 가입 보너스 3,000C 지급 시도 (최초 1회만)
+    try {
+      const bonusRes = await fetch('/api/user/signup-bonus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      const bonusData = await bonusRes.json()
+      if (bonusData.bonus > 0) {
+        alert(`🎉 가입 축하 보너스!\n\n${bonusData.bonus.toLocaleString()} C 가 지급되었습니다.\n(${Math.floor(bonusData.bonus / 10)}회 분석 가능)`)
+      }
+      window.dispatchEvent(new CustomEvent('creditsUpdated'))
+    } catch {}
   }
 
   return (
