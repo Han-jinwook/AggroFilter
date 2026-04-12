@@ -207,7 +207,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
 
   const goToCheckout = () => {
     const returnUrl = typeof window !== 'undefined' ? window.location.pathname : '/'
-    window.location.href = `/payment/checkout?redirectUrl=${encodeURIComponent(returnUrl)}`
+    window.location.href = `/payment/mock?redirectUrl=${encodeURIComponent(returnUrl)}`
   }
 
   const closeModal = () => setModalStep(null)

@@ -28,7 +28,9 @@ function MockPaymentContent() {
     const nick = localStorage.getItem('userNickname') || ''
     setNickname(nick)
 
-    fetch('/api/user/credits', { cache: 'no-store' })
+    const uid = localStorage.getItem('userId') || ''
+    const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
+    fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
       .catch(() => {})
@@ -53,10 +55,11 @@ function MockPaymentContent() {
     try {
       setIsPaying(true)
       setChargeResult(null)
+      const uid = localStorage.getItem('userId') || ''
       const res = await fetch('/api/payment/mock-charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credits }),
+        body: JSON.stringify({ credits, userId: uid }),
       })
       const data = await res.json()
       if (!res.ok) {

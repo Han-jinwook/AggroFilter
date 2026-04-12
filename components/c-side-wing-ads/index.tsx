@@ -9,7 +9,9 @@ export function SideWingAds() {
 
   useEffect(() => {
     const checkAdFree = () => {
-      fetch('/api/user/credits', { cache: 'no-store' })
+      const uid = typeof window !== 'undefined' ? (localStorage.getItem('userId') || '') : ''
+      const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
+      fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
         .then(r => r.json())
         .then(d => {
           if (d.adFreeUntil && new Date(d.adFreeUntil) > new Date()) {

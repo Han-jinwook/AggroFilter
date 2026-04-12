@@ -48,9 +48,18 @@ function CheckoutContent() {
       .then((data) => {
         if (!isMounted) return
         const id = data?.user?.id || data?.user?.email || null
-        setUserId(id)
+        if (id) {
+          setUserId(id)
+        } else {
+          // Supabase 서버 인증 실패 시 localStorage fallback
+          const fallbackId = localStorage.getItem('userId') || localStorage.getItem('userEmail') || null
+          setUserId(fallbackId)
+        }
       })
-      .catch(() => {})
+      .catch(() => {
+        const fallbackId = localStorage.getItem('userId') || localStorage.getItem('userEmail') || null
+        if (isMounted) setUserId(fallbackId)
+      })
     return () => { isMounted = false }
   }, [])
 

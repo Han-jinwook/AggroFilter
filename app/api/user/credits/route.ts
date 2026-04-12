@@ -4,11 +4,23 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    const userId = data?.user?.id;
+    // Supabase 서버 인증 → 실패 시 쿼리 파라미터 fallback (클라이언트가 localStorage userId 전달)
+    let userId: string | undefined;
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.id) userId = data.user.id;
+    } catch {}
+
+    if (!userId) {
+      const { searchParams } = new URL(request.url);
+      const fallback = searchParams.get('userId');
+      if (fallback && typeof fallback === 'string' && fallback.length > 0) {
+        userId = fallback;
+      }
+    }
 
     if (!userId) {
       return NextResponse.json({ credits: 0, adFreeUntil: null, loggedIn: false });

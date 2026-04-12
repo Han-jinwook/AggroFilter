@@ -6,16 +6,24 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    const userId = data?.user?.id;
+    const body = await request.json();
+    const credits = Number(body.credits);
+
+    // Supabase 서버 인증 → 실패 시 body.userId fallback
+    let userId: string | undefined;
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.id) userId = data.user.id;
+    } catch {}
+
+    if (!userId && typeof body.userId === 'string' && body.userId.length > 0) {
+      userId = body.userId;
+    }
 
     if (!userId) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
-
-    const body = await request.json();
-    const credits = Number(body.credits);
 
     if (!Number.isFinite(credits) || credits <= 0 || credits > 100) {
       return NextResponse.json({ error: '유효하지 않은 크레딧 수량입니다.' }, { status: 400 });

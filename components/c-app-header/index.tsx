@@ -141,7 +141,9 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
     const fetchCredits = async () => {
       try {
-        const res = await fetch('/api/user/credits', { cache: 'no-store' })
+        const uid = localStorage.getItem('userId') || ''
+        const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
+        const res = await fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json()
         if (typeof data.credits === 'number') setCredits(data.credits)
