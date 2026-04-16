@@ -391,9 +391,9 @@ export async function POST(request: Request) {
       'utattemita', '歌ってみた', // 불러보았다 (커버)
       '弾いてみた', // 연주해보았다
       'dance practice', '안무 영상',
-      'lyrics', '가사', '자막', 'karaoke', 'inst', 'instrumental',
-      'remix', 'prod by', 'prod.', 'feat.', 'ft.',
-      'translation', '번역', '자막판',
+      'lyrics', '가사', 'karaoke', '(inst)', '[inst]', 'instrumental',
+      'remix', 'prod by', ' feat.', ' ft.',
+      '자막판',
     ];
     if (musicKeywords.some(kw => titleLower.includes(kw))) {
       return NextResponse.json(
