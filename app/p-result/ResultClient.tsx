@@ -993,18 +993,44 @@ ${content}
                 <span className="text-lg">🎯</span>
                 <h3 className="text-base font-bold text-gray-900">썸네일 스포일러</h3>
               </div>
-              <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
-                {analysisData.thumbnailSpoilerTs && (
-                  <button
-                    onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    {analysisData.thumbnailSpoilerTs} 부터 보기
-                  </button>
-                )}
-              </div>
+              {Array.isArray(analysisData.thumbnailSpoiler) ? (
+                <div className="space-y-2">
+                  {analysisData.thumbnailSpoiler.map((item: { text: string; ts?: string | null }, idx: number) => (
+                    <div key={idx} className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        {analysisData.thumbnailSpoiler.length > 1 && (
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[11px] font-bold text-white">{idx + 1}</span>
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium leading-relaxed text-gray-800">{item.text}</p>
+                          {item.ts && (
+                            <button
+                              onClick={() => handleTimestampClick(item.ts!)}
+                              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              {item.ts} 부터 보기
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
+                  <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
+                  {analysisData.thumbnailSpoilerTs && (
+                    <button
+                      onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      {analysisData.thumbnailSpoilerTs} 부터 보기
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">

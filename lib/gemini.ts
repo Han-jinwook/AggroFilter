@@ -628,9 +628,10 @@ export async function analyzeContent(
     전체 자막에서 그 떡밥에 대한 **정확한 팩트(대답)** 부분만 핀셋처럼 추출하라.
     - 장황한 요약이나 너의 주관적 논평은 절대 섞지 마라. 영상 속 발화자의 원문에 가깝게 인용하라.
     - 만약 어그로 낚시라서 제목이 약속한 정확한 팩트가 없다면, "[출처: 확인 불가] 정확히 일치하는 팩트 언급은 없으나, ~라는 언급이 가장 유사함"이라고 아주 건조하게 팩트폭행하라.
-    - 어떤 경우든 thumbnail_spoiler를 빈 문자열이나 null로 두지 마라. 반드시 내용을 채워라.
-    - 팩트가 등장하는 자막의 시작 시간을 "MM:SS" 형식으로 thumbnail_spoiler_ts에 함께 추출하라.
-    - 자막 데이터에 타임스탬프가 없는 경우에만 thumbnail_spoiler_ts는 null로 설정하라.
+    - 어떤 경우든 thumbnail_spoiler를 빈 배열로 두지 마라. 반드시 1개 이상의 항목을 채워라.
+    - **배열 형식**: 떡밥에 대한 팩트가 영상 내 여러 시점에 걸쳐 있으면 각각 별도 항목으로 추출하라 (최대 4개).
+    - 각 항목의 ts(타임스탬프)는 "MM:SS" 형식. 자막에 타임스탬프가 없으면 ts를 null로.
+    - 시간순(ts 오름차순)으로 정렬하라.
 
     ### 출처 명시 규칙 (thumbnail_spoiler 작성 시 반드시 준수)
     썸네일/제목이 던진 떡밥에 대한 내용을 자막에서 추출할 때, 해당 내용의 **출처나 발화자의 성격**을 파악해서 문장 맨 앞에 반드시 [출처: ...] 태그로 명시하라.
@@ -663,8 +664,10 @@ export async function analyzeContent(
       "clickbait": 0-100,
       "reliability": 0-100,
       "clickbaitTierLabel": "일치/마케팅/훅|과장(오해/시간적 피해/낚임 수준)|왜곡(혼란/짜증)|허위/조작(실질 손실 가능)",
-      "thumbnail_spoiler": "[출처: ...] 제목/썸네일이 던진 떡밥에 대한 핵심 팩트 1~3문장",
-      "thumbnail_spoiler_ts": "12:34 (팩트가 등장하는 시점, MM:SS 형식. 없으면 null)",
+      "thumbnail_spoiler": [
+        { "text": "[출처: ...] 떡밥 팩트 1", "ts": "02:15" },
+        { "text": "[출처: ...] 떡밥 팩트 2 (시점이 다르면 별도 항목)", "ts": "07:42" }
+      ],
       "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
       "evaluationReason": "1. 내용 정확성 검증 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />2. 어그로성 평가 (XX점):<br />내용... **핵심 문장은 볼드** ...<br /><br />3. 신뢰도 총평 (XX점 / 🟢Green 또는 🟡Yellow 또는 🔴Red):<br />내용... **핵심 문장은 볼드** ...",
       // ⚠️ evaluationReason은 반드시 1번, 2번, 3번 세 항목을 모두 포함해야 한다. 3번(신뢰도 총평)을 절대 생략하지 마라.
@@ -861,8 +864,17 @@ export async function analyzeContent(
             clickbait: getNum('clickbait'),
             reliability: getNum('reliability'),
             clickbaitTierLabel: getStr('clickbaitTierLabel'),
-            thumbnail_spoiler: getLongStr('thumbnail_spoiler', 'thumbnail_spoiler_ts') || getStr('thumbnail_spoiler'),
-            thumbnail_spoiler_ts: getStr('thumbnail_spoiler_ts'),
+            thumbnail_spoiler: (() => {
+              // 배열 형태 추출 시도
+              const arrMatch = repaired.match(/"thumbnail_spoiler"\s*:\s*(\[[\s\S]*?\])\s*,/);
+              if (arrMatch) {
+                try { return JSON.parse(arrMatch[1]); } catch {}
+              }
+              // fallback: 구 string 형태
+              const str = getLongStr('thumbnail_spoiler', 'subtitleSummary') || getStr('thumbnail_spoiler');
+              const ts = getStr('thumbnail_spoiler_ts');
+              return str ? [{ text: str, ts: ts || null }] : [];
+            })(),
             subtitleSummary: getLongStr('subtitleSummary', 'evaluationReason') || getStr('subtitleSummary'),
             evaluationReason: getLongStr('evaluationReason', 'overallAssessment') || getStr('evaluationReason'),
             overallAssessment: getLongStr('overallAssessment', 'recommendedTitle') || getStr('overallAssessment'),

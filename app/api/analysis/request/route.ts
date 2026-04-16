@@ -957,8 +957,8 @@ export async function POST(request: Request) {
           isValidTarget,
           needsReview,
           reviewReason,
-          analysisResult.thumbnail_spoiler || null,
-          analysisResult.thumbnail_spoiler_ts || null
+          Array.isArray(analysisResult.thumbnail_spoiler) ? JSON.stringify(analysisResult.thumbnail_spoiler) : (analysisResult.thumbnail_spoiler || null),
+          null
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용

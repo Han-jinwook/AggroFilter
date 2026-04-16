@@ -397,8 +397,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
           aiRecommendedTitle: analysis.f_ai_title_recommendation,
           fullSubtitle: analysis.f_transcript,
           summarySubtitle: analysis.f_summary,
-          thumbnailSpoiler: analysis.f_fact_spoiler || null,
-          thumbnailSpoilerTs: analysis.f_fact_timestamp || null,
+          thumbnailSpoiler: (() => {
+            const raw = analysis.f_fact_spoiler;
+            if (!raw) return null;
+            // 새 형식: JSON 배열
+            if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+              try { return JSON.parse(raw); } catch {}
+            }
+            // 구 형식: plain string → 배열로 변환
+            return [{ text: raw, ts: analysis.f_fact_timestamp || null }];
+          })(),
         },
         comments: formattedComments,
         interaction: interaction,
