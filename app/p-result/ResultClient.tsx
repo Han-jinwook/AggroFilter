@@ -995,13 +995,16 @@ ${content}
               </div>
               {Array.isArray(analysisData.thumbnailSpoiler) ? (
                 <div className="space-y-2">
-                  {analysisData.thumbnailSpoiler.map((item: { text: string; ts?: string | null }, idx: number) => (
+                  {analysisData.thumbnailSpoiler.map((item: { topic?: string; text: string; ts?: string | null }, idx: number) => (
                     <div key={idx} className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
                       <div className="flex items-start gap-3">
                         {analysisData.thumbnailSpoiler.length > 1 && (
                           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[11px] font-bold text-white">{idx + 1}</span>
                         )}
                         <div className="flex-1">
+                          {item.topic && (
+                            <p className="mb-1 text-xs font-bold text-amber-600">📌 {item.topic}</p>
+                          )}
                           <p className="text-sm font-medium leading-relaxed text-gray-800">{item.text}</p>
                           {item.ts && (
                             <button
