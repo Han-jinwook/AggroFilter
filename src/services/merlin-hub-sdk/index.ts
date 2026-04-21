@@ -1,0 +1,37 @@
+/**
+ * Merlin Hub SDK
+ * ─────────────────────────────────────────────
+ * 싱글턴 패턴 SDK — 다른 패밀리 앱에서도 복사하여 재사용 가능
+ * 
+ * 사용법:
+ *   import { MerlinHub } from '@/src/services/merlin-hub-sdk';
+ *   await MerlinHub.auth.requestOTP('user@example.com');
+ *   const result = await MerlinHub.auth.verifyOTP('user@example.com', '123456');
+ *   const balance = await MerlinHub.wallet.getBalance();
+ */
+
+export { configureMerlinHub, getConfig } from './config';
+export type { MerlinHubConfig } from './config';
+
+export { hubFetch, getSessionToken, setSessionToken, clearSessionToken, isTokenExpired } from './client';
+export type { HubFetchResult } from './client';
+
+export { requestOTP, verifyOTP, checkSession, logout } from './auth';
+export type { OTPRequestResult, OTPVerifyResult } from './auth';
+
+export { useCredit, getBalance, getFamilyUid } from './wallet';
+export type { UseCreditParams, UseCreditResult, WalletBalance } from './wallet';
+
+// ── Namespace export for convenience ──
+import * as auth from './auth';
+import * as wallet from './wallet';
+import * as client from './client';
+import { configureMerlinHub, getConfig } from './config';
+
+export const MerlinHub = {
+  configure: configureMerlinHub,
+  getConfig,
+  auth,
+  wallet,
+  client,
+} as const;

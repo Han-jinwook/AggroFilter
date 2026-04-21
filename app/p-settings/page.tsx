@@ -6,8 +6,7 @@ import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
-import { getAnonEmoji, getAnonNickname, getOrCreateAnonId, isAnonymousUser, getUserId } from '@/lib/anon'
-import { mergeAnonToEmail } from '@/lib/merge'
+import { isAnonymousUser, getUserId } from '@/lib/anon'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -25,24 +24,15 @@ export default function SettingsPage() {
     f_notify_top10_change: true,
   })
   const [rankingThreshold, setRankingThreshold] = useState<10 | 20 | 30>(10)
-  const [anonEmoji, setAnonEmoji] = useState('')
 
 
   useEffect(() => {
     const storedEmail = localStorage.getItem('userEmail')
     const anon = isAnonymousUser()
     setIsAnon(anon)
-    if (anon) setAnonEmoji(getAnonEmoji())
 
     if (storedEmail && !anon) {
       setEmail(storedEmail)
-
-      // 로그인 후 anonId가 남아있으면 자동 머지
-      const pendingAnonId = localStorage.getItem('anonId')
-      if (pendingAnonId && pendingAnonId.startsWith('anon_')) {
-        const uid = getUserId()
-        if (uid) mergeAnonToEmail(uid, storedEmail)
-      }
 
       const loadUserData = async () => {
         const uid = getUserId()
@@ -105,7 +95,7 @@ export default function SettingsPage() {
       // 익명 사용자: localStorage에 저장된 커스텀 값 우선, 없으면 기본값
       const savedNickname = localStorage.getItem('userNickname')
       const savedProfileImage = localStorage.getItem('userProfileImage')
-      setNickname(savedNickname || getAnonNickname())
+      setNickname(savedNickname || '게스트')
       setProfileImage(savedProfileImage || '')
       setEmail('')
     }
@@ -285,7 +275,7 @@ export default function SettingsPage() {
                   />
                 ) : isAnon ? (
                   <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
-                    <span className="text-4xl">{anonEmoji}</span>
+                    <span className="text-4xl">🐾</span>
                   </div>
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">

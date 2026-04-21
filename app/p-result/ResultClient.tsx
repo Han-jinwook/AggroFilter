@@ -12,8 +12,7 @@ import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
-import { getUserId, getAnonNickname, getAnonEmoji, isAnonymousUser } from "@/lib/anon"
-import { mergeAnonToEmail } from "@/lib/merge"
+import { getUserId, isAnonymousUser } from "@/lib/anon"
 import { ShareModal } from "@/components/c-share-modal"
 import { AccessibilityToolbar } from "@/components/c-accessibility-toolbar"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
@@ -90,9 +89,8 @@ export default function ResultClient() {
           setUserProfileImage(localStorage.getItem('userProfileImage'))
         })
     } else {
-      // 익명 사용자: localStorage에 저장된 커스텀 값 우선
-      setUserNickname(localStorage.getItem('userNickname') || getAnonNickname())
-      setUserProfileImage(localStorage.getItem('userProfileImage') || getAnonEmoji())
+      setUserNickname(localStorage.getItem('userNickname') || '게스트')
+      setUserProfileImage(localStorage.getItem('userProfileImage') || '🐾')
     }
   }, [])
 
@@ -240,14 +238,6 @@ export default function ResultClient() {
             }
           }
 
-          // 익명 사용자 5회 이상 시 혜택 안내 모달 (5회마다 반복)
-          if (isAnonymousUser()) {
-            const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10);
-            const shownAt = parseInt(localStorage.getItem('anonBenefitShownAt') || '0', 10);
-            if (count >= 5 && count - shownAt >= 5) {
-              setTimeout(() => setShowBenefitModal(true), 2000);
-            }
-          }
         }
       } catch (err) {
         if (!isCancelled) {
@@ -292,7 +282,10 @@ export default function ResultClient() {
   }, [])
 
   const requireLogin = (action: "like" | "comment", callback: () => void) => {
-    // 익명 사용자도 허용 — 로그인 강제 안 함
+    if (isAnonymousUser()) {
+      window.dispatchEvent(new CustomEvent('openLoginModal'))
+      return false
+    }
     callback()
     return true
   }
@@ -300,9 +293,6 @@ export default function ResultClient() {
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
     if (userId) localStorage.setItem("userId", userId)
-
-    // 익명 데이터 → 이메일 계정으로 병합
-    await mergeAnonToEmail(userId, email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {
@@ -446,8 +436,12 @@ export default function ResultClient() {
   const handleCommentSubmit = async () => {
     if (!newComment.trim()) return
     if (!analysisData) return
-    const nickname = localStorage.getItem("userNickname") || getAnonNickname()
-    const profileImg = localStorage.getItem("userProfileImage") || getAnonEmoji()
+    if (isAnonymousUser()) {
+      window.dispatchEvent(new CustomEvent('openLoginModal'))
+      return
+    }
+    const nickname = localStorage.getItem("userNickname") || '게스트'
+    const profileImg = localStorage.getItem("userProfileImage") || '🐾'
     const tempId = `temp_${Date.now()}`
     const optimisticComment = {
       id: tempId,
@@ -489,8 +483,12 @@ export default function ResultClient() {
   const handleReplySubmit = async (commentId: string) => {
     if (!replyText.trim()) return
     if (!analysisData) return
-    const nickname = localStorage.getItem("userNickname") || getAnonNickname()
-    const profileImg = localStorage.getItem("userProfileImage") || getAnonEmoji()
+    if (isAnonymousUser()) {
+      window.dispatchEvent(new CustomEvent('openLoginModal'))
+      return
+    }
+    const nickname = localStorage.getItem("userNickname") || '게스트'
+    const profileImg = localStorage.getItem("userProfileImage") || '🐾'
     try {
       const response = await fetch('/api/comments', {
         method: 'POST',
@@ -864,7 +862,6 @@ ${content}
             <div className="flex flex-col gap-2 pt-1">
               <button
                 onClick={() => {
-                  localStorage.setItem('anonBenefitShownAt', localStorage.getItem('anonAnalysisCount') || '0');
                   setShowBenefitModal(false);
                   setTimeout(() => setShowLoginModal(true), 200);
                 }}
@@ -874,7 +871,6 @@ ${content}
               </button>
               <button
                 onClick={() => {
-                  localStorage.setItem('anonBenefitShownAt', localStorage.getItem('anonAnalysisCount') || '0');
                   setShowBenefitModal(false);
                 }}
                 className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"

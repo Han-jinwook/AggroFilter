@@ -6,6 +6,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/c-dialog"
+import { requestOTP, verifyOTP } from "@/src/services/merlin-hub-sdk"
 
 interface TLoginModalProps {
   open: boolean
@@ -27,18 +28,13 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setIsLoading(true)
     try {
-      const res = await fetch('/api/auth/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send code')
+      const result = await requestOTP(email)
+      if (!result.success) throw new Error(result.error || 'Failed to send OTP')
       setStep("code")
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError('코드 발송에 실패했습니다. 이메일을 확인해주세요.')
+      setError(err?.message || '코드 발송에 실패했습니다. 이메일을 확인해주세요.')
     } finally {
       setIsLoading(false)
     }
@@ -77,21 +73,18 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: fullCode }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError('코드가 올바르지 않거나 만료되었습니다.')
+      const result = await verifyOTP(email, fullCode)
+      if (!result.success) {
+        setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
         setCode(["", "", "", "", "", ""])
         setTimeout(() => inputRefs.current[0]?.focus(), 50)
         return
       }
-      if (data.email) localStorage.setItem('userEmail', data.email)
-      if (data.userId) localStorage.setItem('userId', data.userId)
-      onLoginSuccess(data.email, data.userId)
+      // Hub에서 받은 정보를 localStorage에 저장
+      if (result.email) localStorage.setItem('userEmail', result.email)
+      if (result.familyUid) localStorage.setItem('userId', result.familyUid)
+      if (result.nickname) localStorage.setItem('userNickname', result.nickname)
+      onLoginSuccess(result.email || email, result.familyUid || '')
     } catch (err) {
       console.error(err)
       setError('인증에 실패했습니다. 다시 시도해주세요.')
@@ -106,17 +99,12 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setCode(["", "", "", "", "", ""])
     try {
-      const res = await fetch('/api/auth/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
+      const result = await requestOTP(email)
+      if (!result.success) throw new Error(result.error || 'Failed')
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError('재발송에 실패했습니다.')
+      setError(err?.message || '재발송에 실패했습니다.')
     } finally {
       setIsLoading(false)
     }
@@ -137,9 +125,9 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
-            AggroFilter
+            Merlin Family
           </DialogTitle>
-          <p className="text-center text-sm text-muted-foreground">이메일을 등록하면 알림과 데이터 보존이 가능해요</p>
+          <p className="text-center text-sm text-muted-foreground">이메일 인증으로 패밀리 크레딧과 모든 기능을 이용하세요</p>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

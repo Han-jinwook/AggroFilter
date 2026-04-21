@@ -9,8 +9,7 @@ import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { Disclaimer } from "@/app/c-home/disclaimer"
-import { getUserId, getOrCreateAnonId, isAnonymousUser } from "@/lib/anon"
-import { mergeAnonToEmail } from "@/lib/merge"
+import { getUserId, isAnonymousUser } from "@/lib/anon"
 
 export default function MainPage() {
   const router = useRouter()
@@ -158,20 +157,15 @@ export default function MainPage() {
         // 로그인 유저: UUID 사용
         analysisUserId = localStorage.getItem('userId') || getUserId()
       } else {
-        // 익명 유저: 1회 무료 분석 제한
-        const anonCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
-        if (anonCount >= 1) {
-          const doSignup = confirm(
-            '무료 체험이 끝났습니다!\n\n' +
-            '📧 이메일 인증하면 3,000 C (100회 분석) 무료 지급!\n\n' +
-            '지금 인증하시겠습니까?'
-          )
-          if (doSignup) {
-            window.dispatchEvent(new CustomEvent('openLoginModal'))
-          }
+        // 비로그인: 1회 무료 체험 (휘발성, DB 미보관)
+        const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
+        if (trialCount >= 1) {
+          setIsAnalyzing(false)
+          window.dispatchEvent(new CustomEvent('openLoginModal'))
           return
         }
-        analysisUserId = getOrCreateAnonId()
+        // 휘발성 1회용 ID (localStorage에 저장하지 않음)
+        analysisUserId = 'trial_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8)
       }
       const body: any = { 
         url: analysisUrl,
@@ -294,9 +288,6 @@ export default function MainPage() {
     localStorage.setItem("userEmail", email)
     if (userId) localStorage.setItem("userId", userId)
     setUserEmail(email)
-
-    // 익명 데이터 → 이메일 계정으로 병합
-    await mergeAnonToEmail(userId, email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {

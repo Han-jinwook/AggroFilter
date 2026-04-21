@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { LoginModal } from "@/components/c-login-modal"
-import { mergeAnonToEmail } from "@/lib/merge"
 
 export function GlobalLoginModal() {
   const [open, setOpen] = useState(false)
@@ -10,7 +9,11 @@ export function GlobalLoginModal() {
   useEffect(() => {
     const handler = () => setOpen(true)
     window.addEventListener("openLoginModal", handler)
-    return () => window.removeEventListener("openLoginModal", handler)
+    window.addEventListener("merlinSessionExpired", handler)
+    return () => {
+      window.removeEventListener("openLoginModal", handler)
+      window.removeEventListener("merlinSessionExpired", handler)
+    }
   }, [])
 
   return (
@@ -21,7 +24,6 @@ export function GlobalLoginModal() {
         if (email) localStorage.setItem('userEmail', email)
         if (userId) localStorage.setItem('userId', userId)
         setOpen(false)
-        await mergeAnonToEmail(userId, email)
         window.location.reload()
       }}
     />

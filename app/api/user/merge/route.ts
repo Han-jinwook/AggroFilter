@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
 /**
- * POST /api/user/merge
- * 익명 세션(anon_id) 데이터를 인증된 이메일 계정으로 안전하게 병합합니다.
- * 
- * - t_channel_subscriptions: f_user_id (TEXT = f_email) → email로 변경
- * - t_notifications: f_user_id (TEXT = f_email) → email로 변경
- * - t_interactions: f_user_id (UUID = t_users.f_id) → email 유저의 f_id로 변경
- * - t_comments: f_user_id (UUID = t_users.f_id) → email 유저의 f_id로 변경
- * - t_comment_interactions: f_user_id (UUID) → email 유저의 f_id로 변경
- * - t_analyses: f_user_id (UUID) → email 유저의 f_id로 변경
- * - t_users: anon 행 삭제
+ * @deprecated Merlin Family OS 전환으로 익명 세션 병합 제거됨.
+ * 하위 호환용 no-op stub — 호출 시 아무 작업 없이 성공 반환.
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
+  return NextResponse.json({ success: true, merged: false, reason: 'deprecated' });
+}
+
+// ── 아래는 레거시 코드 (비활성) ──
+async function _legacy_POST(request: Request) {
   try {
     const { anonId, userId: authUserId, email } = await request.json();
 

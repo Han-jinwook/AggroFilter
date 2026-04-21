@@ -8,7 +8,6 @@ import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X } from "lucide-
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
 import { getUserId } from "@/lib/anon"
-import { mergeAnonToEmail } from "@/lib/merge"
 
 interface TAnalysisVideo {
   id: string
@@ -194,9 +193,7 @@ export default function MyPageClient() {
     try {
       setIsLoadingVideos(true);
       let uid = getUserId();
-      if (uid && !uid.startsWith('anon_')) {
-        // 로그인 유저: localStorage.userId가 없으면 세션에서 확보
-      } else if ((!uid || uid.startsWith('anon_')) && localStorage.getItem('userEmail')) {
+      if (!uid && localStorage.getItem('userEmail')) {
         try {
           const meRes = await fetch('/api/auth/me');
           if (meRes.ok) {
@@ -208,7 +205,6 @@ export default function MyPageClient() {
           }
         } catch {}
       }
-      // 익명 유저도 anonId로 조회 허용
       const resolvedUid = uid || null;
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
@@ -235,9 +231,7 @@ export default function MyPageClient() {
     try {
       setIsLoadingChannels(true);
       let uid = getUserId();
-      if (uid && !uid.startsWith('anon_')) {
-        // 로그인 유저: localStorage.userId가 없으면 세션에서 확보
-      } else if ((!uid || uid.startsWith('anon_')) && localStorage.getItem('userEmail')) {
+      if (!uid && localStorage.getItem('userEmail')) {
         try {
           const meRes = await fetch('/api/auth/me');
           if (meRes.ok) {
@@ -275,16 +269,6 @@ export default function MyPageClient() {
   useEffect(() => {
     fetchVideos();
     fetchChannels();
-    // 로그인 후 anonId가 남아있으면 자동 머지
-    const email = localStorage.getItem('userEmail')
-    const anonId = localStorage.getItem('anonId')
-    if (email && anonId && anonId.startsWith('anon_')) {
-      const uid = localStorage.getItem('userId')
-      if (uid) mergeAnonToEmail(uid, email).then(() => {
-        fetchVideos()
-        fetchChannels()
-      })
-    }
   }, [fetchVideos, fetchChannels]);
 
   // 뒤로가기(popstate / bfcache) 시 URL에서 탭 복원 + 데이터 재로드
@@ -337,9 +321,6 @@ export default function MyPageClient() {
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
     if (userId) localStorage.setItem("userId", userId)
-
-    // 익명 데이터 → 이메일 계정으로 병합
-    await mergeAnonToEmail(userId, email)
 
     const nickname = email.split("@")[0]
     localStorage.setItem("userNickname", nickname)
