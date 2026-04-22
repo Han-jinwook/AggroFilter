@@ -112,6 +112,7 @@ export interface ProfileResult {
   success: boolean;
   nickname?: string;
   avatar_url?: string;
+  profile_image?: string; // 허브에서 profile_image로 반환할 경우 대비
   error?: string;
 }
 
@@ -133,7 +134,7 @@ export async function updateProfile(params: ProfileUpdateParams): Promise<Profil
     return {
       success: true,
       nickname: data.nickname,
-      avatar_url: data.avatar_url,
+      avatar_url: data.avatar_url || data.profile_image,
     };
   } catch (err) {
     console.error('[MerlinHub] updateProfile error:', err);
@@ -155,7 +156,7 @@ export async function getProfile(): Promise<ProfileResult> {
     return {
       success: true,
       nickname: data.nickname,
-      avatar_url: data.avatar_url,
+      avatar_url: data.avatar_url || data.profile_image,
     };
   } catch (err) {
     console.error('[MerlinHub] getProfile error:', err);
