@@ -74,9 +74,9 @@ function MockPaymentContent() {
 
   const options = useMemo(
     () => [
-      { credits: 1000, price: '1,000원', label: '1,000 C', desc: '33회 분석' },
-      { credits: 5000, price: '4,500원', label: '5,000 C', desc: '166회 분석 · 10% 할인' },
-      { credits: 10000, price: '9,000원', label: '10,000 C', desc: '333회 분석 · 10% 할인' },
+      { credits: 1000, price: '1,000원', label: '🎫 [베이직] 33회 분석 이용권', desc: '' },
+      { credits: 5000, price: '4,500원', label: '💎 [프로] 166회 분석 이용권', desc: '10% 할인' },
+      { credits: 10000, price: '9,000원', label: '👑 [프리미엄] 333회 분석 이용권', desc: '10% 할인' },
     ],
     []
   )
@@ -178,10 +178,8 @@ function MockPaymentContent() {
         {/* 충전 탭 */}
         {tab === 'charge' && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-black text-slate-900">크레딧 충전</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              테스트 모드 — 버튼 클릭 시 즉시 충전 (실제 결제 없음)
-            </p>
+            <h2 className="text-base font-black text-slate-900">어그로필터 분석 이용권 구매</h2>
+            {/* 테스트 모드 문구 숨김 (KCP 심사 기간) */}
 
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {options.map((opt) => (
@@ -196,9 +194,9 @@ function MockPaymentContent() {
                       : 'bg-white border-indigo-200 hover:border-indigo-500 hover:shadow-md')
                   }
                 >
-                  <div className="text-xl font-black text-indigo-600">{opt.label}</div>
-                  <div className="mt-1 text-sm font-bold text-slate-700">{opt.price}</div>
-                  <div className="mt-1 text-xs font-bold text-rose-500">{opt.desc}</div>
+                  <div className="text-sm font-black text-slate-900">{opt.label}</div>
+                  <div className="mt-1 text-base font-black text-indigo-600">{opt.price}</div>
+                  {opt.desc && <div className="mt-1 text-xs font-bold text-rose-500">{opt.desc}</div>}
                 </button>
               ))}
             </div>
@@ -264,6 +262,21 @@ function MockPaymentContent() {
             )}
           </div>
         )}
+        {/* 상품 정보 및 정책 고지 */}
+        <div className="rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-3">
+          <div>
+            <p className="font-bold text-slate-700 mb-1">상품정보</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다.</p>
+          </div>
+          <div>
+            <p className="font-bold text-slate-700 mb-1">배송/환불 정책</p>
+            <p>결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 고객센터를 통해 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+          </div>
+          <div>
+            <p className="font-bold text-slate-700 mb-1">고객센터</p>
+            <p>전화: 010-2597-7502 | 이메일: beakes@naver.com</p>
+          </div>
+        </div>
       </main>
     </div>
   )

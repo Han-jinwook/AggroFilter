@@ -14,9 +14,9 @@ declare global {
 }
 
 const CREDIT_PLANS = [
-  { credits: 1, price: 1000, label: '1크레딧', desc: '1,000원' },
-  { credits: 5, price: 4500, label: '5크레딧', desc: '4,500원 (10% 할인)' },
-  { credits: 10, price: 8000, label: '10크레딧', desc: '8,000원 (20% 할인)' },
+  { credits: 1, price: 1000, label: '🎫 [베이직] 33회 분석 이용권', desc: '1,000원' },
+  { credits: 5, price: 4500, label: '💎 [프로] 166회 분석 이용권', desc: '4,500원 (10% 할인)' },
+  { credits: 10, price: 9000, label: '👑 [프리미엄] 333회 분석 이용권', desc: '9,000원 (10% 할인)' },
 ]
 
 export default function CheckoutPage() {
@@ -116,9 +116,9 @@ function CheckoutContent() {
       <AppHeader />
       <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-black text-slate-900">크레딧 충전</h1>
+          <h1 className="text-xl font-black text-slate-900">어그로필터 분석 이용권 구매</h1>
           <p className="mt-2 text-sm text-slate-600">
-            재분석에 사용할 크레딧을 충전하세요.
+            AI 신뢰도 분석에 사용할 이용권을 구매하세요.
           </p>
 
           {userId && (
@@ -143,13 +143,8 @@ function CheckoutContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-base font-black text-slate-900">{plan.label}</span>
-                    {plan.credits > 1 && (
-                      <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">
-                        할인
-                      </span>
-                    )}
                   </div>
-                  <span className="text-base font-black text-slate-900">{plan.desc}</span>
+                  <span className="text-base font-black text-indigo-600">{plan.desc}</span>
                 </div>
               </button>
             ))}
@@ -180,6 +175,22 @@ function CheckoutContent() {
           >
             취소하고 돌아가기
           </button>
+        </div>
+
+        {/* 상품 정보 및 정책 고지 */}
+        <div className="mt-6 rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-3">
+          <div>
+            <p className="font-bold text-slate-700 mb-1">상품정보</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다.</p>
+          </div>
+          <div>
+            <p className="font-bold text-slate-700 mb-1">배송/환불 정책</p>
+            <p>결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 고객센터를 통해 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+          </div>
+          <div>
+            <p className="font-bold text-slate-700 mb-1">고객센터</p>
+            <p>전화: 010-2597-7502 | 이메일: beakes@naver.com</p>
+          </div>
         </div>
       </main>
     </div>
