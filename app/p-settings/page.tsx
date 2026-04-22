@@ -121,6 +121,7 @@ export default function SettingsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: uid,
+              email: storedEmail,
               nickname: tempNickname,
               profileImage: tempProfileImage || null
             })

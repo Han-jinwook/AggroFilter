@@ -4,29 +4,27 @@ import { pool } from '@/lib/db';
 // REFACTORED_BY_MERLIN_HUB: t_users 프로필 → app_aggro_profiles + Hub family_users 이관 예정
 // 현재는 t_users 테이블을 유지하되, family_uid 기반으로 조회
 
+// REFACTORED_BY_MERLIN_HUB: UPSERT — Hub family_uid 유저도 t_users에 프로필 저장 가능
 export async function PUT(request: NextRequest) {
   try {
-    const { id, nickname, profileImage } = await request.json();
+    const { id, nickname, profileImage, email } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const updateQuery = `
-      UPDATE t_users
-      SET 
-        f_nickname = COALESCE($1, f_nickname),
-        f_image = COALESCE($2, f_image),
+    const upsertQuery = `
+      INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      ON CONFLICT (f_id) DO UPDATE SET
+        f_nickname = COALESCE($3, t_users.f_nickname),
+        f_image = COALESCE($4, t_users.f_image),
+        f_email = COALESCE($2, t_users.f_email),
         f_updated_at = NOW()
-      WHERE f_id = $3
       RETURNING f_id, f_email, f_nickname, f_image
     `;
 
-    const result = await pool.query(updateQuery, [nickname, profileImage, id]);
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    const result = await pool.query(upsertQuery, [id, email || null, nickname, profileImage]);
 
     return NextResponse.json({ 
       success: true, 
