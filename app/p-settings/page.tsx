@@ -155,15 +155,42 @@ export default function SettingsPage() {
     setIsEditing(false)
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
       reader.onloadend = () => {
-        const result = reader.result
-        if (typeof result === 'string') {
-          setTempProfileImage(result)
+        const img = new window.Image()
+        img.onload = () => {
+          // Canvas 리사이징 로직 (최대 200px)
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          const maxSide = 200
+
+          if (width > height) {
+            if (width > maxSide) {
+              height = Math.round((height * maxSide) / width)
+              width = maxSide
+            }
+          } else {
+            if (height > maxSide) {
+              width = Math.round((width * maxSide) / height)
+              height = maxSide
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height)
+            // 압축된 base64 생성 (품질 0.7)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7)
+            setTempProfileImage(compressedBase64)
+          }
         }
+        img.src = reader.result as string
       }
       reader.readAsDataURL(file)
     }
@@ -284,7 +311,7 @@ export default function SettingsPage() {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleImageChange}
+                      onChange={handleImageUpload}
                       className="hidden"
                     />
                   </label>
