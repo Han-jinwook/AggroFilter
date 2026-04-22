@@ -7,6 +7,7 @@ import AppHeader from '@/components/c-app-header'
 import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { isAnonymousUser, getUserId } from '@/lib/anon'
+import { MerlinHub } from '@/src/services/merlin-hub-sdk'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -38,13 +39,12 @@ export default function SettingsPage() {
         const uid = getUserId()
         if (!uid) return
 
-        // 프로필 fetch
-        fetch(`/api/user/profile?id=${encodeURIComponent(uid)}`)
-          .then(res => res.ok ? res.json() : null)
-          .then(data => {
-            if (data?.user) {
-              const dbNickname = data.user.nickname || storedEmail.split('@')[0]
-              const dbImage = data.user.image || ''
+        // REFACTORED_BY_MERLIN_HUB: 로컬 API 대신 Hub SDK에서 프로필 조회
+        MerlinHub.auth.getProfile()
+          .then(result => {
+            if (result.success) {
+              const dbNickname = result.nickname || storedEmail.split('@')[0]
+              const dbImage = result.avatar_url || ''
               setNickname(dbNickname)
               setProfileImage(dbImage)
               localStorage.setItem('userNickname', dbNickname)
@@ -59,7 +59,7 @@ export default function SettingsPage() {
             if (savedProfileImage) setProfileImage(savedProfileImage)
           })
 
-        // 알림 설정 fetch
+        // 알림 설정 fetch (앱 고유 데이터이므로 로컬 유지)
         fetch(`/api/subscription/notifications?id=${encodeURIComponent(uid)}`)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
@@ -113,26 +113,17 @@ export default function SettingsPage() {
       
       if (storedEmail && !isAnon) {
         try {
-          // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
-          const uid = localStorage.getItem('merlin_family_uid') || ''
-          // DB에 먼저 저장 (source of truth)
-          const response = await fetch('/api/user/profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: uid,
-              email: storedEmail,
-              nickname: tempNickname,
-              profileImage: tempProfileImage || null
-            })
+          // REFACTORED_BY_MERLIN_HUB: 로컬 API 대신 Hub SDK updateProfile 호출
+          const result = await MerlinHub.auth.updateProfile({
+            nickname: tempNickname,
+            avatar_url: tempProfileImage || ''
           })
 
-          if (response.ok) {
-            const data = await response.json()
-            const savedNickname = data.user?.nickname || tempNickname
-            const savedImage = data.user?.image || ''
+          if (result.success) {
+            const savedNickname = result.nickname || tempNickname
+            const savedImage = result.avatar_url || ''
             
-            // DB 저장 성공 후 localStorage 캐시 업데이트
+            // Hub 저장 성공 후 localStorage 캐시 업데이트
             setNickname(savedNickname)
             setProfileImage(savedImage)
             localStorage.setItem('userNickname', savedNickname)
@@ -140,7 +131,8 @@ export default function SettingsPage() {
             window.dispatchEvent(new Event('profileUpdated'))
             setIsEditing(false)
           } else {
-            console.error('Failed to update profile in DB')
+            console.error('Failed to update profile in Hub:', result.error)
+            alert(result.error || '프로필 수정에 실패했습니다.')
           }
         } catch (error) {
           console.error('Profile update error:', error)

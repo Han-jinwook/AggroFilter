@@ -1,6 +1,7 @@
 /**
  * Merlin Hub SDK — Auth Module
  * 이메일 OTP 인증: requestOTP → verifyOTP → JWT 저장
+ * 프로필 관리: updateProfile → Hub family_users 직접 갱신
  */
 
 import { hubFetch, setSessionToken, clearSessionToken, getSessionToken } from './client';
@@ -97,6 +98,68 @@ export async function checkSession(): Promise<{ valid: boolean; email?: string; 
     return { valid: true, email: data.email, familyUid: data.familyUid };
   } catch {
     return { valid: false };
+  }
+}
+
+// ── 프로필 관리 (Hub SSOT) ──
+
+export interface ProfileUpdateParams {
+  nickname?: string;
+  avatar_url?: string;
+}
+
+export interface ProfileResult {
+  success: boolean;
+  nickname?: string;
+  avatar_url?: string;
+  error?: string;
+}
+
+/**
+ * Hub family_users에 프로필 정보 갱신
+ * Endpoint: PUT /api/auth/profile
+ */
+export async function updateProfile(params: ProfileUpdateParams): Promise<ProfileResult> {
+  try {
+    const { ok, data } = await hubFetch<ProfileResult>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(params),
+    });
+
+    if (!ok) {
+      return { success: false, error: data?.error || '프로필 업데이트 실패' };
+    }
+
+    return {
+      success: true,
+      nickname: data.nickname,
+      avatar_url: data.avatar_url,
+    };
+  } catch (err) {
+    console.error('[MerlinHub] updateProfile error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}
+
+/**
+ * Hub에서 현재 유저 프로필 조회 (세션 토큰 기반)
+ */
+export async function getProfile(): Promise<ProfileResult> {
+  try {
+    const { ok, data } = await hubFetch<ProfileResult>('/api/auth/profile');
+
+    if (!ok) {
+      return { success: false, error: data?.error || '프로필 조회 실패' };
+    }
+
+    return {
+      success: true,
+      nickname: data.nickname,
+      avatar_url: data.avatar_url,
+    };
+  } catch (err) {
+    console.error('[MerlinHub] getProfile error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
   }
 }
 

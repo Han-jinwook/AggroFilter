@@ -16,8 +16,8 @@ export type { MerlinHubConfig } from './config';
 export { hubFetch, getSessionToken, setSessionToken, clearSessionToken, isTokenExpired } from './client';
 export type { HubFetchResult } from './client';
 
-export { requestOTP, verifyOTP, checkSession, logout } from './auth';
-export type { OTPRequestResult, OTPVerifyResult } from './auth';
+export { requestOTP, verifyOTP, checkSession, logout, updateProfile, getProfile } from './auth';
+export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileResult } from './auth';
 
 export { useCredit, getBalance, getFamilyUid } from './wallet';
 export type { UseCreditParams, UseCreditResult, WalletBalance } from './wallet';
