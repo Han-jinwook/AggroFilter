@@ -18,6 +18,7 @@ export interface OTPVerifyResult {
   familyUid?: string;
   email?: string;
   nickname?: string;
+  avatar_url?: string;
   error?: string;
 }
 
@@ -75,6 +76,7 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
       familyUid: data.familyUid,
       email: data.email || email,
       nickname: data.nickname,
+      avatar_url: data.avatar_url,
     };
   } catch (err) {
     console.error('[MerlinHub] verifyOTP error:', err);
@@ -82,20 +84,35 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
   }
 }
 
+export interface SessionResult {
+  valid: boolean;
+  email?: string;
+  familyUid?: string;
+  nickname?: string;
+  avatar_url?: string;
+}
+
 /**
  * 현재 세션이 유효한지 확인
  */
-export async function checkSession(): Promise<{ valid: boolean; email?: string; familyUid?: string }> {
+export async function checkSession(): Promise<SessionResult> {
   const token = getSessionToken();
   if (!token) return { valid: false };
 
   try {
-    const { ok, data } = await hubFetch<{ email: string; familyUid: string }>('/api/auth/me');
-    if (!ok) {
+    const { ok, data } = await hubFetch<{ success: boolean; user: any }>('/api/auth/me');
+    if (!ok || !data.success) {
       clearSessionToken();
       return { valid: false };
     }
-    return { valid: true, email: data.email, familyUid: data.familyUid };
+    const u = data.user;
+    return { 
+      valid: true, 
+      email: u.email, 
+      familyUid: u.familyUid,
+      nickname: u.nickname,
+      avatar_url: u.avatar_url
+    };
   } catch {
     return { valid: false };
   }
@@ -144,19 +161,19 @@ export async function updateProfile(params: ProfileUpdateParams): Promise<Profil
 
 /**
  * Hub에서 현재 유저 프로필 조회 (세션 토큰 기반)
+ * 2026-04-23: /api/auth/me를 통해 최신 프로필까지 함께 가져옴
  */
 export async function getProfile(): Promise<ProfileResult> {
   try {
-    const { ok, data } = await hubFetch<ProfileResult>('/api/auth/profile');
-
-    if (!ok) {
-      return { success: false, error: data?.error || '프로필 조회 실패' };
+    const session = await checkSession();
+    if (!session.valid) {
+      return { success: false, error: '세션이 유효하지 않습니다.' };
     }
 
     return {
       success: true,
-      nickname: data.nickname,
-      avatar_url: data.avatar_url || data.profile_image,
+      nickname: session.nickname,
+      avatar_url: session.avatar_url
     };
   } catch (err) {
     console.error('[MerlinHub] getProfile error:', err);
