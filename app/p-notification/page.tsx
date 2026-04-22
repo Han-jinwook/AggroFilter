@@ -60,7 +60,8 @@ export default function Page() {
 
   const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
   const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : ''
+  // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('merlin_family_uid') || '' : ''
 
   // 익명 사용자가 알림 페이지 접근 시 로그인 모달 표시
   useEffect(() => {
@@ -127,9 +128,9 @@ export default function Page() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  const handleLoginSuccess = async (loginEmail: string, userId: string) => {
+  // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_family_uid 자동 저장
+  const handleLoginSuccess = async (loginEmail: string, _userId: string) => {
     localStorage.setItem('userEmail', loginEmail)
-    if (userId) localStorage.setItem('userId', userId)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)

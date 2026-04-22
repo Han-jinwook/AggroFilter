@@ -4,26 +4,21 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
+// REFACTORED_BY_MERLIN_HUB: t_users 크레딧 조회 → Hub wallet 이관 예정
+// AppHeader는 이미 Hub wallet SDK getBalance()로 전환됨
+// 이 라우트는 하위 호환용으로 유지 (배너 광고 제거 등에서 참조)
 export async function GET(request: Request) {
   try {
-    // Supabase 서버 인증 → 실패 시 쿼리 파라미터 fallback (클라이언트가 localStorage userId 전달)
-    let userId: string | undefined;
-    try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.id) userId = data.user.id;
-    } catch {}
-
-    if (!userId) {
-      const { searchParams } = new URL(request.url);
-      const fallback = searchParams.get('userId');
-      if (fallback && typeof fallback === 'string' && fallback.length > 0) {
-        userId = fallback;
-      }
-    }
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId') || '';
 
     if (!userId) {
       return NextResponse.json({ credits: 0, adFreeUntil: null, loggedIn: false });
+    }
+
+    // Hub 유저(mfn-)는 t_users에 없으므로 0 반환 — Hub wallet이 실제 잔액
+    if (userId.startsWith('mfn-')) {
+      return NextResponse.json({ credits: 0, adFreeUntil: null, loggedIn: true });
     }
 
     const client = await pool.connect();

@@ -9,7 +9,7 @@ export function SideWingAds() {
 
   useEffect(() => {
     const checkAdFree = () => {
-      const uid = typeof window !== 'undefined' ? (localStorage.getItem('userId') || '') : ''
+      const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_family_uid') || '') : ''
       const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
       fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
         .then(r => r.json())

@@ -38,7 +38,8 @@ function MockPaymentContent() {
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  const uid = typeof window !== 'undefined' ? (localStorage.getItem('userId') || '') : ''
+  // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
+  const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_family_uid') || '') : ''
 
   useEffect(() => {
     const nick = localStorage.getItem('userNickname') || ''

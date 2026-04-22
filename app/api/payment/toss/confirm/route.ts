@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 import { createClient } from '@/utils/supabase/server'
 
+// REFACTORED_BY_MERLIN_HUB: t_users 토스 결제 확인 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
 
 // 크레딧 상품 정의 (금액 → 크레딧 매핑)

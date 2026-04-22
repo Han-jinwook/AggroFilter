@@ -48,20 +48,9 @@ export async function POST(request: NextRequest) {
 
     await client.query('BEGIN')
 
-    // 1. Ensure User exists (if it's an anonId not yet in DB)
-    const userRes = await client.query('SELECT f_id, f_email FROM t_users WHERE f_id = $1', [userId]);
-    let userEmail = null;
-    if (userRes.rows.length === 0) {
-      const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
-      const nickname = isAnon ? '익명사용자' : '사용자';
-      await client.query(`
-        INSERT INTO t_users (f_id, f_email, f_nickname, f_created_at, f_updated_at)
-        VALUES ($1, $2, $3, NOW(), NOW())
-      `, [userId, isAnon ? userId : null, nickname]);
-      userEmail = isAnon ? userId : null;
-    } else {
-      userEmail = userRes.rows[0].f_email;
-    }
+    // REFACTORED_BY_MERLIN_HUB: t_users 유저 생성/조회 제거 — Hub가 유저 관리
+    // userId는 클라이언트에서 전달받은 family_uid를 그대로 사용
+    const userEmail = null;
 
     // 2. Check for existing prediction using UUID
     const existingCheck = await client.query(

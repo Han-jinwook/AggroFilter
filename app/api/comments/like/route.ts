@@ -31,17 +31,8 @@ export async function POST(request: Request) {
     const client = await pool.connect();
     
     try {
-      // 1. Ensure user exists (supports anon_id)
-      const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [userId]);
-      if (userRes.rows.length === 0) {
-        const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
-        const nickname = isAnon ? '익명사용자' : '사용자';
-        await client.query(
-          `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-          [userId, null, nickname, null]
-        );
-      }
+      // REFACTORED_BY_MERLIN_HUB: t_users 유저 생성/조회 제거 — Hub가 유저 관리
+      // userId는 클라이언트에서 전달받은 family_uid를 그대로 사용
 
       const existingRes = await client.query(
         'SELECT f_type FROM t_comment_interactions WHERE f_comment_id = $1 AND f_user_id = $2',

@@ -192,20 +192,8 @@ export default function MyPageClient() {
   const fetchVideos = useCallback(async () => {
     try {
       setIsLoadingVideos(true);
-      let uid = getUserId();
-      if (!uid && localStorage.getItem('userEmail')) {
-        try {
-          const meRes = await fetch('/api/auth/me');
-          if (meRes.ok) {
-            const meData = await meRes.json();
-            if (meData?.user?.id) {
-              uid = meData.user.id;
-              localStorage.setItem('userId', uid);
-            }
-          }
-        } catch {}
-      }
-      const resolvedUid = uid || null;
+      // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me 폴백 제거, Hub family_uid 직접 사용
+      const resolvedUid = getUserId() || null;
       const res = await fetch('/api/mypage/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -230,21 +218,8 @@ export default function MyPageClient() {
   const fetchChannels = useCallback(async () => {
     try {
       setIsLoadingChannels(true);
-      let uid = getUserId();
-      if (!uid && localStorage.getItem('userEmail')) {
-        try {
-          const meRes = await fetch('/api/auth/me');
-          if (meRes.ok) {
-            const meData = await meRes.json();
-            if (meData?.user?.id) {
-              uid = meData.user.id;
-              localStorage.setItem('userId', uid);
-            }
-          }
-        } catch {}
-      }
-
-      const resolvedUid = uid || null;
+      // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me 폴백 제거, Hub family_uid 직접 사용
+      const resolvedUid = getUserId() || null;
       const res = await fetch('/api/mypage/channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

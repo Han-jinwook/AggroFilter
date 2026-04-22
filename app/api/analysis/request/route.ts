@@ -146,6 +146,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401, headers: corsHeaders });
       }
 
+      // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 → Hub wallet 이관 예정
       const creditClient = await pool.connect();
       try {
         await creditClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
@@ -208,8 +209,9 @@ export async function POST(request: Request) {
             console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
 
             // ── 캐시 히트에도 크레딧 차감 (유료 콘텐츠 열람 Paywall) ──
+            // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 차감 → Hub wallet 이관 예정
             let cachedCreditDeducted = false;
-            if (userId && !userId.startsWith('anon_')) {
+            if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_') && !userId.startsWith('mfn-')) {
               await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
               await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
 
@@ -286,7 +288,8 @@ export async function POST(request: Request) {
     if (!isRecheck && userId && !userId.startsWith('anon_')) {
       const creditCheckClient = await pool.connect();
       try {
-        await creditCheckClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+        // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 조회 → Hub wallet 이관 예정
+      await creditCheckClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
         const creditCheckRes = await creditCheckClient.query(
           'SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1',
           [userId]
@@ -816,31 +819,16 @@ export async function POST(request: Request) {
     try {
       await client.query('BEGIN');
 
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
+      // REFACTORED_BY_MERLIN_HUB: t_users ALTER TABLE 제거 — 크레딧은 Hub wallet로 이관 예정
 
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_is_recheck BOOLEAN DEFAULT FALSE`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
 
-      // 5-0. User lookup/creation (if userId provided)
+      // REFACTORED_BY_MERLIN_HUB: t_users 유저 생성/조회 제거 — Hub가 유저 관리
+      // userId는 클라이언트에서 전달받은 family_uid를 그대로 사용
       let actualUserId = userId || null;
-      if (actualUserId) {
-        console.log('5-0. User 확인 중...', actualUserId);
-        const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [actualUserId]);
-        if (userRes.rows.length === 0) {
-          // If the user doesn't exist in t_users, they might be an anonymous user from local storage
-          // In the clean UUID approach, we should have the user in t_users.
-          // However, for safety with existing anonId, we can still upsert if it looks like a valid ID.
-          const isAnon = typeof actualUserId === 'string' && actualUserId.startsWith('anon_');
-          const nickname = isAnon ? '익명사용자' : '사용자';
-          await client.query(`
-            INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-            VALUES ($1, $2, $3, $4, NOW(), NOW())
-            ON CONFLICT (f_id) DO NOTHING
-          `, [actualUserId, null, nickname, null]);
-        }
-      }
 
       // 5-1. 채널 정보 저장 (v2.0 필드 반영)
       console.log('5-1. 채널 정보 저장 (t_channels)...');
@@ -1004,6 +992,7 @@ export async function POST(request: Request) {
         if (!actualUserId) {
           throw new Error('로그인이 필요합니다.');
         }
+        // REFACTORED_BY_MERLIN_HUB: t_users recheck 크레딧 → Hub wallet 이관 예정
         const creditRes = await client.query(
           `UPDATE t_users
            SET f_recheck_credits = COALESCE(f_recheck_credits, 0) - 1,
@@ -1023,7 +1012,8 @@ export async function POST(request: Request) {
       }
 
       // ── 일반 크레딧 차감 + 타임패스(ad_free_until) 갱신 ──
-      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_')) {
+      // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 차감 → Hub wallet 이관 예정 (mfn- 유저는 skip)
+      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_') && !actualUserId.startsWith('mfn-')) {
         await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
         await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
 

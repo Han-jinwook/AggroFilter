@@ -10,6 +10,7 @@ import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { Disclaimer } from "@/app/c-home/disclaimer"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
+import { checkSession } from "@/src/services/merlin-hub-sdk"
 
 export default function MainPage() {
   const router = useRouter()
@@ -25,45 +26,19 @@ export default function MainPage() {
     const storedEmail = localStorage.getItem("userEmail")
     if (storedEmail) setUserEmail(storedEmail)
 
+    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me → Hub SDK checkSession
     let isMounted = true
-    fetch('/api/auth/me', { cache: 'no-store' })
-      .then(async (res) => {
-        if (!res.ok) return null
-        return res.json()
-      })
-      .then((data) => {
-        const email = String(data?.user?.email || '')
-        if (!email) return
-        localStorage.setItem('userEmail', email)
-        if (isMounted) setUserEmail(email)
-      })
-      .catch(() => {})
+    checkSession().then((session) => {
+      if (!session.valid || !session.email) return
+      localStorage.setItem('userEmail', session.email)
+      if (isMounted) setUserEmail(session.email)
+    }).catch(() => {})
     return () => {
       isMounted = false
     }
   }, [])
 
-  // 매직링크 콜백 처리
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const magicLogin = params.get('magic_login')
-    const magicEmail = params.get('email')
-    const magicUserId = params.get('userId')
-    const loginError = params.get('login_error')
-
-    if (magicLogin === 'success' && magicEmail && magicUserId) {
-      localStorage.setItem('userEmail', magicEmail)
-      localStorage.setItem('userId', magicUserId)
-      const nickname = magicEmail.split('@')[0]
-      if (!localStorage.getItem('userNickname')) localStorage.setItem('userNickname', nickname)
-      setUserEmail(magicEmail)
-      window.history.replaceState({}, '', window.location.pathname)
-    } else if (loginError) {
-      const msg = loginError === 'expired_token' ? '링크가 만료되었습니다. 다시 로그인해주세요.' : '유효하지 않은 링크입니다.'
-      alert(msg)
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [])
+  // REFACTORED_BY_MERLIN_HUB: 매직링크 deprecated — Hub OTP 인증으로 전환됨
 
   // 크롬 확장팩에서 진입 시 처리
   useEffect(() => {
@@ -154,8 +129,8 @@ export default function MainPage() {
       const currentEmail = userEmail || localStorage.getItem('userEmail')
       let analysisUserId: string
       if (currentEmail) {
-        // 로그인 유저: UUID 사용
-        analysisUserId = localStorage.getItem('userId') || getUserId()
+        // REFACTORED_BY_MERLIN_HUB: 로그인 유저 — Hub family_uid 사용
+        analysisUserId = getUserId()
       } else {
         // 비로그인: 1회 무료 체험 (휘발성, DB 미보관)
         const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
+// REFACTORED_BY_MERLIN_HUB: t_users 프로필 → app_aggro_profiles + Hub family_users 이관 예정
+// 현재는 t_users 테이블을 유지하되, family_uid 기반으로 조회
+
 export async function PUT(request: NextRequest) {
   try {
     const { id, nickname, profileImage } = await request.json();

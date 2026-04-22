@@ -1,20 +1,32 @@
 /**
- * 사용자 식별 유틸리티 (경량화)
- * - Merlin Family OS 전환 준비: 익명 세션 관리 제거
- * - 비로그인 시 1회 휘발성 체험만 허용 (DB 미저장)
+ * 사용자 식별 유틸리티 — Merlin Family Hub 통합
+ * // REFACTORED_BY_MERLIN_HUB: t_users 의존 제거, Hub UID 기반으로 전환
+ *
+ * 신원(Identity) 저장소:
+ *   - merlin_session_token: JWT (허브 발급)
+ *   - merlin_family_uid: TEXT (허브 발급, 예: "mfn-xxx")
+ *   - userEmail: 이메일
  */
 
-/** 비로그인 상태인지 확인 */
+/** 비로그인 상태인지 확인 — Hub 세션 토큰 기준 */
 export function isAnonymousUser(): boolean {
   if (typeof window === 'undefined') return true;
-  const email = localStorage.getItem('userEmail');
-  return !email || email.length === 0;
+  return !localStorage.getItem('merlin_session_token');
 }
 
-/** 로그인된 유저의 ID 반환 (비로그인 시 빈 문자열) */
+/**
+ * 로그인된 유저의 family_uid 반환 (비로그인 시 빈 문자열)
+ * // REFACTORED_BY_MERLIN_HUB: 기존 t_users.f_id → Hub family_uid
+ */
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem('userId') || '';
+  return localStorage.getItem('merlin_family_uid') || '';
+}
+
+/** 로그인된 유저의 이메일 반환 */
+export function getUserEmail(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('userEmail') || '';
 }
 
 /** @deprecated 익명 세션 제거됨 — 하위 호환용 stub */

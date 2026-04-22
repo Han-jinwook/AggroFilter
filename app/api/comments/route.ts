@@ -29,28 +29,8 @@ export async function POST(request: Request) {
     try {
       await client.query('BEGIN');
 
-      // 1. Check or Create User
-      const userRes = await client.query('SELECT f_id, f_email FROM t_users WHERE f_id = $1', [userId]);
-      
-      if (userRes.rows.length > 0) {
-        // Update nickname and image if provided
-        if (nickname || profileImage) {
-            const updates: string[] = [];
-            const vals: any[] = [];
-            let idx = 1;
-            if (nickname) { updates.push(`f_nickname = $${idx++}`); vals.push(nickname); }
-            if (profileImage) { updates.push(`f_image = $${idx++}`); vals.push(profileImage); }
-            vals.push(userId);
-            await client.query(`UPDATE t_users SET ${updates.join(', ')} WHERE f_id = $${idx}`, vals);
-        }
-      } else {
-        const isAnon = typeof userId === 'string' && userId.startsWith('anon_');
-        const defaultNickname = isAnon ? (nickname || '익명사용자') : (nickname || '사용자');
-        await client.query(`
-          INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-          VALUES ($1, $2, $3, $4, NOW(), NOW())
-        `, [userId, null, defaultNickname, profileImage || null]);
-      }
+      // REFACTORED_BY_MERLIN_HUB: t_users 유저 생성/조회 제거 — Hub가 유저 관리
+      // userId는 클라이언트에서 전달받은 family_uid를 그대로 사용
 
       // 2. Insert Comment
       const insertRes = await client.query(`
@@ -63,7 +43,7 @@ export async function POST(request: Request) {
 
       await client.query('COMMIT');
 
-      // Fetch latest user data for return
+      // REFACTORED_BY_MERLIN_HUB: t_users → app_aggro_profiles + Hub family_users 이관 예정
       const userDataRes = await client.query('SELECT f_nickname, f_image, f_email FROM t_users WHERE f_id = $1', [userId]);
       const userData = userDataRes.rows[0];
 

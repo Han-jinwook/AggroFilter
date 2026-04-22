@@ -7,7 +7,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
-import { getAnonEmoji, getAnonNickname, getOrCreateAnonId } from "@/lib/anon"
+import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
+import { checkSession, getBalance, getFamilyUid } from "@/src/services/merlin-hub-sdk"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -48,8 +49,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
     loadProfile()
 
-    // 익명 세션 초기화
-    getOrCreateAnonId()
+    // REFACTORED_BY_MERLIN_HUB: 익명 세션 제거, stub만 유지
     setAnonEmoji(getAnonEmoji())
     setAnonNickname(getAnonNickname())
 
@@ -66,43 +66,18 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   useEffect(() => {
     let isMounted = true
 
+    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me → Hub SDK checkSession
     const syncSession = async () => {
       try {
-        const res = await fetch('/api/auth/me', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        const email = String(data?.user?.email || '')
-        const uid = String(data?.user?.id || '')
-        if (!email) return
+        const session = await checkSession()
+        if (!session.valid || !session.email) return
 
+        const email = session.email
         const nicknameFromEmail = (email.split('@')[0] || '').trim()
         const currentNickname = localStorage.getItem('userNickname') || ''
-        const currentEmail = localStorage.getItem('userEmail') || ''
-        const currentProfileImage = localStorage.getItem('userProfileImage') || ''
 
-        if (currentEmail !== email) localStorage.setItem('userEmail', email)
-        if (uid && !localStorage.getItem('userId')) localStorage.setItem('userId', uid)
+        if (localStorage.getItem('userEmail') !== email) localStorage.setItem('userEmail', email)
         if (!currentNickname) localStorage.setItem('userNickname', nicknameFromEmail)
-
-        // 프로필 이미지가 없으면 DB에서 fetch
-        if (!currentProfileImage) {
-          try {
-            const profileRes = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`, { cache: 'no-store' })
-            if (profileRes.ok) {
-              const profileData = await profileRes.json()
-              if (profileData?.user) {
-                const dbNickname = profileData.user.nickname || nicknameFromEmail
-                const dbImage = profileData.user.image || ''
-                localStorage.setItem('userNickname', dbNickname)
-                localStorage.setItem('userProfileImage', dbImage)
-                if (isMounted) {
-                  setNickname(dbNickname)
-                  setProfileImage(dbImage)
-                }
-              }
-            }
-          } catch {}
-        }
 
         if (isMounted) {
           if (!currentNickname) setNickname(nicknameFromEmail)
@@ -139,14 +114,11 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
       }
     }
 
+    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/user/credits → Hub wallet SDK
     const fetchCredits = async () => {
       try {
-        const uid = localStorage.getItem('userId') || ''
-        const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
-        const res = await fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        if (typeof data.credits === 'number') setCredits(data.credits)
+        const result = await getBalance()
+        if (result.success && typeof result.balance === 'number') setCredits(result.balance)
       } catch {}
     }
 

@@ -113,7 +113,8 @@ export default function SettingsPage() {
       
       if (storedEmail && !isAnon) {
         try {
-          const uid = localStorage.getItem('userId') || ''
+          // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
+          const uid = localStorage.getItem('merlin_family_uid') || ''
           // DB에 먼저 저장 (source of truth)
           const response = await fetch('/api/user/profile', {
             method: 'PUT',

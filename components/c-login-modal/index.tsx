@@ -80,9 +80,9 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
         setTimeout(() => inputRefs.current[0]?.focus(), 50)
         return
       }
-      // Hub에서 받은 정보를 localStorage에 저장
+      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_family_uid 자동 저장
+      // 여기서는 UI 표시용 정보만 추가 저장
       if (result.email) localStorage.setItem('userEmail', result.email)
-      if (result.familyUid) localStorage.setItem('userId', result.familyUid)
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
       onLoginSuccess(result.email || email, result.familyUid || '')
     } catch (err) {

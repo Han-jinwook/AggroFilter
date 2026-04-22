@@ -5,19 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
-async function getOrCreateUserId(client: any, userId: string) {
-  const userRes = await client.query('SELECT f_id FROM t_users WHERE f_id = $1', [userId]);
-  if (userRes.rows.length > 0) {
-    return userRes.rows[0].f_id;
-  }
-  // Auto-create user (supports anon_id)
-  const isAnon = userId.startsWith('anon_');
-  const nickname = isAnon ? '익명사용자' : '사용자';
-  await client.query(
-    `INSERT INTO t_users (f_id, f_email, f_nickname, f_image, f_created_at, f_updated_at)
-     VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-    [userId, isAnon ? userId : null, nickname, null]
-  );
+// REFACTORED_BY_MERLIN_HUB: t_users 유저 생성 제거 — Hub가 유저 관리
+// userId(family_uid)를 그대로 반환
+async function getOrCreateUserId(_client: any, userId: string) {
   return userId;
 }
 

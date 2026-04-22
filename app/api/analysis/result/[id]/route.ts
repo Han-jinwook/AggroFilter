@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
 
+// REFACTORED_BY_MERLIN_HUB: t_users JOIN(댓글 닉네임/이미지, 유저 통계) → app_aggro_profiles 이관 예정
 export const runtime = 'nodejs';
 
 function normalizeEvaluationReasonScores(

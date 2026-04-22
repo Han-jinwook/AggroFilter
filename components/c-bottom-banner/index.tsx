@@ -17,7 +17,7 @@ export function BottomBanner() {
     }
 
     const checkAdFree = () => {
-      const uid = localStorage.getItem('userId') || ''
+      const uid = localStorage.getItem('merlin_family_uid') || ''
       const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
       fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
         .then(r => r.json())

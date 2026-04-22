@@ -52,12 +52,13 @@ function CheckoutContent() {
           setUserId(id)
         } else {
           // Supabase 서버 인증 실패 시 localStorage fallback
-          const fallbackId = localStorage.getItem('userId') || localStorage.getItem('userEmail') || null
+          // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
+          const fallbackId = localStorage.getItem('merlin_family_uid') || localStorage.getItem('userEmail') || null
           setUserId(fallbackId)
         }
       })
       .catch(() => {
-        const fallbackId = localStorage.getItem('userId') || localStorage.getItem('userEmail') || null
+        const fallbackId = localStorage.getItem('merlin_family_uid') || localStorage.getItem('userEmail') || null
         if (isMounted) setUserId(fallbackId)
       })
     return () => { isMounted = false }

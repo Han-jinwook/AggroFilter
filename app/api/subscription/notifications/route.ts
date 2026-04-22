@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
+// REFACTORED_BY_MERLIN_HUB: t_users 알림 설정 → app_aggro_profiles.f_notify_settings 이관 예정
 export const runtime = 'nodejs';
 
 const VALID_KEYS = ['f_notify_grade_change', 'f_notify_ranking_change', 'f_notify_top10_change'] as const;
