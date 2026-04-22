@@ -285,14 +285,10 @@ export default function SettingsPage() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 {getDisplayImage() ? (
-                  <Image
-                    src={getDisplayImage() || "/placeholder.svg"}
+                  <img
+                    src={getDisplayImage()}
                     alt="Profile"
-                    width={80}
-                    height={80}
-                    className="h-20 w-20 rounded-full object-cover"
-                    unoptimized
-                    loader={({ src }) => src}
+                    className="h-20 w-20 rounded-full object-cover border"
                   />
                 ) : isAnon ? (
                   <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">

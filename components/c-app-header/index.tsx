@@ -300,14 +300,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               >
                 {profileImage ? (
                   <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
-                    <Image
-                      src={profileImage || "/placeholder.svg"}
+                    <img
+                      src={profileImage}
                       alt="Profile"
-                      width={36}
-                      height={36}
                       className="h-9 w-9 rounded-lg object-cover shadow-sm"
-                      unoptimized
-                      loader={({ src }) => src}
                     />
                   </div>
                 ) : (
