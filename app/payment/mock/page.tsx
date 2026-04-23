@@ -179,32 +179,9 @@ function MockPaymentContent() {
         {/* 충전 탭 */}
         {tab === 'charge' && (
           <div className="space-y-4">
+            {/* 1. 이용권 상품 선택 (심사 지시: 상품 박스 먼저) */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-slate-900">1. 결제 수단 선택</h2>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setMethod('card')}
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all ${
-                    method === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500'
-                  }`}
-                >
-                  <span className="text-lg">💳</span>
-                  <span className="font-bold">신용카드</span>
-                </button>
-                <button
-                  onClick={() => setMethod('phone')}
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all ${
-                    method === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500'
-                  }`}
-                >
-                  <span className="text-lg">📱</span>
-                  <span className="font-bold">휴대폰 결제</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-slate-900">2. 이용권 상품 선택</h2>
+              <h2 className="text-base font-black text-slate-900">1. 이용권 상품 선택</h2>
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {options.map((opt) => (
                 <button
@@ -223,6 +200,45 @@ function MockPaymentContent() {
                   {opt.desc && <div className="mt-1 text-xs font-bold text-rose-500">{opt.desc}</div>}
                 </button>
               ))}
+              </div>
+            </div>
+
+            {/* 2. 결제 수단 선택 (심사 지시: 상품 박스 아래, 라디오 형태) */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-black text-slate-900">2. 결제 수단 선택</h2>
+              <div role="radiogroup" aria-label="결제 수단" className="mt-4 grid grid-cols-2 gap-3">
+                <label
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
+                    method === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="card"
+                    checked={method === 'card'}
+                    onChange={() => setMethod('card')}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <span className="text-lg">💳</span>
+                  <span className="font-bold">신용카드</span>
+                </label>
+                <label
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
+                    method === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="phone"
+                    checked={method === 'phone'}
+                    onChange={() => setMethod('phone')}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <span className="text-lg">📱</span>
+                  <span className="font-bold">휴대폰 결제</span>
+                </label>
               </div>
             </div>
 
@@ -297,9 +313,8 @@ function MockPaymentContent() {
             <p className="font-bold text-slate-700 mb-1">환불 정책 및 휴대폰 결제 안내</p>
             <p className="mb-2">결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
             <div className="bg-white/50 p-3 rounded-lg border border-slate-200 text-rose-600 font-medium">
-              <p>※ 휴대폰 결제 주의사항:</p>
-              <p className="mt-1">1. 휴대폰 소액결제는 결제 당월(1일~말일)에 한해 취소가 가능합니다.</p>
-              <p>2. 결제 월이 지난 후(익월) 환불 요청 시에는 휴대폰 결제 취소가 불가능하며, 결제자 본인 명의의 계좌로 환불 수수료(결제 금액의 약 4.1%~5.5%)를 제외한 금액이 입금됩니다.</p>
+              <p className="font-bold">※ 휴대폰 결제 환불 규정 (필독)</p>
+              <p className="mt-1">휴대폰 소액결제는 당월취소만 가능하며 결제자 본인명의 계좌로 환불됩니다. (휴대폰 결제의 경우 당월은 취소만 가능, 익월 이후 청구요금 수납 확인 후 결제자 본인 계좌 환불 가능)</p>
             </div>
           </div>
           <div className="pt-2 border-t border-slate-200">

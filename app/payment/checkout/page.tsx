@@ -34,6 +34,7 @@ function CheckoutContent() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'phone'>('card')
   const [sdkReady, setSdkReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -128,7 +129,9 @@ function CheckoutContent() {
             </div>
           )}
 
+          {/* 1. 이용권 상품 선택 */}
           <div className="mt-6 space-y-3">
+            <h2 className="text-base font-black text-slate-900">1. 이용권 상품 선택</h2>
             {CREDIT_PLANS.map((plan, idx) => (
               <button
                 key={plan.credits}
@@ -148,6 +151,45 @@ function CheckoutContent() {
                 </div>
               </button>
             ))}
+          </div>
+
+          {/* 2. 결제 수단 선택 */}
+          <div className="mt-6">
+            <h2 className="text-base font-black text-slate-900 mb-4">2. 결제 수단 선택</h2>
+            <div role="radiogroup" aria-label="결제 수단" className="grid grid-cols-2 gap-3">
+              <label
+                className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
+                  paymentMethod === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="card"
+                  checked={paymentMethod === 'card'}
+                  onChange={() => setPaymentMethod('card')}
+                  className="h-4 w-4 accent-indigo-600"
+                />
+                <span className="text-lg">💳</span>
+                <span className="font-bold">신용카드</span>
+              </label>
+              <label
+                className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
+                  paymentMethod === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="phone"
+                  checked={paymentMethod === 'phone'}
+                  onChange={() => setPaymentMethod('phone')}
+                  className="h-4 w-4 accent-indigo-600"
+                />
+                <span className="text-lg">📱</span>
+                <span className="font-bold">휴대폰 결제</span>
+              </label>
+            </div>
           </div>
 
           {error && (

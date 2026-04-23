@@ -10,10 +10,20 @@ export function Footer() {
             <p className="text-sm text-slate-500">© 2026 AggroFilter. All rights reserved.</p>
           </div>
           <div className="flex flex-wrap gap-4 sm:gap-8">
-            <Link href="/privacy" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+            <Link 
+              href="/privacy" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+            >
               개인정보 처리방침
             </Link>
-            <Link href="/terms" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">
+            <Link 
+              href="/terms" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+            >
               이용약관
             </Link>
           </div>
