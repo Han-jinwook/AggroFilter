@@ -239,6 +239,16 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
+          <Link
+            href="/payment/mock"
+            className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+          >
+            <div className={`p-2 rounded-xl transition-colors ${isActive('/payment/mock') ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}`}>
+              <Coins className="h-5 w-5" />
+            </div>
+            <span className="text-[10px] font-bold text-primary">이용권 구매</span>
+          </Link>
+
           {/* 알림 종 — 로그인 상태에선 알림 페이지, 익명이면 로그인 모달 */}
           {isLoggedIn ? (
             <Link
@@ -278,7 +288,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </button>
           )}
 
-          {/* 크레딧 */}
+          {/* 크레딧 (심사용 결제 버튼 추가로 인해 중복 제거 또는 유지 선택 가능하나 일단 유지) */}
           {isLoggedIn && (
             <Link
               href="/payment/mock"

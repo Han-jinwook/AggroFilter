@@ -33,6 +33,7 @@ function MockPaymentContent() {
   const [nickname, setNickname] = useState('')
   const [chargeResult, setChargeResult] = useState<{ charged: number; balance: number } | null>(null)
   const [tab, setTab] = useState<'charge' | 'history'>('charge')
+  const [method, setMethod] = useState<'card' | 'phone'>('card')
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyPage, setHistoryPage] = useState(1)
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
@@ -177,11 +178,34 @@ function MockPaymentContent() {
 
         {/* 충전 탭 */}
         {tab === 'charge' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-black text-slate-900">어그로필터 분석 이용권 구매</h2>
-            {/* 테스트 모드 문구 숨김 (KCP 심사 기간) */}
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-black text-slate-900">1. 결제 수단 선택</h2>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setMethod('card')}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all ${
+                    method === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <span className="text-lg">💳</span>
+                  <span className="font-bold">신용카드</span>
+                </button>
+                <button
+                  onClick={() => setMethod('phone')}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all ${
+                    method === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <span className="text-lg">📱</span>
+                  <span className="font-bold">휴대폰 결제</span>
+                </button>
+              </div>
+            </div>
 
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-base font-black text-slate-900">2. 이용권 상품 선택</h2>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {options.map((opt) => (
                 <button
                   key={opt.credits}
@@ -263,18 +287,24 @@ function MockPaymentContent() {
           </div>
         )}
         {/* 상품 정보 및 정책 고지 */}
-        <div className="rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-3">
+        <div className="rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-4">
           <div>
             <p className="font-bold text-slate-700 mb-1">상품정보</p>
-            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다.</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다. 결제 즉시 크레딧이 충전되어 서비스를 이용할 수 있습니다.</p>
           </div>
           <div>
-            <p className="font-bold text-slate-700 mb-1">배송/환불 정책</p>
-            <p>결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 고객센터를 통해 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+            <p className="font-bold text-slate-700 mb-1">환불 정책 및 휴대폰 결제 안내</p>
+            <p className="mb-2">결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+            <div className="bg-white/50 p-3 rounded-lg border border-slate-200 text-rose-600 font-medium">
+              <p>※ 휴대폰 결제 주의사항:</p>
+              <p className="mt-1">1. 휴대폰 소액결제는 결제 당월(1일~말일)에 한해 취소가 가능합니다.</p>
+              <p>2. 결제 월이 지난 후(익월) 환불 요청 시에는 휴대폰 결제 취소가 불가능하며, 결제자 본인 명의의 계좌로 환불 수수료(결제 금액의 약 4.1%~5.5%)를 제외한 금액이 입금됩니다.</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-slate-700 mb-1">고객센터</p>
-            <p>전화: 010-2597-7502 | 이메일: beakes@naver.com</p>
+          <div className="pt-2 border-t border-slate-200">
+            <p className="font-bold text-slate-700 mb-1">고객센터 및 판매자 정보</p>
+            <p>상호: 썬드림 주식회사 | 대표: 한진욱 | 이메일: beakes@naver.com</p>
+            <p>전화: 010-2597-7502 (평일 10:00~18:00)</p>
           </div>
         </div>
       </main>

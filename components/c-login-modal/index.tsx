@@ -28,6 +28,13 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setIsLoading(true)
     try {
+      // 심사용 테스트 계정: Hub API 생략
+      if (email === 'test@aggrofilter.com') {
+        setStep("code")
+        setTimeout(() => inputRefs.current[0]?.focus(), 100)
+        return
+      }
+
       const result = await requestOTP(email)
       if (!result.success) throw new Error(result.error || 'Failed to send OTP')
       setStep("code")
@@ -73,6 +80,19 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
+      // 심사용 테스트 계정: Hub API 생략 및 고정 세션 생성
+      if (email === 'test@aggrofilter.com' && fullCode === '111111') {
+        const testUid = 'mfn-test-kcp-심사용'
+        localStorage.setItem('merlin_family_uid', testUid)
+        localStorage.setItem('userEmail', email)
+        localStorage.setItem('userNickname', 'KCP심사관')
+        // Hub 세션 토큰은 없으므로 임시값 (백엔드 요청 시 에러날 수 있으나 UI 구경은 가능)
+        localStorage.setItem('merlin_session_token', 'test-session-token')
+        
+        onLoginSuccess(email, testUid)
+        return
+      }
+
       const result = await verifyOTP(email, fullCode)
       if (!result.success) {
         setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
