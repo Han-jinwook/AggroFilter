@@ -234,7 +234,7 @@ function MockPaymentContent() {
             </button>
           </div>
         )}
-
+        
         {/* 이력 탭 */}
         {tab === 'history' && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
