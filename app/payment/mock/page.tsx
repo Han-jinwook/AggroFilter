@@ -233,10 +233,9 @@ function MockPaymentContent() {
               돌아가기
             </button>
           </div>
-        )
-      }
+        )}
 
-      {/* 이력 탭 */}
+        {/* 이력 탭 */}
         {tab === 'history' && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-base font-black text-slate-900">이용 내역</h2>
