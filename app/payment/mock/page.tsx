@@ -223,6 +223,7 @@ function MockPaymentContent() {
                   {opt.desc && <div className="mt-1 text-xs font-bold text-rose-500">{opt.desc}</div>}
                 </button>
               ))}
+              </div>
             </div>
 
             <button

@@ -1,181 +1,110 @@
-# 국가/언어별 랭킹 시스템 설계
-작성일: 2026-02-20 01:45
-
-## 1. 배경 및 목표
-현재 랭킹 시스템은 전체 채널을 대상으로 단일 순위를 제공하지만, 글로벌 서비스를 위해 국가/언어별로 분리된 랭킹이 필요하다. 사용자는 자신의 지역/언어 환경에 맞는 채널을 발견하고, 채널 운영자는 타겟 시장에서의 경쟁력을 파악할 수 있어야 한다.
-
-## 2. 핵심 설계 원칙
-
-### 2.1 랭킹 키 구조
-```
-[Language] + [Country] + [Category ID] + [Topic]
-```
-
-- **Language**: `t_channels.f_language` (예: 'ko', 'en', 'ja')
-- **Country**: `t_channels.f_country` (예: 'KR', 'US', 'JP')
-- **Category ID**: 유튜브 공식 카테고리 (1~29)
-- **Topic**: `t_channel_stats.f_topic` (2단어 한국어, 예: 'AI 연구')
-
-### 2.2 데이터 흐름
-1. **영상 분석 시**: `f_language`, `f_country` 자동 감지 및 저장
-2. **채널 통계 갱신**: `[Language+Country+Category+Topic]` 조합으로 그룹화
-3. **랭킹 조회**: 사용자의 `navigator.language` 또는 선택 필터링
-
-## 3. 구현 전략
-
-### 3.1 언어/국가 감지 로직
-```typescript
-// 영상 메타데이터 기반 감지
-const detectLanguageAndCountry = (videoInfo: VideoInfo) => {
-  // 1. 언어: 자막 언어 > 제목 언어 > 기본값('en')
-  // 2. 국가: 채널 국가 > 기본값('US')
-  return {
-    language: detectLanguage(videoInfo.title, videoInfo.description),
-    country: videoInfo.country || 'US'
-  };
-};
-```
-
-### 3.2 랭킹 쿼리 확장
-```sql
--- 기존: category_id + topic
-WHERE f_category_id = $1 AND f_topic = $2
-
--- 확장: language + country + category_id + topic
-WHERE f_language = $1 
-  AND f_country = $2 
-  AND f_category_id = $3 
-  AND f_topic = $4
-```
-
-### 3.3 UI/UX 설계
-- **자동 감지**: `navigator.language` → 'ko-KR' → language='ko', country='KR'
-- **수동 선택**: 헤더에 국가/언어 선택기 추가
-- **URL 구조**: `/p-ranking?topic=AI&lang=ko&country=KR`
-
-## 4. 기술적 고려사항
-
-### 4.1 데이터 충분성
-- **문제**: 특정 조합의 채널 수가 너무 적으면 랭킹 의미 없음
-- **해결**: 최소 10개 채널 미만이면 상위 레벨로 롤업
-  - `ko+KR+Music+KPOP` → `ko+KR+Music` → `ko+Music` → `Music`
-
-### 4.2 성능 최적화
-- **인덱스**: `(f_language, f_country, f_category_id, f_topic, f_reliability_score)`
-- **캐싱**: 각 조합별 랭킹 5분 캐시
-- **CDN**: 국가별 CDN 엣지 캐시 활용
-
-### 4.3 일관성 유지
-- **기존 데이터 마이그레이션**: `language='en', country='US'`로 일괄 설정
-- **신규 데이터**: 분석 시점에 자동 감지/저장
-- **백필**: 주기적으로 크롤링하여 누락된 메타데이터 보완
-
-## 5. 단계적 롤아웃 계획
-
-### Phase 1: 데이터 수집 강화 (1주)
-- [ ] `t_channels`에 `f_language`, `f_country` NOT NULL 제약조건 추가
-- [ ] 신규 분석 시 언어/국가 자동 감지 로직 구현
-- [ ] 기존 데이터 백필 스크립트 실행
-
-### Phase 2: 랭킹 API 확장 (1주)
-- [ ] `/api/ranking`에 language/country 파라미터 추가
-- [ ] 롤업 로직 구현 (최소 채널 수 보장)
-- [ ] 캐싱 전략 적용
-
-### Phase 3: UI 개선 (1주)
-- [ ] 랭킹 페이지에 국가/언어 선택기 추가
-- [ ] URL 파라미터 기반 상태 유지
-- [ ] 모바일 반응형 최적화
-
-### Phase 4: 고도화 (2주)
-- [ ] 지역별 트렌드 대시보드
-- [ ] 크로스-언어 채널 발견 기능
-- [ ] 지역별 성과 리포트
-
-## 6. 성공 지표
-- **사용자**: 지역별 랭킹 조회 수 30% 증가
-- **채널**: 타겟 시장 진입 채널 수 20% 증가
-- **시스템**: 랭킹 조회 응답시간 200ms 유지
+﻿# 🚨 긴급 인수인계: Netlify 빌드 실패 (app/payment/mock/page.tsx)
+**작성일**: 2026-04-24 00:21 (KST)
+**작성자**: 윈드서퍼 (어그로필터 AI)
+**상태**: 🔴 미해결 — 새 세션에서 재진단 필요
 
 ---
 
-## 🚨 긴급 수정 필요: 채널 랭킹 정렬 헤더 이모지 제거 문제
-작성일: 2026-02-21 22:15
-
-### 문제 상황
-**파일**: `app/p-ranking/RankingClient.tsx` (라인 585)
-
-**증상**:
-- 로컬 개발 환경과 배포 환경 모두에서 정렬 헤더에 이모지가 여전히 표시됨
-- 🔴 어그로 🔵 신뢰도 ← 이모지가 화살표를 가림
-- 코드 상으로는 이모지가 제거되어 있음 (585번 라인 확인됨)
-
-**의도한 변경**:
-```typescript
-// 현재 코드 (585번 라인)
-{sortBy === 'reliability' ? '신뢰도' : '어그로'}
-
-// 원하는 결과
-- 이모지 완전 제거
-- 어그로: 빨강색 텍스트 (text-red-500) - 핫이슈3 섹션과 동일
-- 신뢰도: 초록색 텍스트 (text-green-500) - 핫이슈3 섹션과 동일
-```
-
-**현재 적용된 스타일** (580-582번 라인):
-```typescript
-className={`hidden md:flex items-center justify-center gap-1 text-xs font-bold whitespace-nowrap cursor-pointer transition-colors ${
-  sortBy === 'reliability' ? 'text-green-500 hover:text-green-600' : 'text-red-500 hover:text-red-600'
-}`}
-```
-
-### 시도한 해결 방법
-1. ✅ 코드 수정 완료 (이모지 제거, 색상 클래스 추가)
-2. ✅ Git 커밋 및 푸시 (커밋 d89f657, e313927)
-3. ✅ 빈 커밋으로 배포 재트리거
-4. ❌ 로컬/배포 환경 모두 변경사항 반영 안 됨
-
-### 확인 사항
-- `git status`: clean (변경사항 없음)
-- `grep "🔴|🔵"`: 파일에서 이모지 검색 결과 없음
-- 파일 내용 직접 확인: 585번 라인에 이모지 없음
-- 브라우저 캐시 클리어 시도: 효과 없음
-
-### 의심되는 원인
-1. **빌드 캐시 문제**: Next.js `.next` 폴더가 이전 빌드 캐싱
-2. **다른 컴포넌트**: 혹시 다른 파일에서 이 부분을 렌더링하고 있을 가능성
-3. **브라우저 서비스 워커**: PWA 캐싱 문제
-4. **번들러 캐시**: Webpack/Turbopack 캐시 문제
-
-### 다음 세션 수정 방안
-1. **빌드 캐시 완전 삭제**:
-   ```bash
-   rm -rf .next
-   rm -rf node_modules/.cache
-   npm run build
-   ```
-
-2. **전체 파일 검색**:
-   ```bash
-   grep -r "🔴" app/
-   grep -r "🔵" app/
-   ```
-
-3. **RankingClient.tsx 전체 재확인**:
-   - 다른 곳에서 이모지를 주입하는 로직이 있는지 확인
-   - 컴포넌트 import 경로 확인
-
-4. **개발 서버 완전 재시작**:
-   - 모든 Node 프로세스 종료
-   - `npm run dev` 재시작
-
-5. **최후 수단 - 파일 재작성**:
-   - 해당 라인을 완전히 다시 작성
-   - 이모지 유니코드가 숨어있을 가능성 배제
-
-### 참고: 핫이슈3 섹션 색상 (정상 작동 중)
-- 어그로: `text-red-400` (app/p-plaza/page.tsx)
-- 신뢰도: `text-green-400` (app/p-plaza/page.tsx)
+## 1. 문제 요약
+- **증상**: Netlify 배포가 연속 4회 실패 (커밋 `b4b00cd`, `2149abc`, `0a211cb`, `be80412` 모두 실패)
+- **에러 메시지**: 
+  ```
+  ./app/payment/mock/page.tsx
+  Error: x Unexpected token `div`. Expected jsx identifier
+  ,-[/opt/build/repo/app/payment/mock/page.tsx:125:1]
+  125 |   }
+  126 |
+  127 |   return (
+  128 |     <div className="min-h-screen bg-slate-50">
+       :      ^^^
+  ```
+- **마지막 성공 배포**: `4e25192` (Yesterday at 3:16 AM) - "(성공) 미션2-이메일인증,프로필,별명 렌더링"
 
 ---
 
-*다음 세션에서 Phase 1부터 구현 시작*
+## 2. 파일 구조 (현재 로컬 상태 - 정상으로 보임)
+`app/payment/mock/page.tsx`:
+- **1~22라인**: `MockPaymentPage` 컴포넌트 (Suspense 래핑)
+- **24~313라인**: `MockPaymentContent` 컴포넌트 (실제 로직)
+  - 24라인: `function MockPaymentContent() {`
+  - 85~120라인: `handlePay` async 함수
+  - 122~125라인: `formatDate` 함수
+  - **127라인: `return (`** ← 빌드 에러 지점
+  - 236라인: `)}` (tab === 'charge' 블록 닫기)
+  - 313라인: `}` (MockPaymentContent 함수 닫기)
+
+---
+
+## 3. 시도한 조치 (모두 실패)
+1. **1차 수정** (커밋 `2149abc`): 236라인 부근의 괄호 `)}` → `)`와 `}` 분리로 수정 시도 → 오히려 에러 유발
+2. **2차 수정** (커밋 `0a211cb`): `)` `}`를 다시 `)}`로 통합 → 여전히 실패
+3. **3차 강제 수정** (커밋 `be80412`): 237라인에 공백 추가하여 Git 강제 재커밋 → 여전히 실패
+
+---
+
+## 4. 의심되는 진짜 원인
+Netlify가 가리키는 **125라인 `}` + 127라인 `return (`** 구조는 현재 로컬 파일과 일치함. 
+즉, `formatDate` 함수가 125라인에서 `}`로 닫히고 127라인에서 컴포넌트의 `return`이 시작되는 **정상적인 구조**임. 
+
+**가설**:
+1. **BOM/보이지 않는 문자**: 파일에 UTF-8 BOM이나 Zero-Width 문자가 섞여 SWC 파서가 오작동할 가능성
+2. **TypeScript 타입 추론 실패**: `handlePay`의 `catch {}` 블록(115라인)이 TypeScript strict 모드에서 문제될 가능성
+3. **SWC 파서 버그**: Next.js 14.2.33의 SWC가 특정 JSX 패턴을 못 읽는 버그
+4. **Netlify 빌드 캐시**: `.next` 폴더 또는 Netlify 자체 캐시가 오염되어 이전 버그 파일을 계속 참조
+
+---
+
+## 5. 다음 세션에서 시도할 해결 방안 (우선순위)
+
+### [1순위] Netlify 캐시 초기화
+- Netlify 대시보드 → Site settings → Build & deploy → "Clear cache and retry deploy" 버튼 클릭
+
+### [2순위] 파일 완전 재작성
+```powershell
+# 파일을 백업 후 새로 작성
+Copy-Item app/payment/mock/page.tsx app/payment/mock/page.tsx.bak
+# 그리고 AI가 파일 전체를 처음부터 새로 생성
+```
+
+### [3순위] 로컬 빌드 테스트
+```powershell
+Remove-Item -Recurse -Force .next
+Remove-Item -Recurse -Force node_modules/.cache
+npm run build
+```
+로컬에서 같은 에러가 재현되는지 확인 → 재현되면 문법 문제, 안 되면 Netlify 환경 문제
+
+### [4순위] `catch {}` → `catch (error) {}` 로 수정
+115라인의 `} catch {` 를 `} catch (error) {` 로 변경 (TypeScript strict 호환성)
+
+### [5순위] 마지막 성공 커밋으로 롤백
+```powershell
+git revert be80412 0a211cb 2149abc b4b00cd
+git push
+```
+그 후 문제가 된 변경사항(어그로필터 결제 페이지 수정)을 처음부터 재작업
+
+---
+
+## 6. 현재 Git 상태
+```
+be80412 (HEAD -> main, origin/main) fix: force sync syntax fix for netlify build
+0a211cb fix: 결제 페이지 JSX 구문 에러 수정 (Netlify 빌드 오류 해결)
+2149abc fix: 결제 페이지 JSX 구문 에러 수정 (Netlify 빌드 오류 해결)
+b4b00cd (직전 커밋 - 윈드서퍼 개입 전)
+4e25192 (성공) 미션2-이메일인증,프로필,별명 렌더링  ← 마지막 정상 배포
+```
+
+---
+
+## 7. 관련 문서 및 맥락
+- 공장장님(사용자)의 지시에 따라 `소통관/어그로필터_기능명세서.md` 및 `어그로필터_전체스키마.md` 정비 작업 중 발생
+- 허브(Merlin Family OS)와 어그로필터 앱의 글로벌 지갑(Wallet) 연동 진행 중
+- `b4b00cd` 커밋 이후부터 빌드 실패 연쇄 발생 → **실제 원인은 `b4b00cd` 자체에 이미 존재했을 가능성**
+
+---
+
+## 8. 새 세션 AI에게 전달 사항
+> **경고**: 섣불리 `app/payment/mock/page.tsx`의 괄호만 만지작거리지 말 것. 
+> 현재 파일의 괄호 구조는 정상이며, 문제는 **다른 곳(캐시, BOM, 문법 호환성)**에 있을 가능성이 높음.
+> 위 [1순위] Netlify 캐시 초기화부터 차근차근 시도할 것.
