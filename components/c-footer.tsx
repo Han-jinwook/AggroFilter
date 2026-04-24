@@ -62,9 +62,11 @@ export function Footer() {
             <dd>21330 인천 부평구 주부토로 236 인천테크노밸리 U1센터 C동 1110호/1111호</dd>
           </div>
           <div className="flex gap-2 sm:col-span-2">
-            <dt className="shrink-0 text-slate-400">고객센터</dt>
+            <dt className="shrink-0 text-slate-400">고객문의</dt>
             <dd>
-              <a href="tel:01025977502" className="hover:text-primary">010-2597-7502</a>
+              <a href="tel:07074242695" className="hover:text-primary">070-7424-2695</a>
+              <span className="mx-2 text-slate-300">/</span>
+              <a href="mailto:chiu3@naver.com" className="hover:text-primary">chiu3@naver.com</a>
             </dd>
           </div>
         </dl>
