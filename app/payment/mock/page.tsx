@@ -317,11 +317,6 @@ function MockPaymentContent() {
               <p className="mt-1">휴대폰 소액결제는 당월취소만 가능하며 결제자 본인명의 계좌로 환불됩니다. (휴대폰 결제의 경우 당월은 취소만 가능, 익월 이후 청구요금 수납 확인 후 결제자 본인 계좌 환불 가능)</p>
             </div>
           </div>
-          <div className="pt-2 border-t border-slate-200">
-            <p className="font-bold text-slate-700 mb-1">고객센터 및 판매자 정보</p>
-            <p>상호: 썬드림 주식회사 | 대표: 한진욱 | 이메일: beakes@naver.com</p>
-            <p>전화: 010-2597-7502 (평일 10:00~18:00)</p>
-          </div>
         </div>
       </main>
     </div>
