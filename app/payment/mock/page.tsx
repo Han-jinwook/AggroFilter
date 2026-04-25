@@ -73,11 +73,13 @@ function MockPaymentContent() {
     if (tab === 'history') fetchHistory(historyPage)
   }, [tab, historyPage, fetchHistory])
 
+  // 크레딧 상품 — 패밀리 허브 공통 상품 (다른 패밀리 앱에서도 동일하게 사용)
+  // 어그로필터 기준 1회 분석 = 30C
   const options = useMemo(
     () => [
-      { credits: 1000, price: '1,000원', label: '🎫 [베이직] 33회 분석 이용권', desc: '' },
-      { credits: 5000, price: '4,500원', label: '💎 [프로] 166회 분석 이용권', desc: '10% 할인' },
-      { credits: 10000, price: '9,000원', label: '👑 [프리미엄] 333회 분석 이용권', desc: '10% 할인' },
+      { credits: 1000, price: '1,000원', label: '1,000 크레딧', discount: '', usage: '어그로필터 33회 분석 가능' },
+      { credits: 5000, price: '4,750원', label: '5,000 크레딧', discount: '5% 할인', usage: '어그로필터 166회 분석 가능' },
+      { credits: 10000, price: '9,000원', label: '10,000 크레딧', discount: '10% 할인', usage: '어그로필터 333회 분석 가능' },
     ],
     []
   )
@@ -197,7 +199,8 @@ function MockPaymentContent() {
                 >
                   <div className="text-sm font-black text-slate-900">{opt.label}</div>
                   <div className="mt-1 text-base font-black text-indigo-600">{opt.price}</div>
-                  {opt.desc && <div className="mt-1 text-xs font-bold text-rose-500">{opt.desc}</div>}
+                  {opt.discount && <div className="mt-1 text-xs font-bold text-rose-500">{opt.discount}</div>}
+                  <div className="mt-2 text-[11px] text-slate-400 leading-relaxed">{opt.usage}</div>
                 </button>
               ))}
               </div>
