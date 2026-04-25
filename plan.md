@@ -1,5 +1,5 @@
 ﻿🚀 Project: 어그로필터 (AggroFilter) - Phase 1 Plan
-Last Updated: 2026-03-10 01:50 KST
+Last Updated: 2026-04-25 KST
 
 ## 1. 서비스 개요 (Overview)
 ### 1.1 목표 (Goal)
@@ -99,9 +99,11 @@ Last Updated: 2026-03-10 01:50 KST
 
 ## 3. 기술 스택 및 데이터 수집 (Tech Spec)
 ### 3.1 AI Engine
-- **Model**: `gemini-2.0-flash-exp` (또는 `gemini-2.5-flash-preview-09-2025` 사용 가능 시 업데이트)
-- **Why**: 속도와 가성비 최적화.
+- **Main Model**: `gemini-2.5-flash` (영상 신뢰도/어그로 분석 메인)
+- **Light Model**: `gemini-2.5-flash-lite` (단발 번역 등 가벼운 작업)
+- **Why**: 속도와 가성비 최적화 + Google Search grounding 지원.
 - **SDK**: Google Generative AI SDK (Paid Tier Key 필수).
+- **위치**: `lib/gemini.ts` — `generateContentWithRetry`로 재시도 로직 포함.
 
 ### 3.2 데이터 수집 (Client-side Fetching) ⚠️
 서버 IP 차단을 피하기 위해, 서버는 유튜브에 직접 접속하지 않음.
