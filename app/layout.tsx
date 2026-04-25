@@ -16,10 +16,34 @@ interface TRootLayoutProps {
 
 const inter = Inter({ subsets: ["latin"] })
 
+function getSafeMetadataBase(): URL {
+  const candidates = [
+    process.env.NEXT_PUBLIC_BASE_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.URL,
+    'https://aggrofilter.com',
+  ]
+
+  for (const raw of candidates) {
+    if (!raw || typeof raw !== 'string') continue
+    const value = raw.trim()
+    if (!value) continue
+
+    try {
+      return new URL(value)
+    } catch {
+      try {
+        return new URL(`https://${value}`)
+      } catch {
+      }
+    }
+  }
+
+  return new URL('https://aggrofilter.com')
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "https://aggrofilter.com"
-  ),
+  metadataBase: getSafeMetadataBase(),
   title: {
     default: "어그로필터 | AI 유튜브 신뢰도 분석",
     template: "%s | 어그로필터",
@@ -77,7 +101,25 @@ export default function RootLayout({ children }: TRootLayoutProps) {
       <body className={inter.className} suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}`
+            __html: `
+              (() => {
+                if (!('serviceWorker' in navigator)) return;
+
+                window.addEventListener('load', async () => {
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(registrations.map((registration) => registration.unregister()));
+
+                  if ('caches' in window) {
+                    const cacheKeys = await caches.keys();
+                    await Promise.all(
+                      cacheKeys
+                        .filter((key) => key.startsWith('aggrofilter-'))
+                        .map((key) => caches.delete(key))
+                    );
+                  }
+                });
+              })();
+            `
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

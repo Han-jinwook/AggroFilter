@@ -83,14 +83,14 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       // KCP 심사관용 테스트 계정: Hub API 우회 및 고정 세션 생성
       // SDK의 hubFetch가 'test-session-token'을 감지하면 허브 호출 없이 mock 응답 반환
       if (email === 'test@aggrofilter.com' && fullCode === '111111') {
-        const testUid = 'mfn-test-kcp-reviewer'
-        localStorage.setItem('merlin_family_uid', testUid)
+        const testUserId = '00000000-0000-4000-8000-000000000001'
+        localStorage.setItem('merlin_user_id', testUserId)
         localStorage.setItem('userEmail', email)
         localStorage.setItem('userNickname', 'KCP심사관')
-        localStorage.setItem('userId', testUid)
+        localStorage.setItem('userId', testUserId)
         localStorage.setItem('merlin_session_token', 'test-session-token')
 
-        onLoginSuccess(email, testUid)
+        onLoginSuccess(email, testUserId)
         return
       }
 
@@ -101,11 +101,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
         setTimeout(() => inputRefs.current[0]?.focus(), 50)
         return
       }
-      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_family_uid 자동 저장
+      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_user_id 자동 저장
       // 여기서는 UI 표시용 정보만 추가 저장
       if (result.email) localStorage.setItem('userEmail', result.email)
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
-      onLoginSuccess(result.email || email, result.familyUid || '')
+      onLoginSuccess(result.email || email, result.userId || '')
     } catch (err) {
       console.error(err)
       setError('인증에 실패했습니다. 다시 시도해주세요.')

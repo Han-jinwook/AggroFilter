@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
-import { checkSession, getBalance, getFamilyUid } from "@/src/services/merlin-hub-sdk"
+import { checkSession, getBalance } from "@/src/services/merlin-hub-sdk"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false

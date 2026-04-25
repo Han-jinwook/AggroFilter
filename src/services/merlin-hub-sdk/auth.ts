@@ -15,7 +15,7 @@ export interface OTPRequestResult {
 export interface OTPVerifyResult {
   success: boolean;
   token?: string;
-  familyUid?: string;
+  userId?: string;
   email?: string;
   nickname?: string;
   avatar_url?: string;
@@ -65,15 +65,15 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
       setSessionToken(data.token);
     }
 
-    // familyUid 저장 (지갑 등에서 참조)
-    if (data.familyUid && typeof window !== 'undefined') {
-      localStorage.setItem('merlin_family_uid', data.familyUid);
+    // userId(UUID) 저장 (지갑 등에서 참조)
+    if (data.userId && typeof window !== 'undefined') {
+      localStorage.setItem('merlin_user_id', data.userId);
     }
 
     return {
       success: true,
       token: data.token,
-      familyUid: data.familyUid,
+      userId: data.userId,
       email: data.email || email,
       nickname: data.nickname,
       avatar_url: data.avatar_url,
@@ -87,7 +87,7 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
 export interface SessionResult {
   valid: boolean;
   email?: string;
-  familyUid?: string;
+  userId?: string;
   nickname?: string;
   avatar_url?: string;
 }
@@ -109,7 +109,7 @@ export async function checkSession(): Promise<SessionResult> {
     return { 
       valid: true, 
       email: u.email, 
-      familyUid: u.familyUid,
+      userId: u.userId || u.id,
       nickname: u.nickname,
       avatar_url: u.avatar_url
     };
@@ -187,7 +187,7 @@ export async function getProfile(): Promise<ProfileResult> {
 export function logout() {
   clearSessionToken();
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('merlin_family_uid');
+    localStorage.removeItem('merlin_user_id');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
     localStorage.removeItem('userNickname');

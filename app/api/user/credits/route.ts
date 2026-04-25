@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
-import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
+
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`;
 
 // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 조회 → Hub wallet 이관 예정
 // AppHeader는 이미 Hub wallet SDK getBalance()로 전환됨
@@ -16,19 +27,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ credits: 0, adFreeUntil: null, loggedIn: false });
     }
 
-    // Hub 유저(mfn-)는 t_users에 없으므로 0 반환 — Hub wallet이 실제 잔액
-    if (userId.startsWith('mfn-')) {
-      return NextResponse.json({ credits: 0, adFreeUntil: null, loggedIn: true });
-    }
-
     const client = await pool.connect();
     try {
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
+      await client.query(ENSURE_CREDIT_HISTORY);
 
       const res = await client.query(
-        `SELECT COALESCE(f_credits, 0) as credits, f_ad_free_until
-         FROM t_users WHERE f_id = $1`,
+        `SELECT f_balance
+         FROM t_credit_history
+         WHERE f_user_id = $1
+         ORDER BY f_id DESC
+         LIMIT 1`,
         [userId]
       );
 
@@ -38,8 +46,8 @@ export async function GET(request: Request) {
 
       const row = res.rows[0];
       return NextResponse.json({
-        credits: Number(row.credits) || 0,
-        adFreeUntil: row.f_ad_free_until || null,
+        credits: Number(row.f_balance) || 0,
+        adFreeUntil: null,
         loggedIn: true,
       });
     } finally {

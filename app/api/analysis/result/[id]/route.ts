@@ -241,15 +241,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
       if (analysis.f_video_id) {
         const commentsRes = await client.query(`
           SELECT c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
-            u.f_nickname, u.f_image, u.f_email,
             COUNT(CASE WHEN ci.f_type = 'like' THEN 1 END)::int as like_count,
             COUNT(CASE WHEN ci.f_type = 'dislike' THEN 1 END)::int as dislike_count
           FROM t_comments c
-          LEFT JOIN t_users u ON c.f_user_id = u.f_id
           LEFT JOIN t_comment_interactions ci ON ci.f_comment_id = c.f_id::text
           WHERE c.f_analysis_id = $1
-          GROUP BY c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
-                   u.f_nickname, u.f_image, u.f_email
+          GROUP BY c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at
           ORDER BY c.f_created_at DESC
         `, [id]);
 
@@ -257,12 +254,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
         const commentMap = new Map();
 
         comments.forEach(c => {
+          const fallbackAuthor =
+            typeof c.f_user_id === 'string' && c.f_user_id.length > 0
+              ? `사용자-${c.f_user_id.slice(0, 6)}`
+              : '사용자';
              const commentObj = {
             id: c.f_id,
-            author: c.f_nickname || 'Unknown',
+            author: fallbackAuthor,
             authorId: c.f_user_id,
-            authorEmail: c.f_email || null,
-            authorImage: c.f_image || null,
+            authorEmail: null,
+            authorImage: null,
             date: new Date(c.f_created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
             time: new Date(c.f_created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
             text: c.f_text,

@@ -170,22 +170,22 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
   }
 
-  const getUserEmail = () => {
+  const getUserId = () => {
     if (typeof window === 'undefined') return null
-    return localStorage.getItem('userEmail')
+    return localStorage.getItem('merlin_user_id')
   }
 
-  const ensureUserEmail = async () => {
-    const existing = getUserEmail()
+  const ensureUserId = async () => {
+    const existing = getUserId()
     if (existing) return existing
     try {
       const res = await fetch('/api/auth/me', { cache: 'no-store' })
       if (!res.ok) return null
       const data = await res.json()
-      const email = String(data?.user?.email || '')
-      if (!email) return null
-      localStorage.setItem('userEmail', email)
-      return email
+      const userId = String(data?.user?.id || data?.user?.userId || '')
+      if (!userId) return null
+      localStorage.setItem('merlin_user_id', userId)
+      return userId
     } catch {
       return null
     }
@@ -319,8 +319,8 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
       return
     }
 
-    const email = await ensureUserEmail()
-    if (!email) {
+    const userId = await ensureUserId()
+    if (!userId) {
       alert('로그인이 필요합니다.')
       return
     }
@@ -346,7 +346,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
           url: video.url,
           forceRecheck: true,
           isRecheck: true,
-          userId: email,
+          userId,
         }),
       })
 

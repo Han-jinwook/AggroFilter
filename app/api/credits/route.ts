@@ -5,6 +5,18 @@ import { createClient } from '@/utils/supabase/server'
 // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
 
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -25,10 +37,14 @@ export async function GET(request: Request) {
 
     const client = await pool.connect()
     try {
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`)
+      await client.query(ENSURE_CREDIT_HISTORY)
 
       const res = await client.query(
-        `SELECT COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_id = $1`,
+        `SELECT f_balance AS credits
+         FROM t_credit_history
+         WHERE f_user_id = $1
+         ORDER BY f_id DESC
+         LIMIT 1`,
         [id]
       )
 

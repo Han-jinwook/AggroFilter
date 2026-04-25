@@ -13,7 +13,7 @@ const RETRY_BASE_MS = 500;
 
 // KCP 심사관용 테스트 세션 식별자
 export const TEST_SESSION_TOKEN = 'test-session-token';
-export const TEST_FAMILY_UID = 'mfn-test-kcp-reviewer';
+export const TEST_USER_ID = '00000000-0000-4000-8000-000000000001';
 export const TEST_EMAIL = 'test@aggrofilter.com';
 export const TEST_NICKNAME = 'KCP심사관';
 
@@ -86,7 +86,8 @@ function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResu
         success: true,
         user: {
           email: TEST_EMAIL,
-          familyUid: TEST_FAMILY_UID,
+          userId: TEST_USER_ID,
+          id: TEST_USER_ID,
           nickname: TEST_NICKNAME,
           avatar_url: '',
         },
@@ -99,7 +100,7 @@ function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResu
     return {
       ok: true,
       status: 200,
-      data: { balance: 9999, familyUid: TEST_FAMILY_UID } as T,
+      data: { balance: 9999, userId: TEST_USER_ID } as T,
     };
   }
 

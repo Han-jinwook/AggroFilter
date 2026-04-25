@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/db'
-import { createClient } from '@/utils/supabase/server'
 
 // REFACTORED_BY_MERLIN_HUB: t_users 결제 콜백 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
@@ -24,28 +22,13 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
 
-    const client = await pool.connect()
-    try {
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`)
+    console.log('[Payment Callback] Legacy callback hit. Credit mutation is disabled.', {
+      userId,
+      amount,
+      status,
+    })
 
-      const updateRes = await client.query(
-        `UPDATE t_users
-         SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1,
-             f_updated_at = NOW()
-         WHERE f_id = $2
-         RETURNING f_recheck_credits`,
-        [amount, userId]
-      )
-
-      if (updateRes.rows.length === 0) {
-        console.error('Payment callback: User not found', userId)
-      }
-
-
-      return NextResponse.redirect(new URL(redirectUrl, request.url))
-    } finally {
-      client.release()
-    }
+    return NextResponse.redirect(new URL(redirectUrl, request.url))
   } catch (error) {
     console.error('Payment callback error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

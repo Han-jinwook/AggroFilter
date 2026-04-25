@@ -19,7 +19,7 @@ export type { HubFetchResult } from './client';
 export { requestOTP, verifyOTP, checkSession, logout, updateProfile, getProfile } from './auth';
 export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileResult } from './auth';
 
-export { useCredit, getBalance, getFamilyUid } from './wallet';
+export { useCredit, getBalance, getUserId } from './wallet';
 export type { UseCreditParams, UseCreditResult, WalletBalance } from './wallet';
 
 // ── Namespace export for convenience ──

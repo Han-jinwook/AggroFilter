@@ -33,9 +33,10 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and API requests
   if (event.request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/_next/')) return;
 
-  // Static assets: cache-first
-  if (STATIC_ASSETS.includes(url.pathname) || url.pathname.match(/\.(png|jpg|gif|svg|ico|css|js|woff2?)$/)) {
+  // Static assets: cache-first (images/icons/fonts only)
+  if (STATIC_ASSETS.includes(url.pathname) || url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?)$/)) {
     event.respondWith(
       caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
         const clone = res.clone();

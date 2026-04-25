@@ -20,7 +20,7 @@ export function GlobalLoginModal() {
     <LoginModal
       open={open}
       onOpenChange={setOpen}
-      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_family_uid 자동 저장
+      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_user_id 자동 저장
       onLoginSuccess={async (email: string, _userId: string) => {
         if (email) localStorage.setItem('userEmail', email)
         setOpen(false)

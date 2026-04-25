@@ -40,6 +40,54 @@ interface TSubscribedChannel {
 
 type TSortOption = "date" | "trust"
 
+function safeText(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value
+  if (value === null || value === undefined) return fallback
+  return String(value)
+}
+
+function splitDateParts(value: unknown): [string, string, string] {
+  const raw = safeText(value, "")
+  const parts = raw.split(".")
+  if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
+    return [parts[0], parts[1], parts[2]]
+  }
+  return ["-", "-", "-"]
+}
+
+function normalizeVideo(item: any): TAnalysisVideo {
+  return {
+    id: safeText(item?.id),
+    date: safeText(item?.date, "-.-.-"),
+    fullDate: safeText(item?.fullDate || item?.date, ""),
+    title: safeText(item?.title, "제목 없음"),
+    channel: safeText(item?.channel, "알 수 없음"),
+    channelId: safeText(item?.channelId || item?.channel_id || item?.id),
+    channelIcon: safeText(item?.channelIcon || item?.channel_icon, ""),
+    channelLanguage: safeText(item?.channelLanguage || item?.channel_language, "korean"),
+    score: Number.isFinite(Number(item?.score)) ? Number(item?.score) : 0,
+    rank: item?.rank ?? "-",
+    totalRank: item?.totalRank ?? "-",
+    category: safeText(item?.category, "기타"),
+    categoryId: Number.isFinite(Number(item?.categoryId)) ? Number(item?.categoryId) : 0,
+    views: safeText(item?.views, "-"),
+  }
+}
+
+function normalizeChannel(item: any): TSubscribedChannel {
+  return {
+    id: safeText(item?.id || item?.channelId || item?.channel_id),
+    channelId: safeText(item?.channelId || item?.channel_id || item?.id),
+    date: safeText(item?.date, "-.-.-"),
+    channelName: safeText(item?.channelName || item?.channel_name, "알 수 없음"),
+    topic: safeText(item?.topic, "기타"),
+    categoryId: Number.isFinite(Number(item?.categoryId)) ? Number(item?.categoryId) : 0,
+    videoCount: Number.isFinite(Number(item?.videoCount)) ? Number(item?.videoCount) : 0,
+    rankScore: Number.isFinite(Number(item?.rankScore)) ? Number(item?.rankScore) : 0,
+    language: safeText(item?.language, "korean"),
+  }
+}
+
 export default function MyPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -87,8 +135,8 @@ export default function MyPageClient() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(v => 
-        v.title.toLowerCase().includes(query) || 
-        v.channel.toLowerCase().includes(query)
+        safeText(v.title).toLowerCase().includes(query) || 
+        safeText(v.channel).toLowerCase().includes(query)
       )
     }
 
@@ -203,7 +251,8 @@ export default function MyPageClient() {
       if (res.ok) {
         const data = await res.json();
         console.log("Fetched analyzed videos from DB:", data.videos);
-        setAnalyzedVideos(data.videos || []);
+        const rows = Array.isArray(data?.videos) ? data.videos : []
+        setAnalyzedVideos(rows.map(normalizeVideo));
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error("Failed to fetch videos from API", res.status, errorData);
@@ -229,7 +278,8 @@ export default function MyPageClient() {
       if (res.ok) {
         const data = await res.json();
         console.log("Fetched subscribed channels from DB:", data.channels);
-        setSubscribedChannels(data.channels || []);
+        const rows = Array.isArray(data?.channels) ? data.channels : []
+        setSubscribedChannels(rows.map(normalizeChannel));
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error("Failed to fetch channels from API", res.status, errorData);
@@ -340,7 +390,7 @@ export default function MyPageClient() {
       if (!res.ok) return
       const data = await res.json().catch(() => ({}))
       const videos = Array.isArray(data?.videos) ? data.videos : []
-      setExpandedChannelVideos(prev => ({ ...prev, [channelId]: videos }))
+      setExpandedChannelVideos(prev => ({ ...prev, [channelId]: videos.map(normalizeVideo) }))
     } catch {
     }
   }, [expandedChannelVideos])
@@ -384,8 +434,8 @@ export default function MyPageClient() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(c => 
-        c.channelName.toLowerCase().includes(query) ||
-        c.topic.toLowerCase().includes(query)
+        safeText(c.channelName).toLowerCase().includes(query) ||
+        safeText(c.topic).toLowerCase().includes(query)
       )
     }
 
@@ -876,6 +926,7 @@ export default function MyPageClient() {
               {/* Channel List */}
               <div className="space-y-1.5 sm:space-y-2">
                 {sortedChannels.map((channel) => {
+                  const [yy, mm, dd] = splitDateParts(channel.date)
                   return (
                     <div key={channel.id} className="relative group">
                       <button
@@ -917,9 +968,9 @@ export default function MyPageClient() {
                           )}
                           {/* Date */}
                           <div className="flex flex-col text-left text-[8px] sm:text-[9px] w-8 sm:w-9 text-slate-500 leading-tight">
-                            <div>{channel.date.split(".")[0]}.</div>
+                            <div>{yy}.</div>
                             <div className="font-medium text-slate-400">
-                              {channel.date.split(".")[1]}.{channel.date.split(".")[2]}
+                              {mm}.{dd}
                             </div>
                           </div>
 
@@ -944,6 +995,9 @@ export default function MyPageClient() {
                       {expandedChannelId === channel.id && ((expandedChannelVideos[channel.id] && expandedChannelVideos[channel.id].length > 0) || groupedVideos[channel.id]) && (
                         <div className="mt-2 space-y-1 rounded-xl bg-slate-50 p-2 animate-in slide-in-from-top-2 duration-200 border border-slate-100">
                           {(expandedChannelVideos[channel.id] || groupedVideos[channel.id] || []).map((video) => (
+                            (() => {
+                              const [, vmm, vdd] = splitDateParts(video.date)
+                              return (
                             <Link
                               key={video.id}
                               href={`/p-result?id=${video.id}&from=p-my-page&tab=channels`}
@@ -951,7 +1005,7 @@ export default function MyPageClient() {
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                                  {video.date.split(".")[1]}.{video.date.split(".")[2]}
+                                  {vmm}.{vdd}
                                 </div>
                                 <div className="truncate text-xs sm:text-sm font-medium text-slate-700 group-hover/video:text-blue-600 transition-colors">
                                   {video.title}
@@ -963,6 +1017,8 @@ export default function MyPageClient() {
                                 </span>
                               </div>
                             </Link>
+                              )
+                            })()
                           ))}
                         </div>
                       )}

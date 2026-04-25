@@ -28,16 +28,17 @@ export default function SettingsPage() {
 
 
   useEffect(() => {
-    const storedEmail = localStorage.getItem('userEmail')
-    const anon = isAnonymousUser()
-    setIsAnon(anon)
+    try {
+      const storedEmail = localStorage.getItem('userEmail')
+      const anon = isAnonymousUser()
+      setIsAnon(anon)
 
-    if (storedEmail && !anon) {
-      setEmail(storedEmail)
+      if (storedEmail && !anon) {
+        setEmail(storedEmail)
 
-      const loadUserData = async () => {
-        const uid = getUserId()
-        if (!uid) return
+        const loadUserData = async () => {
+          const uid = getUserId()
+          if (!uid) return
 
         // REFACTORED_BY_MERLIN_HUB: 로컬 API 대신 Hub SDK에서 프로필 조회
         MerlinHub.auth.getProfile()
@@ -80,23 +81,32 @@ export default function SettingsPage() {
           .then(res => res.ok ? res.json() : null)
           .then(data => {
             if (data) {
+              const avgGap = Number(data.avgGap)
+              const totalPredictions = Number(data.totalPredictions)
               setPredictionStats({
                 currentTier: data.currentTier || 'B',
-                avgGap: data.avgGap || 0,
-                totalPredictions: data.totalPredictions || 0,
+                avgGap: Number.isFinite(avgGap) ? avgGap : 0,
+                totalPredictions: Number.isFinite(totalPredictions) ? totalPredictions : 0,
               })
             }
           })
           .catch(() => {})
-      }
+        }
 
-      loadUserData()
-    } else {
-      // 익명 사용자: localStorage에 저장된 커스텀 값 우선, 없으면 기본값
-      const savedNickname = localStorage.getItem('userNickname')
-      const savedProfileImage = localStorage.getItem('userProfileImage')
-      setNickname(savedNickname || '게스트')
-      setProfileImage(savedProfileImage || '')
+        loadUserData()
+      } else {
+        // 익명 사용자: localStorage에 저장된 커스텀 값 우선, 없으면 기본값
+        const savedNickname = localStorage.getItem('userNickname')
+        const savedProfileImage = localStorage.getItem('userProfileImage')
+        setNickname(savedNickname || '게스트')
+        setProfileImage(savedProfileImage || '')
+        setEmail('')
+      }
+    } catch (error) {
+      console.error('Settings page init error:', error)
+      setIsAnon(true)
+      setNickname('게스트')
+      setProfileImage('')
       setEmail('')
     }
   }, [])

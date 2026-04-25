@@ -5,6 +5,18 @@ import { createClient } from '@/utils/supabase/server'
 // REFACTORED_BY_MERLIN_HUB: t_users 토스 결제 확인 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
 
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`
+
 // 크레딧 상품 정의 (금액 → 크레딧 매핑)
 const CREDIT_PLANS: Record<number, number> = {
   1000: 1,    // 1,000원 → 1크레딧
@@ -79,29 +91,29 @@ export async function POST(request: Request) {
       )
     }
 
-    // 5. 크레딧 충전 + 결제 로그 저장
+    // 5. 크레딧 원장 적재 + 결제 로그 저장
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
+      await client.query(ENSURE_CREDIT_HISTORY)
 
-      // 크레딧 충전
-      const updateRes = await client.query(
-        `UPDATE t_users
-         SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1,
-             f_updated_at = NOW()
-         WHERE f_id = $2
-         RETURNING f_recheck_credits`,
-        [credits, userId]
+      const latestRes = await client.query(
+        `SELECT f_balance
+         FROM t_credit_history
+         WHERE f_user_id = $1
+         ORDER BY f_id DESC
+         LIMIT 1`,
+        [userId]
       )
+      const currentBalance = latestRes.rows.length > 0 ? Number(latestRes.rows[0].f_balance) : 0
+      const safeBalance = Number.isFinite(currentBalance) ? currentBalance : 0
+      const newCredits = safeBalance + credits
 
-      if (updateRes.rows.length === 0) {
-        await client.query('ROLLBACK')
-        console.error('Payment confirm: User not found', userId)
-        return NextResponse.json(
-          { error: '사용자를 찾을 수 없습니다.' },
-          { status: 404 }
-        )
-      }
+      await client.query(
+        `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
+         VALUES ($1, 'charge', $2, $3, $4)`,
+        [userId, credits, newCredits, `Toss 결제 충전 +${credits}C (${numericAmount}원)`]
+      )
 
       // 결제 로그 저장
       await client.query(
@@ -138,8 +150,6 @@ export async function POST(request: Request) {
       )
 
       await client.query('COMMIT')
-
-      const newCredits = updateRes.rows[0].f_recheck_credits
 
       return NextResponse.json({
         success: true,

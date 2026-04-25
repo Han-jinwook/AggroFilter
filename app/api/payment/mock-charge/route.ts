@@ -5,6 +5,18 @@ import { createClient } from '@/utils/supabase/server';
 // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 충전 → Hub wallet 이관 예정
 export const runtime = 'nodejs';
 
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -32,47 +44,39 @@ export async function POST(request: Request) {
 
     const client = await pool.connect();
     try {
-      await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
+      await client.query('BEGIN');
+      await client.query(ENSURE_CREDIT_HISTORY);
 
-      const res = await client.query(
-        `UPDATE t_users
-         SET f_credits = COALESCE(f_credits, 0) + $1,
-             f_updated_at = NOW()
-         WHERE f_id = $2
-         RETURNING f_credits`,
-        [credits, userId]
+      const latestRes = await client.query(
+        `SELECT f_balance
+         FROM t_credit_history
+         WHERE f_user_id = $1
+         ORDER BY f_id DESC
+         LIMIT 1`,
+        [userId]
       );
 
-      if (res.rows.length === 0) {
-        return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
-      }
-
-      const newBalance = Number(res.rows[0].f_credits);
+      const currentBalance = latestRes.rows.length > 0 ? Number(latestRes.rows[0].f_balance) : 0;
+      const safeBalance = Number.isFinite(currentBalance) ? currentBalance : 0;
+      const newBalance = safeBalance + credits;
       console.log(`[Mock Charge] userId=${userId}, +${credits}C → balance=${newBalance}C`);
 
-      // 이력 기록
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS t_credit_history (
-          f_id BIGSERIAL PRIMARY KEY,
-          f_user_id TEXT NOT NULL,
-          f_type TEXT NOT NULL,
-          f_amount INTEGER NOT NULL,
-          f_balance INTEGER NOT NULL,
-          f_description TEXT,
-          f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-      `);
       await client.query(
         `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
          VALUES ($1, 'charge', $2, $3, $4)`,
         [userId, credits, newBalance, `Mock 충전 +${credits}C`]
       );
 
+      await client.query('COMMIT');
+
       return NextResponse.json({
         success: true,
         charged: credits,
         balance: newBalance,
       });
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
     } finally {
       client.release();
     }

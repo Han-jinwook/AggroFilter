@@ -43,9 +43,12 @@ export async function POST(request: Request) {
 
       await client.query('COMMIT');
 
-      // REFACTORED_BY_MERLIN_HUB: t_users → app_aggro_profiles + Hub family_users 이관 예정
-      const userDataRes = await client.query('SELECT f_nickname, f_image, f_email FROM t_users WHERE f_id = $1', [userId]);
-      const userData = userDataRes.rows[0];
+      const safeNickname = typeof nickname === 'string' && nickname.trim().length > 0
+        ? nickname.trim()
+        : '사용자';
+      const safeProfileImage = typeof profileImage === 'string' && profileImage.length > 0
+        ? profileImage
+        : null;
 
       // Return the new comment data so frontend can prepend it immediately
       const newComment = {
@@ -54,8 +57,8 @@ export async function POST(request: Request) {
         analysisId,
         userId,
         parentId,
-        author: userData.f_nickname || (userData.f_email ? userData.f_email.split('@')[0] : '사용자'),
-        authorImage: userData.f_image || null,
+        author: safeNickname,
+        authorImage: safeProfileImage,
         date: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
         time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
         replies: []

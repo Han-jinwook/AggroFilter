@@ -5,6 +5,18 @@ import { createClient } from '@/utils/supabase/server';
 // REFACTORED_BY_MERLIN_HUB: t_users 결제 매칭 → Hub wallet 이관 예정
 export const runtime = 'nodejs';
 
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`;
+
 function isAdminEmail(email: string | null | undefined) {
   if (!email) return false;
   return email.split('@')[0].trim().toLowerCase() === 'chiu3';
@@ -109,10 +121,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Could not calculate credits from amount' }, { status: 400 });
       }
 
-      // 4. Update user credits
+      // 4. Update user credits ledger
+      await client.query(ENSURE_CREDIT_HISTORY);
+      const latestBalanceRes = await client.query(
+        `SELECT f_balance FROM t_credit_history WHERE f_user_id = $1 ORDER BY f_id DESC LIMIT 1`,
+        [user.f_id]
+      );
+      const currentBalance = latestBalanceRes.rows.length > 0 ? Number(latestBalanceRes.rows[0].f_balance) : 0;
+      const safeBalance = Number.isFinite(currentBalance) ? currentBalance : 0;
+      const newBalance = safeBalance + credits;
       await client.query(
-        `UPDATE t_users SET f_recheck_credits = COALESCE(f_recheck_credits, 0) + $1, f_updated_at = NOW() WHERE f_id = $2`,
-        [credits, user.f_id]
+        `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
+         VALUES ($1, 'charge', $2, $3, $4)`,
+        [user.f_id, credits, newBalance, `미청구 결제 수동 매칭 +${credits}C`]
       );
 
       // 5. Mark payment as CLAIMED

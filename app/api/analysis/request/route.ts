@@ -22,6 +22,50 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
+const ENSURE_CREDIT_HISTORY = `
+  CREATE TABLE IF NOT EXISTS t_credit_history (
+    f_id BIGSERIAL PRIMARY KEY,
+    f_user_id TEXT NOT NULL,
+    f_type TEXT NOT NULL,
+    f_amount INTEGER NOT NULL,
+    f_balance INTEGER NOT NULL,
+    f_description TEXT,
+    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  )
+`;
+
+async function ensureCreditHistoryTable(client: any) {
+  await client.query(ENSURE_CREDIT_HISTORY);
+}
+
+async function getLatestCreditBalance(client: any, userId: string): Promise<number> {
+  const res = await client.query(
+    `SELECT f_balance
+     FROM t_credit_history
+     WHERE f_user_id = $1
+     ORDER BY f_id DESC
+     LIMIT 1`,
+    [userId]
+  );
+  if (res.rows.length === 0) return 0;
+  const balance = Number(res.rows[0].f_balance);
+  return Number.isFinite(balance) ? balance : 0;
+}
+
+async function appendCreditHistory(
+  client: any,
+  params: { userId: string; amount: number; description: string; type?: string }
+): Promise<number> {
+  const currentBalance = await getLatestCreditBalance(client, params.userId);
+  const nextBalance = currentBalance + params.amount;
+  await client.query(
+    `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [params.userId, params.type || 'analysis', params.amount, nextBalance, params.description]
+  );
+  return nextBalance;
+}
+
 function normalizeEvaluationReasonScores(
   text: string | null | undefined,
   scores: { accuracy?: unknown; clickbait?: unknown; trust?: unknown }
@@ -149,13 +193,8 @@ export async function POST(request: Request) {
       // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 → Hub wallet 이관 예정
       const creditClient = await pool.connect();
       try {
-        await creditClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_recheck_credits INTEGER DEFAULT 0`);
-
-        const creditRes = await creditClient.query(
-          'SELECT COALESCE(f_recheck_credits, 0) as credits FROM t_users WHERE f_id = $1',
-          [userId]
-        );
-        const credits = creditRes.rows.length > 0 ? Number(creditRes.rows[0].credits) : 0;
+        await ensureCreditHistoryTable(creditClient);
+        const credits = await getLatestCreditBalance(creditClient, userId);
         if (!Number.isFinite(credits) || credits <= 0) {
           return NextResponse.json({ error: '크레딧이 부족합니다.' }, { status: 402, headers: corsHeaders });
         }
@@ -211,15 +250,9 @@ export async function POST(request: Request) {
             // ── 캐시 히트에도 크레딧 차감 (유료 콘텐츠 열람 Paywall) ──
             // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 차감 → Hub wallet 이관 예정
             let cachedCreditDeducted = false;
-            if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_') && !userId.startsWith('mfn-')) {
-              await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
-              await lockClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
-
-              const creditCheckRes = await lockClient.query(
-                'SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1',
-                [userId]
-              );
-              const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
+            if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
+              await ensureCreditHistoryTable(lockClient);
+              const userCredits = await getLatestCreditBalance(lockClient, userId);
               if (!Number.isFinite(userCredits) || userCredits < 30) {
                 await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
                 lockClient.release();
@@ -231,25 +264,14 @@ export async function POST(request: Request) {
                 );
               }
 
-              const deductRes = await lockClient.query(
-                `UPDATE t_users
-                 SET f_credits = COALESCE(f_credits, 0) - 30,
-                     f_ad_free_until = NOW() + INTERVAL '10 minutes',
-                     f_updated_at = NOW()
-                 WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 30
-                 RETURNING f_credits, f_ad_free_until`,
-                [userId]
-              );
-              if (deductRes.rows.length > 0) {
-                cachedCreditDeducted = true;
-                console.log(`[Credit·Cache] userId=${userId}, -30C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
-                // 이력 기록
-                await lockClient.query(`CREATE TABLE IF NOT EXISTS t_credit_history (f_id BIGSERIAL PRIMARY KEY, f_user_id TEXT NOT NULL, f_type TEXT NOT NULL, f_amount INTEGER NOT NULL, f_balance INTEGER NOT NULL, f_description TEXT, f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())`);
-                await lockClient.query(
-                  `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description) VALUES ($1, 'analysis', $2, $3, $4)`,
-                  [userId, -30, deductRes.rows[0].f_credits, '영상 분석 (캐시)']
-                );
-              }
+              const newBalance = await appendCreditHistory(lockClient, {
+                userId,
+                amount: -30,
+                description: '영상 분석 (캐시)',
+                type: 'analysis',
+              });
+              cachedCreditDeducted = true;
+              console.log(`[Credit·Cache] userId=${userId}, -30C → balance=${newBalance}`);
             }
 
             await lockClient.query(`
@@ -289,12 +311,8 @@ export async function POST(request: Request) {
       const creditCheckClient = await pool.connect();
       try {
         // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 조회 → Hub wallet 이관 예정
-      await creditCheckClient.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
-        const creditCheckRes = await creditCheckClient.query(
-          'SELECT COALESCE(f_credits, 0) as credits FROM t_users WHERE f_id = $1',
-          [userId]
-        );
-        const userCredits = creditCheckRes.rows.length > 0 ? Number(creditCheckRes.rows[0].credits) : 0;
+        await ensureCreditHistoryTable(creditCheckClient);
+        const userCredits = await getLatestCreditBalance(creditCheckClient, userId);
         if (!Number.isFinite(userCredits) || userCredits < 30) {
           return NextResponse.json(
             { error: '크레딧이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
@@ -993,50 +1011,44 @@ export async function POST(request: Request) {
           throw new Error('로그인이 필요합니다.');
         }
         // REFACTORED_BY_MERLIN_HUB: t_users recheck 크레딧 → Hub wallet 이관 예정
-        const creditRes = await client.query(
-          `UPDATE t_users
-           SET f_recheck_credits = COALESCE(f_recheck_credits, 0) - 1,
-               f_updated_at = NOW()
-           WHERE f_id = $1 AND COALESCE(f_recheck_credits, 0) > 0
-           RETURNING f_recheck_credits`,
-          [actualUserId]
-        );
-
-        if (creditRes.rows.length === 0) {
+        await ensureCreditHistoryTable(client);
+        const currentBalance = await getLatestCreditBalance(client, actualUserId);
+        if (!Number.isFinite(currentBalance) || currentBalance < 1) {
           const err: any = new Error('크레딧이 부족합니다.');
           err.statusCode = 402;
           throw err;
         }
 
+        await appendCreditHistory(client, {
+          userId: actualUserId,
+          amount: -1,
+          description: '영상 재분석',
+          type: 'analysis',
+        });
+
         creditDeducted = true;
       }
 
       // ── 일반 크레딧 차감 + 타임패스(ad_free_until) 갱신 ──
-      // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 차감 → Hub wallet 이관 예정 (mfn- 유저는 skip)
-      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_') && !actualUserId.startsWith('mfn-')) {
-        await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_credits INTEGER DEFAULT 0`);
-        await client.query(`ALTER TABLE t_users ADD COLUMN IF NOT EXISTS f_ad_free_until TIMESTAMP WITH TIME ZONE DEFAULT NULL`);
-
-        const deductRes = await client.query(
-          `UPDATE t_users
-           SET f_credits = COALESCE(f_credits, 0) - 30,
-               f_ad_free_until = NOW() + INTERVAL '10 minutes',
-               f_updated_at = NOW()
-           WHERE f_id = $1 AND COALESCE(f_credits, 0) >= 30
-           RETURNING f_credits, f_ad_free_until`,
-          [actualUserId]
-        );
-
-        if (deductRes.rows.length > 0) {
-          creditDeducted = true;
-          console.log(`[Credit] userId=${actualUserId}, -30C → balance=${deductRes.rows[0].f_credits}, ad_free_until=${deductRes.rows[0].f_ad_free_until}`);
-          // 이력 기록
-          await client.query(`CREATE TABLE IF NOT EXISTS t_credit_history (f_id BIGSERIAL PRIMARY KEY, f_user_id TEXT NOT NULL, f_type TEXT NOT NULL, f_amount INTEGER NOT NULL, f_balance INTEGER NOT NULL, f_description TEXT, f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())`);
-          await client.query(
-            `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description) VALUES ($1, 'analysis', $2, $3, $4)`,
-            [actualUserId, -30, deductRes.rows[0].f_credits, '영상 분석']
-          );
+      // REFACTORED_BY_MERLIN_HUB: t_users 크레딧 차감 → Hub wallet 이관 예정
+      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
+        await ensureCreditHistoryTable(client);
+        const currentBalance = await getLatestCreditBalance(client, actualUserId);
+        if (!Number.isFinite(currentBalance) || currentBalance < 30) {
+          const err: any = new Error('크레딧이 부족합니다. 충전 후 다시 시도해주세요.');
+          err.statusCode = 402;
+          throw err;
         }
+
+        const newBalance = await appendCreditHistory(client, {
+          userId: actualUserId,
+          amount: -30,
+          description: '영상 분석',
+          type: 'analysis',
+        });
+
+        creditDeducted = true;
+        console.log(`[Credit] userId=${actualUserId}, -30C → balance=${newBalance}`);
       }
 
       // 5-5. 채널 구독 처리

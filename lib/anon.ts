@@ -4,7 +4,7 @@
  *
  * 신원(Identity) 저장소:
  *   - merlin_session_token: JWT (허브 발급)
- *   - merlin_family_uid: TEXT (허브 발급, 예: "mfn-xxx")
+ *   - merlin_user_id: UUID (허브 발급, 유일한 식별자)
  *   - userEmail: 이메일
  */
 
@@ -20,7 +20,7 @@ export function isAnonymousUser(): boolean {
  */
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem('merlin_family_uid') || '';
+  return localStorage.getItem('merlin_user_id') || '';
 }
 
 /** 로그인된 유저의 이메일 반환 */

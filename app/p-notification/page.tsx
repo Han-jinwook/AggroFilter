@@ -60,8 +60,8 @@ export default function Page() {
 
   const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
   const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
-  // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('merlin_family_uid') || '' : ''
+  // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('merlin_user_id') || '' : ''
 
   // 익명 사용자가 알림 페이지 접근 시 로그인 모달 표시
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function Page() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_family_uid 자동 저장
+  // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_user_id 자동 저장
   const handleLoginSuccess = async (loginEmail: string, _userId: string) => {
     localStorage.setItem('userEmail', loginEmail)
     localStorage.setItem('userNickname', loginEmail.split('@')[0])

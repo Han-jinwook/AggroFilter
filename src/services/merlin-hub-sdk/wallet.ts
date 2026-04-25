@@ -19,7 +19,7 @@ export interface UseCreditResult {
 
 export interface WalletBalance {
   balance: number;
-  familyUid: string;
+  userId: string;
 }
 
 /**
@@ -49,25 +49,25 @@ export async function useCredit(params: UseCreditParams): Promise<UseCreditResul
 }
 
 /**
- * localStorage에서 familyUid 조회
+ * localStorage에서 userId(UUID) 조회
  */
-export function getFamilyUid(): string | null {
+export function getUserId(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('merlin_family_uid');
+  return localStorage.getItem('merlin_user_id');
 }
 
 /**
  * 현재 크레딧 잔액 조회
- * @param familyUid 지정하지 않으면 localStorage에서 자동 조회
+ * @param userId 지정하지 않으면 localStorage에서 자동 조회
  */
-export async function getBalance(familyUid?: string): Promise<{ success: boolean; balance?: number; error?: string }> {
-  const uid = familyUid || getFamilyUid();
+export async function getBalance(userId?: string): Promise<{ success: boolean; balance?: number; error?: string }> {
+  const uid = userId || getUserId();
   if (!uid) {
-    return { success: false, error: '로그인이 필요합니다 (familyUid 없음)' };
+    return { success: false, error: '로그인이 필요합니다 (userId 없음)' };
   }
 
   try {
-    const { ok, data } = await hubFetch<WalletBalance>(`/api/wallet/balance?familyUid=${encodeURIComponent(uid)}`);
+    const { ok, data } = await hubFetch<WalletBalance>(`/api/wallet/balance?userId=${encodeURIComponent(uid)}`);
 
     if (!ok) {
       return { success: false, error: '잔액 조회 실패' };

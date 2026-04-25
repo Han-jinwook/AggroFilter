@@ -39,8 +39,8 @@ function MockPaymentContent() {
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  // REFACTORED_BY_MERLIN_HUB: userId → merlin_family_uid
-  const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_family_uid') || '') : ''
+  // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
+  const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : ''
 
   useEffect(() => {
     const nick = localStorage.getItem('userNickname') || ''
@@ -64,7 +64,8 @@ function MockPaymentContent() {
         setHistoryTotalPages(data.totalPages || 1)
         setHistoryPage(data.page || 1)
       }
-    } catch {} finally {
+    } catch (_error) {
+    } finally {
       setHistoryLoading(false)
     }
   }, [uid])
@@ -114,7 +115,7 @@ function MockPaymentContent() {
           router.push(redirectUrl)
         }, 2000)
       }
-    } catch {
+    } catch (_error) {
       alert('네트워크 오류')
     } finally {
       setIsPaying(false)

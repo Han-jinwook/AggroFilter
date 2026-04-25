@@ -44,14 +44,13 @@ export async function GET(request: Request) {
           l.f_id as id,
           l.f_cafe24_order_id as order_id,
           l.f_user_id as user_id,
-          u.f_email as user_email,
+          NULL::text as user_email,
           l.f_buyer_email as buyer_email,
           l.f_amount_paid as amount_paid,
           l.f_credits_added as credits_added,
           l.f_status as status,
           l.f_created_at as created_at
         FROM t_payment_logs l
-        LEFT JOIN t_users u ON l.f_user_id = u.f_id
         ORDER BY l.f_created_at DESC 
         LIMIT 50
       `);
