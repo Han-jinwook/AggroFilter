@@ -288,16 +288,18 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </button>
           )}
 
-          {/* 크레딧 (심사용 결제 버튼 추가로 인해 중복 제거 또는 유지 선택 가능하나 일단 유지) */}
+          {/* 크레딧 잔액 — 다른 메뉴와 동일한 톤(상단 잔액, 하단 라벨) */}
           {isLoggedIn && (
             <Link
               href="/payment/mock"
               className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
             >
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
-                <Coins className="h-5 w-5" />
+              <div className="px-2.5 h-9 min-w-[40px] rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors flex items-center justify-center">
+                <span className="text-sm font-black tabular-nums">
+                  {credits !== null ? `${credits} C` : '…'}
+                </span>
               </div>
-              <span className="text-[10px] font-black text-amber-600">{credits !== null ? `${credits} C` : '…'}</span>
+              <span className="text-[10px] font-bold text-amber-600">크레딧</span>
             </Link>
           )}
 
