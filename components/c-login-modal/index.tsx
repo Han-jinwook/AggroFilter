@@ -80,15 +80,16 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      // 심사용 테스트 계정: Hub API 생략 및 고정 세션 생성
+      // KCP 심사관용 테스트 계정: Hub API 우회 및 고정 세션 생성
+      // SDK의 hubFetch가 'test-session-token'을 감지하면 허브 호출 없이 mock 응답 반환
       if (email === 'test@aggrofilter.com' && fullCode === '111111') {
-        const testUid = 'mfn-test-kcp-심사용'
+        const testUid = 'mfn-test-kcp-reviewer'
         localStorage.setItem('merlin_family_uid', testUid)
         localStorage.setItem('userEmail', email)
         localStorage.setItem('userNickname', 'KCP심사관')
-        // Hub 세션 토큰은 없으므로 임시값 (백엔드 요청 시 에러날 수 있으나 UI 구경은 가능)
+        localStorage.setItem('userId', testUid)
         localStorage.setItem('merlin_session_token', 'test-session-token')
-        
+
         onLoginSuccess(email, testUid)
         return
       }
@@ -171,6 +172,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
               <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
                 {isLoading ? "발송 중..." : "인증코드 받기"}
               </Button>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+                <span className="font-semibold">KCP 심사관 안내:</span>{' '}
+                <code className="font-mono">test@aggrofilter.com</code> 입력 후 인증코드{' '}
+                <code className="font-mono font-bold">111111</code>로 로그인하실 수 있습니다.
+              </div>
             </form>
           ) : (
             <div className="space-y-5">

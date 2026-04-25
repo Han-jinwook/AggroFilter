@@ -11,6 +11,18 @@ const SESSION_TOKEN_KEY = 'merlin_session_token';
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
 
+// KCP 심사관용 테스트 세션 식별자
+export const TEST_SESSION_TOKEN = 'test-session-token';
+export const TEST_FAMILY_UID = 'mfn-test-kcp-reviewer';
+export const TEST_EMAIL = 'test@aggrofilter.com';
+export const TEST_NICKNAME = 'KCP심사관';
+
+/** 현재 localStorage 세션이 KCP 심사용 테스트 세션인지 */
+export function isTestSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(SESSION_TOKEN_KEY) === TEST_SESSION_TOKEN;
+}
+
 // ── 세션 토큰 관리 ──
 
 export function getSessionToken(): string | null {
@@ -56,11 +68,80 @@ export interface HubFetchResult<T> {
   data: T;
 }
 
+/**
+ * KCP 심사관 테스트 세션이면 허브 호출 없이 mock 응답 반환
+ * 모든 허브 API에 대한 단일 진입점에서 차단
+ */
+function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResult<T> | null {
+  if (!isTestSession()) return null;
+
+  const method = (options.method || 'GET').toUpperCase();
+
+  // /api/auth/me — 세션 검증
+  if (path === '/api/auth/me') {
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        success: true,
+        user: {
+          email: TEST_EMAIL,
+          familyUid: TEST_FAMILY_UID,
+          nickname: TEST_NICKNAME,
+          avatar_url: '',
+        },
+      } as T,
+    };
+  }
+
+  // /api/wallet/balance — 잔액 조회 (심사관용 충분한 잔액)
+  if (path.startsWith('/api/wallet/balance')) {
+    return {
+      ok: true,
+      status: 200,
+      data: { balance: 9999, familyUid: TEST_FAMILY_UID } as T,
+    };
+  }
+
+  // /api/wallet/use — 차감 (실제 차감은 안 하지만 성공으로 간주)
+  if (path === '/api/wallet/use' && method === 'POST') {
+    return {
+      ok: true,
+      status: 200,
+      data: { success: true, balance: 9999 } as T,
+    };
+  }
+
+  // /api/auth/profile — 프로필 갱신 (변경 없이 성공 응답)
+  if (path === '/api/auth/profile') {
+    return {
+      ok: true,
+      status: 200,
+      data: {
+        success: true,
+        nickname: TEST_NICKNAME,
+        avatar_url: '',
+      } as T,
+    };
+  }
+
+  // 그 외 허브 API — 401로 떨어지지 않도록 빈 성공 응답
+  return {
+    ok: true,
+    status: 200,
+    data: {} as T,
+  };
+}
+
 export async function hubFetch<T = any>(
   path: string,
   options: RequestInit = {},
   retries = MAX_RETRIES
 ): Promise<HubFetchResult<T>> {
+  // KCP 심사관 테스트 세션 차단 — 허브 호출 우회
+  const mock = getTestSessionMock<T>(path, options);
+  if (mock) return mock;
+
   const config = getConfig();
   const url = `${config.hubUrl}${path}`;
 
