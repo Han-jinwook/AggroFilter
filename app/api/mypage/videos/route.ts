@@ -30,32 +30,72 @@ export async function POST(request: Request) {
     const client = await pool.connect();
 
     try {
-      // t_video_subscriptions 기반 — 내 구독일(f_subscribed_at)을 표시 날짜로 사용
-      // 구독 삭제 시 해당 채널 영상 전부 자동 소멸
-      const refinedQuery = `
-        SELECT
-          a.f_id as id,
-          a.f_title as title,
-          a.f_reliability_score as score,
-          vs.f_subscribed_at as subscribed_at,
-          COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
-          COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
-          a.f_official_category_id as category_id,
-          vs.f_channel_id as channel_id,
-          c.f_language as channel_language
-        FROM t_video_subscriptions vs
-        JOIN LATERAL (
-          SELECT *
-          FROM t_analyses a2
-          WHERE a2.f_video_id = vs.f_video_id
-          ORDER BY a2.f_created_at DESC
-          LIMIT 1
-        ) a ON true
-        LEFT JOIN t_channels c ON vs.f_channel_id = c.f_channel_id
-        WHERE vs.f_user_id = $1
-        ORDER BY vs.f_subscribed_at DESC
-        LIMIT 200
-      `;
+      const tableExistsRes = await client.query(
+        `SELECT to_regclass('t_video_subscriptions') IS NOT NULL AS exists`
+      );
+      const tableExists = tableExistsRes.rows?.[0]?.exists === true;
+
+      const refinedQuery = tableExists
+        ? `
+          WITH latest_user_analyses AS (
+            SELECT DISTINCT ON (a.f_video_id)
+              a.f_id,
+              a.f_video_id,
+              a.f_title,
+              a.f_reliability_score,
+              a.f_created_at,
+              a.f_channel_id,
+              a.f_official_category_id
+            FROM t_analyses a
+            WHERE a.f_user_id = $1
+            ORDER BY a.f_video_id, a.f_created_at DESC
+          )
+          SELECT
+            lua.f_id as id,
+            lua.f_title as title,
+            lua.f_reliability_score as score,
+            COALESCE(vs.f_subscribed_at, lua.f_created_at) as subscribed_at,
+            COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
+            COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
+            lua.f_official_category_id as category_id,
+            lua.f_channel_id as channel_id,
+            COALESCE(NULLIF(c.f_language, ''), 'korean') as channel_language
+          FROM latest_user_analyses lua
+          LEFT JOIN t_video_subscriptions vs
+            ON vs.f_user_id = $1 AND vs.f_video_id = lua.f_video_id
+          LEFT JOIN t_channels c ON lua.f_channel_id = c.f_channel_id
+          ORDER BY COALESCE(vs.f_subscribed_at, lua.f_created_at) DESC
+          LIMIT 200
+        `
+        : `
+          WITH latest_user_analyses AS (
+            SELECT DISTINCT ON (a.f_video_id)
+              a.f_id,
+              a.f_video_id,
+              a.f_title,
+              a.f_reliability_score,
+              a.f_created_at,
+              a.f_channel_id,
+              a.f_official_category_id
+            FROM t_analyses a
+            WHERE a.f_user_id = $1
+            ORDER BY a.f_video_id, a.f_created_at DESC
+          )
+          SELECT
+            lua.f_id as id,
+            lua.f_title as title,
+            lua.f_reliability_score as score,
+            lua.f_created_at as subscribed_at,
+            COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
+            COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
+            lua.f_official_category_id as category_id,
+            lua.f_channel_id as channel_id,
+            COALESCE(NULLIF(c.f_language, ''), 'korean') as channel_language
+          FROM latest_user_analyses lua
+          LEFT JOIN t_channels c ON lua.f_channel_id = c.f_channel_id
+          ORDER BY lua.f_created_at DESC
+          LIMIT 200
+        `;
 
       const res = await client.query(refinedQuery, [userId]);
       
