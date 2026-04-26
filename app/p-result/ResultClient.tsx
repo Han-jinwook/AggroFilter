@@ -966,12 +966,6 @@ ${content}
       )}
       <main className={`pt-6 pb-24 ${largeFontMode ? 'text-lg [&_.text-sm]:text-base [&_.text-xs]:text-sm [&_.text-\\[11px\\]]:text-xs [&_.text-\\[10px\\]]:text-xs [&_.text-base]:text-lg [&_.leading-relaxed]:leading-loose' : ''}`}>
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
-          {isSpeedPhase && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-              <p className="text-sm font-semibold">1차 분석 결과입니다. 2차 정밀 분석을 이어서 진행 중입니다.</p>
-              <p className="mt-1 text-xs text-amber-700">잠시 후 점수/평가 이유가 최종값으로 자동 갱신됩니다.</p>
-            </div>
-          )}
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
           <div className="bg-background pb-2 pt-2">
             <AnalysisHeader
@@ -1110,6 +1104,12 @@ ${content}
                   )}
                 </div>
               )}
+            </div>
+          )}
+          {isSpeedPhase && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+              <p className="text-sm font-semibold">2차 정밀 분석 진행 중</p>
+              <p className="mt-1 text-xs text-amber-700">잠시 후 점수/평가 이유가 최종값으로 자동 갱신됩니다.</p>
             </div>
           )}
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
