@@ -409,6 +409,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             // 구 형식: plain string → 배열로 변환
             return [{ text: raw, ts: analysis.f_fact_timestamp || null }];
           })(),
+          processingStage: analysis.f_processing_stage || null,
         },
         comments: formattedComments,
         interaction: interaction,

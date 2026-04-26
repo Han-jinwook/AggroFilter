@@ -158,7 +158,7 @@ export default function MainPage() {
             if (!statusRes.ok) continue
             const statusData = await statusRes.json()
             if (
-              (statusData.status === 'speed_ready' || statusData.status === 'completed') &&
+              statusData.status === 'completed' &&
               statusData.analysisId
             ) {
               return { analysisId: statusData.analysisId }
@@ -244,7 +244,7 @@ export default function MainPage() {
             const statusRes = await fetch(pollUrl);
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              if ((statusData.status === 'completed' || statusData.status === 'speed_ready') && statusData.analysisId) {
+              if (statusData.status === 'completed' && statusData.analysisId) {
                 console.log('폴링으로 결과 확인:', statusData.analysisId);
                 result = { analysisId: statusData.analysisId };
                 polled = true;

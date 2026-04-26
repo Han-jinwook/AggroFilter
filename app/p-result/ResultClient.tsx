@@ -116,7 +116,32 @@ export default function ResultClient() {
         if (!response.ok) {
           throw new Error("분석 결과를 불러오는데 실패했습니다.")
         }
-        const data = await response.json()
+        let data = await response.json()
+
+        const isCompletedPayload = (payload: any) => {
+          const stage = payload?.analysisData?.processingStage
+          if (stage === 'completed') return true
+          if (stage === 'speed_ready') return false
+          const scores = payload?.analysisData?.scores
+          return (
+            typeof scores?.accuracy === 'number' &&
+            typeof scores?.clickbait === 'number' &&
+            typeof scores?.trust === 'number'
+          )
+        }
+
+        if (!isCompletedPayload(data)) {
+          for (let i = 0; i < 15; i++) {
+            if (isCancelled) break
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            const retryRes = await fetch(`/api/analysis/result/${id}${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`, {
+              cache: 'no-store'
+            })
+            if (!retryRes.ok) continue
+            data = await retryRes.json()
+            if (isCompletedPayload(data)) break
+          }
+        }
         
         if (!isCancelled) {
           setAnalysisData(data.analysisData)
@@ -136,10 +161,12 @@ export default function ResultClient() {
                 if (!hasSavedPrediction.current && !data.videoPrediction) {
                   hasSavedPrediction.current = true
                   const predUid = getUserId()
-                  const actualTrust = Number(data.analysisData?.scores?.trust)
+                  const rawActualTrust = data.analysisData?.scores?.trust
+                  const hasActualTrust = typeof rawActualTrust === 'number' && Number.isFinite(rawActualTrust)
+                  const actualTrust = hasActualTrust ? rawActualTrust : NaN
                   const canSubmitPrediction =
                     predUid &&
-                    Number.isFinite(actualTrust) &&
+                    hasActualTrust &&
                     parsed?.accuracy != null &&
                     parsed?.clickbait != null
 
@@ -180,7 +207,7 @@ export default function ResultClient() {
                       hasUserId: Boolean(predUid),
                       hasAccuracy: parsed?.accuracy != null,
                       hasClickbait: parsed?.clickbait != null,
-                      hasActualReliability: Number.isFinite(actualTrust),
+                      hasActualReliability: hasActualTrust,
                     })
                   }
                 }
