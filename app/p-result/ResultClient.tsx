@@ -136,7 +136,14 @@ export default function ResultClient() {
                 if (!hasSavedPrediction.current && !data.videoPrediction) {
                   hasSavedPrediction.current = true
                   const predUid = getUserId()
-                  if (predUid) {
+                  const actualTrust = Number(data.analysisData?.scores?.trust)
+                  const canSubmitPrediction =
+                    predUid &&
+                    Number.isFinite(actualTrust) &&
+                    parsed?.accuracy != null &&
+                    parsed?.clickbait != null
+
+                  if (canSubmitPrediction) {
                     fetch('/api/prediction/submit', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -144,7 +151,7 @@ export default function ResultClient() {
                         analysisId: id,
                         predictedAccuracy: parsed.accuracy,
                         predictedClickbait: parsed.clickbait,
-                        actualReliability: data.analysisData?.scores?.trust,
+                        actualReliability: actualTrust,
                         userId: predUid,
                       }),
                     })
@@ -168,6 +175,13 @@ export default function ResultClient() {
                         }
                       })
                       .catch(err => console.error('Failed to save prediction:', err))
+                  } else {
+                    console.warn('[prediction/submit] skipped: invalid payload', {
+                      hasUserId: Boolean(predUid),
+                      hasAccuracy: parsed?.accuracy != null,
+                      hasClickbait: parsed?.clickbait != null,
+                      hasActualReliability: Number.isFinite(actualTrust),
+                    })
                   }
                 }
               }
@@ -816,6 +830,7 @@ ${content}
   const hasTopPercentile = typeof topPercentile === "number" && !Number.isNaN(topPercentile)
   const channelRank = analysisData.channelStats?.rank
   const totalChannels = analysisData.channelStats?.totalChannels
+  const evaluationReasonText = typeof analysisData.evaluationReason === 'string' ? analysisData.evaluationReason : ''
   const channelRankText = typeof channelRank === "number" && !Number.isNaN(channelRank) ? `${channelRank}위` : "-"
   const totalChannelsText = typeof totalChannels === "number" && !Number.isNaN(totalChannels) ? `${totalChannels}개` : "-"
   const topPercentileText = hasTopPercentile ? `${Math.round(topPercentile)}%` : "-"
@@ -1036,7 +1051,7 @@ ${content}
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
               <div className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
                 {renderHighlightedText(
-                  analysisData.evaluationReason
+                  evaluationReasonText
                     .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
                     .split('<br />').join('\n')
                 )}
