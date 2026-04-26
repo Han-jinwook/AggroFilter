@@ -231,6 +231,8 @@ export default function SettingsPage() {
     return text.charAt(0).toUpperCase()
   }
 
+  const showLogoutSection = !isAnon || (nickname.trim().length > 0 && nickname !== '게스트')
+
   const handleThresholdChange = async (v: 10 | 20 | 30) => {
     const uid = getUserId()
     if (!uid) return
@@ -474,7 +476,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {!isAnon && (
+            {showLogoutSection && (
               <div className="bg-card border border-red-200 rounded-xl p-6 shadow-sm">
                 <h2 className="text-lg font-semibold mb-3">계정</h2>
                 <p className="text-sm text-muted-foreground mb-4">
