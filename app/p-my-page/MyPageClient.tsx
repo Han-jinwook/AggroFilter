@@ -345,7 +345,11 @@ export default function MyPageClient() {
 
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
-    if (userId) localStorage.setItem("userId", userId)
+    if (userId) {
+      localStorage.setItem("userId", userId)
+      localStorage.setItem("merlin_user_id", userId)
+      localStorage.setItem("merlin_family_uid", userId)
+    }
 
     const nickname = email.split("@")[0]
     localStorage.setItem("userNickname", nickname)

@@ -23,6 +23,13 @@ export function getUserId(): string {
   const userId = localStorage.getItem('merlin_user_id') || '';
   if (userId) return userId;
 
+  const legacyUserId = localStorage.getItem('userId') || '';
+  if (legacyUserId) {
+    localStorage.setItem('merlin_user_id', legacyUserId);
+    localStorage.setItem('merlin_family_uid', legacyUserId);
+    return legacyUserId;
+  }
+
   const legacyFamilyUid = localStorage.getItem('merlin_family_uid') || '';
   if (legacyFamilyUid) {
     localStorage.setItem('merlin_user_id', legacyFamilyUid);
