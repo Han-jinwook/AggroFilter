@@ -65,12 +65,6 @@ export default function MainPage() {
   }, [autoStarted, isAnalyzing, isCompleted])
 
   useEffect(() => {
-    if (isCompleted && analysisId) {
-      router.push(`/p-result?id=${analysisId}`)
-    }
-  }, [isCompleted, analysisId, router])
-
-  useEffect(() => {
     const handleOpenLoginModal = () => {
       setShowLoginModal(true)
     }
@@ -258,8 +252,10 @@ export default function MainPage() {
       }
       
       // Analysis is saved in DB with user_id, no localStorage needed
-      setAnalysisId(result.analysisId);
-      setIsCompleted(true);
+      const readyAnalysisId = result.analysisId;
+      setAnalysisId(readyAnalysisId);
+      router.push(`/p-result?id=${readyAnalysisId}`);
+      return;
 
       // 크레딧 차감 후 헤더 + 광고 컴포넌트 갱신
       window.dispatchEvent(new CustomEvent('creditsUpdated'));

@@ -61,10 +61,16 @@ export default function ResultClient() {
   const [analysisData, setAnalysisData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isRefining, setIsRefining] = useState(false)
+  const [showPhase2, setShowPhase2] = useState(false)
+  const [showPhase3, setShowPhase3] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [predictionData, setPredictionData] = useState<any>(null)
   const [userPredictionStats, setUserPredictionStats] = useState<any>(null)
   const hasSavedPrediction = useRef(false)
+  const phase2TimerRef = useRef<number | null>(null)
+  const phase3TimerRef = useRef<number | null>(null)
+  const phase2ReadyRef = useRef(false)
+  const completedWaitingPhase3Ref = useRef(false)
 
   useEffect(() => {
     const email = localStorage.getItem('userEmail')
@@ -98,6 +104,18 @@ export default function ResultClient() {
   useEffect(() => {
     setPredictionData(null); // 이전 예측 데이터 초기화
     setIsRefining(false)
+    setShowPhase2(false)
+    setShowPhase3(false)
+    phase2ReadyRef.current = false
+    completedWaitingPhase3Ref.current = false
+    if (phase2TimerRef.current !== null) {
+      clearTimeout(phase2TimerRef.current)
+      phase2TimerRef.current = null
+    }
+    if (phase3TimerRef.current !== null) {
+      clearTimeout(phase3TimerRef.current)
+      phase3TimerRef.current = null
+    }
     const id = searchParams.get("id")
     if (!id) {
       setError("분석 ID가 없습니다.")
@@ -132,31 +150,50 @@ export default function ResultClient() {
           )
         }
 
+        const schedulePhase2Reveal = () => {
+          if (phase2ReadyRef.current || phase2TimerRef.current !== null) return
+          phase2TimerRef.current = window.setTimeout(() => {
+            if (isCancelled) return
+            phase2ReadyRef.current = true
+            setShowPhase2(true)
+            setActiveSubtitle((prev) => prev ?? "summary")
+
+            if (completedWaitingPhase3Ref.current && phase3TimerRef.current === null) {
+              phase3TimerRef.current = window.setTimeout(() => {
+                if (isCancelled) return
+                setShowPhase3(true)
+                setIsRefining(false)
+              }, 500)
+            }
+          }, 1300)
+        }
+
+        const schedulePhase3Reveal = () => {
+          if (phase3TimerRef.current !== null || showPhase3) return
+          if (phase2ReadyRef.current) {
+            phase3TimerRef.current = window.setTimeout(() => {
+              if (isCancelled) return
+              setShowPhase3(true)
+              setIsRefining(false)
+            }, 500)
+            return
+          }
+          completedWaitingPhase3Ref.current = true
+        }
+
+        if (!isCancelled) {
+          setAnalysisData(data.analysisData)
+          setLoading(false)
+          schedulePhase2Reveal()
+        }
+
         const isCompletedOnFirstFetch = isCompletedPayload(data)
         if (!isCompletedOnFirstFetch && !isCancelled) {
           setIsRefining(true)
-          setAnalysisData(data.analysisData)
-          setUserPredictionStats(data.userPredictionStats || null)
-          setComments(data.comments || [])
-          setLikeCount(data.interaction?.likeCount || 0)
-          setDislikeCount(data.interaction?.dislikeCount || 0)
-
-          if (data.interaction?.userInteraction === 'like') {
-            setLiked(true)
-            setDisliked(false)
-          } else if (data.interaction?.userInteraction === 'dislike') {
-            setLiked(false)
-            setDisliked(true)
-          } else {
-            setLiked(false)
-            setDisliked(false)
-          }
-
-          setLoading(false)
         }
 
         if (!isCompletedPayload(data)) {
-          for (let i = 0; i < 15; i++) {
+          for (let i = 0; i < 40; i++) {
             if (isCancelled) break
             await new Promise((resolve) => setTimeout(resolve, 1500))
             const retryRes = await fetch(`/api/analysis/result/${id}${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`, {
@@ -173,6 +210,10 @@ export default function ResultClient() {
           setIsRefining(!isCompletedNow)
           setAnalysisData(data.analysisData)
           setUserPredictionStats(data.userPredictionStats || null)
+
+          if (isCompletedNow) {
+            schedulePhase3Reveal()
+          }
 
           if (isCompletedNow) {
             // Load prediction: sessionStorage (current session) or DB (past record)
@@ -326,6 +367,14 @@ export default function ResultClient() {
 
     return () => {
       isCancelled = true;
+      if (phase2TimerRef.current !== null) {
+        clearTimeout(phase2TimerRef.current)
+        phase2TimerRef.current = null
+      }
+      if (phase3TimerRef.current !== null) {
+        clearTimeout(phase3TimerRef.current)
+        phase3TimerRef.current = null
+      }
     };
   }, [searchParams])
 
@@ -892,7 +941,7 @@ ${content}
   const channelRankText = typeof channelRank === "number" && !Number.isNaN(channelRank) ? `${channelRank}위` : "-"
   const totalChannelsText = typeof totalChannels === "number" && !Number.isNaN(totalChannels) ? `${totalChannels}개` : "-"
   const topPercentileText = hasTopPercentile ? `${Math.round(topPercentile)}%` : "-"
-  const isSpeedPhase = isRefining || analysisData?.processingStage === 'speed_ready'
+  const isSpeedPhase = showPhase2 && !showPhase3 && (isRefining || analysisData?.processingStage !== 'completed')
   const topPercentileFillWidth = hasTopPercentile && channelRank && totalChannels
     ? `${Math.max(0, Math.min(100, 100 - ((channelRank - 1) / totalChannels) * 100))}%`
     : "0%"
@@ -1002,23 +1051,85 @@ ${content}
               </div>
             )}
           </div>
-          <div className="bg-background pb-3 pt-0">
-            <SubtitleButtons 
-              activeSubtitle={activeSubtitle} 
-              onToggle={() => setActiveSubtitle(activeSubtitle === "summary" ? null : "summary")}
-              chapterCount={analysisData.summarySubtitle ? analysisData.summarySubtitle.split('\n').filter(line => line.trim().length > 0 && line.match(/\d{1,2}:\d{2}/)).length : 0}
-            />
-          </div>
-          {activeSubtitle === "summary" && (
-            <div className="overflow-hidden rounded-3xl border-4 border-blue-300 bg-blue-50">
-              <div className="max-h-[60vh] overflow-y-auto p-5">
-                <div className="whitespace-pre-line text-sm leading-relaxed">
-                  {renderTextWithTimestamps(analysisData.summarySubtitle)}
-                </div>
+          {showPhase2 && (
+            <>
+              <div className="bg-background pb-3 pt-0">
+                <SubtitleButtons 
+                  activeSubtitle={activeSubtitle} 
+                  onToggle={() => setActiveSubtitle(activeSubtitle === "summary" ? null : "summary")}
+                  chapterCount={analysisData.summarySubtitle ? analysisData.summarySubtitle.split('\n').filter(line => line.trim().length > 0 && line.match(/\d{1,2}:\d{2}/)).length : 0}
+                />
               </div>
-            </div>
+              {activeSubtitle === "summary" && (
+                <div className="overflow-hidden rounded-3xl border-4 border-blue-300 bg-blue-50">
+                  <div className="max-h-[60vh] overflow-y-auto p-5">
+                    <div className="whitespace-pre-line text-sm leading-relaxed">
+                      {renderTextWithTimestamps(analysisData.summarySubtitle)}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {analysisData.thumbnailSpoiler && (
+                <div className="rounded-3xl border-4 border-amber-400 bg-amber-50 px-3 py-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-lg">🎯</span>
+                    <h3 className="text-base font-bold text-gray-900">썸네일 스포일러</h3>
+                  </div>
+                  {Array.isArray(analysisData.thumbnailSpoiler) ? (
+                    <div className="space-y-2">
+                      {analysisData.thumbnailSpoiler.map((item: { topic?: string; text: string; ts?: string | null }, idx: number) => (
+                        <div key={idx} className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            {analysisData.thumbnailSpoiler.length > 1 && (
+                              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[11px] font-bold text-white">{idx + 1}</span>
+                            )}
+                            <div className="flex-1">
+                              {item.topic && (
+                                <p className="mb-1 text-xs font-bold text-amber-600">📌 {item.topic}</p>
+                              )}
+                              <p className="text-sm font-medium leading-relaxed text-gray-800">{item.text}</p>
+                              {item.ts && (
+                                <button
+                                  onClick={() => handleTimestampClick(item.ts!)}
+                                  className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                                >
+                                  <Play className="w-3.5 h-3.5 fill-current" />
+                                  {item.ts} 부터 보기
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
+                      <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
+                      {analysisData.thumbnailSpoilerTs && (
+                        <button
+                          onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          {analysisData.thumbnailSpoilerTs} 부터 보기
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {isSpeedPhase && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                  <p className="text-sm font-semibold">3차 분석 결과 정리 중</p>
+                  <p className="mt-1 text-xs text-amber-700">잠시 후 나머지 분석 결과가 자동으로 표시됩니다.</p>
+                </div>
+              )}
+            </>
           )}
-          <ScoreCard 
+
+          {showPhase3 && (
+            <>
+              <ScoreCard 
               accuracy={analysisData.scores.accuracy} 
               clickbait={analysisData.scores.clickbait} 
               trust={analysisData.scores.trust} 
@@ -1057,61 +1168,6 @@ ${content}
                 />
               }
             />
-          {analysisData.thumbnailSpoiler && (
-            <div className="rounded-3xl border-4 border-amber-400 bg-amber-50 px-3 py-3">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-lg">🎯</span>
-                <h3 className="text-base font-bold text-gray-900">썸네일 스포일러</h3>
-              </div>
-              {Array.isArray(analysisData.thumbnailSpoiler) ? (
-                <div className="space-y-2">
-                  {analysisData.thumbnailSpoiler.map((item: { topic?: string; text: string; ts?: string | null }, idx: number) => (
-                    <div key={idx} className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        {analysisData.thumbnailSpoiler.length > 1 && (
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[11px] font-bold text-white">{idx + 1}</span>
-                        )}
-                        <div className="flex-1">
-                          {item.topic && (
-                            <p className="mb-1 text-xs font-bold text-amber-600">📌 {item.topic}</p>
-                          )}
-                          <p className="text-sm font-medium leading-relaxed text-gray-800">{item.text}</p>
-                          {item.ts && (
-                            <button
-                              onClick={() => handleTimestampClick(item.ts!)}
-                              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-current" />
-                              {item.ts} 부터 보기
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                  <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
-                  {analysisData.thumbnailSpoilerTs && (
-                    <button
-                      onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      {analysisData.thumbnailSpoilerTs} 부터 보기
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {isSpeedPhase && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-              <p className="text-sm font-semibold">2차 정밀 분석 진행 중</p>
-              <p className="mt-1 text-xs text-amber-700">잠시 후 점수/평가 이유가 최종값으로 자동 갱신됩니다.</p>
-            </div>
-          )}
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
               <div className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
@@ -1578,6 +1634,8 @@ ${content}
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       </main>
     </div>
