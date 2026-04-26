@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     try {
       const result = await client.query(`
-        SELECT f_id, f_reliability_score, f_is_valid
+        SELECT f_id, f_reliability_score, f_is_valid, f_processing_stage
         FROM t_analyses 
         WHERE f_video_id = $1 AND f_created_at > NOW() - INTERVAL '30 minutes'
         ORDER BY f_created_at DESC 
@@ -35,9 +35,28 @@ export async function GET(request: Request) {
       `, [videoId]);
 
       if (result.rows.length > 0) {
+        const row = result.rows[0];
+        const isCompleted =
+          row.f_processing_stage === 'completed' ||
+          (row.f_processing_stage == null && row.f_reliability_score !== null);
+
+        if (isCompleted) {
+          return NextResponse.json({
+            status: 'completed',
+            analysisId: row.f_id,
+          }, { headers: corsHeaders });
+        }
+
+        if (row.f_processing_stage === 'speed_ready') {
+          return NextResponse.json({
+            status: 'speed_ready',
+            analysisId: row.f_id,
+          }, { headers: corsHeaders });
+        }
+
         return NextResponse.json({
-          status: 'completed',
-          analysisId: result.rows[0].f_id,
+          status: 'pending',
+          analysisId: row.f_id,
         }, { headers: corsHeaders });
       }
 

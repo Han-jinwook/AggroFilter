@@ -34,7 +34,8 @@ export async function requestOTP(email: string): Promise<OTPRequestResult> {
     });
 
     if (!ok) {
-      return { success: false, error: data?.error || 'OTP 발송 실패' };
+      const message = (data as any)?.message;
+      return { success: false, error: data?.error || message || 'OTP 발송 실패' };
     }
 
     return { success: true, message: data?.message || 'OTP가 발송되었습니다.' };
@@ -57,7 +58,8 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
     });
 
     if (!ok) {
-      return { success: false, error: data?.error || '인증 실패' };
+      const message = (data as any)?.message;
+      return { success: false, error: data?.error || message || '인증 실패' };
     }
 
     // JWT 토큰 저장

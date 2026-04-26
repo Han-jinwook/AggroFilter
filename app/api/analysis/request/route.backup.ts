@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
-import { analyzeContentSpeed } from '@/lib/gemini-speed';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
@@ -642,11 +641,8 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    // 4. Gemini AI 분석 (Speed + Full 병렬)
+    // 4. Gemini AI 분석
     console.log('AI 분석 시작...');
-    const analysisId = uuidv4();
-    const cleanChannelId = videoInfo.channelId?.trim();
-    let speedResult: { subtitleSummary?: string; thumbnail_spoiler?: any[] } = {};
     let analysisResult;
     let isValidTarget = true;
     let needsReview = false;
@@ -655,16 +651,8 @@ export async function POST(request: Request) {
     try {
       const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
       console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
-
-      const speedPromise = analyzeContentSpeed(
-        videoInfo.channelName,
-        videoInfo.title,
-        promptTranscript,
-        transcriptItems,
-        userLanguage
-      );
-
-      const fullPromise = analyzeContent(
+      
+      const analysis = await analyzeContent(
         videoInfo.channelName,
         videoInfo.title,
         promptTranscript,
@@ -675,126 +663,25 @@ export async function POST(request: Request) {
         userLanguage
       );
 
-      const speedAnalysis = await speedPromise;
-      speedResult = {
-        subtitleSummary: speedAnalysis?.subtitleSummary,
-        thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
-      };
-
-      const stageClient = await pool.connect();
-      try {
-        await stageClient.query('BEGIN');
-
-        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_is_recheck BOOLEAN DEFAULT FALSE`);
-        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
-        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
-        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
-        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_processing_stage TEXT DEFAULT 'completed'`);
-        await stageClient.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
-
-        await stageClient.query(`
-          INSERT INTO t_channels (
-            f_channel_id,
-            f_title,
-            f_thumbnail_url,
-            f_official_category_id,
-            f_subscriber_count,
-            f_language
-          ) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
-          ON CONFLICT (f_channel_id) DO UPDATE SET
-            f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
-            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
-            f_official_category_id = EXCLUDED.f_official_category_id,
-            f_subscriber_count = EXCLUDED.f_subscriber_count,
-            f_language = COALESCE(EXCLUDED.f_language, t_channels.f_language)
-        `, [
-          cleanChannelId,
-          videoInfo.channelName,
-          videoInfo.channelThumbnailUrl,
-          videoInfo.officialCategoryId,
-          videoInfo.subscriberCount,
-          finalLanguage
-        ]);
-
-        await stageClient.query(`
-          INSERT INTO t_videos (
-            f_video_id, f_channel_id, f_title, f_description, f_published_at,
-            f_thumbnail_url, f_official_category_id, f_view_count, f_created_at, f_updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-          ON CONFLICT (f_video_id) DO UPDATE SET
-            f_title = EXCLUDED.f_title,
-            f_description = EXCLUDED.f_description,
-            f_published_at = EXCLUDED.f_published_at,
-            f_thumbnail_url = EXCLUDED.f_thumbnail_url,
-            f_official_category_id = EXCLUDED.f_official_category_id,
-            f_view_count = EXCLUDED.f_view_count,
-            f_updated_at = NOW()
-        `, [
-          videoId,
-          cleanChannelId,
-          videoInfo.title,
-          videoInfo.description,
-          videoInfo.publishedAt || null,
-          videoInfo.thumbnailUrl,
-          videoInfo.officialCategoryId,
-          videoInfo.viewCount || 0
-        ]);
-
-        await stageClient.query(`
-          INSERT INTO t_analyses (
-            f_id, f_video_url, f_video_id, f_title, f_channel_id,
-            f_thumbnail_url, f_transcript, f_summary, f_user_id,
-            f_official_category_id, f_request_count, f_view_count, f_created_at, f_last_action_at,
-            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
-            f_is_latest, f_language, f_published_at,
-            f_fact_spoiler, f_fact_timestamp, f_processing_stage
-          ) VALUES (
-            $1, $2, $3, $4, $5,
-            $6, $7, $8, $9,
-            $10, 1, $11, NOW(), NOW(),
-            $12, $13, $14,
-            TRUE, $15, $16,
-            $17, NULL, 'speed_ready'
-          )
-          ON CONFLICT (f_id) DO UPDATE SET
-            f_summary = EXCLUDED.f_summary,
-            f_fact_spoiler = EXCLUDED.f_fact_spoiler,
-            f_processing_stage = EXCLUDED.f_processing_stage,
-            f_last_action_at = NOW()
-        `, [
-          analysisId,
-          url,
-          videoId,
-          videoInfo.title,
-          cleanChannelId,
-          videoInfo.thumbnailUrl,
-          transcript.substring(0, 50000),
-          speedResult.subtitleSummary || null,
-          userId || null,
-          videoInfo.officialCategoryId,
-          videoInfo.viewCount || 0,
-          Boolean(isRecheck),
-          isRecheck ? recheckParentAnalysisId : null,
-          isRecheck ? new Date() : null,
-          finalLanguage,
-          videoInfo.publishedAt || null,
-          Array.isArray(speedResult.thumbnail_spoiler) ? JSON.stringify(speedResult.thumbnail_spoiler) : null
-        ]);
-
-        await stageClient.query('COMMIT');
-      } catch (stageError) {
-        await stageClient.query('ROLLBACK');
-        throw stageError;
-      } finally {
-        stageClient.release();
-      }
-
-      const analysis = await fullPromise;
-
       // [V2.0] AI의 분석 대상 적합성 판단 처리
       isValidTarget = analysis.is_valid_target !== false; // 기본값 true
       needsReview = analysis.needs_admin_review === true;
       reviewReason = analysis.review_reason || analysis.notAnalyzableReason || null;
+
+      if (!isValidTarget) {
+        console.log(`[AI Reject] 분석 부적합 판정: ${reviewReason}`);
+        // 부적합 판정 시 DB에 저장하되, f_is_valid = false로 마킹하여 노출 제외
+        // 또는 기존처럼 422 에러로 반환 (사용자 요청에 따라 저장 후 숨김 처리도 가능)
+        // 여기서는 기획안 v2.0에 따라 '분석 데이터 파기' 또는 '분석 불가' 메시지 반환
+        return NextResponse.json(
+          { 
+            error: `분석 부적합 콘텐츠: ${reviewReason}`, 
+            notAnalyzable: true, 
+            reason: reviewReason 
+          },
+          { status: 422, headers: corsHeaders }
+        );
+      }
 
       analysisResult = {
         accuracy: analysis.accuracy,
@@ -811,51 +698,10 @@ export async function POST(request: Request) {
         thumbnail_spoiler: analysis.thumbnail_spoiler,
         thumbnail_spoiler_ts: analysis.thumbnail_spoiler_ts,
       };
-
-      if (typeof speedResult.subtitleSummary === 'string' && speedResult.subtitleSummary.trim().length > 0) {
-        analysisResult.subtitleSummary = speedResult.subtitleSummary;
-      }
-      if (Array.isArray(speedResult.thumbnail_spoiler) && speedResult.thumbnail_spoiler.length > 0) {
-        analysisResult.thumbnail_spoiler = speedResult.thumbnail_spoiler;
-      }
-
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
       console.error('AI 분석 엔진 에러:', aiError);
-      throw new Error(`AI 분석 중 오류가 발생했습니다: ${(aiError as any)?.message || 'unknown error'}`);
-    }
-
-    if (!isValidTarget) {
-      console.log(`[AI Reject] 분석 부적합 판정: ${reviewReason}`);
-      const invalidClient = await pool.connect();
-      try {
-        await invalidClient.query('BEGIN');
-        await invalidClient.query(`
-          UPDATE t_analyses
-          SET f_is_valid = FALSE,
-              f_needs_review = $2,
-              f_review_reason = $3,
-              f_processing_stage = 'completed',
-              f_last_action_at = NOW()
-          WHERE f_id = $1
-        `, [analysisId, needsReview, reviewReason]);
-        await invalidClient.query('COMMIT');
-      } catch (invalidErr) {
-        await invalidClient.query('ROLLBACK');
-        console.error('[AI Reject] DB 저장 실패:', invalidErr);
-      } finally {
-        invalidClient.release();
-      }
-
-      return NextResponse.json(
-        {
-          error: `분석 부적합 콘텐츠: ${reviewReason}`,
-          notAnalyzable: true,
-          reason: reviewReason,
-          analysisId,
-        },
-        { status: 422, headers: corsHeaders }
-      );
+      throw new Error(`AI 분석 중 오류가 발생했습니다: ${aiError.message}`);
     }
     
     // [notAnalyzable 판정] AI가 분석 가치 없는 영상으로 판정한 경우
@@ -867,18 +713,70 @@ export async function POST(request: Request) {
       const naClient = await pool.connect();
       try {
         await naClient.query('BEGIN');
+        
+        const cleanChannelId = videoInfo.channelId?.trim();
+
+        // t_channels 저장 (v2.0 필드 반영) - FK 제약 조건 위반 방지를 위해 선행
         await naClient.query(`
-          UPDATE t_analyses
-          SET f_not_analyzable = TRUE,
-              f_not_analyzable_reason = $2,
-              f_is_valid = FALSE,
-              f_needs_review = $3,
-              f_review_reason = $4,
-              f_processing_stage = 'completed',
-              f_last_action_at = NOW()
-          WHERE f_id = $1
-        `, [analysisId, reason, needsReview, reviewReason]);
-        await naClient.query('COMMIT');
+          INSERT INTO t_channels (
+            f_channel_id, f_title, f_thumbnail_url, f_official_category_id, f_subscriber_count
+          ) VALUES ($1, $2, NULLIF($3, ''), $4, $5)
+          ON CONFLICT (f_channel_id) DO UPDATE SET
+            f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
+            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
+            f_official_category_id = EXCLUDED.f_official_category_id,
+            f_subscriber_count = EXCLUDED.f_subscriber_count
+        `, [
+          cleanChannelId,
+          videoInfo.channelName,
+          videoInfo.channelThumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.subscriberCount || 0
+        ]);
+
+        // t_videos 저장 (metadata만)
+        await naClient.query(`
+          INSERT INTO t_videos (
+            f_video_id, f_channel_id, f_title, f_published_at,
+            f_thumbnail_url, f_official_category_id, f_view_count, f_created_at, f_updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+          ON CONFLICT (f_video_id) DO UPDATE SET
+            f_title = EXCLUDED.f_title,
+            f_view_count = EXCLUDED.f_view_count,
+            f_updated_at = NOW()
+        `, [
+          videoId,
+          cleanChannelId,
+          videoInfo.title,
+          videoInfo.publishedAt || null,
+          videoInfo.thumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.viewCount || 0
+        ]);
+
+        // t_analyses에 notAnalyzable 레코드 저장
+        const insertRes = await naClient.query(
+          `INSERT INTO t_analyses (
+            f_video_url, f_video_id, f_title, f_channel_id, f_thumbnail_url,
+            f_transcript, f_accuracy_score, f_clickbait_score, f_reliability_score,
+            f_summary, f_evaluation_reason, f_overall_assessment, f_ai_title_recommendation,
+            f_user_id, f_official_category_id, f_is_latest, f_language,
+            f_grounding_used, f_grounding_queries, f_published_at,
+            f_not_analyzable, f_not_analyzable_reason,
+            f_is_valid, f_needs_review, f_review_reason
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+          ) RETURNING f_id`,
+          [
+            url, videoId, videoInfo.title, videoInfo.channelId, videoInfo.thumbnailUrl,
+            transcript, analysisResult.accuracy, analysisResult.clickbait, analysisResult.reliability,
+            analysisResult.subtitleSummary, analysisResult.evaluationReason, analysisResult.overallAssessment, analysisResult.recommendedTitle,
+            userId || null, videoInfo.officialCategoryId, true, finalLanguage,
+            analysisResult.groundingUsed || false, analysisResult.groundingQueries || [], videoInfo.publishedAt,
+            analysisResult.notAnalyzable || false, reason,
+            isValidTarget, needsReview, reviewReason
+          ]
+        );
       } catch (dbErr) {
         await naClient.query('ROLLBACK');
         console.error('[notAnalyzable] DB 저장 실패 (뭔시):', dbErr);
@@ -929,7 +827,8 @@ export async function POST(request: Request) {
       typeof recheckParentTrust === 'number' &&
       analysisResult.reliability < recheckParentTrust;
 
-    // 5. DB 2차 저장 (정밀 분석 결과 업데이트)
+    // 5. DB에 저장
+    const analysisId = uuidv4();
     console.log('DB 저장 시작 (ID:', analysisId, ')');
     const client = await pool.connect();
     
@@ -944,7 +843,6 @@ export async function POST(request: Request) {
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
       await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
-      await client.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_processing_stage TEXT DEFAULT 'completed'`);
 
       // REFACTORED_BY_MERLIN_HUB: t_users 유저 생성/조회 제거 — Hub가 유저 관리
       // userId는 클라이언트에서 전달받은 family_uid를 그대로 사용
@@ -952,6 +850,7 @@ export async function POST(request: Request) {
 
       // 5-1. 채널 정보 저장 (v2.0 필드 반영)
       console.log('5-1. 채널 정보 저장 (t_channels)...');
+      const cleanChannelId = videoInfo.channelId?.trim();
       await client.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
       await client.query(`
         INSERT INTO t_channels (
@@ -1009,44 +908,33 @@ export async function POST(request: Request) {
         await client.query(`
           UPDATE t_analyses 
           SET f_is_latest = FALSE 
-          WHERE f_video_id = $1 AND f_id <> $2
-        `, [videoId, analysisId]);
+          WHERE f_video_id = $1
+        `, [videoId]);
 
-        // 5-2. 분석 결과 2차 업데이트 (v2.0 필드 반영) - f_topic 제거
+        // 5-2. 분석 결과 저장 (v2.0 필드 반영) - f_topic 제거
         await client.query(`
-          UPDATE t_analyses
-          SET f_video_url = $2,
-              f_video_id = $3,
-              f_title = $4,
-              f_channel_id = $5,
-              f_thumbnail_url = $6,
-              f_transcript = $7,
-              f_accuracy_score = $8,
-              f_clickbait_score = $9,
-              f_reliability_score = $10,
-              f_summary = $11,
-              f_evaluation_reason = $12,
-              f_overall_assessment = $13,
-              f_ai_title_recommendation = $14,
-              f_user_id = $15,
-              f_official_category_id = $16,
-              f_view_count = $23,
-              f_last_action_at = NOW(),
-              f_is_recheck = $17,
-              f_recheck_parent_analysis_id = $18,
-              f_recheck_at = $19,
-              f_is_latest = TRUE,
-              f_language = $20,
-              f_grounding_used = $21,
-              f_grounding_queries = $22,
-              f_published_at = $24,
-              f_is_valid = $25,
-              f_needs_review = $26,
-              f_review_reason = $27,
-              f_fact_spoiler = $28,
-              f_fact_timestamp = $29,
-              f_processing_stage = 'completed'
-          WHERE f_id = $1
+          INSERT INTO t_analyses (
+            f_id, f_video_url, f_video_id, f_title, f_channel_id,
+            f_thumbnail_url, f_transcript, f_accuracy_score, f_clickbait_score,
+            f_reliability_score, f_summary, f_evaluation_reason, f_overall_assessment,
+            f_ai_title_recommendation, f_user_id, f_official_category_id,
+            f_request_count, f_view_count, f_created_at, f_last_action_at,
+            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
+            f_is_latest, f_language,
+            f_grounding_used, f_grounding_queries,
+            f_published_at,
+            f_is_valid, f_needs_review, f_review_reason,
+            f_fact_spoiler, f_fact_timestamp
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            1, $23, NOW(), NOW(),
+            $17, $18, $19,
+            TRUE, $20,
+            $21, $22,
+            $24,
+            $25, $26, $27,
+            $28, $29
+          )
         `, [
           analysisId,
           url,
@@ -1080,14 +968,6 @@ export async function POST(request: Request) {
         ]);
 
         // [v3.3] t_videos 로직 제거 - t_analyses와 t_channel_stats만 사용
-      } else {
-        await client.query(`
-          UPDATE t_analyses
-          SET f_is_latest = FALSE,
-              f_processing_stage = 'completed',
-              f_last_action_at = NOW()
-          WHERE f_id = $1
-        `, [analysisId]);
       }
 
       // 5-4. 채널 통계 갱신 (카테고리별 + 언어별)
