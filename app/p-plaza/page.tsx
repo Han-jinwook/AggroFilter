@@ -245,10 +245,11 @@ export default function PlazaPage() {
       setSearchResults([])
     } else {
       const query = searchQuery.toLowerCase()
-      const filtered = allAnalyzedVideos.filter(v => 
-        v.title.toLowerCase().includes(query) || 
-        v.channel.toLowerCase().includes(query)
-      )
+      const filtered = allAnalyzedVideos.filter((v) => {
+        const title = String(v?.title ?? '').toLowerCase()
+        const channel = String(v?.channel ?? '').toLowerCase()
+        return title.includes(query) || channel.includes(query)
+      })
       setFilteredVideos(filtered)
     }
   }, [searchQuery, allAnalyzedVideos])
@@ -960,7 +961,9 @@ export default function PlazaPage() {
                 ) : analyzedChannels.filter(ch => {
                   if (!searchQuery.trim()) return true
                   const q = searchQuery.toLowerCase()
-                  return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
+                  const name = String(ch?.name ?? '').toLowerCase()
+                  const topic = String(ch?.topic ?? '').toLowerCase()
+                  return name.includes(q) || topic.includes(q)
                 }).length === 0 ? (
                   <div className="text-center py-6 text-slate-400 text-sm">
                     {searchQuery.trim() ? `"${searchQuery}"에 대한 채널이 없습니다` : '분석된 채널이 없습니다'}
@@ -970,7 +973,9 @@ export default function PlazaPage() {
                     .filter(ch => {
                       if (!searchQuery.trim()) return true
                       const q = searchQuery.toLowerCase()
-                      return ch.name.toLowerCase().includes(q) || ch.topic.toLowerCase().includes(q)
+                      const name = String(ch?.name ?? '').toLowerCase()
+                      const topic = String(ch?.topic ?? '').toLowerCase()
+                      return name.includes(q) || topic.includes(q)
                     })
                     .sort((a, b) => {
                       const aVal = channelSortConfig.key === "score" ? a.score : channelSortConfig.key === "clickbait" ? a.avgClickbait : a.count
