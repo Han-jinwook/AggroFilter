@@ -1326,7 +1326,6 @@ ${content}
               </div>
             </div>
           </div>
-          </div>
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm font-semibold text-blue-600">어그로필터 AI분석 결과</p>
             <InteractionBar 
@@ -1636,6 +1635,7 @@ ${content}
           </div>
           </>
           )}
+        </div>
         </div>
       </main>
     </div>
