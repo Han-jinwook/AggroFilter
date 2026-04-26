@@ -66,10 +66,7 @@ export default function MainPage() {
 
   useEffect(() => {
     if (isCompleted && analysisId) {
-      const timer = setTimeout(() => {
-        router.push(`/p-result?id=${analysisId}`)
-      }, 3000)
-      return () => clearTimeout(timer)
+      router.push(`/p-result?id=${analysisId}`)
     }
   }, [isCompleted, analysisId, router])
 

@@ -5,8 +5,8 @@ interface TAnalysisStatusProps {
   isCompleted: boolean
 }
 
-export function AnalysisStatus({ isAnalyzing, isCompleted }: TAnalysisStatusProps) {
-  if (!isAnalyzing && !isCompleted) return null
+export function AnalysisStatus({ isAnalyzing }: TAnalysisStatusProps) {
+  if (!isAnalyzing) return null
 
   return (
     <div className="min-h-[28px] flex items-center justify-center">
@@ -19,13 +19,6 @@ export function AnalysisStatus({ isAnalyzing, isCompleted }: TAnalysisStatusProp
           <span className="animate-pulse-dot text-2xl font-bold">.</span>
           <span className="animate-pulse-dot anim-delay-200 text-2xl font-bold">.</span>
           <span className="animate-pulse-dot anim-delay-400 text-2xl font-bold">.</span>
-        </div>
-      )}
-      {isCompleted && (
-        <div className="inline-flex items-baseline gap-2">
-          <span className="text-2xl font-bold">( 분석 </span>
-          <span className="text-3xl font-bold text-[#FF9800]">완료</span>
-          <span className="text-2xl font-bold"> )</span>
         </div>
       )}
     </div>
