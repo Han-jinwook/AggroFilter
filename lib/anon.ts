@@ -20,7 +20,16 @@ export function isAnonymousUser(): boolean {
  */
 export function getUserId(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem('merlin_user_id') || '';
+  const userId = localStorage.getItem('merlin_user_id') || '';
+  if (userId) return userId;
+
+  const legacyFamilyUid = localStorage.getItem('merlin_family_uid') || '';
+  if (legacyFamilyUid) {
+    localStorage.setItem('merlin_user_id', legacyFamilyUid);
+    return legacyFamilyUid;
+  }
+
+  return '';
 }
 
 /** 로그인된 유저의 이메일 반환 */

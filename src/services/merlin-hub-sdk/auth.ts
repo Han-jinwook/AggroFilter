@@ -16,6 +16,7 @@ export interface OTPVerifyResult {
   success: boolean;
   token?: string;
   userId?: string;
+  familyUid?: string;
   email?: string;
   nickname?: string;
   avatar_url?: string;
@@ -67,15 +68,19 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
       setSessionToken(data.token);
     }
 
+    const resolvedUserId = data.userId || data.familyUid;
+
     // userId(UUID) 저장 (지갑 등에서 참조)
-    if (data.userId && typeof window !== 'undefined') {
-      localStorage.setItem('merlin_user_id', data.userId);
+    if (resolvedUserId && typeof window !== 'undefined') {
+      localStorage.setItem('merlin_user_id', resolvedUserId);
+      localStorage.setItem('merlin_family_uid', resolvedUserId);
     }
 
     return {
       success: true,
       token: data.token,
-      userId: data.userId,
+      userId: resolvedUserId,
+      familyUid: data.familyUid,
       email: data.email || email,
       nickname: data.nickname,
       avatar_url: data.avatar_url,

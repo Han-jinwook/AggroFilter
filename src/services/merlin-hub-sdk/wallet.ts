@@ -53,7 +53,16 @@ export async function useCredit(params: UseCreditParams): Promise<UseCreditResul
  */
 export function getUserId(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('merlin_user_id');
+  const userId = localStorage.getItem('merlin_user_id');
+  if (userId) return userId;
+
+  const legacyFamilyUid = localStorage.getItem('merlin_family_uid');
+  if (legacyFamilyUid) {
+    localStorage.setItem('merlin_user_id', legacyFamilyUid);
+    return legacyFamilyUid;
+  }
+
+  return null;
 }
 
 /**

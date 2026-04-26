@@ -7,9 +7,9 @@ export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { userId: userIdFromBody } = await request.json();
+    const { userId: userIdFromBody, familyUid: familyUidFromBody } = await request.json();
 
-    let userId = userIdFromBody as string | undefined;
+    let userId = (userIdFromBody || familyUidFromBody) as string | undefined;
     console.log('[mypage/channels] userIdFromBody:', userIdFromBody);
     if (!userId) {
       try {
@@ -29,64 +29,53 @@ export async function POST(request: Request) {
 
     const client = await pool.connect();
     try {
-      const tableExistsRes = await client.query(
-        `SELECT to_regclass('t_channel_subscriptions') IS NOT NULL AS exists`
-      );
-      const tableExists = tableExistsRes.rows?.[0]?.exists === true;
-      const query = tableExists
-        ? `
-          WITH latest_user_channels AS (
+      const query = `
+          WITH subscribed_channels AS (
+            SELECT
+              s.f_channel_id,
+              s.f_subscribed_at
+            FROM t_channel_subscriptions s
+            WHERE s.f_user_id = $1
+          ),
+          subscription_rows AS (
+            SELECT
+              sc.f_channel_id,
+              sc.f_subscribed_at as subscribed_at
+            FROM subscribed_channels sc
+          ),
+          user_analysis_rows AS (
             SELECT DISTINCT ON (a.f_channel_id)
               a.f_channel_id,
-              a.f_created_at
+              a.f_created_at as subscribed_at
             FROM t_analyses a
             WHERE a.f_user_id = $1
               AND a.f_channel_id IS NOT NULL
               AND a.f_channel_id <> ''
             ORDER BY a.f_channel_id, a.f_created_at DESC
+          ),
+          merged_rows AS (
+            SELECT * FROM subscription_rows
+            UNION ALL
+            SELECT u.*
+            FROM user_analysis_rows u
+            WHERE NOT EXISTS (
+              SELECT 1
+              FROM subscription_rows s
+              WHERE s.f_channel_id = u.f_channel_id
+            )
           )
           SELECT
-            luc.f_channel_id as channel_id,
-            COALESCE(s.f_subscribed_at, luc.f_created_at) as subscribed_at,
+            m.f_channel_id as channel_id,
+            m.subscribed_at,
             COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
             COALESCE(cs.f_official_category_id, 0) as category_id,
             COALESCE(NULLIF(cs.f_language, ''), 'korean') as channel_language,
             COALESCE(cs.f_video_count, 0) as video_count,
             COALESCE(cs.f_avg_reliability, 0) as avg_reliability
-          FROM latest_user_channels luc
-          LEFT JOIN t_channel_subscriptions s
-            ON s.f_user_id = $1 AND s.f_channel_id = luc.f_channel_id
-          LEFT JOIN t_channels c ON luc.f_channel_id = c.f_channel_id
-          LEFT JOIN t_channel_stats cs ON cs.f_channel_id = luc.f_channel_id
-          ORDER BY COALESCE(s.f_subscribed_at, luc.f_created_at) DESC NULLS LAST
-        `
-        : `
-          WITH latest_user_channels AS (
-            SELECT DISTINCT ON (a.f_channel_id)
-              a.f_channel_id,
-              a.f_created_at,
-              a.f_official_category_id,
-              a.f_language
-            FROM t_analyses a
-            WHERE a.f_user_id = $1
-              AND a.f_channel_id IS NOT NULL
-              AND a.f_channel_id <> ''
-            ORDER BY a.f_channel_id, a.f_created_at DESC
-          )
-          SELECT
-            luc.f_channel_id as channel_id,
-            luc.f_created_at as subscribed_at,
-            COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
-            COALESCE(cs.f_official_category_id, luc.f_official_category_id, 0) as category_id,
-            COALESCE(NULLIF(cs.f_language, ''), luc.f_language, 'korean') as channel_language,
-            COALESCE(cs.f_video_count, 0) as video_count,
-            COALESCE(cs.f_avg_reliability, 0) as avg_reliability
-          FROM latest_user_channels luc
-          LEFT JOIN t_channels c ON luc.f_channel_id = c.f_channel_id
-          LEFT JOIN t_channel_stats cs
-            ON cs.f_channel_id = luc.f_channel_id
-           AND COALESCE(cs.f_language, 'korean') = COALESCE(luc.f_language, 'korean')
-          ORDER BY luc.f_created_at DESC NULLS LAST
+          FROM merged_rows m
+          LEFT JOIN t_channels c ON m.f_channel_id = c.f_channel_id
+          LEFT JOIN t_channel_stats cs ON cs.f_channel_id = m.f_channel_id
+          ORDER BY m.subscribed_at DESC NULLS LAST
         `;
 
       const res = await client.query(query, [userId]);

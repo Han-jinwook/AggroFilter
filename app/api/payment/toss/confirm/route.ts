@@ -123,7 +123,7 @@ export async function POST(request: Request) {
           f_order_id TEXT UNIQUE NOT NULL,
           f_user_id TEXT NOT NULL,
           f_amount INTEGER NOT NULL,
-          f_credits INTEGER NOT NULL,
+          f_credits_added INTEGER NOT NULL,
           f_status TEXT DEFAULT 'DONE',
           f_method TEXT,
           f_approved_at TIMESTAMP WITH TIME ZONE,
@@ -133,7 +133,12 @@ export async function POST(request: Request) {
       )
 
       await client.query(
-        `INSERT INTO t_toss_payments (f_payment_key, f_order_id, f_user_id, f_amount, f_credits, f_status, f_method, f_approved_at, f_raw)
+        `ALTER TABLE t_toss_payments
+         ADD COLUMN IF NOT EXISTS f_credits_added INTEGER`
+      )
+
+      await client.query(
+        `INSERT INTO t_toss_payments (f_payment_key, f_order_id, f_user_id, f_amount, f_credits_added, f_status, f_method, f_approved_at, f_raw)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (f_payment_key) DO NOTHING`,
         [

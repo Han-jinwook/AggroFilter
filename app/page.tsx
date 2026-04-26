@@ -121,8 +121,6 @@ export default function MainPage() {
 
   const startAnalysis = async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
     setIsAnalyzing(true)
-    const quizStartTime = Date.now()
-    const quizMinEndTime = quizStartTime + 8000 // 촉퀴즈 최소 표시 시간 8초
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
@@ -151,6 +149,27 @@ export default function MainPage() {
         body.clientTranscriptItems = clientTranscriptItems
       }
 
+      const pollForReadyResult = async (targetUrl: string, maxAttempts = 20, intervalMs = 1500) => {
+        const pollUrl = `/api/analysis/status?url=${encodeURIComponent(targetUrl)}`
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, intervalMs))
+          try {
+            const statusRes = await fetch(pollUrl, { cache: 'no-store' })
+            if (!statusRes.ok) continue
+            const statusData = await statusRes.json()
+            if (
+              (statusData.status === 'speed_ready' || statusData.status === 'completed') &&
+              statusData.analysisId
+            ) {
+              return { analysisId: statusData.analysisId }
+            }
+          } catch (pollErr) {
+            console.warn('폴링 실패:', pollErr)
+          }
+        }
+        return null
+      }
+
       const fetchAnalysis = async () => {
         const response = await fetch('/api/analysis/request', {
           method: 'POST',
@@ -177,7 +196,22 @@ export default function MainPage() {
 
       let result;
       try {
-        result = await fetchAnalysis();
+        const requestPromise = fetchAnalysis()
+        const raced = await Promise.race([
+          requestPromise.then((data) => ({ source: 'request' as const, data })),
+          pollForReadyResult(analysisUrl).then((data) => (data ? { source: 'poll' as const, data } : null)),
+        ])
+
+        if (raced && raced.source === 'poll') {
+          result = raced.data
+          void requestPromise.catch((err) => {
+            console.warn('백그라운드 요청 종료 에러(무시 가능):', err)
+          })
+        } else if (raced && raced.source === 'request') {
+          result = raced.data
+        } else {
+          result = await requestPromise
+        }
       } catch (firstError) {
         const statusCode = Number((firstError as any)?.statusCode)
         const errorData = (firstError as any)?.data
@@ -190,13 +224,8 @@ export default function MainPage() {
           return
         }
 
-        // [cached notAnalyzable] UX 연출: 캐시로 즉시 컷되더라도 촉퀴즈를 10초 정도 유지 후 안내
+        // [cached notAnalyzable]
         if (statusCode === 422 && errorData?.cached === true) {
-          const minEndTime = quizStartTime + 10000
-          const remaining = minEndTime - Date.now()
-          if (remaining > 0) {
-            await new Promise((r) => setTimeout(r, remaining))
-          }
           const msg = (firstError as any)?.message
           if (msg) alert(String(msg))
           return
@@ -215,7 +244,7 @@ export default function MainPage() {
             const statusRes = await fetch(pollUrl);
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              if (statusData.status === 'completed' && statusData.analysisId) {
+              if ((statusData.status === 'completed' || statusData.status === 'speed_ready') && statusData.analysisId) {
                 console.log('폴링으로 결과 확인:', statusData.analysisId);
                 result = { analysisId: statusData.analysisId };
                 polled = true;
@@ -231,13 +260,6 @@ export default function MainPage() {
         }
       }
       
-      // 촉퀴즈 최소 표시 시간 보장: 캐시 히트는 10초 연출, 일반 케이스는 8초
-      const minEndTime = result?.cached === true ? (quizStartTime + 10000) : quizMinEndTime
-      const remaining = minEndTime - Date.now()
-      if (remaining > 0) {
-        await new Promise(r => setTimeout(r, remaining))
-      }
-
       // Analysis is saved in DB with user_id, no localStorage needed
       setAnalysisId(result.analysisId);
       setIsCompleted(true);
