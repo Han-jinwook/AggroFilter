@@ -97,7 +97,6 @@ export async function translateText(text: string, apiKey: string): Promise<strin
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-lite",
       contents: `Translate "${text}" to English. Output ONLY the English text, nothing else.`,
-      config: { thinkingConfig: { thinkingBudget: 0 } },
     });
     return (response.text || '').trim();
   } catch (e) {
@@ -395,7 +394,6 @@ ${chunk.text}`;
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
-      config: { thinkingConfig: { thinkingBudget: 0 } },
     });
     const text = (result.text || '').trim();
     const processedText = text.replace(/\n/g, '|||'); // Use a unique separator
@@ -760,7 +758,6 @@ export async function analyzeContent(
         temperature: 0.2,
         topP: 0.85,
         safetySettings,
-        thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget },
         tools: [{ googleSearch: {} }],
       },
     }, {
