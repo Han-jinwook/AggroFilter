@@ -21,6 +21,12 @@ export default function MainPage() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [autoStarted, setAutoStarted] = useState(false)
+  // [대기제로 1단계] 확장팩 진입 시 홈 UI(찌꺼기) 즉시 숨김
+  const [isExtensionEntry] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    return params.get('from') === 'chrome-extension' && !!params.get('url')
+  })
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("userEmail")
@@ -325,26 +331,30 @@ export default function MainPage() {
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
 
       <main className="flex-1 py-8">
-        <div className="mx-auto max-w-[var(--app-max-width)] space-y-6 px-4">
-          <HeroSection
-            url={url}
-            isAnalyzing={isAnalyzing}
-            isCompleted={isCompleted}
-          />
+        {isExtensionEntry ? (
+          <div className="mx-auto max-w-[var(--app-max-width)] px-4" />
+        ) : (
+          <div className="mx-auto max-w-[var(--app-max-width)] space-y-6 px-4">
+            <HeroSection
+              url={url}
+              isAnalyzing={isAnalyzing}
+              isCompleted={isCompleted}
+            />
 
-          {!isAnalyzing ? <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
+            {!isAnalyzing ? <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
 
-          {!isAnalyzing && !isCompleted && (
-            <>
-              <FeatureCards />
-              <OnboardingGuide />
-            </>
-          )}
+            {!isAnalyzing && !isCompleted && (
+              <>
+                <FeatureCards />
+                <OnboardingGuide />
+              </>
+            )}
 
-          {!isAnalyzing ? <AnalysisCharacter isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
+            {!isAnalyzing ? <AnalysisCharacter isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
 
-          <Disclaimer isAnalyzing={isAnalyzing} isCompleted={isCompleted} />
-        </div>
+            <Disclaimer isAnalyzing={isAnalyzing} isCompleted={isCompleted} />
+          </div>
+        )}
       </main>
 
       <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
