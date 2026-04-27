@@ -672,6 +672,110 @@ export async function POST(request: Request) {
       const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
       console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
 
+      const preStageClient = await pool.connect();
+      try {
+        await preStageClient.query('BEGIN');
+
+        await preStageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_is_recheck BOOLEAN DEFAULT FALSE`);
+        await preStageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_parent_analysis_id TEXT`);
+        await preStageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
+        await preStageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
+        await preStageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_processing_stage TEXT DEFAULT 'completed'`);
+        await preStageClient.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
+
+        await preStageClient.query(`
+          INSERT INTO t_channels (
+            f_channel_id,
+            f_title,
+            f_thumbnail_url,
+            f_official_category_id,
+            f_subscriber_count,
+            f_language
+          ) VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6)
+          ON CONFLICT (f_channel_id) DO UPDATE SET
+            f_title = COALESCE(NULLIF(EXCLUDED.f_title, ''), t_channels.f_title),
+            f_thumbnail_url = COALESCE(EXCLUDED.f_thumbnail_url, t_channels.f_thumbnail_url),
+            f_official_category_id = EXCLUDED.f_official_category_id,
+            f_subscriber_count = EXCLUDED.f_subscriber_count,
+            f_language = COALESCE(EXCLUDED.f_language, t_channels.f_language)
+        `, [
+          cleanChannelId,
+          videoInfo.channelName,
+          videoInfo.channelThumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.subscriberCount,
+          finalLanguage
+        ]);
+
+        await preStageClient.query(`
+          INSERT INTO t_videos (
+            f_video_id, f_channel_id, f_title, f_description, f_published_at,
+            f_thumbnail_url, f_official_category_id, f_view_count, f_created_at, f_updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          ON CONFLICT (f_video_id) DO UPDATE SET
+            f_title = EXCLUDED.f_title,
+            f_description = EXCLUDED.f_description,
+            f_published_at = EXCLUDED.f_published_at,
+            f_thumbnail_url = EXCLUDED.f_thumbnail_url,
+            f_official_category_id = EXCLUDED.f_official_category_id,
+            f_view_count = EXCLUDED.f_view_count,
+            f_updated_at = NOW()
+        `, [
+          videoId,
+          cleanChannelId,
+          videoInfo.title,
+          videoInfo.description,
+          videoInfo.publishedAt || null,
+          videoInfo.thumbnailUrl,
+          videoInfo.officialCategoryId,
+          videoInfo.viewCount || 0
+        ]);
+
+        await preStageClient.query(`
+          INSERT INTO t_analyses (
+            f_id, f_video_url, f_video_id, f_title, f_channel_id,
+            f_thumbnail_url, f_transcript, f_summary, f_user_id,
+            f_official_category_id, f_request_count, f_view_count, f_created_at, f_last_action_at,
+            f_is_recheck, f_recheck_parent_analysis_id, f_recheck_at,
+            f_is_latest, f_language, f_published_at,
+            f_fact_spoiler, f_fact_timestamp, f_processing_stage
+          ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, NULL, $8,
+            $9, 1, $10, NOW(), NOW(),
+            $11, $12, $13,
+            TRUE, $14, $15,
+            NULL, NULL, 'pending'
+          )
+          ON CONFLICT (f_id) DO UPDATE SET
+            f_processing_stage = 'pending',
+            f_last_action_at = NOW()
+        `, [
+          analysisId,
+          url,
+          videoId,
+          videoInfo.title,
+          cleanChannelId,
+          videoInfo.thumbnailUrl,
+          transcript.substring(0, 50000),
+          userId || null,
+          videoInfo.officialCategoryId,
+          videoInfo.viewCount || 0,
+          Boolean(isRecheck),
+          isRecheck ? recheckParentAnalysisId : null,
+          isRecheck ? new Date() : null,
+          finalLanguage,
+          videoInfo.publishedAt || null,
+        ]);
+
+        await preStageClient.query('COMMIT');
+      } catch (preStageError) {
+        await preStageClient.query('ROLLBACK');
+        throw preStageError;
+      } finally {
+        preStageClient.release();
+      }
+
       const speedOutcome = await analyzeContentSpeed(
         videoInfo.channelName,
         videoInfo.title,
@@ -701,14 +805,12 @@ export async function POST(request: Request) {
           speedMsg.includes('resource exhausted');
 
         if (isSpeedQuotaError) {
-          const wrapped: any = new Error('AI 요청이 일시적으로 몰려 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
-          wrapped.statusCode = 429;
-          wrapped.cause = speedOutcome.error;
-          throw wrapped;
+          console.warn('[Speed Track] 쿼터 제한으로 스킵 - Full Track로 계속 진행:', speedOutcome.error);
+          speedResult = {};
+        } else {
+          console.warn('[Speed Track] 분석 실패 - Full Track로 계속 진행:', speedOutcome.error);
+          speedResult = {};
         }
-
-        console.warn('[Speed Track] 분석 실패 - Full Track로 계속 진행:', speedOutcome.error);
-        speedResult = {};
       }
 
       const stageClient = await pool.connect();

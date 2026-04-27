@@ -150,6 +150,17 @@ export default function ResultClient() {
           )
         }
 
+        const hasSpeedPayload = (payload: any) => {
+          const stage = payload?.analysisData?.processingStage
+          if (stage === 'speed_ready' || stage === 'completed') return true
+
+          const summary = payload?.analysisData?.summarySubtitle
+          const spoiler = payload?.analysisData?.thumbnailSpoiler
+          const hasSummary = typeof summary === 'string' && summary.trim().length > 0
+          const hasSpoiler = Array.isArray(spoiler) ? spoiler.length > 0 : Boolean(spoiler)
+          return hasSummary || hasSpoiler
+        }
+
         const schedulePhase2Reveal = () => {
           if (phase2ReadyRef.current || phase2TimerRef.current !== null) return
           phase2TimerRef.current = window.setTimeout(() => {
@@ -184,7 +195,9 @@ export default function ResultClient() {
         if (!isCancelled) {
           setAnalysisData(data.analysisData)
           setLoading(false)
-          schedulePhase2Reveal()
+          if (hasSpeedPayload(data)) {
+            schedulePhase2Reveal()
+          }
         }
 
         const isCompletedOnFirstFetch = isCompletedPayload(data)
@@ -201,6 +214,15 @@ export default function ResultClient() {
             })
             if (!retryRes.ok) continue
             data = await retryRes.json()
+
+            if (hasSpeedPayload(data) && !phase2ReadyRef.current && phase2TimerRef.current === null) {
+              schedulePhase2Reveal()
+            }
+
+            if (!isCancelled) {
+              setAnalysisData(data.analysisData)
+            }
+
             if (isCompletedPayload(data)) break
           }
         }
