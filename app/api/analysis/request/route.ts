@@ -11,6 +11,7 @@ import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
+const ACTIVE_ANALYSIS_WINDOW_MS = 5 * 60 * 1000;
 
 // CORS 헤더 (크롬 확장팩 등 외부 origin 허용)
 const corsHeaders = {
@@ -211,7 +212,7 @@ export async function POST(request: Request) {
         lockedVideoId = videoId;
 
         const existingAnalysis = await lockClient.query(`
-          SELECT f_id, f_reliability_score, f_not_analyzable, f_not_analyzable_reason, f_processing_stage
+          SELECT f_id, f_reliability_score, f_not_analyzable, f_not_analyzable_reason, f_processing_stage, f_last_action_at, f_created_at
           FROM t_analyses 
           WHERE f_video_id = $1 
           ORDER BY f_created_at DESC 
@@ -246,19 +247,32 @@ export async function POST(request: Request) {
           }
 
           if (!forceRecheck && (row.f_processing_stage === 'speed_ready' || row.f_processing_stage === 'pending')) {
-            console.log('이미 진행 중인 분석입니다. 기존 분석 ID 재사용:', row.f_id, row.f_processing_stage);
+            const activeAt = row.f_last_action_at || row.f_created_at;
+            const activeAtMs = activeAt ? new Date(activeAt).getTime() : 0;
+            const isFreshInFlight = Number.isFinite(activeAtMs) && Date.now() - activeAtMs <= ACTIVE_ANALYSIS_WINDOW_MS;
 
-            await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
-            lockClient.release();
-            lockClient = null;
-            lockedVideoId = null;
+            if (isFreshInFlight) {
+              console.log('이미 진행 중인 분석입니다. 기존 분석 ID 재사용:', row.f_id, row.f_processing_stage);
 
-            return NextResponse.json({
-              message: '이미 분석이 진행 중입니다. 기존 결과를 불러옵니다.',
+              await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+              lockClient.release();
+              lockClient = null;
+              lockedVideoId = null;
+
+              return NextResponse.json({
+                message: '이미 분석이 진행 중입니다. 기존 결과를 불러옵니다.',
+                analysisId: row.f_id,
+                cached: true,
+                processingStage: row.f_processing_stage,
+              }, { headers: corsHeaders });
+            }
+
+            console.warn('stale pending/speed_ready 분석 감지: 새 분석으로 재시작', {
               analysisId: row.f_id,
-              cached: true,
-              processingStage: row.f_processing_stage,
-            }, { headers: corsHeaders });
+              stage: row.f_processing_stage,
+              activeAt,
+            });
+
           }
 
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
@@ -787,16 +801,60 @@ export async function POST(request: Request) {
         (error) => ({ ok: false as const, error })
       );
 
-      const fullPromise = analyzeContent(
-        videoInfo.channelName,
-        videoInfo.title,
-        promptTranscript,
-        videoInfo.thumbnailUrl,
-        videoInfo.duration,
-        transcriptItems,
-        videoInfo.publishedAt,
-        userLanguage
-      ).then(
+      const runFullTrack = async () => {
+        try {
+          return await analyzeContent(
+            videoInfo.channelName,
+            videoInfo.title,
+            promptTranscript,
+            videoInfo.thumbnailUrl,
+            videoInfo.duration,
+            transcriptItems,
+            videoInfo.publishedAt,
+            userLanguage
+          );
+        } catch (firstError: any) {
+          const rawMessage = String(firstError?.message || '');
+          const lower = rawMessage.toLowerCase();
+          const rawStatus = Number(firstError?.status ?? firstError?.statusCode);
+          const isQuotaError =
+            rawStatus === 429 ||
+            rawMessage.includes('429') ||
+            lower.includes('resource exhausted') ||
+            lower.includes('quota');
+          const isTimeoutError =
+            rawStatus === 408 ||
+            lower.includes('timeout') ||
+            String(firstError?.code || '').toUpperCase() === 'ETIMEDOUT';
+
+          if (!isQuotaError && !isTimeoutError) {
+            throw firstError;
+          }
+
+          console.warn('[Full Track] 1차 실패, 자동 재시도 진행:', {
+            status: rawStatus,
+            message: rawMessage,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          const retryTranscript = promptTranscript.length > 30000
+            ? promptTranscript.substring(0, 30000)
+            : promptTranscript;
+
+          return analyzeContent(
+            videoInfo.channelName,
+            videoInfo.title,
+            retryTranscript,
+            videoInfo.thumbnailUrl,
+            videoInfo.duration,
+            transcriptItems,
+            videoInfo.publishedAt,
+            userLanguage
+          );
+        }
+      };
+
+      const fullPromise = runFullTrack().then(
         (value) => ({ ok: true as const, value }),
         (error) => ({ ok: false as const, error })
       );
@@ -977,6 +1035,63 @@ export async function POST(request: Request) {
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
       console.error('AI 분석 엔진 에러:', aiError);
+
+      try {
+        const failedClient = await pool.connect();
+        try {
+          await failedClient.query(
+            `UPDATE t_analyses
+             SET f_processing_stage = 'failed',
+                 f_last_action_at = NOW()
+             WHERE f_id = $1`,
+            [analysisId]
+          );
+        } finally {
+          failedClient.release();
+        }
+      } catch (failedUpdateError) {
+        console.error('AI 실패 stage 저장 실패:', failedUpdateError);
+      }
+
+      try {
+        const fallbackClient = await pool.connect();
+        try {
+          const fallbackRes = await fallbackClient.query(
+            `SELECT f_id
+             FROM t_analyses
+             WHERE f_video_id = $1
+               AND f_id <> $2
+               AND f_processing_stage = 'completed'
+               AND f_reliability_score IS NOT NULL
+             ORDER BY f_created_at DESC
+             LIMIT 1`,
+            [videoId, analysisId]
+          );
+
+          if (fallbackRes.rows.length > 0) {
+            const fallbackAnalysisId = fallbackRes.rows[0].f_id as string;
+            console.warn('[AI Fallback] 최신 완료 분석 재사용:', fallbackAnalysisId);
+
+            if (lockClient && lockedVideoId) {
+              await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockedVideoId]).catch(() => {});
+              lockClient.release();
+              lockClient = null;
+              lockedVideoId = null;
+            }
+
+            return NextResponse.json({
+              message: 'AI 부하로 기존 검증 결과를 우선 제공합니다.',
+              analysisId: fallbackAnalysisId,
+              cached: true,
+              fallback: true,
+            }, { headers: corsHeaders });
+          }
+        } finally {
+          fallbackClient.release();
+        }
+      } catch (fallbackError) {
+        console.error('Fallback 분석 조회 실패:', fallbackError);
+      }
 
       const rawMessage = String((aiError as any)?.message || 'unknown error');
       const rawStatus = Number((aiError as any)?.status ?? (aiError as any)?.statusCode);

@@ -116,6 +116,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
       const analysis = analysisRes.rows[0];
 
+      if (analysis.f_processing_stage === 'failed') {
+        return NextResponse.json(
+          {
+            error: '분석 중 오류가 발생했습니다. 다시 시도해주세요.',
+            processingStage: 'failed',
+          },
+          { status: 409 }
+        );
+      }
+
       // [V2.0] 부적합 판정되거나 검토 대기 중인 영상 접근 제어
       // f_is_valid가 false이거나 f_needs_review가 true인 경우 일반 사용자 접근 제한
       // (관리자 체크 로직을 넣을 수도 있으나, 일단은 서비스 안정성을 위해 목록에서 빠진 것과 동일하게 처리)
