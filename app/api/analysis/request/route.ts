@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
-import { analyzeContentSpeed } from '@/lib/gemini-speed';
+import { analyzeContentSpeed } from '@/lib/openai-speed';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
@@ -658,7 +658,7 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    // 4. Gemini AI 분석 (Speed + Full 병렬)
+    // 4. AI 분석 (Speed + Full 완전 병렬)
     console.log('AI 분석 시작...');
     const analysisId = uuidv4();
     const cleanChannelId = videoInfo.channelId?.trim();
@@ -776,7 +776,7 @@ export async function POST(request: Request) {
         preStageClient.release();
       }
 
-      const speedOutcome = await analyzeContentSpeed(
+      const speedPromise = analyzeContentSpeed(
         videoInfo.channelName,
         videoInfo.title,
         promptTranscript,
@@ -786,6 +786,22 @@ export async function POST(request: Request) {
         (value) => ({ ok: true as const, value }),
         (error) => ({ ok: false as const, error })
       );
+
+      const fullPromise = analyzeContent(
+        videoInfo.channelName,
+        videoInfo.title,
+        promptTranscript,
+        videoInfo.thumbnailUrl,
+        videoInfo.duration,
+        transcriptItems,
+        videoInfo.publishedAt,
+        userLanguage
+      ).then(
+        (value) => ({ ok: true as const, value }),
+        (error) => ({ ok: false as const, error })
+      );
+
+      const speedOutcome = await speedPromise;
 
       const hasSpeedReady = speedOutcome.ok;
 
@@ -922,19 +938,7 @@ export async function POST(request: Request) {
         stageClient.release();
       }
 
-      const fullOutcome = await analyzeContent(
-        videoInfo.channelName,
-        videoInfo.title,
-        promptTranscript,
-        videoInfo.thumbnailUrl,
-        videoInfo.duration,
-        transcriptItems,
-        videoInfo.publishedAt,
-        userLanguage
-      ).then(
-        (value) => ({ ok: true as const, value }),
-        (error) => ({ ok: false as const, error })
-      );
+      const fullOutcome = await fullPromise;
 
       if (!fullOutcome.ok) {
         throw fullOutcome.error;

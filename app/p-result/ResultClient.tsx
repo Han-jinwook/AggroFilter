@@ -1149,6 +1149,12 @@ ${content}
             </>
           )}
 
+          {!showPhase2 && !showPhase3 && isRefining && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
+              <p className="text-sm font-semibold">현재 접속자가 많아 정밀 분석으로 통합 진행 중입니다.</p>
+            </div>
+          )}
+
           {showPhase3 && (
             <>
               <ScoreCard 
