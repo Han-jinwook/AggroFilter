@@ -662,6 +662,9 @@ export async function POST(request: Request) {
         promptTranscript,
         transcriptItems,
         userLanguage
+      ).then(
+        (value) => ({ ok: true as const, value }),
+        (error) => ({ ok: false as const, error })
       );
 
       const fullPromise = analyzeContent(
@@ -673,13 +676,24 @@ export async function POST(request: Request) {
         transcriptItems,
         videoInfo.publishedAt,
         userLanguage
+      ).then(
+        (value) => ({ ok: true as const, value }),
+        (error) => ({ ok: false as const, error })
       );
 
-      const speedAnalysis = await speedPromise;
-      speedResult = {
-        subtitleSummary: speedAnalysis?.subtitleSummary,
-        thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
-      };
+      const speedOutcome = await speedPromise;
+      const hasSpeedReady = speedOutcome.ok;
+
+      if (speedOutcome.ok) {
+        const speedAnalysis = speedOutcome.value;
+        speedResult = {
+          subtitleSummary: speedAnalysis?.subtitleSummary,
+          thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
+        };
+      } else {
+        console.warn('[Speed Track] 분석 실패 - Full Track로 계속 진행:', speedOutcome.error);
+        speedResult = {};
+      }
 
       const stageClient = await pool.connect();
       try {
@@ -754,7 +768,7 @@ export async function POST(request: Request) {
             $10, 1, $11, NOW(), NOW(),
             $12, $13, $14,
             TRUE, $15, $16,
-            $17, NULL, 'speed_ready'
+            $17, NULL, $18
           )
           ON CONFLICT (f_id) DO UPDATE SET
             f_summary = EXCLUDED.f_summary,
@@ -778,7 +792,8 @@ export async function POST(request: Request) {
           isRecheck ? new Date() : null,
           finalLanguage,
           videoInfo.publishedAt || null,
-          Array.isArray(speedResult.thumbnail_spoiler) ? JSON.stringify(speedResult.thumbnail_spoiler) : null
+          Array.isArray(speedResult.thumbnail_spoiler) ? JSON.stringify(speedResult.thumbnail_spoiler) : null,
+          hasSpeedReady ? 'speed_ready' : 'pending'
         ]);
 
         await stageClient.query('COMMIT');
@@ -789,7 +804,12 @@ export async function POST(request: Request) {
         stageClient.release();
       }
 
-      const analysis = await fullPromise;
+      const fullOutcome = await fullPromise;
+      if (!fullOutcome.ok) {
+        throw fullOutcome.error;
+      }
+
+      const analysis = fullOutcome.value;
 
       // [V2.0] AI의 분석 대상 적합성 판단 처리
       isValidTarget = analysis.is_valid_target !== false; // 기본값 true
@@ -822,7 +842,30 @@ export async function POST(request: Request) {
       console.log('AI 분석 데이터 수신 성공');
     } catch (aiError) {
       console.error('AI 분석 엔진 에러:', aiError);
-      throw new Error(`AI 분석 중 오류가 발생했습니다: ${(aiError as any)?.message || 'unknown error'}`);
+
+      const rawMessage = String((aiError as any)?.message || 'unknown error');
+      const rawStatus = Number((aiError as any)?.status);
+      const lower = rawMessage.toLowerCase();
+      const isQuotaError =
+        rawStatus === 429 ||
+        rawMessage.includes('429') ||
+        lower.includes('resource exhausted') ||
+        lower.includes('quota');
+      const isTimeoutError =
+        lower.includes('timeout') ||
+        String((aiError as any)?.code || '').toUpperCase() === 'ETIMEDOUT';
+
+      const wrapped: any = new Error(
+        isQuotaError
+          ? 'AI 요청이 일시적으로 몰려 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요.'
+          : isTimeoutError
+            ? 'AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+            : 'AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      );
+
+      wrapped.statusCode = isQuotaError ? 429 : (isTimeoutError ? 408 : 500);
+      wrapped.cause = aiError;
+      throw wrapped;
     }
 
     if (!isValidTarget) {

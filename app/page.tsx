@@ -251,12 +251,6 @@ export default function MainPage() {
         }
       }
       
-      // Analysis is saved in DB with user_id, no localStorage needed
-      const readyAnalysisId = result.analysisId;
-      setAnalysisId(readyAnalysisId);
-      router.push(`/p-result?id=${readyAnalysisId}`);
-      return;
-
       // 크레딧 차감 후 헤더 + 광고 컴포넌트 갱신
       window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
@@ -265,6 +259,12 @@ export default function MainPage() {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
         localStorage.setItem('anonAnalysisCount', String(count));
       }
+
+      // Analysis is saved in DB with user_id, no localStorage needed
+      const readyAnalysisId = result.analysisId;
+      setAnalysisId(readyAnalysisId);
+      router.push(`/p-result?id=${readyAnalysisId}`);
+      return;
     } catch (error) {
       console.error('분석 최종 실패:', error);
       const msg = (error as any)?.message
