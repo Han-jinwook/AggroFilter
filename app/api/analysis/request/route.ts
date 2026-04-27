@@ -211,7 +211,7 @@ export async function POST(request: Request) {
         lockedVideoId = videoId;
 
         const existingAnalysis = await lockClient.query(`
-          SELECT f_id, f_reliability_score, f_not_analyzable, f_not_analyzable_reason
+          SELECT f_id, f_reliability_score, f_not_analyzable, f_not_analyzable_reason, f_processing_stage
           FROM t_analyses 
           WHERE f_video_id = $1 
           ORDER BY f_created_at DESC 
@@ -243,6 +243,22 @@ export async function POST(request: Request) {
               { error: userMessage, notAnalyzable: true, reason: cachedReason, cached: true },
               { status: 422, headers: corsHeaders }
             );
+          }
+
+          if (!forceRecheck && (row.f_processing_stage === 'speed_ready' || row.f_processing_stage === 'pending')) {
+            console.log('이미 진행 중인 분석입니다. 기존 분석 ID 재사용:', row.f_id, row.f_processing_stage);
+
+            await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+            lockClient.release();
+            lockClient = null;
+            lockedVideoId = null;
+
+            return NextResponse.json({
+              message: '이미 분석이 진행 중입니다. 기존 결과를 불러옵니다.',
+              analysisId: row.f_id,
+              cached: true,
+              processingStage: row.f_processing_stage,
+            }, { headers: corsHeaders });
           }
 
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
@@ -656,7 +672,7 @@ export async function POST(request: Request) {
       const promptTranscript = hasTranscript ? transcript : `[자막 없음 - 제목만으로 분석]\n제목: ${videoInfo.title}`;
       console.log('AI에게 전달되는 자막 길이:', promptTranscript.length);
 
-      const speedPromise = analyzeContentSpeed(
+      const speedOutcome = await analyzeContentSpeed(
         videoInfo.channelName,
         videoInfo.title,
         promptTranscript,
@@ -667,21 +683,6 @@ export async function POST(request: Request) {
         (error) => ({ ok: false as const, error })
       );
 
-      const fullPromise = analyzeContent(
-        videoInfo.channelName,
-        videoInfo.title,
-        promptTranscript,
-        videoInfo.thumbnailUrl,
-        videoInfo.duration,
-        transcriptItems,
-        videoInfo.publishedAt,
-        userLanguage
-      ).then(
-        (value) => ({ ok: true as const, value }),
-        (error) => ({ ok: false as const, error })
-      );
-
-      const speedOutcome = await speedPromise;
       const hasSpeedReady = speedOutcome.ok;
 
       if (speedOutcome.ok) {
@@ -691,6 +692,21 @@ export async function POST(request: Request) {
           thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
         };
       } else {
+        const speedStatus = Number((speedOutcome.error as any)?.status ?? (speedOutcome.error as any)?.statusCode);
+        const speedMsg = String((speedOutcome.error as any)?.message || '').toLowerCase();
+        const isSpeedQuotaError =
+          speedStatus === 429 ||
+          speedMsg.includes('429') ||
+          speedMsg.includes('quota') ||
+          speedMsg.includes('resource exhausted');
+
+        if (isSpeedQuotaError) {
+          const wrapped: any = new Error('AI 요청이 일시적으로 몰려 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+          wrapped.statusCode = 429;
+          wrapped.cause = speedOutcome.error;
+          throw wrapped;
+        }
+
         console.warn('[Speed Track] 분석 실패 - Full Track로 계속 진행:', speedOutcome.error);
         speedResult = {};
       }
@@ -804,7 +820,20 @@ export async function POST(request: Request) {
         stageClient.release();
       }
 
-      const fullOutcome = await fullPromise;
+      const fullOutcome = await analyzeContent(
+        videoInfo.channelName,
+        videoInfo.title,
+        promptTranscript,
+        videoInfo.thumbnailUrl,
+        videoInfo.duration,
+        transcriptItems,
+        videoInfo.publishedAt,
+        userLanguage
+      ).then(
+        (value) => ({ ok: true as const, value }),
+        (error) => ({ ok: false as const, error })
+      );
+
       if (!fullOutcome.ok) {
         throw fullOutcome.error;
       }
@@ -844,7 +873,7 @@ export async function POST(request: Request) {
       console.error('AI 분석 엔진 에러:', aiError);
 
       const rawMessage = String((aiError as any)?.message || 'unknown error');
-      const rawStatus = Number((aiError as any)?.status);
+      const rawStatus = Number((aiError as any)?.status ?? (aiError as any)?.statusCode);
       const lower = rawMessage.toLowerCase();
       const isQuotaError =
         rawStatus === 429 ||
@@ -852,6 +881,7 @@ export async function POST(request: Request) {
         lower.includes('resource exhausted') ||
         lower.includes('quota');
       const isTimeoutError =
+        rawStatus === 408 ||
         lower.includes('timeout') ||
         String((aiError as any)?.code || '').toUpperCase() === 'ETIMEDOUT';
 

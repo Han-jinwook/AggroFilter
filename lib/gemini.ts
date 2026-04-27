@@ -456,12 +456,13 @@ export async function analyzeContent(
         ? chunkTranscriptItems(transcriptItems)
         : (transcript && transcript.trim() ? chunkTranscript(transcript) : []);
 
-      const chunks = coalesceChunks(rawChunks, 10);
+      const chunks = coalesceChunks(rawChunks, 3);
 
       if (chunks.length > 0) {
-        const summaries = await Promise.all(
-          chunks.map(chunk => summarizeChunk(chunk, apiKey))
-        );
+        const summaries: string[] = [];
+        for (const chunk of chunks) {
+          summaries.push(await summarizeChunk(chunk, apiKey));
+        }
         subtitleSummaryOverride = summaries.join("\n");
       }
     }
