@@ -161,21 +161,37 @@ export async function analyzeContentSpeed(
     ${quickSummary}
   `;
 
-  const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0.2,
-    top_p: 0.85,
-    messages: [
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+  let response;
+  try {
+    response = await client.chat.completions.create(
       {
-        role: 'system',
-        content: 'You are a precise JSON-only assistant.',
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        top_p: 0.85,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a precise JSON-only assistant. Always reply with a single valid JSON object only.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
       },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-  });
+      { signal: controller.signal }
+    );
+  } catch (err: any) {
+    const reason = err?.name === 'AbortError' ? 'OpenAI speed track timeout (35s)' : (err?.message || 'OpenAI speed track failed');
+    console.warn('[Speed Track][openai-speed] 호출 실패:', reason, { status: err?.status });
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const rawText = response.choices?.[0]?.message?.content || '';
   const raw = rawText.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();

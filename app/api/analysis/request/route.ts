@@ -870,21 +870,24 @@ export async function POST(request: Request) {
           thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
         };
       } else {
-        const speedStatus = Number((speedOutcome.error as any)?.status ?? (speedOutcome.error as any)?.statusCode);
-        const speedMsg = String((speedOutcome.error as any)?.message || '').toLowerCase();
+        const speedErr: any = speedOutcome.error;
+        const speedStatus = Number(speedErr?.status ?? speedErr?.statusCode);
+        const speedMsg = String(speedErr?.message || '').toLowerCase();
         const isSpeedQuotaError =
           speedStatus === 429 ||
           speedMsg.includes('429') ||
           speedMsg.includes('quota') ||
           speedMsg.includes('resource exhausted');
+        const isMissingKey = speedMsg.includes('openai_api_key');
 
-        if (isSpeedQuotaError) {
-          console.warn('[Speed Track] 쿼터 제한으로 스킵 - Full Track로 계속 진행:', speedOutcome.error);
-          speedResult = {};
-        } else {
-          console.warn('[Speed Track] 분석 실패 - Full Track로 계속 진행:', speedOutcome.error);
-          speedResult = {};
-        }
+        console.warn('[Speed Track] 실패 - Full Track로 계속 진행', {
+          name: speedErr?.name,
+          status: speedStatus || null,
+          missingKey: isMissingKey,
+          quota: isSpeedQuotaError,
+          message: speedErr?.message,
+        });
+        speedResult = {};
       }
 
       const stageClient = await pool.connect();

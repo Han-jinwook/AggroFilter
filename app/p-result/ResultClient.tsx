@@ -1151,7 +1151,14 @@ ${content}
 
           {!showPhase2 && !showPhase3 && isRefining && (
             <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
-              <p className="text-sm font-semibold">현재 접속자가 많아 정밀 분석으로 통합 진행 중입니다.</p>
+              <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
+                <span>영상 타임라인 요약과 스포일러 분석 중</span>
+                <span className="inline-flex ml-0.5">
+                  <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                  <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                  <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                </span>
+              </p>
             </div>
           )}
 
