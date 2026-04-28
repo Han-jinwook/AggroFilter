@@ -27,6 +27,23 @@ function extractVideoId(url: string): string {
   }
 }
 
+// [B안] 타자기 효과: 글자 단위로 animation-delay 적용해 순차 reveal
+function TypewriterText({ text, perChar = 55, startDelay = 100 }: { text: string; perChar?: number; startDelay?: number }) {
+  return (
+    <span className="hero-type" aria-label={text}>
+      {Array.from(text).map((ch, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          style={{ animationDelay: `${startDelay + i * perChar}ms` }}
+        >
+          {ch === ' ' ? '\u00A0' : ch}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 export default function ResultClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1105,21 +1122,20 @@ ${content}
           <AppHeader onLoginClick={() => setShowLoginModal(true)} />
           <main className="flex-1 py-4">
             <div className="mx-auto max-w-[var(--app-max-width)] space-y-3 px-4">
-              <div className="hero-fade-up hero-border-sweep shadow-lg">
-                <div className="hero-inner">
-                  <div className="relative aspect-video w-full bg-slate-100">
-                    <img src={pendingThumb} alt="영상 썸네일" className="h-full w-full object-cover" loading="eager" />
-                  </div>
+              <div className="hero-fade-up hero-scan-wrap border border-slate-900/40 shadow-2xl">
+                <div className="relative aspect-video w-full bg-slate-100">
+                  <img
+                    src={pendingThumb}
+                    alt="영상 썸네일"
+                    className="hero-glitch h-full w-full object-cover"
+                    loading="eager"
+                  />
                 </div>
               </div>
-              <div className="hero-pop-in rounded-2xl border border-amber-200 bg-amber-50/90 backdrop-blur px-4 py-3 text-amber-900 shadow-sm">
-                <p className="text-sm font-semibold flex items-center justify-center gap-0.5 tracking-tight">
-                  <span>이 영상 썸네일 스포일러를 추출하고 있습니다</span>
-                  <span className="inline-flex ml-0.5">
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
-                  </span>
+              <div className="rounded-2xl border border-cyan-400/40 bg-slate-900/95 px-4 py-3 text-cyan-100 shadow-lg">
+                <p className="text-sm font-bold flex items-center justify-center tracking-tight font-mono">
+                  <TypewriterText text="이 영상 썸네일 스포일러를 추출하고 있습니다" />
+                  <span className="hero-caret" aria-hidden="true" />
                 </p>
               </div>
             </div>
@@ -1347,33 +1363,27 @@ ${content}
             </>
           )}
 
-          {/* [대기제로 3단계] 스피드 결과 도착 전: 큰 썸네일 + 단일 안내 메시지 (시네마틱 등장) */}
+          {/* [대기제로 3단계] 스피드 결과 도착 전: 큰 썸네일 + 사이버펑크 안내 (B안) */}
           {!showPhase2 && !showPhase3 && (pendingThumb || analysisData?.thumbnail || analysisData?.videoId) && (
             <>
-              <div className="hero-fade-up hero-border-sweep shadow-lg">
-                <div className="hero-inner">
-                  <div className="relative aspect-video w-full bg-slate-100">
-                    <img
-                      src={
-                        pendingThumb
-                          || analysisData?.thumbnail
-                          || (analysisData?.videoId ? `https://img.youtube.com/vi/${analysisData.videoId}/hqdefault.jpg` : '')
-                      }
-                      alt="영상 썸네일"
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                    />
-                  </div>
+              <div className="hero-fade-up hero-scan-wrap border border-slate-900/40 shadow-2xl">
+                <div className="relative aspect-video w-full bg-slate-100">
+                  <img
+                    src={
+                      pendingThumb
+                        || analysisData?.thumbnail
+                        || (analysisData?.videoId ? `https://img.youtube.com/vi/${analysisData.videoId}/hqdefault.jpg` : '')
+                    }
+                    alt="영상 썸네일"
+                    className="hero-glitch h-full w-full object-cover"
+                    loading="eager"
+                  />
                 </div>
               </div>
-              <div className="hero-pop-in rounded-2xl border border-amber-200 bg-amber-50/90 backdrop-blur px-4 py-3 text-amber-900 shadow-sm">
-                <p className="text-sm font-semibold flex items-center justify-center gap-0.5 tracking-tight">
-                  <span>이 영상 썸네일 스포일러를 추출하고 있습니다</span>
-                  <span className="inline-flex ml-0.5">
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-                    <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
-                  </span>
+              <div className="rounded-2xl border border-cyan-400/40 bg-slate-900/95 px-4 py-3 text-cyan-100 shadow-lg">
+                <p className="text-sm font-bold flex items-center justify-center tracking-tight font-mono">
+                  <TypewriterText text="이 영상 썸네일 스포일러를 추출하고 있습니다" />
+                  <span className="hero-caret" aria-hidden="true" />
                 </p>
               </div>
             </>
