@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "어그로필터 - 유튜브 썸네일 스포일러 & 팩트체크",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "20분짜리 낚시 영상, 다 보지 마세요. AI가 썸네일의 '진짜 결론'만 1초 만에 핀셋 추출해 드립니다.",
   "permissions": [
     "storage"

@@ -54,21 +54,21 @@ export default function MainPage() {
 
     if (!urlParam || autoStarted || isAnalyzing || isCompleted) return
 
+    // [대기제로 3단계 호환 안전망] 구버전 확장팩이 / 로 들어온 경우
+    // 결과 스켈레톤 페이지로 즉시 이관하여 영상 카드를 먼저 노출.
+    if (from === 'chrome-extension') {
+      router.replace(`/p-result/pending?url=${encodeURIComponent(urlParam)}&from=chrome-extension`)
+      return
+    }
+
     setUrl(urlParam)
     setAutoStarted(true)
 
     // 분석 시작 후 URL 파라미터 제거 → 리마운트/새로고침 시 중복 트리거 방지
     window.history.replaceState({}, '', window.location.pathname)
 
-    if (from === 'chrome-extension') {
-      // 확장팩에서 자막 데이터 가져오기 (externally_connectable)
-      fetchTranscriptFromExtension().then((extData) => {
-        startAnalysis(urlParam, extData?.transcript, extData?.transcriptItems)
-      })
-    } else {
-      startAnalysis(urlParam)
-    }
-  }, [autoStarted, isAnalyzing, isCompleted])
+    startAnalysis(urlParam)
+  }, [autoStarted, isAnalyzing, isCompleted, router])
 
   useEffect(() => {
     const handleOpenLoginModal = () => {
@@ -269,7 +269,7 @@ export default function MainPage() {
       // Analysis is saved in DB with user_id, no localStorage needed
       const readyAnalysisId = result.analysisId;
       setAnalysisId(readyAnalysisId);
-      router.push(`/p-result?id=${readyAnalysisId}`);
+      router.replace(`/p-result?id=${readyAnalysisId}`);
       return;
     } catch (error) {
       console.error('분석 최종 실패:', error);
