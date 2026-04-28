@@ -1355,9 +1355,11 @@ ${content}
                 </div>
               )}
               {isSpeedPhase && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                  <p className="text-sm font-semibold">3차 분석 결과 정리 중</p>
-                  <p className="mt-1 text-xs text-amber-700">잠시 후 나머지 분석 결과가 자동으로 표시됩니다.</p>
+                <div className="cyber-panel-intense rounded-2xl border border-cyan-300/60 bg-slate-900/95 px-4 py-3 text-cyan-100 shadow-2xl">
+                  <p className="cyber-text-intense text-sm font-bold flex items-center justify-center tracking-tight font-mono">
+                    <TypewriterText text="정밀 분석 보고서를 생성하고 있습니다" perChar={45} startDelay={0} />
+                    <span className="hero-caret" aria-hidden="true" />
+                  </p>
                 </div>
               )}
             </>
