@@ -31,7 +31,7 @@ export default function ResultClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasCountedView = useRef(false)
-  const [showMore, setShowMore] = useState(false)
+  const [showMore, setShowMore] = useState(true)
   const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>(null)
   const [youthAge, setYouthAge] = useState("")
   const [newComment, setNewComment] = useState("")
@@ -292,7 +292,7 @@ export default function ResultClient() {
             if (isCancelled) return
             phase2ReadyRef.current = true
             setShowPhase2(true)
-            setActiveSubtitle((prev) => prev ?? "summary")
+            // [사용자 요청] 자막 요약은 기본 접힌 채로 등장
 
             if (completedWaitingPhase3Ref.current && phase3TimerRef.current === null) {
               phase3TimerRef.current = window.setTimeout(() => {
@@ -1105,14 +1105,16 @@ ${content}
           <AppHeader onLoginClick={() => setShowLoginModal(true)} />
           <main className="flex-1 py-4">
             <div className="mx-auto max-w-[var(--app-max-width)] space-y-3 px-4">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="relative aspect-video w-full bg-slate-100">
-                  <img src={pendingThumb} alt="영상 썸네일" className="h-full w-full object-cover" loading="eager" />
+              <div className="hero-fade-up hero-border-sweep shadow-lg">
+                <div className="hero-inner">
+                  <div className="relative aspect-video w-full bg-slate-100">
+                    <img src={pendingThumb} alt="영상 썸네일" className="h-full w-full object-cover" loading="eager" />
+                  </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
-                  <span>썸네일 스포일러를 추출하고 있습니다</span>
+              <div className="hero-pop-in rounded-2xl border border-amber-200 bg-amber-50/90 backdrop-blur px-4 py-3 text-amber-900 shadow-sm">
+                <p className="text-sm font-semibold flex items-center justify-center gap-0.5 tracking-tight">
+                  <span>이 영상 썸네일 스포일러를 추출하고 있습니다</span>
                   <span className="inline-flex ml-0.5">
                     <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
                     <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
@@ -1345,26 +1347,28 @@ ${content}
             </>
           )}
 
-          {/* [대기제로 3단계] 스피드 결과 도착 전: 큰 썸네일 + 단일 안내 메시지 */}
+          {/* [대기제로 3단계] 스피드 결과 도착 전: 큰 썸네일 + 단일 안내 메시지 (시네마틱 등장) */}
           {!showPhase2 && !showPhase3 && (pendingThumb || analysisData?.thumbnail || analysisData?.videoId) && (
             <>
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="relative aspect-video w-full bg-slate-100">
-                  <img
-                    src={
-                      pendingThumb
-                        || analysisData?.thumbnail
-                        || (analysisData?.videoId ? `https://img.youtube.com/vi/${analysisData.videoId}/hqdefault.jpg` : '')
-                    }
-                    alt="영상 썸네일"
-                    className="h-full w-full object-cover"
-                    loading="eager"
-                  />
+              <div className="hero-fade-up hero-border-sweep shadow-lg">
+                <div className="hero-inner">
+                  <div className="relative aspect-video w-full bg-slate-100">
+                    <img
+                      src={
+                        pendingThumb
+                          || analysisData?.thumbnail
+                          || (analysisData?.videoId ? `https://img.youtube.com/vi/${analysisData.videoId}/hqdefault.jpg` : '')
+                      }
+                      alt="영상 썸네일"
+                      className="h-full w-full object-cover"
+                      loading="eager"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
-                  <span>썸네일 스포일러를 추출하고 있습니다</span>
+              <div className="hero-pop-in rounded-2xl border border-amber-200 bg-amber-50/90 backdrop-blur px-4 py-3 text-amber-900 shadow-sm">
+                <p className="text-sm font-semibold flex items-center justify-center gap-0.5 tracking-tight">
+                  <span>이 영상 썸네일 스포일러를 추출하고 있습니다</span>
                   <span className="inline-flex ml-0.5">
                     <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
                     <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
