@@ -66,6 +66,9 @@ export default function ResultClient() {
   const [error, setError] = useState<string | null>(null)
   const [predictionData, setPredictionData] = useState<any>(null)
   const [userPredictionStats, setUserPredictionStats] = useState<any>(null)
+  // [대기제로 3단계] 확장팩/URL 진입 시 썸네일 히어로
+  const [pendingThumb, setPendingThumb] = useState<string | null>(null)
+  const pendingStartedRef = useRef(false)
   const hasSavedPrediction = useRef(false)
   const phase2TimerRef = useRef<number | null>(null)
   const phase3TimerRef = useRef<number | null>(null)
@@ -116,14 +119,136 @@ export default function ResultClient() {
       clearTimeout(phase3TimerRef.current)
       phase3TimerRef.current = null
     }
-    const id = searchParams.get("id")
-    if (!id) {
+    const initialId = searchParams.get("id")
+    const urlParam = searchParams.get("url")
+    const fromParam = searchParams.get("from")
+
+    // 썸네일 히어로 즉시 표시 (id 없이 url로 진입한 경우)
+    if (!initialId && urlParam) {
+      const vId = extractVideoId(urlParam)
+      if (vId) {
+        setPendingThumb(`https://img.youtube.com/vi/${vId}/hqdefault.jpg`)
+      }
+    }
+
+    if (!initialId && !urlParam) {
       setError("분석 ID가 없습니다.")
       setLoading(false)
       return
     }
 
     let isCancelled = false;
+    let id: string | null = initialId
+
+    // [대기제로 3단계] 확장팩 진입용 pending 플로우
+    const runPendingFlow = async (analysisUrl: string, from: string | null): Promise<string> => {
+      // 1) 확장팩 자막 수신 (최대 8초)
+      let clientTranscript: string | undefined
+      let clientTranscriptItems: any[] | undefined
+      if (from === 'chrome-extension') {
+        const ext = await new Promise<{ transcript?: string; transcriptItems?: any[] } | null>((resolve) => {
+          let resolved = false
+          const handler = (event: MessageEvent) => {
+            if (event.data?.type === 'AGGRO_TRANSCRIPT_DATA' && !resolved) {
+              resolved = true
+              window.removeEventListener('message', handler)
+              window.postMessage({ type: 'AGGRO_TRANSCRIPT_RECEIVED' }, '*')
+              const d = event.data.data
+              resolve(d?.transcript ? d : null)
+            }
+          }
+          window.addEventListener('message', handler)
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              window.removeEventListener('message', handler)
+              resolve(null)
+            }
+          }, 8000)
+        })
+        if (ext?.transcript) {
+          clientTranscript = ext.transcript
+          clientTranscriptItems = ext.transcriptItems
+        }
+      }
+
+      // 2) 사용자 식별 / 1회 체험 제한
+      const currentEmail = localStorage.getItem('userEmail')
+      let analysisUserId: string
+      if (currentEmail) {
+        analysisUserId = getUserId()
+      } else {
+        const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
+        if (trialCount >= 1) {
+          throw new Error('로그인이 필요합니다.')
+        }
+        analysisUserId = 'trial_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8)
+      }
+
+      const body: any = { url: analysisUrl, userId: analysisUserId }
+      if (clientTranscript) {
+        body.clientTranscript = clientTranscript
+        body.clientTranscriptItems = clientTranscriptItems
+      }
+
+      const pollForId = async (maxAttempts = 20, intervalMs = 1500): Promise<string | null> => {
+        const pollUrl = `/api/analysis/status?url=${encodeURIComponent(analysisUrl)}`
+        for (let i = 0; i < maxAttempts; i++) {
+          if (isCancelled) return null
+          await new Promise((r) => setTimeout(r, intervalMs))
+          try {
+            const r = await fetch(pollUrl, { cache: 'no-store' })
+            if (!r.ok) continue
+            const d = await r.json()
+            if ((d.status === 'pending' || d.status === 'speed_ready' || d.status === 'completed') && d.analysisId) {
+              return d.analysisId
+            }
+          } catch {}
+        }
+        return null
+      }
+
+      const requestPromise = fetch('/api/analysis/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(async (res) => {
+        if (!res.ok) {
+          let data: any = null
+          try { data = await res.json() } catch {}
+          const err: any = new Error(data?.error || '분석 요청에 실패했습니다.')
+          err.statusCode = res.status
+          err.data = data
+          throw err
+        }
+        return res.json()
+      })
+
+      const raced = await Promise.race([
+        requestPromise.then((data) => ({ source: 'request' as const, data })),
+        pollForId().then((aid) => (aid ? { source: 'poll' as const, data: { analysisId: aid } } : null)),
+      ])
+
+      let resolved: any
+      if (raced && raced.source === 'poll') {
+        resolved = raced.data
+        void requestPromise.catch(() => {})
+      } else if (raced && raced.source === 'request') {
+        resolved = raced.data
+      } else {
+        resolved = await requestPromise
+      }
+
+      if (!resolved?.analysisId) throw new Error('분석 결과를 받지 못했습니다.')
+
+      window.dispatchEvent(new CustomEvent('creditsUpdated'))
+      if (isAnonymousUser()) {
+        const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1
+        localStorage.setItem('anonAnalysisCount', String(count))
+      }
+
+      return resolved.analysisId as string
+    }
 
     const fetchAnalysisData = async () => {
       try {
@@ -385,7 +510,49 @@ export default function ResultClient() {
       }
     }
 
-    fetchAnalysisData()
+    // [대기제로 3단계] id가 없고 url만 있는 경우: pending 플로우로 id 확보 후 fetch 진행
+    const bootstrap = async () => {
+      if (!id && urlParam) {
+        if (pendingStartedRef.current) return
+        pendingStartedRef.current = true
+        try {
+          const resolvedId = await runPendingFlow(urlParam, fromParam)
+          if (isCancelled) return
+          id = resolvedId
+          // URL 정리: ?id=... 로 교체 (history API → useSearchParams 재발화 안 됨)
+          if (typeof window !== 'undefined') {
+            const nu = new URL(window.location.href)
+            nu.searchParams.set('id', resolvedId)
+            nu.searchParams.delete('url')
+            nu.searchParams.delete('from')
+            window.history.replaceState({}, '', nu.toString())
+          }
+        } catch (e: any) {
+          if (!isCancelled) {
+            const statusCode = Number(e?.statusCode)
+            const errorData = e?.data
+            if (statusCode === 402 && errorData?.insufficientCredits === true) {
+              alert('크레딧이 부족합니다. 충전 페이지로 이동합니다.')
+              router.replace('/payment/mock?redirectUrl=%2F')
+              return
+            }
+            if (statusCode === 422 && errorData?.cached === true) {
+              if (e?.message) alert(String(e.message))
+              router.replace('/')
+              return
+            }
+            setError(e?.message || '분석 시작에 실패했습니다.')
+            setLoading(false)
+          }
+          return
+        }
+      }
+      if (id && !isCancelled) {
+        fetchAnalysisData()
+      }
+    }
+
+    bootstrap()
 
     return () => {
       isCancelled = true;
@@ -929,7 +1096,36 @@ ${content}
     }
   }
 
-  if (loading) {
+  // [대기제로 3단계] 썸네일 히어로 (id 확보 전: 기존 스피너 대신 큰 썸네일 + 안내)
+  // pendingThumb 가 있으면 항상 우선 노출. 분석 데이터 도착 전까지 사라지지 않음.
+  if (loading && !analysisData) {
+    if (pendingThumb) {
+      return (
+        <div className="flex min-h-screen flex-col bg-background">
+          <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+          <main className="flex-1 py-4">
+            <div className="mx-auto max-w-[var(--app-max-width)] space-y-3 px-4">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="relative aspect-video w-full bg-slate-100">
+                  <img src={pendingThumb} alt="영상 썸네일" className="h-full w-full object-cover" loading="eager" />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
+                  <span>썸네일 스포일러를 추출하고 있습니다</span>
+                  <span className="inline-flex ml-0.5">
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                  </span>
+                </p>
+              </div>
+            </div>
+          </main>
+          <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+        </div>
+      )
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -1149,17 +1345,34 @@ ${content}
             </>
           )}
 
-          {!showPhase2 && !showPhase3 && isRefining && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
-              <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
-                <span>영상 타임라인 요약과 스포일러 분석 중</span>
-                <span className="inline-flex ml-0.5">
-                  <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-                  <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-                  <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
-                </span>
-              </p>
-            </div>
+          {/* [대기제로 3단계] 스피드 결과 도착 전: 큰 썸네일 + 단일 안내 메시지 */}
+          {!showPhase2 && !showPhase3 && (pendingThumb || analysisData?.thumbnail || analysisData?.videoId) && (
+            <>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="relative aspect-video w-full bg-slate-100">
+                  <img
+                    src={
+                      pendingThumb
+                        || analysisData?.thumbnail
+                        || (analysisData?.videoId ? `https://img.youtube.com/vi/${analysisData.videoId}/hqdefault.jpg` : '')
+                    }
+                    alt="영상 썸네일"
+                    className="h-full w-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                <p className="text-sm font-semibold flex items-center justify-center gap-0.5">
+                  <span>썸네일 스포일러를 추출하고 있습니다</span>
+                  <span className="inline-flex ml-0.5">
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                    <span className="inline-block animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                  </span>
+                </p>
+              </div>
+            </>
           )}
 
           {showPhase3 && (

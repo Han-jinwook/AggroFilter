@@ -55,9 +55,9 @@ export default function MainPage() {
     if (!urlParam || autoStarted || isAnalyzing || isCompleted) return
 
     // [대기제로 3단계 호환 안전망] 구버전 확장팩이 / 로 들어온 경우
-    // 결과 스켈레톤 페이지로 즉시 이관하여 영상 카드를 먼저 노출.
+    // 결과 페이지로 즉시 이관하여 큰 썸네일 + 안내를 먼저 노출.
     if (from === 'chrome-extension') {
-      router.replace(`/p-result/pending?url=${encodeURIComponent(urlParam)}&from=chrome-extension`)
+      router.replace(`/p-result?url=${encodeURIComponent(urlParam)}&from=chrome-extension`)
       return
     }
 

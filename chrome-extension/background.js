@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 웹사이트 새 탭 열기 - 결과 스켈레톤 경로로 바로 진입 (영상 카드 즉시 노출)
     // inject-transcript.js가 자동으로 자막 데이터를 주입
-    const analyzeUrl = `${SITE_URL}/p-result/pending?url=${encodeURIComponent(data.url)}&from=chrome-extension`;
+    const analyzeUrl = `${SITE_URL}/p-result?url=${encodeURIComponent(data.url)}&from=chrome-extension`;
     chrome.tabs.create({ url: analyzeUrl });
 
     sendResponse({ success: true });
