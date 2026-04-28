@@ -992,6 +992,12 @@ export async function POST(request: Request) {
         ]);
 
         await stageClient.query('COMMIT');
+        console.log('[Stage Commit] Speed stage persisted', {
+          analysisId,
+          stage: hasSpeedReady ? 'speed_ready' : 'pending',
+          hasSpeedSummary: Boolean(speedResult.subtitleSummary),
+          hasSpeedSpoiler: Array.isArray(speedResult.thumbnail_spoiler) && speedResult.thumbnail_spoiler.length > 0,
+        });
       } catch (stageError) {
         await stageClient.query('ROLLBACK');
         throw stageError;

@@ -90,6 +90,8 @@ function normalizeEvaluationReasonScores(
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params;
+  const { searchParams } = new URL(request.url);
+  const isLiteMode = searchParams.get('lite') === '1';
   console.log(`Fetching analysis result for ID: ${id}`);
 
   if (!id) {
@@ -115,6 +117,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
       }
 
       const analysis = analysisRes.rows[0];
+      const thumbnailSpoiler = (() => {
+        const raw = analysis.f_fact_spoiler;
+        if (!raw) return null;
+        if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+          try { return JSON.parse(raw); } catch {}
+        }
+        return [{ text: raw, ts: analysis.f_fact_timestamp || null }];
+      })();
 
       if (analysis.f_processing_stage === 'failed') {
         return NextResponse.json(
@@ -138,6 +148,89 @@ export async function GET(request: Request, { params }: { params: { id: string }
           isRestricted: true,
           reason: analysis.f_review_reason
         }, { status: 403 });
+      }
+
+      const isInProgressStage =
+        analysis.f_processing_stage === 'pending' ||
+        analysis.f_processing_stage === 'speed_ready' ||
+        (!analysis.f_processing_stage && analysis.f_reliability_score === null);
+
+      if (isInProgressStage) {
+        return NextResponse.json({
+          analysisData: {
+            title: analysis.f_title,
+            videoTitle: analysis.f_title,
+            videoId: analysis.f_video_id,
+            id: analysis.f_id,
+            channelId: analysis.f_channel_id,
+            channelName: analysis.f_channel_name || analysis.f_channel_id,
+            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
+            channelHandle: null,
+            subscriberCount: analysis.f_subscriber_count,
+            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
+            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
+            url: analysis.f_video_url,
+            topic: analysis.f_topic,
+            scores: {
+              accuracy: null,
+              clickbait: null,
+              trust: null,
+            },
+            officialCategoryId: analysis.f_official_category_id,
+            channelLanguage: analysis.f_channel_language || 'korean',
+            summary: analysis.f_summary,
+            summarySubtitle: analysis.f_summary,
+            thumbnailSpoiler,
+            processingStage: analysis.f_processing_stage || 'pending',
+          },
+          comments: [],
+          interaction: {
+            likeCount: 0,
+            dislikeCount: 0,
+            userInteraction: null,
+          },
+          userPredictionStats: null,
+          videoPrediction: null,
+        });
+      }
+
+      if (isLiteMode) {
+        return NextResponse.json({
+          analysisData: {
+            title: analysis.f_title,
+            videoTitle: analysis.f_title,
+            videoId: analysis.f_video_id,
+            id: analysis.f_id,
+            channelId: analysis.f_channel_id,
+            channelName: analysis.f_channel_name || analysis.f_channel_id,
+            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
+            channelHandle: null,
+            subscriberCount: analysis.f_subscriber_count,
+            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
+            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
+            url: analysis.f_video_url,
+            topic: analysis.f_topic,
+            scores: {
+              accuracy: analysis.f_accuracy_score,
+              clickbait: analysis.f_clickbait_score,
+              trust: analysis.f_reliability_score,
+            },
+            officialCategoryId: analysis.f_official_category_id,
+            channelLanguage: analysis.f_channel_language || 'korean',
+            summary: analysis.f_summary,
+            summarySubtitle: analysis.f_summary,
+            thumbnailSpoiler,
+            processingStage: analysis.f_processing_stage || 'completed',
+          },
+          comments: [],
+          interaction: {
+            likeCount: 0,
+            dislikeCount: 0,
+            userInteraction: null,
+          },
+          userPredictionStats: null,
+          videoPrediction: null,
+        });
       }
 
       let recheckParentScores: { accuracy: number | null; clickbait: number | null; trust: number | null } | null = null;
@@ -236,7 +329,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
         userInteraction: null as 'like' | 'dislike' | null
       };
       
-      const { searchParams } = new URL(request.url);
       const userIdFromQuery = searchParams.get('userId');
       let userId = userIdFromQuery;
       if (!userId) {
@@ -409,16 +501,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           aiRecommendedTitle: analysis.f_ai_title_recommendation,
           fullSubtitle: analysis.f_transcript,
           summarySubtitle: analysis.f_summary,
-          thumbnailSpoiler: (() => {
-            const raw = analysis.f_fact_spoiler;
-            if (!raw) return null;
-            // 새 형식: JSON 배열
-            if (typeof raw === 'string' && raw.trim().startsWith('[')) {
-              try { return JSON.parse(raw); } catch {}
-            }
-            // 구 형식: plain string → 배열로 변환
-            return [{ text: raw, ts: analysis.f_fact_timestamp || null }];
-          })(),
+          thumbnailSpoiler,
           processingStage: analysis.f_processing_stage || null,
         },
         comments: formattedComments,

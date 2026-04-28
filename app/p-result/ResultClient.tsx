@@ -271,7 +271,10 @@ export default function ResultClient() {
       try {
         setLoading(true)
         const uid = getUserId()
-        const response = await fetch(`/api/analysis/result/${id}${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`, {
+        const liteQuery = `${uid ? `userId=${encodeURIComponent(uid)}&` : ''}lite=1`
+        const fullQuery = `${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`
+
+        const response = await fetch(`/api/analysis/result/${id}?${liteQuery}`, {
           cache: 'no-store'
         })
         
@@ -351,7 +354,7 @@ export default function ResultClient() {
           for (let i = 0; i < 40; i++) {
             if (isCancelled) break
             await new Promise((resolve) => setTimeout(resolve, 1500))
-            const retryRes = await fetch(`/api/analysis/result/${id}${uid ? `?userId=${encodeURIComponent(uid)}` : ''}`, {
+            const retryRes = await fetch(`/api/analysis/result/${id}?${liteQuery}`, {
               cache: 'no-store'
             })
             if (!retryRes.ok) continue
@@ -373,13 +376,23 @@ export default function ResultClient() {
           const isCompletedNow = isCompletedPayload(data)
           setIsRefining(!isCompletedNow)
           setAnalysisData(data.analysisData)
-          setUserPredictionStats(data.userPredictionStats || null)
 
           if (isCompletedNow) {
             schedulePhase3Reveal()
           }
 
           if (isCompletedNow) {
+            const fullRes = await fetch(`/api/analysis/result/${id}${fullQuery}`, {
+              cache: 'no-store'
+            })
+            if (fullRes.ok) {
+              data = await fullRes.json()
+              if (!isCancelled) {
+                setAnalysisData(data.analysisData)
+                setUserPredictionStats(data.userPredictionStats || null)
+              }
+            }
+
             // Load prediction: sessionStorage (current session) or DB (past record)
             let matched = false
             try {
@@ -458,6 +471,8 @@ export default function ResultClient() {
                 clickbait: 0,
               })
             }
+          } else {
+            setUserPredictionStats(null)
           }
 
           setComments(data.comments || [])
