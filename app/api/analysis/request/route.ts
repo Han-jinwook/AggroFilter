@@ -795,7 +795,8 @@ export async function POST(request: Request) {
         videoInfo.title,
         promptTranscript,
         transcriptItems,
-        userLanguage
+        userLanguage,
+        videoInfo.thumbnailUrl
       ).then(
         (value) => ({ ok: true as const, value }),
         (error) => ({ ok: false as const, error })

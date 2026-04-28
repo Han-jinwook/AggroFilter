@@ -1,5 +1,56 @@
 import OpenAI from 'openai';
 
+async function fetchWithTimeout(url: string, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function getThumbnailFallbackUrls(url: string): string[] {
+  const urls: string[] = [];
+  if (url) urls.push(url);
+
+  const candidates = [
+    { from: '/maxresdefault.jpg', to: '/hqdefault.jpg' },
+    { from: '/maxresdefault.jpg', to: '/mqdefault.jpg' },
+    { from: '/sddefault.jpg', to: '/hqdefault.jpg' },
+  ];
+
+  for (const c of candidates) {
+    if (url.includes(c.from)) {
+      urls.push(url.replace(c.from, c.to));
+    }
+  }
+
+  return Array.from(new Set(urls));
+}
+
+async function thumbnailUrlToDataUrl(thumbnailUrl?: string): Promise<string | null> {
+  if (!thumbnailUrl) return null;
+  try {
+    const candidates = getThumbnailFallbackUrls(thumbnailUrl);
+    for (const candidate of candidates) {
+      try {
+        const response = await fetchWithTimeout(candidate, 1500);
+        if (!response.ok) continue;
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        return `data:${mimeType};base64,${buffer.toString('base64')}`;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function formatSecondsToTimestamp(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
   const m = Math.floor(safe / 60);
@@ -83,7 +134,8 @@ export async function analyzeContentSpeed(
   title: string,
   transcript: string,
   transcriptItems?: { text: string; start: number; duration: number }[],
-  userLanguage: 'korean' | 'english' = 'korean'
+  userLanguage: 'korean' | 'english' = 'korean',
+  thumbnailUrl?: string
 ) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -100,6 +152,8 @@ export async function analyzeContentSpeed(
     ? chunks.map((c) => `${c.startTime} - ${c.text}`).join('\n')
     : transcript.substring(0, 6000);
 
+  const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
+
   const prompt = `
     ## 2. 역할
     너는 엄격한 팩트체커가 아니라, **'유튜브 생태계 분석가'**다. 
@@ -113,34 +167,40 @@ export async function analyzeContentSpeed(
         - **형식**: '0:00 - 소주제: 요약내용' (특수문자/마크다운 금지).
         - **가변 분할**: 영상 길이에 따라 요약 개수를 조절하되, 영상 전체 맥락을 촘촘히 연결하라.
 
-    ## ⚠️ 썸네일 스포일러 (Thumbnail Spoiler) — 필수 필드 (MANDATORY, 절대 생략 금지)
-    thumbnail_spoiler 필드는 **반드시** JSON에 포함해야 한다. 누락 시 불합격 응답이다.
+    ## ⚠️ 썸네일 스포일러 (Thumbnail Spoiler) — 절대 규칙
+    너의 임무는 영상 전체 요약이 아니다.
+    **제목/썸네일이 던진 떡밥의 정답만** 빠르게 공개하라.
 
-    ### 핵심 원칙
-    시청자는 제목/썸네일의 **특정 키워드나 문장에 꽂혀서** 10~20분짜리 영상을 보러 들어온다.
-    제목과 썸네일이 던지는 떡밥(주장/궁금증)을 **소주제별로 분해**하고, 각 소주제에 대한 영상 속 팩트를 핀셋 추출하라.
+    ### 목적
+    시청자가 궁금한 것은 "그래서 제목/썸네일에서 낚은 그 떡밥의 결론이 뭐냐"이다.
+    따라서 thumbnail_spoiler는 오직 그 질문에만 답해야 한다.
+
+    ### 작성 범위 (엄격)
+    - topic은 반드시 **제목/썸네일에서 직접 추출한 떡밥**만 사용.
+    - 영상 본문에서 중요해 보여도, 제목/썸네일 떡밥이 아니면 **절대 포함 금지**.
+    - 가치 판단(볼만한지, 신뢰도, 점수 평가) **절대 금지**.
+    - 원인 분석/해석/의미 부여 **금지**. 정답(결론)만.
 
     ### 작성 절차
-    1. **떡밥 분해**: 제목+썸네일에서 시청자가 궁금해할 소주제(키워드/문장)를 1~4개로 분리하라.
-       - 예: 제목 "日 후쿠시마 오염수 방류 개시…한국 수산물 안전한가?" → 소주제 ①"오염수 방류 현황" ②"한국 수산물 안전성"
-       - 예: 제목 "연봉 1억 AI 엔지니어의 하루 루틴" → 소주제 ①"연봉/경력 배경" ②"하루 루틴"
-    2. **팩트 매칭**: 각 소주제에 대해 자막에서 **정확한 팩트(대답)** 부분을 인용하라.
-    3. **타임스탬프**: 팩트가 등장하는 자막 시점을 "MM:SS" 형식으로 기록하라.
+    1) 제목/썸네일에서 핵심 떡밥 1~4개 추출(topic).
+    2) 각 떡밥에 대해 자막에서 해당 결론/언급 구간을 찾는다.
+    3) text에는 결론만 단답형으로 작성한다. (장황한 중계 금지)
 
-    ### 작성 규칙
-    - 장황한 요약이나 너의 주관적 논평은 절대 섞지 마라. 영상 속 발화자의 원문에 가깝게 인용하라.
-    - 만약 어그로 낚시라서 해당 소주제의 정확한 팩트가 없다면, "[출처: 확인 불가] 정확히 일치하는 팩트 언급은 없으나, ~라는 언급이 가장 유사함"이라고 건조하게 팩트폭행하라.
-    - 어떤 경우든 thumbnail_spoiler를 빈 배열로 두지 마라. 반드시 1개 이상의 항목을 채워라.
-    - 각 항목의 ts(타임스탬프)는 "MM:SS" 형식. 자막에 타임스탬프가 없으면 ts를 null로.
-    - 시간순(ts 오름차순)으로 정렬하라.
+    ### text 필드 규칙
+    - 반드시 '[출처: ...]' 태그로 시작.
+    - 허용 예시:
+      - '[출처: 유튜버의 개인 주장] 'OOO'를 몸통으로 지목함.'
+      - '[출처: 뉴스 보도 인용] 조지아주 가금류 매매 금지 조치 언급.'
+      - '[출처: 전형적인 낚시] 제목의 핵심 떡밥(OOO) 실체는 끝까지 공개하지 않음.'
+    - 금지 예시:
+      - '유튜버가 ~라고 말했습니다', '~라는 내용입니다' 같은 중계체 문장
+      - 배경 설명/평가/추론/교훈
 
-    ### 출처 명시 규칙
-    각 항목의 text 필드 맨 앞에 반드시 [출처: ...] 태그를 명시하라.
-    - 예시 1 (유튜버 생각): [출처: 유튜버의 개인 주장] 미국이 전쟁으로 노리는 진짜 돈줄은...
-    - 예시 2 (뉴스 인용): [출처: 공식 언론 보도 인용] 구글이 공식 블로그를 통해...
-    - 예시 3 (전문가 인용): [출처: 전문가 인터뷰 인용] 김OO 교수에 따르면...
-    - 예시 4 (낚시): [출처: 확인 불가] 정확히 일치하는 팩트 언급은 없으나...
-    출처 태그 없이 내용만 쓰는 것은 금지.
+    ### 품질 규칙
+    - thumbnail_spoiler는 빈 배열 금지 (최소 1개).
+    - 각 항목 ts는 "MM:SS", 시점 불명확하면 null.
+    - 가능하면 시간순(ts 오름차순) 정렬.
+    - 같은 떡밥의 중복 항목 금지.
 
     ## 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
@@ -166,6 +226,14 @@ export async function analyzeContentSpeed(
 
   let response;
   try {
+    const userContent: any[] = [{ type: 'text', text: prompt }];
+    if (thumbnailDataUrl) {
+      userContent.push({
+        type: 'image_url',
+        image_url: { url: thumbnailDataUrl },
+      });
+    }
+
     response = await client.chat.completions.create(
       {
         model: 'gpt-4o-mini',
@@ -179,7 +247,7 @@ export async function analyzeContentSpeed(
           },
           {
             role: 'user',
-            content: prompt,
+            content: userContent,
           },
         ],
       },
