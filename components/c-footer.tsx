@@ -1,6 +1,11 @@
-import Link from 'next/link'
+'use client'
+
+import React, { useState } from 'react'
+import { PolicyModal } from './c-policy-modal'
 
 export function Footer() {
+  const [policyType, setPolicyType] = useState<'privacy' | 'terms' | null>(null)
+
   return (
     <footer className="border-t border-slate-200 bg-slate-50 mt-auto">
       <div className="mx-auto max-w-[var(--app-max-width)] px-6 py-8">
@@ -11,25 +16,27 @@ export function Footer() {
             <p className="mt-0.5 text-xs text-slate-600">AI 유튜브 신뢰도 분석 서비스 · 어그로필터</p>
           </div>
           <nav className="flex items-center gap-5 text-xs font-semibold">
-            <Link
-              href="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-800 hover:text-primary transition-colors"
+            <button
+              onClick={() => setPolicyType('privacy')}
+              className="text-slate-800 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0 font-semibold"
             >
               개인정보 처리방침
-            </Link>
-            <span className="h-3 w-px bg-slate-400" aria-hidden />
-            <Link
-              href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-800 hover:text-primary transition-colors"
+            </button>
+            <span className="h-3 w-px bg-slate-300" aria-hidden />
+            <button
+              onClick={() => setPolicyType('terms')}
+              className="text-slate-800 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0 font-semibold"
             >
               이용약관
-            </Link>
+            </button>
           </nav>
         </div>
+
+        <PolicyModal
+          type={policyType}
+          isOpen={!!policyType}
+          onClose={() => setPolicyType(null)}
+        />
 
         {/* 구분선 */}
         <div className="my-5 h-px bg-slate-200" />

@@ -316,3 +316,18 @@
     transform: translateY(-1px) scale(1.02);
   }
 }
+
+/* Custom Scrollbar Utilities */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
