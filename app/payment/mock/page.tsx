@@ -109,12 +109,8 @@ function MockPaymentContent() {
       setChargeResult({ charged: data.charged, balance: data.balance })
       window.dispatchEvent(new CustomEvent('creditsUpdated'))
 
-      // 충전 후 원래 페이지로 자동 복귀 (2초 딜레이)
-      if (redirectUrl && redirectUrl !== '/payment/mock') {
-        setTimeout(() => {
-          router.push(redirectUrl)
-        }, 2000)
-      }
+      // 충전 후 메시지만 유지하고 자동 복귀 로직 제거 (심사관의 결제 플로우 확인을 위해)
+      // 화면 전환 없이 현재 페이지에 머무름.
     } catch (_error) {
       alert('네트워크 오류')
     } finally {
@@ -153,9 +149,6 @@ function MockPaymentContent() {
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm">
             <span className="font-black text-emerald-700">+{chargeResult.charged.toLocaleString()} C 충전 완료!</span>
             <span className="ml-2 text-emerald-600">잔액: {chargeResult.balance.toLocaleString()} C</span>
-            {redirectUrl && redirectUrl !== '/payment/mock' && (
-              <div className="mt-1 text-xs text-emerald-500">잠시 후 이전 페이지로 돌아갑니다…</div>
-            )}
           </div>
         )}
 

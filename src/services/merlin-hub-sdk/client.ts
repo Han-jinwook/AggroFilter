@@ -68,11 +68,7 @@ export interface HubFetchResult<T> {
   data: T;
 }
 
-/**
- * KCP 심사관 테스트 세션이면 허브 호출 없이 mock 응답 반환
- * 모든 허브 API에 대한 단일 진입점에서 차단
- */
-function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResult<T> | null {
+async function getTestSessionMock<T>(path: string, options: RequestInit): Promise<HubFetchResult<T> | null> {
   if (!isTestSession()) return null;
 
   const method = (options.method || 'GET').toUpperCase();
@@ -95,25 +91,48 @@ function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResu
     };
   }
 
-  // /api/wallet/balance — 잔액 조회 (심사관용 충분한 잔액)
+  // /api/wallet/balance — 로컬 잔액 동기화
   if (path.startsWith('/api/wallet/balance')) {
-    return {
-      ok: true,
-      status: 200,
-      data: { balance: 9999, userId: TEST_USER_ID } as T,
-    };
+    try {
+      // 심사관의 실제 로컬 크레딧을 가져온다 (9999 고정 아님)
+      const res = await fetch(`/api/user/credits?userId=${TEST_USER_ID}`, { cache: 'no-store' });
+      const data = await res.json();
+      return {
+        ok: true,
+        status: 200,
+        data: { balance: typeof data.credits === 'number' ? data.credits : 0, userId: TEST_USER_ID } as T,
+      };
+    } catch {
+      return {
+        ok: true,
+        status: 200,
+        data: { balance: 0, userId: TEST_USER_ID } as T,
+      };
+    }
   }
 
-  // /api/wallet/use — 차감 (실제 차감은 안 하지만 성공으로 간주)
+  // /api/wallet/use — 차감 (프론트 호출 시)
+  // 프론트엔드에서 강제 차감은 하지 않고, 서버(route.ts)에서 t_credit_history를 통해 차감됨.
+  // 여기서는 최신 잔액만 반환해서 헤더 업데이트 유도.
   if (path === '/api/wallet/use' && method === 'POST') {
-    return {
-      ok: true,
-      status: 200,
-      data: { success: true, balance: 9999 } as T,
-    };
+    try {
+      const res = await fetch(`/api/user/credits?userId=${TEST_USER_ID}`, { cache: 'no-store' });
+      const data = await res.json();
+      return {
+        ok: true,
+        status: 200,
+        data: { success: true, balance: data.credits || 0 } as T,
+      };
+    } catch {
+      return {
+        ok: true,
+        status: 200,
+        data: { success: true, balance: 0 } as T,
+      };
+    }
   }
 
-  // /api/auth/profile — 프로필 갱신 (변경 없이 성공 응답)
+  // /api/auth/profile — 프로필 갱신
   if (path === '/api/auth/profile') {
     return {
       ok: true,
@@ -126,7 +145,7 @@ function getTestSessionMock<T>(path: string, options: RequestInit): HubFetchResu
     };
   }
 
-  // 그 외 허브 API — 401로 떨어지지 않도록 빈 성공 응답
+  // 그 외 허브 API
   return {
     ok: true,
     status: 200,
@@ -140,7 +159,7 @@ export async function hubFetch<T = any>(
   retries = MAX_RETRIES
 ): Promise<HubFetchResult<T>> {
   // KCP 심사관 테스트 세션 차단 — 허브 호출 우회
-  const mock = getTestSessionMock<T>(path, options);
+  const mock = await getTestSessionMock<T>(path, options);
   if (mock) return mock;
 
   const config = getConfig();
