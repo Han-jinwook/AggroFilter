@@ -27,7 +27,7 @@ export function OnboardingGuide() {
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg active:scale-[0.98]"
           >
             <TrendingUp className="h-3 w-3" />
-            확장 ~{">"} 가이드보기
+            확장프로그램 설치/사용 가이드 보기
           </Link>
         </div>
       </div>
