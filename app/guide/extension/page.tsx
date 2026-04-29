@@ -111,7 +111,7 @@ export default function ExtensionGuidePage() {
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">설치 성공 및 고정(Pin)</h3>
                 <p className="text-slate-600 leading-relaxed">
-                  "Chrome에 추가됨" 메시지가 나오면 성공입니다! <br />
+                  &quot;Chrome에 추가됨&quot; 메시지가 나오면 성공입니다! <br />
                   브라우저 우측 상단의 <strong className="text-slate-900">퍼즐 아이콘</strong>을 눌러 어그로필터를 고정(Pin)해두면 더욱 편리하게 사용할 수 있습니다.
                 </p>
               </div>
