@@ -50,15 +50,6 @@ export function FeatureCards() {
           </div>
         ))}
       </div>
-
-      <div className="flex justify-center">
-        <Link
-          href="/p-plaza"
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg active:scale-[0.98]"
-        >
-          <TrendingUp className="h-4 w-4" />
-          분석된 채널·영상 둘러보기
-        </Link>
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { TrendingUp } from "lucide-react"
 
 export function OnboardingGuide() {
   return (
@@ -23,9 +24,10 @@ export function OnboardingGuide() {
         <div className="pt-1">
           <Link
             href="/guide/extension"
-            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg active:scale-[0.98]"
           >
-            확장프로그램 설치/사용 가이드 보기
+            <TrendingUp className="h-3 w-3" />
+            확장 ~{">"} 가이드보기
           </Link>
         </div>
       </div>
