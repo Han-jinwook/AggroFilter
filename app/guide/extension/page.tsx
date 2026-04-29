@@ -47,7 +47,7 @@ export default function ExtensionGuidePage() {
         </div>
 
         {/* 스테퍼 섹션 */}
-        <div className="space-y-24">
+        <div className="space-y-32">
           {/* Step 1 */}
           <div className="relative">
             <div className="absolute -left-3 -top-10 text-[120px] font-black text-slate-50 leading-none select-none -z-10">01</div>
@@ -69,6 +69,11 @@ export default function ExtensionGuidePage() {
                   alt="Chrome Web Store Main" 
                   className="w-full h-auto object-cover"
                 />
+                {/* 하이라이트 동그라미 */}
+                <div className="absolute right-[5%] top-[18%] w-[18%] aspect-[3/1] pointer-events-none">
+                  <div className="absolute inset-0 border-4 border-blue-500 rounded-full animate-ping opacity-75" />
+                  <div className="absolute inset-0 border-[3px] border-blue-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]" />
+                </div>
                 <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
               </div>
             </div>
@@ -84,6 +89,11 @@ export default function ExtensionGuidePage() {
                   alt="Permission Popup" 
                   className="w-full h-auto object-cover"
                 />
+                {/* 하이라이트 동그라미 */}
+                <div className="absolute right-[20%] bottom-[12%] w-[35%] aspect-[3/1] pointer-events-none">
+                  <div className="absolute inset-0 border-4 border-rose-500 rounded-full animate-ping opacity-75" />
+                  <div className="absolute inset-0 border-[3px] border-rose-600 rounded-full shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
+                </div>
                 <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
               </div>
               <div className="order-1 md:order-2 space-y-5">
@@ -107,40 +117,6 @@ export default function ExtensionGuidePage() {
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 text-blue-600 font-bold">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-black">3</span>
-                  설치 완료 확인
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">설치 성공 및 고정(Pin)</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  &quot;Chrome에 추가됨&quot; 메시지가 나오면 성공입니다! <br />
-                  브라우저 우측 상단의 <strong className="text-slate-900">퍼즐 아이콘</strong>을 눌러 어그로필터를 고정(Pin)해두면 더욱 편리하게 사용할 수 있습니다.
-                </p>
-              </div>
-              <div className="group relative rounded-2xl border-8 border-white shadow-2xl shadow-blue-100 overflow-hidden transition-transform hover:scale-[1.02]">
-                <img 
-                  src="/images/guide/installed_popup.png" 
-                  alt="Installed Popup" 
-                  className="w-full h-auto object-cover"
-                />
-                <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
-              </div>
-            </div>
-          </div>
-
-          {/* Step 4 */}
-          <div className="relative">
-            <div className="absolute -left-3 -top-10 text-[120px] font-black text-slate-50 leading-none select-none -z-10">04</div>
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="order-2 md:order-1 group relative rounded-2xl border-8 border-white shadow-2xl shadow-blue-100 overflow-hidden transition-transform hover:scale-[1.02]">
-                <img 
-                  src="/images/guide/usage_youtube.png" 
-                  alt="YouTube Usage" 
-                  className="w-full h-auto object-cover"
-                />
-                <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
-              </div>
-              <div className="order-1 md:order-2 space-y-5">
-                <div className="inline-flex items-center gap-2 text-blue-600 font-bold">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-black">4</span>
                   분석 실행
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">유튜브에서 바로 분석하기</h3>
@@ -155,6 +131,19 @@ export default function ExtensionGuidePage() {
                     언제든지 대시보드에서 다시 볼 수 있습니다.
                   </p>
                 </div>
+              </div>
+              <div className="group relative rounded-2xl border-8 border-white shadow-2xl shadow-blue-100 overflow-hidden transition-transform hover:scale-[1.02]">
+                <img 
+                  src="/images/guide/usage_youtube.png" 
+                  alt="YouTube Usage" 
+                  className="w-full h-auto object-cover"
+                />
+                {/* 하이라이트 동그라미 */}
+                <div className="absolute left-[33%] bottom-[3%] w-[12%] aspect-[1/1] pointer-events-none">
+                  <div className="absolute inset-0 border-4 border-emerald-500 rounded-full animate-ping opacity-75" />
+                  <div className="absolute inset-0 border-[3px] border-emerald-600 rounded-full shadow-[0_0_20px_rgba(5,150,105,0.5)]" />
+                </div>
+                <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-transparent transition-colors" />
               </div>
             </div>
           </div>
