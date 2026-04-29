@@ -78,9 +78,9 @@ function MockPaymentContent() {
   // 어그로필터 기준 1회 분석 = 30C
   const options = useMemo(
     () => [
-      { credits: 1000, price: '1,000원', label: '1,000 크레딧', discount: '', usage: '어그로필터 33회 분석 가능' },
-      { credits: 5000, price: '4,750원', label: '5,000 크레딧', discount: '5% 할인', usage: '어그로필터 166회 분석 가능' },
-      { credits: 10000, price: '9,000원', label: '10,000 크레딧', discount: '10% 할인', usage: '어그로필터 333회 분석 가능' },
+      { credits: 1000, imgSrc: '/images/payment/card_1000.jpg' },
+      { credits: 5000, imgSrc: '/images/payment/card_5000.png' },
+      { credits: 10000, imgSrc: '/images/payment/card_10000.jpg' },
     ],
     []
   )
@@ -176,25 +176,27 @@ function MockPaymentContent() {
         {tab === 'charge' && (
           <div className="space-y-4">
             {/* 1. 이용권 상품 선택 (심사 지시: 상품 박스 먼저) */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-slate-900">1. 이용권 상품 선택</h2>
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
+              <h2 className="text-base font-black text-slate-900 mb-5 px-1">1. 이용권 상품 선택</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {options.map((opt) => (
                 <button
                   key={opt.credits}
                   disabled={isPaying}
                   onClick={() => handlePay(opt.credits)}
-                  className={
-                    'rounded-xl px-4 py-5 text-center border-2 transition-all ' +
-                    (isPaying
-                      ? 'bg-slate-100 text-slate-400 border-slate-200'
-                      : 'bg-white border-indigo-200 hover:border-indigo-500 hover:shadow-md')
-                  }
+                  className="group relative rounded-2xl overflow-hidden transition-all hover:scale-[1.03] active:scale-[0.97] shadow-lg hover:shadow-indigo-200/50"
                 >
-                  <div className="text-sm font-black text-slate-900">{opt.label}</div>
-                  <div className="mt-1 text-base font-black text-indigo-600">{opt.price}</div>
-                  {opt.discount && <div className="mt-1 text-xs font-bold text-rose-500">{opt.discount}</div>}
-                  <div className="mt-2 text-[11px] text-slate-400 leading-relaxed">{opt.usage}</div>
+                  <img 
+                    src={opt.imgSrc} 
+                    alt={`${opt.credits} Credits`}
+                    className="w-full h-auto object-cover block"
+                  />
+                  {isPaying && (
+                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/5 transition-colors" />
                 </button>
               ))}
               </div>
