@@ -69,8 +69,8 @@ export default function ExtensionGuidePage() {
                   alt="Chrome Web Store Main" 
                   className="w-full h-auto object-cover"
                 />
-                {/* 하이라이트 동그라미 (조정됨) */}
-                <div className="absolute right-[8%] top-[10%] w-[18%] aspect-[3/1] pointer-events-none">
+                {/* 하이라이트 동그라미 (2차 조정) */}
+                <div className="absolute right-[7%] top-[20%] w-[18%] aspect-[3/1] pointer-events-none">
                   <div className="absolute inset-0 border-4 border-blue-500 rounded-full animate-ping opacity-75" />
                   <div className="absolute inset-0 border-[3px] border-blue-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]" />
                 </div>
@@ -89,8 +89,8 @@ export default function ExtensionGuidePage() {
                   alt="Permission Popup" 
                   className="w-full h-auto object-cover"
                 />
-                {/* 하이라이트 동그라미 (조정됨) */}
-                <div className="absolute right-[28%] bottom-[24%] w-[35%] aspect-[3/1] pointer-events-none">
+                {/* 하이라이트 동그라미 (2차 조정) */}
+                <div className="absolute right-[25%] bottom-[22%] w-[35%] aspect-[3/1] pointer-events-none">
                   <div className="absolute inset-0 border-4 border-rose-500 rounded-full animate-ping opacity-75" />
                   <div className="absolute inset-0 border-[3px] border-rose-600 rounded-full shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
                 </div>
@@ -138,8 +138,8 @@ export default function ExtensionGuidePage() {
                   alt="YouTube Usage" 
                   className="w-full h-auto object-cover"
                 />
-                {/* 하이라이트 동그라미 (조정됨) */}
-                <div className="absolute left-[38%] bottom-[1%] w-[12%] aspect-[1/1] pointer-events-none">
+                {/* 하이라이트 동그라미 (2차 조정) */}
+                <div className="absolute left-[37%] bottom-[-5%] w-[12%] aspect-[1/1] pointer-events-none">
                   <div className="absolute inset-0 border-4 border-emerald-500 rounded-full animate-ping opacity-75" />
                   <div className="absolute inset-0 border-[3px] border-emerald-600 rounded-full shadow-[0_0_20px_rgba(5,150,105,0.5)]" />
                 </div>
