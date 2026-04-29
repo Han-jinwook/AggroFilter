@@ -50,7 +50,6 @@ export function FeatureCards() {
           </div>
         ))}
       </div>
-      </div>
     </div>
   )
 }
