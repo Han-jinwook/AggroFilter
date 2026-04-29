@@ -51,7 +51,7 @@ async function getColumnInfo(client: any): Promise<ColumnInfo> {
       : null) as ColumnInfo['thumbCol'] | null;
 
   if (!keyCol || !titleCol || !thumbCol) {
-    throw new Error('t_channels 테이블 컬럼 구성이 예상과 다릅니다.');
+    throw new Error('t_channels ?�이�?컬럼 구성???�상�??�릅?�다.');
   }
 
   return { keyCol, titleCol, thumbCol };
@@ -67,7 +67,7 @@ async function fetchYouTubeChannels(ids: string[], apiKey: string) {
   const data = await resp.json();
 
   if (!resp.ok) {
-    throw new Error(`YouTube API 오류: ${data?.error?.message || resp.statusText}`);
+    throw new Error(`YouTube API ?�류: ${data?.error?.message || resp.statusText}`);
   }
 
   const items = Array.isArray(data?.items) ? data.items : [];
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
         updated: 0,
         inserted: 0,
         notFoundOnYouTube: 0,
-        message: '대상 채널이 없습니다.',
+        message: '?�??채널???�습?�다.',
       });
     }
 

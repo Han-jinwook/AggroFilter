@@ -11,8 +11,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const statusIcon = isEntered ? '🎉' : '📉';
-    const statusText = isEntered ? '진입' : '탈락';
+    const statusIcon = isEntered ? '?��' : '?��';
+    const statusText = isEntered ? '진입' : '?�락';
     const statusColor = isEntered ? '#10b981' : '#f59e0b';
     const baseUrl = process.env.URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://aggrofilter.netlify.app';
     const resultUrl = channelId
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         [
           userId,
           'top10_change',
-          `${channelName} 채널이 상위 10%에 ${statusText}했습니다`,
+          `${channelName} 채널???�위 10%??${statusText}?�습?�다`,
           channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`
         ]
       );

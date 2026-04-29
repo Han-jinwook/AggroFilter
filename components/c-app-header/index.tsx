@@ -288,7 +288,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </button>
           )}
 
-          {/* 크레딧 잔액 — 다른 메뉴와 동일한 톤(상단 잔액, 하단 라벨) */}
+          {/* 코인 잔액 — 다른 메뉴와 동일한 톤(상단 잔액, 하단 라벨) */}
           {isLoggedIn && (
             <Link
               href="/payment/mock"
@@ -299,7 +299,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                   {credits !== null ? `${credits} C` : '…'}
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-amber-600">크레딧</span>
+              <span className="text-[10px] font-bold text-amber-600">코인</span>
             </Link>
           )}
 

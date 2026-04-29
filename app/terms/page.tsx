@@ -21,7 +21,7 @@ export default function TermsPage() {
 
       <section style={{ marginBottom: 36 }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>2. 이용권 및 결제</h2>
-        <p>회사는 서비스 내에서 사용 가능한 디지털 재화(이하 &quot;크레딧&quot; 또는 &quot;이용권&quot;)를 유료로 제공합니다.</p>
+        <p>회사는 서비스 내에서 사용 가능한 디지털 재화(이하 &quot;코인&quot; 또는 &quot;이용권&quot;)를 유료로 제공합니다.</p>
         <ul style={{ paddingLeft: 24, marginTop: 8 }}>
           <li>결제 수단: 신용카드, 휴대폰 결제 등 회사가 제공하는 결제 수단</li>
           <li>상품 형태: 결제 즉시 계정에 부여되는 디지털 콘텐츠 (배송 없음)</li>

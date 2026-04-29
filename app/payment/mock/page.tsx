@@ -74,7 +74,7 @@ function MockPaymentContent() {
     if (tab === 'history') fetchHistory(historyPage)
   }, [tab, historyPage, fetchHistory])
 
-  // 크레딧 상품 — 패밀리 허브 공통 상품 (다른 패밀리 앱에서도 동일하게 사용)
+  // 코인 상품 — 패밀리 허브 공통 상품 (다른 패밀리 앱에서도 동일하게 사용)
   // 어그로필터 기준 1회 분석 = 30C
   const options = useMemo(
     () => [
@@ -188,7 +188,7 @@ function MockPaymentContent() {
                 >
                   <img 
                     src={opt.imgSrc} 
-                    alt={`${opt.credits} Credits`}
+                    alt={`${opt.credits} Coins`}
                     className="w-full h-auto object-cover block"
                   />
                   {isPaying && (
@@ -306,7 +306,7 @@ function MockPaymentContent() {
         <div className="rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-4">
           <div>
             <p className="font-bold text-slate-700 mb-1">상품정보</p>
-            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다. 결제 즉시 크레딧이 충전되어 서비스를 이용할 수 있습니다.</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다. 결제 즉시 코인이 충전되어 서비스를 이용할 수 있습니다.</p>
           </div>
           <div>
             <p className="font-bold text-slate-700 mb-1">환불 정책 및 휴대폰 결제 안내</p>

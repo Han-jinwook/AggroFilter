@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
 
-// REFACTORED_BY_MERLIN_HUB: t_users 결제 로그 → Hub wallet 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users 결제 로그 ??Hub wallet ?��? ?�정
 export const runtime = 'nodejs';
 
 function isAdminEmail(email: string | null | undefined) {

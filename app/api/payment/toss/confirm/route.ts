@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 import { createClient } from '@/utils/supabase/server'
 
-// REFACTORED_BY_MERLIN_HUB: t_users 토스 결제 확인 → Hub wallet 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users ?�스 결제 ?�인 ??Hub wallet ?��? ?�정
 export const runtime = 'nodejs'
 
 const ENSURE_CREDIT_HISTORY = `
@@ -17,37 +17,35 @@ const ENSURE_CREDIT_HISTORY = `
   )
 `
 
-// 크레딧 상품 정의 (금액 → 크레딧 매핑)
+// ?�레???�품 ?�의 (금액 ???�레??매핑)
 const CREDIT_PLANS: Record<number, number> = {
-  1000: 1,    // 1,000원 → 1크레딧
-  4500: 5,    // 4,500원 → 5크레딧 (10% 할인)
-  8000: 10,   // 8,000원 → 10크레딧 (20% 할인)
+  1000: 1,    // 1,000????1?�레??  4500: 5,    // 4,500????5?�레??(10% ?�인)
+  8000: 10,   // 8,000????10?�레??(20% ?�인)
 }
 
 export async function POST(request: Request) {
   try {
     const { paymentKey, orderId, amount } = await request.json()
 
-    // 1. 필수 파라미터 검증
-    if (!paymentKey || !orderId || !amount) {
+    // 1. ?�수 ?�라미터 검�?    if (!paymentKey || !orderId || !amount) {
       return NextResponse.json(
-        { error: '필수 파라미터가 누락되었습니다.' },
+        { error: '?�수 ?�라미터가 ?�락?�었?�니??' },
         { status: 400 }
       )
     }
 
     const numericAmount = Number(amount)
 
-    // 2. 금액 → 크레딧 매핑 검증 (변조 방지)
+    // 2. 금액 ???�레??매핑 검�?(변�?방�?)
     const credits = CREDIT_PLANS[numericAmount]
     if (!credits) {
       return NextResponse.json(
-        { error: '유효하지 않은 결제 금액입니다.' },
+        { error: '?�효?��? ?��? 결제 금액?�니??' },
         { status: 400 }
       )
     }
 
-    // 3. 현재 로그인 사용자 확인
+    // 3. ?�재 로그???�용???�인
     let userId: string | null = null
     try {
       const supabase = createClient()
@@ -57,17 +55,17 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json(
-        { error: '로그인이 필요합니다.' },
+        { error: '로그?�이 ?�요?�니??' },
         { status: 401 }
       )
     }
 
-    // 4. 토스 결제 승인 API 호출
+    // 4. ?�스 결제 ?�인 API ?�출
     const secretKey = process.env.TOSS_SECRET_KEY
     if (!secretKey) {
       console.error('TOSS_SECRET_KEY is not set')
       return NextResponse.json(
-        { error: '결제 설정 오류' },
+        { error: '결제 ?�정 ?�류' },
         { status: 500 }
       )
     }
@@ -86,13 +84,12 @@ export async function POST(request: Request) {
     if (!confirmRes.ok) {
       console.error('Toss confirm failed:', confirmData)
       return NextResponse.json(
-        { error: confirmData.message || '결제 승인에 실패했습니다.' },
+        { error: confirmData.message || '결제 ?�인???�패?�습?�다.' },
         { status: confirmRes.status }
       )
     }
 
-    // 5. 크레딧 원장 적재 + 결제 로그 저장
-    const client = await pool.connect()
+    // 5. ?�레???�장 ?�재 + 결제 로그 ?�??    const client = await pool.connect()
     try {
       await client.query('BEGIN')
       await client.query(ENSURE_CREDIT_HISTORY)
@@ -112,11 +109,10 @@ export async function POST(request: Request) {
       await client.query(
         `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
          VALUES ($1, 'charge', $2, $3, $4)`,
-        [userId, credits, newCredits, `Toss 결제 충전 +${credits}C (${numericAmount}원)`]
+        [userId, credits, newCredits, `Toss 결제 충전 +${credits}C (${numericAmount}??`]
       )
 
-      // 결제 로그 저장
-      await client.query(
+      // 결제 로그 ?�??      await client.query(
         `CREATE TABLE IF NOT EXISTS t_toss_payments (
           f_id BIGSERIAL PRIMARY KEY,
           f_payment_key TEXT UNIQUE NOT NULL,
@@ -171,7 +167,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Payment toss confirm error:', error)
     return NextResponse.json(
-      { error: '결제 처리 중 오류가 발생했습니다.' },
+      { error: '결제 처리 �??�류가 발생?�습?�다.' },
       { status: 500 }
     )
   }

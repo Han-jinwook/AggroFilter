@@ -428,7 +428,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('credits')}
             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${activeTab === 'credits' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
           >
-            <CreditCard className="w-4 h-4" /> 크레딧
+            <CreditCard className="w-4 h-4" /> 코인
           </button>
           <button
             onClick={() => setActiveTab('analysis')}
@@ -633,11 +633,11 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* === CREDITS TAB === */}
+          {/* === COINS TAB === */}
           {activeTab === 'credits' && (
             <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm space-y-8">
               <div className="max-w-md space-y-4">
-                <h3 className="text-lg font-bold text-gray-900">사용자 크레딧 조정</h3>
+                <h3 className="text-lg font-bold text-gray-900">사용자 코인 조정</h3>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -665,7 +665,7 @@ export default function AdminPage() {
                       <div className="text-xs text-indigo-600">{foundUser.f_email}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-indigo-600 font-bold uppercase mb-1">현재 크레딧</div>
+                      <div className="text-xs text-indigo-600 font-bold uppercase mb-1">현재 코인</div>
                       <div className="text-2xl font-black text-indigo-900">{foundUser.credits}</div>
                     </div>
                   </div>

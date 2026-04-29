@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
 
-// REFACTORED_BY_MERLIN_HUB: t_users 크레딧 충전 → Hub wallet 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users ?�레??충전 ??Hub wallet ?��? ?�정
 export const runtime = 'nodejs';
 
 const ENSURE_CREDIT_HISTORY = `
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const credits = Number(body.credits);
 
-    // Supabase 서버 인증 → 실패 시 body.userId fallback
+    // Supabase ?�버 ?�증 ???�패 ??body.userId fallback
     let userId: string | undefined;
     try {
       const supabase = createClient();
@@ -35,11 +35,11 @@ export async function POST(request: Request) {
     }
 
     if (!userId) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+      return NextResponse.json({ error: '로그?�이 ?�요?�니??' }, { status: 401 });
     }
 
     if (!Number.isFinite(credits) || credits <= 0 || credits > 10000) {
-      return NextResponse.json({ error: '유효하지 않은 크레딧 수량입니다.' }, { status: 400 });
+      return NextResponse.json({ error: '?�효?��? ?��? ?�레???�량?�니??' }, { status: 400 });
     }
 
     const client = await pool.connect();
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       const currentBalance = latestRes.rows.length > 0 ? Number(latestRes.rows[0].f_balance) : 0;
       const safeBalance = Number.isFinite(currentBalance) ? currentBalance : 0;
       const newBalance = safeBalance + credits;
-      console.log(`[Mock Charge] userId=${userId}, +${credits}C → balance=${newBalance}C`);
+      console.log(`[Mock Charge] userId=${userId}, +${credits}C ??balance=${newBalance}C`);
 
       await client.query(
         `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)

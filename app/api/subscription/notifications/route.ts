@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
-// REFACTORED_BY_MERLIN_HUB: t_users 알림 설정 → app_aggro_profiles.f_notify_settings 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users ?�림 ?�정 ??app_aggro_profiles.f_notify_settings ?��? ?�정
 export const runtime = 'nodejs';
 
 const VALID_KEYS = ['f_notify_grade_change', 'f_notify_ranking_change', 'f_notify_top10_change'] as const;
 
 /**
- * GET: 사용자의 알림 설정 조회 (3개 조건별 ON/OFF)
+ * GET: ?�용?�의 ?�림 ?�정 조회 (3�?조건�?ON/OFF)
  * Query: ?email=user@example.com
  */
 export async function GET(request: Request) {
@@ -57,8 +57,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * PUT: 알림 조건별 토글 변경
- * Body: { email, key, enabled }
+ * PUT: ?�림 조건�??��? 변�? * Body: { email, key, enabled }
  * key: 'f_notify_grade_change' | 'f_notify_ranking_change' | 'f_notify_top10_change'
  */
 export async function PUT(request: Request) {
@@ -72,7 +71,7 @@ export async function PUT(request: Request) {
 
     const client = await pool.connect();
     try {
-      // rankingThreshold 업데이트
+      // rankingThreshold ?�데?�트
       if (rankingThreshold !== undefined) {
         const v = Number(rankingThreshold);
         if (![10, 20, 30].includes(v)) {
@@ -82,7 +81,7 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: true, f_ranking_threshold: v });
       }
 
-      // 토글 ON/OFF 업데이트
+      // ?��? ON/OFF ?�데?�트
       if (!key || typeof enabled !== 'boolean') {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }

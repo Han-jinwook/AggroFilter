@@ -15,19 +15,19 @@ export async function GET(request: Request) {
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 10000) : 1000;
   const safeOffset = Number.isFinite(offset) ? Math.max(offset, 0) : 0;
   
-  // Ranking Key 생성: lang_categoryId 또는 언어 전체
+  // Ranking Key ?�성: lang_categoryId ?�는 ?�어 ?�체
   const hasCategory = categoryId && categoryId !== '' && categoryId !== 'all';
   const rankingKey = hasCategory ? `${lang}_${categoryId}` : null;
 
   try {
     const client = await pool.connect();
     try {
-      // t_rankings_cache에서 조회
+      // t_rankings_cache?�서 조회
       let query: string;
       let queryParams: any[];
       
       if (rankingKey) {
-        // 특정 카테고리만 조회
+        // ?�정 카테고리�?조회
         query = `
           SELECT 
             rc.f_channel_id as id,
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         `;
         queryParams = [rankingKey, safeLimit, safeOffset];
       } else {
-        // 언어별 전체 조회 (채널별 최고 점수 기준)
+        // ?�어�??�체 조회 (채널�?최고 ?�수 기�?)
         query = `
           WITH ChannelBestScores AS (
             SELECT DISTINCT ON (rc.f_channel_id)
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
 
       const rankedChannels = res.rows.map((row) => ({
         id: row.id,
-        rank: row.rank, // 캐시에서 가져온 rank 사용
+        rank: row.rank, // 캐시?�서 가?�온 rank ?�용
         name: row.name,
         avatar: row.avatar,
         score: Number.parseFloat(row.score || 0),

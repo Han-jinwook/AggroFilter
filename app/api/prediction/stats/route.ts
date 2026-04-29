@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 
-// REFACTORED_BY_MERLIN_HUB: t_users 예측 통계 → app_aggro_profiles 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users ?�측 ?�계 ??app_aggro_profiles ?��? ?�정
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {

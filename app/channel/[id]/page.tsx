@@ -200,9 +200,9 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   }
 
   const CREDIT_PLANS = [
-    { credits: 1, label: '1크레딧', price: '1,000원' },
-    { credits: 5, label: '5크레딧', price: '4,500원' },
-    { credits: 10, label: '10크레딧', price: '8,000원' },
+    { credits: 30, label: '30코인', price: '1,000원' },
+    { credits: 150, label: '150코인', price: '4,500원' },
+    { credits: 300, label: '300코인', price: '8,000원' },
   ]
 
   const goToCheckout = () => {
@@ -220,7 +220,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
         ? '영상 재분석 요청 안내'
         : modalStep === 'mobile'
           ? 'PC 환경 이용 안내'
-          : '크레딧 차감 및 충전 안내'
+          : '코인 차감 및 충전 안내'
 
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
@@ -246,9 +246,9 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
 
           {modalStep === 'charge' && (
             <div className="mt-3 text-sm text-slate-700 leading-relaxed">
-              <p>재분석 1회 요청 시 1 크레딧이 차감됩니다.</p>
-              {typeof credits === 'number' && credits > 0 && (
-                <p className="mt-1">현재 보유 크레딧: <span className="font-black text-indigo-600">{credits}</span></p>
+              <p>재분석 1회 요청 시 30 코인이 차감됩니다.</p>
+              {typeof credits === 'number' && (
+                <p className="mt-1">현재 보유 코인: <span className="font-black text-indigo-600">{credits}</span></p>
               )}
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {CREDIT_PLANS.map((p) => (
@@ -330,12 +330,12 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
     }
 
     const c = typeof credits === 'number' ? credits : 0
-    if (c <= 0) {
+    if (c < 30) {
       setModalStep('charge')
       return
     }
 
-    if (!confirm('재분석 1회 요청 시 1 크레딧이 차감됩니다. 재검을 진행할까요?')) return
+    if (!confirm('재분석 1회 요청 시 30 코인이 차감됩니다. 재검을 진행할까요?')) return
 
     try {
       setIsRecheckingVideoId(video.id)
@@ -351,7 +351,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
       })
 
       if (res.status === 402) {
-        alert('크레딧이 부족합니다.')
+        alert('코인이 부족합니다.')
         return
       }
 
@@ -376,7 +376,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
       const data = await res.json()
       if (typeof data?.analysisId === 'string' && data.analysisId.length > 0) {
         if (data?.creditDeducted === true) {
-          setCredits((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev))
+          setCredits((prev) => (typeof prev === 'number' ? Math.max(0, prev - 30) : prev))
         }
         router.push(`/p-result?id=${encodeURIComponent(data.analysisId)}&returnTo=${encodeURIComponent(`/channel/${channelId}`)}`)
       } else {
@@ -625,9 +625,9 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
               >
                 영상 재분석 요청
               </button>
-              {typeof credits === 'number' && credits > 0 && (
+              {typeof credits === 'number' && (
                 <div className="flex-shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 border border-slate-200">
-                  크레딧 {credits}
+                  코인 {credits}
                 </div>
               )}
             </div>

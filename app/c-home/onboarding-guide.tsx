@@ -21,13 +21,16 @@ export function OnboardingGuide() {
           모바일에서는 분석 결과를 깔끔하게 조회하고, 필요하면 재분석을 요청할 수 있습니다.
         </p>
 
-        <div className="pt-1">
+        <div className="pt-2">
           <Link
             href="/guide/extension"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg active:scale-[0.98]"
+            className="group relative inline-flex items-center gap-4 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 px-12 py-6 text-xl font-black text-white shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)] transition-all hover:-translate-y-2 hover:scale-[1.05] hover:shadow-[0_30px_60px_-15px_rgba(79,70,229,0.6)] active:scale-[0.95] overflow-hidden animate-glow-pulse"
           >
-            <TrendingUp className="h-3 w-3" />
-            확장프로그램 설치/사용 가이드 보기
+            {/* Shimmer Effect */}
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]" />
+            
+            <TrendingUp className="h-7 w-7 animate-pulse" />
+            <span className="relative z-10">확장프로그램 설치/사용 가이드 보기</span>
           </Link>
         </div>
       </div>

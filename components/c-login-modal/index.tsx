@@ -148,7 +148,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
           <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
             Merlin Family
           </DialogTitle>
-          <p className="text-center text-sm text-muted-foreground">이메일 인증으로 패밀리 크레딧과 모든 기능을 이용하세요</p>
+          <p className="text-center text-sm text-muted-foreground">이메일 인증으로 패밀리 코인과 모든 기능을 이용하세요</p>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

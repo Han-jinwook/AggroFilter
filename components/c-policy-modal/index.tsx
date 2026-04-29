@@ -146,7 +146,7 @@ function TermsContent() {
 
       <section>
         <h2 className="text-xl font-bold text-slate-900 mb-3">2. 이용권 및 결제</h2>
-        <p>회사는 서비스 내에서 사용 가능한 디지털 재화(이하 &quot;크레딧&quot; 또는 &quot;이용권&quot;)를 유료로 제공합니다.</p>
+        <p>회사는 서비스 내에서 사용 가능한 디지털 재화(이하 &quot;코인&quot; 또는 &quot;이용권&quot;)를 유료로 제공합니다.</p>
         <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
           <li>결제 수단: 신용카드, 휴대폰 결제 등 회사가 제공하는 결제 수단</li>
           <li>상품 형태: 결제 즉시 계정에 부여되는 디지털 콘텐츠 (배송 없음)</li>

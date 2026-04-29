@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
 
-// REFACTORED_BY_MERLIN_HUB: t_users 결제 매칭 → Hub wallet 이관 예정
+// REFACTORED_BY_MERLIN_HUB: t_users 결제 매칭 ??Hub wallet ?��? ?�정
 export const runtime = 'nodejs';
 
 const ENSURE_CREDIT_HISTORY = `
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
       await client.query(
         `INSERT INTO t_credit_history (f_user_id, f_type, f_amount, f_balance, f_description)
          VALUES ($1, 'charge', $2, $3, $4)`,
-        [user.f_id, credits, newBalance, `미청구 결제 수동 매칭 +${credits}C`]
+        [user.f_id, credits, newBalance, `미청�?결제 ?�동 매칭 +${credits}C`]
       );
 
       // 5. Mark payment as CLAIMED

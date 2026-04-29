@@ -84,10 +84,10 @@ function PaymentSuccessContent() {
               </div>
               <h1 className="mt-4 text-xl font-black text-slate-900">결제 완료!</h1>
               <p className="mt-2 text-sm text-slate-600">
-                <span className="font-bold text-indigo-600">{result.credits}크레딧</span>이 충전되었습니다.
+                <span className="font-bold text-indigo-600">{result.credits}코인</span>이 충전되었습니다.
               </p>
               <div className="mt-4 inline-block rounded-xl bg-slate-50 border border-slate-200 px-6 py-3">
-                <div className="text-xs text-slate-500">보유 크레딧</div>
+                <div className="text-xs text-slate-500">보유 코인</div>
                 <div className="text-2xl font-black text-slate-900">{result.totalCredits}</div>
               </div>
             </>

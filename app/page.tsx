@@ -213,9 +213,9 @@ export default function MainPage() {
         const statusCode = Number((firstError as any)?.statusCode)
         const errorData = (firstError as any)?.data
 
-        // [크레딧 부족] 충전 페이지로 리다이렉트 (충전 후 자동 복귀)
+        // [코인 부족] 충전 페이지로 리다이렉트 (충전 후 자동 복귀)
         if (statusCode === 402 && errorData?.insufficientCredits === true) {
-          alert('크레딧이 부족합니다. 충전 페이지로 이동합니다.')
+          alert('보유하신 코인이 부족합니다. 충전 페이지로 이동합니다.')
           const returnUrl = encodeURIComponent(window.location.pathname)
           router.push(`/payment/mock?redirectUrl=${returnUrl}`)
           return
