@@ -21,29 +21,25 @@ export default function ExtensionGuidePage() {
   return (
     <div className="min-h-screen bg-slate-50/50">
       <AppHeader />
-      <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 py-12">
-        <div className="space-y-12">
+      <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 pt-6 pb-12">
+        <div className="space-y-8">
           {/* 상단 네비게이션 */}
           <div className="flex items-center justify-start">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95 group"
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-5 py-2 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95 group"
             >
               <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
               홈으로 돌아가기
             </Link>
           </div>
         {/* 헤더 섹션 */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wider">
-            <Puzzle className="w-3.5 h-3.5" />
-            Chrome Web Store Official
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight md:text-4xl">
-            어그로필터 설치 가이드
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight md:text-5xl">
+            어그로필터 설치 <span className="text-blue-600 italic underline decoration-blue-200 underline-offset-8">3클릭</span>
           </h1>
-          <p className="text-slate-600 max-w-lg mx-auto leading-relaxed">
-            크롬 웹스토어에서 클릭 한 번으로 설치하고 <br className="hidden md:block" /> 
+          <p className="text-slate-600 max-w-lg mx-auto leading-relaxed font-medium">
+            크롬 웹스토어에서 클릭 세 번으로 설치하고 <br className="hidden md:block" /> 
             유튜브 분석을 바로 시작해 보세요.
           </p>
           
