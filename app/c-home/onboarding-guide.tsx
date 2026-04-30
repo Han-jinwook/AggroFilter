@@ -4,7 +4,7 @@ import { TrendingUp } from "lucide-react"
 
 export function OnboardingGuide() {
   return (
-    <div className="flex flex-col items-center justify-center gap-6 pt-4 text-center">
+    <div className="flex items-center justify-center gap-8 pt-4">
       <div className="h-32 w-32 flex-shrink-0">
         <Image
           src="/images/character-search.gif"
@@ -15,7 +15,7 @@ export function OnboardingGuide() {
           unoptimized
         />
       </div>
-      <div className="flex-1 space-y-3 w-full max-w-xl">
+      <div className="space-y-3">
         <p className="text-base font-bold text-slate-800 leading-snug">
           <span className="text-blue-600 text-lg font-black mr-0.5">PC</span>에서는 크롬 확장팩으로 분석을 시작하세요
         </p>
