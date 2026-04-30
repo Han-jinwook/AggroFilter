@@ -10,15 +10,29 @@ import {
   ArrowRight,
   Info,
   Monitor,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowLeft
 } from 'lucide-react'
+import { AppHeader } from '@/components/c-app-header'
 
 const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/%EC%96%B4%EA%B7%B8%EB%A1%9C%ED%95%84%ED%84%B0-ai-%EC%9C%A0%ED%8A%9C%EB%B8%8C-%EC%8B%A0%EB%A2%B0%EB%8F%84-%EB%B6%84%EC%84%9D/mjhggligjfhieppaeendaikkdpnbkdke?utm_source=ext_app_menu'
 
 export default function ExtensionGuidePage() {
   return (
-    <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 py-12">
-      <div className="space-y-12">
+    <div className="min-h-screen bg-slate-50/50">
+      <AppHeader />
+      <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 py-12">
+        <div className="space-y-12">
+          {/* 상단 네비게이션 */}
+          <div className="flex items-center justify-start">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95 group"
+            >
+              <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+              홈으로 돌아가기
+            </Link>
+          </div>
         {/* 헤더 섹션 */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wider">
@@ -139,8 +153,9 @@ export default function ExtensionGuidePage() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition-all hover:bg-white hover:text-blue-600 hover:border-blue-200"
+              className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:text-blue-600 hover:border-blue-200 hover:shadow-md active:scale-95 group"
             >
+              <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
               홈으로 돌아가기
             </Link>
           </div>
@@ -149,6 +164,7 @@ export default function ExtensionGuidePage() {
           </p>
         </div>
       </div>
-    </main>
+      </main>
+    </div>
   )
 }

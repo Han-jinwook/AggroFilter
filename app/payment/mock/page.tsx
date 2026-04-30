@@ -2,6 +2,7 @@
 
 import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
 
 interface HistoryItem {
@@ -128,6 +129,16 @@ function MockPaymentContent() {
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
       <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8 space-y-4">
+        {/* 상단 네비게이션 */}
+        <div className="flex items-center justify-start pb-2">
+          <Link
+            href={redirectUrl}
+            className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:text-indigo-600 hover:border-indigo-200 hover:shadow-md active:scale-95 group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            홈으로 돌아가기
+          </Link>
+        </div>
 
         {/* 잔액 카드 */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -264,13 +275,13 @@ function MockPaymentContent() {
                 <div className="absolute inset-0 pointer-events-none bg-white/0 group-active:bg-white/10 transition-colors" />
               </button>
               
-              <button
-                disabled={isPaying}
-                onClick={() => router.push(redirectUrl)}
-                className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+              <Link
+                href={redirectUrl}
+                className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-4 text-sm font-bold border border-slate-200 bg-white text-slate-700 shadow-sm transition-all hover:bg-white hover:text-indigo-600 hover:border-indigo-200 hover:shadow-md active:scale-95 group"
               >
-                돌아가기
-              </button>
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                홈으로 돌아가기
+              </Link>
             </div>
           </div>
         )}
