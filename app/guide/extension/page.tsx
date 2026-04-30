@@ -38,10 +38,6 @@ export default function ExtensionGuidePage() {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight md:text-5xl">
             어그로필터 설치 <span className="text-blue-600 italic underline decoration-blue-200 underline-offset-8">3클릭</span>
           </h1>
-          <p className="text-slate-600 max-w-lg mx-auto leading-relaxed font-medium">
-            크롬 웹스토어에서 클릭 세 번으로 설치하고 <br className="hidden md:block" /> 
-            유튜브 분석을 바로 시작해 보세요.
-          </p>
           
           <div className="pt-4">
             <a
