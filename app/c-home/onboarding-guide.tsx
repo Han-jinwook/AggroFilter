@@ -16,9 +16,9 @@ export function OnboardingGuide() {
         />
       </div>
       <div className="flex-1 space-y-2">
-        <p className="text-sm font-semibold text-slate-800">PC에서는 크롬 확장프로그램으로 분석을 시작하세요</p>
+        <p className="text-sm font-semibold text-slate-800">PC에서는 크롬 확장팩으로 분석을 시작하세요</p>
         <p className="text-xs text-slate-600 leading-relaxed">
-          모바일에서는 분석 결과를 깔끔하게 조회하고, 필요하면 재분석을 요청할 수 있습니다.
+          모바일에서는 모든 분석 결과에 대해 조회할 수 있습니다.
         </p>
 
         <div className="pt-2">
@@ -30,7 +30,7 @@ export function OnboardingGuide() {
             <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]" />
             
             <TrendingUp className="h-7 w-7 animate-pulse" />
-            <span className="relative z-10">확장프로그램 설치/사용 가이드 보기</span>
+            <span className="relative z-10">어그로필터 설치 3클릭으로</span>
           </Link>
         </div>
       </div>
