@@ -16,11 +16,11 @@ export function OnboardingGuide() {
         />
       </div>
       <div className="flex-1 space-y-2">
-        <p className="text-lg font-bold text-slate-800 leading-snug">
-          <span className="text-blue-600 text-xl font-black mr-0.5">PC</span>에서는 크롬 확장팩으로 분석을 시작하세요
+        <p className="text-base font-bold text-slate-800 leading-snug">
+          <span className="text-blue-600 text-lg font-black mr-0.5">PC</span>에서는 크롬 확장팩으로 분석을 시작하세요
         </p>
-        <p className="text-lg font-bold text-slate-800 leading-snug">
-          <span className="text-purple-600 text-xl font-black mr-0.5">모바일</span>에서는 모든 분석 결과에 대해 조회할 수 있습니다.
+        <p className="text-base font-bold text-slate-800 leading-snug">
+          <span className="text-purple-600 text-lg font-black mr-0.5">모바일</span>에서는 모든 분석 결과에 대해 조회할 수 있습니다.
         </p>
 
         <div className="pt-2">
