@@ -29,6 +29,7 @@ function MockPaymentContent() {
   const redirectUrl = redirectUrlParam.startsWith('/') ? redirectUrlParam : '/'
 
   const [isPaying, setIsPaying] = useState(false)
+  const [selectedOption, setSelectedOption] = useState<number>(1000)
   const [balance, setBalance] = useState<number | null>(null)
   const [nickname, setNickname] = useState('')
   const [chargeResult, setChargeResult] = useState<{ charged: number; balance: number } | null>(null)
@@ -183,17 +184,23 @@ function MockPaymentContent() {
                 <button
                   key={opt.credits}
                   disabled={isPaying}
-                  onClick={() => handlePay(opt.credits)}
-                  className="group relative rounded-2xl overflow-hidden transition-all hover:scale-[1.03] active:scale-[0.97] shadow-lg hover:shadow-indigo-200/50"
+                  onClick={() => setSelectedOption(opt.credits)}
+                  className={`group relative rounded-2xl overflow-hidden transition-all hover:scale-[1.03] active:scale-[0.97] shadow-lg ${
+                    selectedOption === opt.credits 
+                      ? 'ring-4 ring-indigo-600 shadow-indigo-200/80 scale-[1.05]' 
+                      : 'hover:shadow-indigo-200/50'
+                  }`}
                 >
                   <img 
                     src={opt.imgSrc} 
                     alt={`${opt.credits} Coins`}
                     className="w-full h-auto object-cover block"
                   />
-                  {isPaying && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                      <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  {selectedOption === opt.credits && (
+                    <div className="absolute top-3 right-3 bg-indigo-600 text-white rounded-full p-1.5 shadow-lg animate-in zoom-in duration-300">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
                   )}
                   <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/5 transition-colors" />
@@ -241,13 +248,30 @@ function MockPaymentContent() {
               </div>
             </div>
 
-            <button
-              disabled={isPaying}
-              onClick={() => router.push(redirectUrl)}
-              className="mt-5 w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
-            >
-              돌아가기
-            </button>
+            {/* 결제 버튼 */}
+            <div className="pt-2">
+              <button
+                disabled={isPaying || balance === null}
+                onClick={() => handlePay(selectedOption)}
+                className="w-full relative flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 py-5 text-lg font-black text-white shadow-xl shadow-indigo-200 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0 overflow-hidden"
+              >
+                {isPaying && (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                <span>{selectedOption.toLocaleString()} 코인 결제하기</span>
+                
+                {/* 비정상적인 결제 느낌 방지를 위한 안전 장치 */}
+                <div className="absolute inset-0 pointer-events-none bg-white/0 group-active:bg-white/10 transition-colors" />
+              </button>
+              
+              <button
+                disabled={isPaying}
+                onClick={() => router.push(redirectUrl)}
+                className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                돌아가기
+              </button>
+            </div>
           </div>
         )}
         
