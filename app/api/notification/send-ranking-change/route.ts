@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         [
           userId,
           'ranking_change',
-          `${channelName} 채널???�뢰???�수??변?��? ?�겼?�니??(${oldRank}????${newRank}??`,
+          `${channelName} 채널의 신뢰도 등수에 변화가 생겼습니다 (${oldRank}위 → ${newRank}위)`,
           channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`
         ]
       );

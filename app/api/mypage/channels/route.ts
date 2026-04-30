@@ -67,7 +67,7 @@ export async function POST(request: Request) {
           SELECT
             m.f_channel_id as channel_id,
             m.subscribed_at,
-            COALESCE(NULLIF(c.f_title, ''), '?????�음') as channel_name,
+            COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
             COALESCE(cs.f_official_category_id, 0) as category_id,
             COALESCE(NULLIF(cs.f_language, ''), 'korean') as channel_language,
             COALESCE(cs.f_video_count, 0) as video_count,
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
           channelId: row.channel_id,
           date,
           channelName: row.channel_name,
-          topic: getCategoryName(categoryId) || '기�?',
+          topic: getCategoryName(categoryId) || '기타',
           categoryId,
           videoCount,
           rankScore,

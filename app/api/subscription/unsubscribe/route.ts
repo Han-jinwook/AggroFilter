@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const client = await pool.connect();
     try {
-      // 1. t_video_subscriptions?�서 ?�당 채널 ?�상 구독 ??��
+      // 1. t_video_subscriptions에서 해당 채널 영상 구독 삭제
       try {
         await client.query(`
           DELETE FROM t_video_subscriptions
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       } catch {
       }
 
-      // 2. t_channel_subscriptions?�서 구독 ??��
+      // 2. t_channel_subscriptions에서 구독 삭제
       let subDeletedCount = 0;
       try {
         const subResult = await client.query(`
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: true, 
         deletedSubscriptions: subDeletedCount,
-        message: `${channelIds.length}�?채널??관??목록?�서 ??��?�었?�니??`
+        message: `${channelIds.length}개 채널이 관심 목록에서 삭제되었습니다.`
       });
 
     } finally {

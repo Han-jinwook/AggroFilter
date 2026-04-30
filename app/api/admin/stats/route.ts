@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { createClient } from '@/utils/supabase/server';
 
-// REFACTORED_BY_MERLIN_HUB: t_users ?�계 ??Hub family_users ?��? ?�정
+// REFACTORED_BY_MERLIN_HUB: t_users 통계 → Hub family_users 이관 예정
 export const runtime = 'nodejs';
 
 function isAdminEmail(email: string | null | undefined) {

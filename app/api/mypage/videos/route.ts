@@ -92,7 +92,7 @@ export async function POST(request: Request) {
             m.f_title as title,
             m.f_reliability_score as score,
             m.subscribed_at,
-            COALESCE(NULLIF(c.f_title, ''), '?????�음') as channel_name,
+            COALESCE(NULLIF(c.f_title, ''), '알 수 없음') as channel_name,
             COALESCE(NULLIF(c.f_thumbnail_url, ''), '/placeholder.svg') as channel_icon,
             m.f_official_category_id as category_id,
             m.f_channel_id as channel_id,
@@ -108,14 +108,14 @@ export async function POST(request: Request) {
       const videos = res.rows.map(row => ({
         id: row.id,
         title: row.title,
-        channel: row.channel_name || '?????�음',
+        channel: row.channel_name || '알 수 없음',
         channelId: row.channel_id,
         channelIcon: row.channel_icon,
         channelLanguage: row.channel_language || 'korean',
         score: row.score,
         category: getCategoryName(row.category_id),
         categoryId: row.category_id,
-        fullDate: row.subscribed_at, // ??구독??(?�렬???��? ?�?�스?�프)
+        fullDate: row.subscribed_at, // 내 구독일 (정렬용 정밀 타임스탬프)
         date: new Date(row.subscribed_at).toLocaleDateString('ko-KR', {
            year: '2-digit',
            month: '2-digit',

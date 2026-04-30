@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/db'
 import { createClient } from '@/utils/supabase/server'
 
-// REFACTORED_BY_MERLIN_HUB: t_users ?�레????Hub wallet ?��? ?�정
+// REFACTORED_BY_MERLIN_HUB: t_users 코인 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
 
 const ENSURE_CREDIT_HISTORY = `

@@ -61,7 +61,7 @@ export async function GET(request: Request) {
         accuracy: row.accuracy,
         clickbait: row.clickbait,
         reliability: row.reliability,
-        channel: row.channel || '?????�는 채널',
+        channel: row.channel || '알 수 없는 채널',
         channelIcon: row.channel_icon || '/placeholder.svg',
         channelId: row.channel_id,
         color: row.reliability >= 70 ? 'green' : 'red'

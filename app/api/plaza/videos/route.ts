@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     let timeCondition = "TRUE";
     
-    if (period === '1??) {
+    if (period === '1일') {
       timeCondition = "a.f_last_action_at >= NOW() - INTERVAL '24 hours'";
     } else if (period === '1주일') {
       timeCondition = "a.f_created_at >= NOW() - INTERVAL '7 days'";
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
           id: row.id,
           date: new Date(row.date).toISOString(),
           title: row.title,
-          channel: row.channel || '?????�는 채널',
+          channel: row.channel || '알 수 없는 채널',
           channelIcon: row.channelIcon || '/placeholder.svg',
           clickbait: row.clickbait || 0,
           score: row.score,

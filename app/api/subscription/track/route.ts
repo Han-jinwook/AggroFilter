@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, skipped: true, reason: 't_channel_subscriptions not found' });
       }
 
-      // t_video_subscriptions ?�이�?보장
+      // t_video_subscriptions 테이블 보장
       await client.query(`
         CREATE TABLE IF NOT EXISTS t_video_subscriptions (
           f_id BIGSERIAL PRIMARY KEY,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // ?�상 구독 upsert (??구독??= NOW())
+      // 영상 구독 upsert (내 구독일 = NOW())
       if (videoId) {
         await client.query(
           `INSERT INTO t_video_subscriptions (f_user_id, f_video_id, f_channel_id, f_subscribed_at)

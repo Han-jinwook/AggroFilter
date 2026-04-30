@@ -12,9 +12,9 @@ export async function POST(request: Request) {
     }
 
     const gradeInfo: Record<string, { color: string; label: string; icon: string }> = {
-      'Green': { color: '#10b981', label: '?�뢰 (Green Zone)', icon: '�? },
-      'Yellow': { color: '#f59e0b', label: '주의 (Yellow Zone)', icon: '?��' },
-      'Red': { color: '#ef4444', label: '경고 (Red Zone)', icon: '?��' }
+      'Green': { color: '#10b981', label: '신뢰 (Green Zone)', icon: '�' },
+      'Yellow': { color: '#f59e0b', label: '주의 (Yellow Zone)', icon: '🟡' },
+      'Red': { color: '#ef4444', label: '경고 (Red Zone)', icon: '🔴' }
     };
 
     const oldGradeInfo = gradeInfo[oldGrade] || gradeInfo['Yellow'];
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         [
           userId,
           'grade_change',
-          `${channelName} 채널???�뢰???�급??변경되?�습?�다 (${oldGrade} ??${newGrade})`,
+          `${channelName} 채널의 신뢰도 등급이 변경되었습니다 (${oldGrade} → ${newGrade})`,
           channelId ? `/channel/${channelId}` : `/p-ranking${categoryName ? `?category=${categoryName}` : ''}`
         ]
       );
