@@ -296,7 +296,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             >
               <div className="px-2.5 h-9 min-w-[40px] rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors flex items-center justify-center">
                 <span className="text-sm font-black tabular-nums">
-                  {credits !== null ? `${credits} C` : '…'}
+                  {credits !== null ? `${credits.toLocaleString()} C` : '…'}
                 </span>
               </div>
               <span className="text-[10px] font-bold text-amber-600">코인</span>

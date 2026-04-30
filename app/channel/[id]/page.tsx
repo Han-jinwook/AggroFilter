@@ -627,7 +627,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
               </button>
               {typeof credits === 'number' && (
                 <div className="flex-shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 border border-slate-200">
-                  코인 {credits}
+                  코인 {credits.toLocaleString()}
                 </div>
               )}
             </div>

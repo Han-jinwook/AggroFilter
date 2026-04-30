@@ -666,7 +666,7 @@ export default function AdminPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-indigo-600 font-bold uppercase mb-1">현재 코인</div>
-                      <div className="text-2xl font-black text-indigo-900">{foundUser.credits}</div>
+                      <div className="text-2xl font-black text-indigo-900">{foundUser.credits.toLocaleString()}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
