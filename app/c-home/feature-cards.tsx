@@ -12,8 +12,8 @@ interface TFeatureCard {
 const features: TFeatureCard[] = [
   {
     icon: Sparkles,
-    title: "AI 신뢰도 분석",
-    description: "논리적 일관성과 정확성을 기반으로 콘텐츠 신뢰도 평가",
+    title: "썸네일 스포일러",
+    description: "중요 영상 클릭 전 필수! 제목과 썸네일이 숨긴 진짜 결론을 10초 만에 즉시 확인하세요",
     gradient: "from-blue-50 to-blue-100",
     iconColor: "bg-blue-500",
   },
