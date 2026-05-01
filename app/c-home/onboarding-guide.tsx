@@ -22,9 +22,6 @@ export function OnboardingGuide() {
         <p className="text-base font-bold text-slate-800 leading-snug">
           <span className="text-purple-600 text-lg font-black mr-0.5">모바일</span>에서는 모든 분석 결과에 대해 조회할 수 있습니다.
         </p>
-        <p className="text-base font-bold text-slate-800 leading-snug">
-          낚시 영상에 20분 낭비하지 마세요. 단 <span className="text-orange-600 text-lg font-black mx-0.5">10초 만에</span> 결론만 스포일러!
-        </p>
 
         <div className="pt-2">
           <Link

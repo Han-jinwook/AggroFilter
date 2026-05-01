@@ -13,7 +13,8 @@ export function HeroSection({ isAnalyzing, isCompleted, url }: THeroSectionProps
   return (
     <div className="space-y-2">
       <h1 className="text-balance text-center text-xl font-bold leading-tight text-[#FF9800] md:text-2xl">
-        구독 유튜브 영상/채널: 신뢰도와 순위는?
+        낚시 영상에 20분 낭비하지 마세요.<br />
+        단 <span className="text-blue-600 text-[1.2em]">10초 만에</span> 결론만 스포일러!
       </h1>
 
       <AnimatePresence mode="wait">
