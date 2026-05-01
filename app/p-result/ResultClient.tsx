@@ -1071,21 +1071,23 @@ export default function ResultClient() {
       }
 
       return (
-        <div key={idx} className="mb-4 last:mb-0 text-left border-l-2 border-blue-200 pl-3">
-          <button
-            onClick={() => handleTimestampClick(chapter.ts)}
-            className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mb-1"
-          >
-            <Play className="w-3 h-3 fill-current" />
-            {chapter.ts}
-          </button>
-          <div className="flex flex-col gap-1">
+        <div key={idx} className="mb-6 last:mb-0 text-left border-l-2 border-blue-200 pl-4">
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={() => handleTimestampClick(chapter.ts)}
+              className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors shrink-0"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              {chapter.ts}
+            </button>
             {subtopic && (
-              <span className="inline-block font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md text-xs w-fit">
-                {subtopic}
+              <span className="font-bold text-gray-900 text-base md:text-lg">
+                {subtopic.replace(/^\[|\]$/g, '')}
               </span>
             )}
-            <span className="text-gray-700 leading-relaxed">{summaryText}</span>
+          </div>
+          <div className="text-gray-700 leading-relaxed text-sm md:text-base pl-0.5">
+            {summaryText}
           </div>
         </div>
       );
