@@ -26,8 +26,8 @@ const features: TFeatureCard[] = [
   },
   {
     icon: TrendingUp,
-    title: "채널 순위",
-    description: "자막 분석과 종합 리포트로 채널 순위 제공",
+    title: "청정 유튜버 랭킹",
+    description: "어그로 없는 진짜 유익한 채널은 어디일까? 누적 분석 데이터 기반 종합 순위를 확인하세요.",
     gradient: "from-amber-50 to-amber-100",
     iconColor: "bg-amber-500",
   },
