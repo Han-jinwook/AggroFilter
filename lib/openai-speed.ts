@@ -83,20 +83,22 @@ export async function analyzeContentSpeed(
     너는 유튜브 생태계 분석가다. 시청자가 실제로 "속았다"고 느끼는지 여부를 핵심 기준으로 점수를 매겨라.
 
     ## 2. 분석 지침 (Critical Instructions)
+    - **인사말 및 잡담 금지**: "안녕하세요", "반갑습니다", "채널 구독 부탁드립니다" 등 영상의 본론과 상관없는 인사말, 사담, 농담은 **절대 포함하지 마라**.
+    - **즉시 본론 시작**: 0:00 챕터부터 유튜버가 전달하는 핵심 정보와 맥락으로 바로 시작하라.
+
     3. **타임스탬프 요약 가이드 (문맥 기반 자율 분할)**:
         - **기계적 분할 금지**: 5분, 10분 단위로 딱딱 끊지 마라. 자막의 흐름을 읽고 **주제가 실제로 바뀌는 시점**을 정확히 포착하라.
         - **유연한 개수**: 영상 길이에 따라 **2개에서 최대 8개** 사이로 자율적으로 나누되, 30분 이내 영상이라면 문맥에 따라 2~6개 정도가 적당하다.
         - **성의 있는 상세 요약**: 소제목 뒤에는 반드시 해당 구간의 핵심 내용을 **2~3문장**으로 상세히 요약하라. 유튜버의 논리 구조(근거->결론)가 보여야 한다.
         - **형식**: 'MM:SS - [소제목]\\n상세 요약 내용...'
 
-    ## 3. ⚠️ 썸네일 스포일러 (Thumbnail Spoiler) — 스토리 빌드업 & 팩트 폭격
+    ## 3. ⚠️ 썸네일 스포일러 (Thumbnail Spoiler) — 구체적 팩트 폭격
     오직 **제목과 썸네일 이미지가 던진 '궁금증(떡밥)'**을 1개 이상 추출하고, 해당 떡밥에 대해 영상 본문에서 언급된 모든 핵심 내용을 종합하여 공개하라.
 
     ### 작성 규칙 (절대 준수)
-    1) **스토리 빌드업 (1/3)**: 유튜버가 해당 결론에 도달하기 위해 어떤 상황을 제시했는지, 어떤 맥락에서 이야기가 시작되었는지 시청자가 흥미를 느낄 수 있는 배경 설명을 충분히 포함하라.
-    2) **구체적 핵심 팩트 (2/3)**: 배경 설명 뒤에는 반드시 **"그래서 결론이 무엇인가?"**에 대한 정답을 제시하라. **실제 종목명, 수치, 특정 인물의 발언, 명확한 결과** 등 구체적인 핵심 정보를 누락 없이 기록하라. 
-    3) **분량 자율**: 단순히 짧게 요약하는 것이 목적이 아니다. 핵심 정보를 충분히 전달하기 위해 내용이 길어져도 상관없으니 **상세하고 풍성하게** 작성하라.
-    4) **출처 표기**: 반드시 구체적인 출처 유형(예: [출처: 영상 내 분석 자료], [출처: 유튜버의 최종 결론])으로 시작하라.
+    1) **구체적 명사 필수**: '특정 주식', '어떤 인물' 등 모호한 표현은 절대 금지한다. **종목명(예: 한화오션, 포스코홀딩스), 수치, 정답**을 반드시 포함하라.
+    2) **스토리 빌드업 (1/3)**: 유튜버가 해당 결론에 도달하기 위해 어떤 상황을 제시했는지 배경 설명을 충분히 포함하라.
+    3) **결론 (2/3)**: 제목에서 던진 궁금증에 대한 **최종 정답**을 돌직구로 던져라.
 
     ## 4. 출력 형식 (JSON Only)
     반드시 아래 JSON 형식으로만 응답하라. 모든 텍스트는 ${userLanguage === 'korean' ? '한국어' : 'English'}로 작성하라.
@@ -138,7 +140,15 @@ export async function analyzeContentSpeed(
         top_p: 0.9,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: 'You are a precise JSON-only assistant. Never use placeholder dots in source tags.' },
+          { 
+            role: 'system', 
+            content: `You are a precise JSON-only assistant. 
+              [Strict Rules]
+              1. Never include intro/outro greetings, self-introductions, or subscriber requests. 
+              2. Start directly with the main content at 0:00.
+              3. Never include raw JSON symbols like {" or "} inside the text fields.
+              4. In thumbnail_spoiler, you MUST identify the SPECIFIC answer to the bait (e.g., exact stock names, names of people). If the title says '2 stocks', you must name those 2 stocks.` 
+          },
           { role: 'user', content: userContent },
         ],
       },
