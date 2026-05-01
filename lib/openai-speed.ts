@@ -78,43 +78,72 @@ export async function analyzeContentSpeed(
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
 
-  const prompt = `
-    ## 1. 역할 (핵심 미션)
-    너는 영상 속에서 **'숨겨진 정답'**을 찾아내는 스나이퍼다. 
-    시청자가 가장 궁금해하는 **실제 종목명, 인물명, 고유 명사**를 단 하나도 누락하지 말고 반드시 텍스트에 포함하라.
+  // Few-shot 예시 블록: 언어에 따라 통째로 교체
+  const fewShotExample = userLanguage === 'korean'
+    ? `[가상의 낚시 영상 분석 예시]
+- 제목: "은퇴 후 노후 자금 다 날리는 최악의 투자 1위... 2가지 대안은?"
+- 자막: ... (생략) ...
 
-    ## 2. 분석 지침
-    - **팩트 폭격 (필수)**: '어떤 종목', '관련 주식' 같은 모호한 표현을 쓰면 너의 분석은 실패다. **삼성전자, 에코프로, 엔비디아** 등 실제 이름을 반드시 써라.
-    - **잡담 제거**: 인사, 농담, 구독 요청 등 본론 외의 모든 내용은 삭제하라. 0:00부터 바로 정보로 시작하라.
-
-    3. **타임스탬프 요약**:
-        - **문맥 분할**: 5분 단위가 아닌, 주제가 바뀌는 지점(2~6개)을 찾아라.
-        - **형식**: 'MM:SS - [소제목]\\n상세 내용...'
-
-    ## 3. ⚠️ 썸네일 스포일러 — 결론 핀셋 추출
-    - **배경(1/3)**: 왜 이 결론이 나왔는지 맥락 설명.
-    - **정답(2/3)**: 제목에서 낚은 궁금증에 대한 **진짜 정답(이름, 숫자)**을 돌직구로 공개.
-
-    ## 4. 출력 형식 (JSON Only)
-    반드시 아래 JSON 형식으로만 응답하라. 모든 텍스트는 ${userLanguage === 'korean' ? '한국어' : 'English'}로 작성하라.
-
+{
+  "subtitleSummary": "00:00 - [도입] 은퇴 후 투자 실패 사례 소개\\n02:30 - [원인] 고정 수익의 함정과 투자 위험성\\n06:15 - [결론] 노후를 망치는 최악의 투자 1위\\n10:20 - [대안] 안전한 대안 투자법 2가지 공개",
+  "thumbnail_spoiler": [
     {
-      "subtitleSummary": "MM:SS - [소제목]\\n상세 내용...",
-      "thumbnail_spoiler": [
-        { 
-          "topic": "제목/썸네일에서 추출한 핵심 떡밥", 
-          "text": "[출처: 유형] 스토리 빌드업(배경/맥락)을 먼저 기술한 후, 종목명/수치/결과 등 핵심 팩트로 강력하게 마무리하는 요약문", 
-          "ts": "MM:SS" 
-        }
-      ]
+      "topic": "최악의 투자 1위",
+      "text": "[출처: 유튜버의 개인 주장] 노후에 고정 수익을 노리고 접근하기 쉬운 투자법의 위험성을 경고함. 영상에서 꼽은 최악의 투자는 '신도시 상가 분양'으로, 높은 공실률 때문에 절대 피해야 한다고 명확히 지목함.",
+      "ts": "06:15"
+    },
+    {
+      "topic": "안전한 대안 투자법 2가지",
+      "text": "[출처: 유튜버의 개인 주장] 상가 투자 대신 노후 자금을 지킬 수 있는 안전한 대안으로 '미국 배당 성장 ETF(SCHD)'와 '국채 매입'을 구체적인 정답으로 제시함.",
+      "ts": "10:20"
     }
+  ]
+}`
+    : `[Fictional Clickbait Video Analysis Example]
+- Title: "The #1 Worst Investment That Ruins Your Retirement... 2 Alternatives?"
+- Transcript: ... (omitted) ...
 
-    [분석 대상 데이터]
-    채널명: ${channelName}
-    제목: ${title}
-    자막 데이터 (타임라인 참고용):
-    ${quickSummary}
-  `;
+{
+  "subtitleSummary": "00:00 - [Intro] Introduction to retirement investment failure cases\\n02:30 - [Cause] The trap of fixed-income investing\\n06:15 - [Conclusion] The #1 worst investment for retirees\\n10:20 - [Alternatives] Two safe alternatives revealed",
+  "thumbnail_spoiler": [
+    {
+      "topic": "#1 Worst Investment",
+      "text": "[Source: YouTuber's Opinion] The video warns against fixed-income investment traps that retirees commonly fall for. The #1 worst investment identified is 'new city commercial real estate', explicitly called out due to high vacancy rates.",
+      "ts": "06:15"
+    },
+    {
+      "topic": "2 Safe Alternatives",
+      "text": "[Source: YouTuber's Opinion] Instead of commercial real estate, the video specifically names 'US Dividend Growth ETF (SCHD)' and 'Government Bonds' as concrete, safe alternatives for protecting retirement funds.",
+      "ts": "10:20"
+    }
+  ]
+}`;
+
+  const prompt = `
+## 1. Role
+너는 시청자의 시간을 아껴주는 무자비한 '유튜브 스포일러 머신'이다.
+영상의 서론이나 잡담은 무시하고, 제목과 썸네일에서 던진 '미끼(궁금증)'에 대한 '정확한 명사형 정답(종목명, 인물명, 장소 등)'을 핀셋처럼 추출하라.
+
+## 2. Analysis Instructions
+- 팩트 추출: '어떤 종목', '특정 인물'처럼 모호하게 얼버무리지 마라. 영상에 등장한 [실제 종목명/인물명/구체적 행동]을 반드시 명시하라.
+- 요약의 기준: 기계적인 시간 단위 분할을 금지한다. 영상의 '논리적 흐름(도입 → 문제 제기 → 해결책 → 결론)'이 바뀔 때마다 타임스탬프를 분할하라.
+
+## 3. Thumbnail Spoiler Rules
+- 제목과 썸네일이 유도한 핵심 궁금증을 'topic'으로 잡는다.
+- 'text' 필드에는 해당 결론이 나오게 된 배경을 짧게 요약하고, 마지막에 반드시 [진짜 정답]을 돌직구로 밝혀라.
+
+## 4. 🌟 OUTPUT FORMAT & EXAMPLE (CRITICAL) 🌟
+반드시 아래의 JSON 구조와 완벽하게 동일한 형식, 어조, 디테일 수준으로 작성하라.
+절대 이 JSON 구조를 벗어나거나 불필요한 설명 텍스트를 덧붙이지 마라.
+
+${fewShotExample}
+
+[실제 분석 대상 데이터]
+채널명: ${channelName}
+제목: ${title}
+자막 내용:
+${quickSummary}
+`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 35000);
@@ -137,12 +166,7 @@ export async function analyzeContentSpeed(
         messages: [
           { 
             role: 'system', 
-            content: `You are a precise JSON-only assistant. 
-              [Strict Rules]
-              1. Never include intro/outro greetings, self-introductions, or subscriber requests. 
-              2. Start directly with the main content at 0:00.
-              3. Never include raw JSON symbols like {" or "} inside the text fields.
-              4. In thumbnail_spoiler, you MUST identify the SPECIFIC answer to the bait (e.g., exact stock names, names of people). If the title says '2 stocks', you must name those 2 stocks.` 
+            content: `You are a YouTube spoiler machine that outputs only valid JSON. Follow the user's instructions and example format exactly.` 
           },
           { role: 'user', content: userContent },
         ],
