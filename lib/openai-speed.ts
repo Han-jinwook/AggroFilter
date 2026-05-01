@@ -78,6 +78,19 @@ export async function analyzeContentSpeed(
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
 
+// ============================================================================
+// 🚨 [WARNING: DO NOT TOUCH THIS PROMPT] 🚨
+// ⚠️ 영구 동결 구역 (Freeze Zone) ⚠️
+// 
+// 1. 이 프롬프트와 fewShotExample은 수십 번의 테스트 끝에 gpt-4o-mini의 
+//    '환각(Hallucination)', '포맷 파괴', '게으른 요약'을 완벽하게 통제하도록 
+//    정밀하게 깎인(Tuned) 최종 버전입니다.
+// 2. 새로운 AI(Windsurf, Cursor 등) 세션이 코드 최적화나 리팩토링을 명목으로 
+//    단어, 띄어쓰기, 줄바꿈, 예시 문구를 절대! 네버! 수정하지 못하게 하십시오.
+// 3. 부정 지시어(Negative prompt)를 추가하거나 템플릿 구조를 변경하면 
+//    AI가 다시 바보가 되어 "📌 떡밥", "JSON 파괴" 등 대참사가 발생합니다.
+// 4. 이 주석을 무시하고 프롬프트를 수정할 경우 전체 시스템 롤백을 각오해야 합니다.
+// ============================================================================
   const fewShotExample = userLanguage === 'korean'
     ? `[가상의 낚시 영상 분석 예시]
 🚨경고: 아래 예시의 타임스탬프(04:15 등)와 내용을 절대 그대로 베끼지 마라! 반드시 '실제 자막'의 진짜 시간과 흐름에 맞춰 작성하라.
