@@ -19,8 +19,8 @@ const features: TFeatureCard[] = [
   },
   {
     icon: Shield,
-    title: "어그로 감지",
-    description: "자극적 표현과 낚시성 제목을 분석하여 점수화",
+    title: "AI 정밀 팩트체크",
+    description: "어그로성 조작부터 허위 사실까지, AI가 영상 전체를 꼼꼼하게 분석해 신뢰도 신호등을 켜드립니다.",
     gradient: "from-rose-50 to-rose-100",
     iconColor: "bg-rose-500",
   },
