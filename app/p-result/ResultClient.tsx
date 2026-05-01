@@ -1048,26 +1048,28 @@ export default function ResultClient() {
       let subtopic: string | null = null;
       let summaryText = chapter.content;
 
-      // Handle both "|||" and ":" as subtopic separators
-      const cleanContent = chapter.content.replace(/^(\s*[:\-\s]\s*)+/, '').trim();
+      // New format: " - [Subtopic]\nContent" or " - 소주제: 내용"
+      const cleanContent = chapter.content.replace(/^(\s*[\-\s]\s*)+/, '').trim();
       
-      const parts = cleanContent.split('|||');
-      if (parts.length >= 2) {
+      // 1. Check for "[Subtopic]" pattern
+      if (cleanContent.startsWith('[')) {
+        const endBracketIdx = cleanContent.indexOf(']');
+        if (endBracketIdx > 0) {
+          subtopic = cleanContent.substring(1, endBracketIdx).trim();
+          summaryText = cleanContent.substring(endBracketIdx + 1).trim();
+        }
+      } 
+      // 2. Fallback to "|||" or ":"
+      else if (cleanContent.includes('|||')) {
+        const parts = cleanContent.split('|||');
         subtopic = parts[0].trim();
         summaryText = parts[1].trim();
       } else if (cleanContent.includes(':')) {
         const colonIdx = cleanContent.indexOf(':');
-        // : 앞이 너무 길면 소주제가 아닐 수 있으므로 20자 제한
-        if (colonIdx > 0 && colonIdx < 20) {
+        if (colonIdx > 0 && colonIdx < 30) {
           subtopic = cleanContent.substring(0, colonIdx).trim();
           summaryText = cleanContent.substring(colonIdx + 1).trim();
-        } else {
-          subtopic = null;
-          summaryText = cleanContent;
         }
-      } else {
-        subtopic = null;
-        summaryText = cleanContent;
       }
 
       return (
@@ -1081,8 +1083,8 @@ export default function ResultClient() {
               {chapter.ts}
             </button>
             {subtopic && (
-              <span className="font-bold text-gray-900 text-base md:text-lg">
-                {subtopic.replace(/^\[|\]$/g, '')}
+              <span className="font-bold text-slate-900 text-base md:text-lg">
+                {subtopic}
               </span>
             )}
           </div>
