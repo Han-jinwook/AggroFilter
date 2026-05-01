@@ -1017,49 +1017,76 @@ export default function ResultClient() {
     if (!text) return null;
     const timestampRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     
-    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    // 1. 먼저 텍스트를 타임스탬프 기준으로 분할하여 모든 세그먼트를 추출
+    const segments = text.split(timestampRegex);
     
-    return lines.map((line, lineIdx) => {
-      // Find all timestamps in the line
-      const lineTimestamps = line.match(timestampRegex);
-      let contentToRender = line;
-      let firstTimestamp: string | null = null;
+    // 2. 세그먼트들을 순회하며 타임스탬프와 그 뒤의 텍스트를 그룹화
+    const chapters: { ts: string; content: string }[] = [];
+    let currentTs = "0:00";
+    let currentContent = "";
 
-      if (lineTimestamps && lineTimestamps.length > 0) {
-        firstTimestamp = lineTimestamps[0];
-        // Remove all timestamps from the content to render it separately
-        contentToRender = line.replace(timestampRegex, '').replace(/^(\s*[:\-\s]\s*)+/, '').trim();
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (segment.match(timestampRegex)) {
+        // 새로운 타임스탬프 발견 시 이전 챕터 저장 (내용이 있을 때만)
+        if (currentContent.trim()) {
+          chapters.push({ ts: currentTs, content: currentContent.trim() });
+        }
+        currentTs = segment;
+        currentContent = "";
+      } else {
+        currentContent += segment;
       }
+    }
+    // 마지막 챕터 추가
+    if (currentContent.trim()) {
+      chapters.push({ ts: currentTs, content: currentContent.trim() });
+    }
 
-      // Parse subtopic and summary (format: "소주제  요약문장")
+    return chapters.map((chapter, idx) => {
+      // Parse subtopic and summary (format: "소주제 ||| 요약문장" or "소주제: 요약문장")
       let subtopic: string | null = null;
-      let summaryText = contentToRender;
-      const parts = contentToRender.split('|||');
+      let summaryText = chapter.content;
+
+      // Handle both "|||" and ":" as subtopic separators
+      const cleanContent = chapter.content.replace(/^(\s*[:\-\s]\s*)+/, '').trim();
+      
+      const parts = cleanContent.split('|||');
       if (parts.length >= 2) {
         subtopic = parts[0].trim();
         summaryText = parts[1].trim();
+      } else if (cleanContent.includes(':')) {
+        const colonIdx = cleanContent.indexOf(':');
+        // : 앞이 너무 길면 소주제가 아닐 수 있으므로 20자 제한
+        if (colonIdx > 0 && colonIdx < 20) {
+          subtopic = cleanContent.substring(0, colonIdx).trim();
+          summaryText = cleanContent.substring(colonIdx + 1).trim();
+        } else {
+          subtopic = null;
+          summaryText = cleanContent;
+        }
       } else {
         subtopic = null;
-        summaryText = contentToRender;
+        summaryText = cleanContent;
       }
 
       return (
-        <div key={lineIdx} className="mb-3 last:mb-0 text-left">
+        <div key={idx} className="mb-4 last:mb-0 text-left border-l-2 border-blue-200 pl-3">
           <button
-            onClick={() => handleTimestampClick(firstTimestamp!)}
-            className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mr-2"
+            onClick={() => handleTimestampClick(chapter.ts)}
+            className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors mb-1"
           >
             <Play className="w-3 h-3 fill-current" />
-            {firstTimestamp}
+            {chapter.ts}
           </button>
-          {subtopic ? (
-            <>
-              <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{subtopic}</span>
-              <span className="text-gray-700">{summaryText}</span>
-            </>
-          ) : (
-            <span className="text-gray-700">{contentToRender}</span>
-          )}
+          <div className="flex flex-col gap-1">
+            {subtopic && (
+              <span className="inline-block font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md text-xs w-fit">
+                {subtopic}
+              </span>
+            )}
+            <span className="text-gray-700 leading-relaxed">{summaryText}</span>
+          </div>
         </div>
       );
     });
@@ -1308,7 +1335,7 @@ ${content}
                 <SubtitleButtons 
                   activeSubtitle={activeSubtitle} 
                   onToggle={() => setActiveSubtitle(activeSubtitle === "summary" ? null : "summary")}
-                  chapterCount={analysisData.summarySubtitle ? analysisData.summarySubtitle.split('\n').filter(line => line.trim().length > 0 && line.match(/\d{1,2}:\d{2}/)).length : 0}
+                  chapterCount={analysisData.summarySubtitle ? (analysisData.summarySubtitle.match(/(\d{1,2}:\d{2}(?::\d{2})?)/g) || []).length : 0}
                 />
               </div>
               {activeSubtitle === "summary" && (
