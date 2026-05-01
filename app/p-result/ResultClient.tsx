@@ -1015,10 +1015,14 @@ export default function ResultClient() {
 
   const renderTextWithTimestamps = (text: string) => {
     if (!text) return null;
+    
+    // AI가 실수로 포함한 JSON 기호들({" , "}, ",") 강제 제거
+    const cleanedText = text.replace(/^\{"|^\s*\{"|"\s*\}$|\}$|","$/g, '').trim();
+    
     const timestampRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     
     // 1. 먼저 텍스트를 타임스탬프 기준으로 분할하여 모든 세그먼트를 추출
-    const segments = text.split(timestampRegex);
+    const segments = cleanedText.split(timestampRegex);
     
     // 2. 세그먼트들을 순회하며 타임스탬프와 그 뒤의 텍스트를 그룹화
     const chapters: { ts: string; content: string }[] = [];
