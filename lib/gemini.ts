@@ -382,13 +382,15 @@ function chunkTranscriptItems(
 async function summarizeChunk(chunk: { startTime: string, text: string }, apiKey: string): Promise<string> {
   const ai = new GoogleGenAI({ apiKey });
   
-  const prompt = `Below is a part of a YouTube video transcript.
-Create a very short subtopic in Korean (1-4 words) that captures the main theme, then summarize the core content in exactly ONE concise Korean sentence.
+  const prompt = `Below is a part of a YouTube video transcript (starting at ${chunk.startTime}).
+Identify the single main topic shift or logical beat in this segment, then write ONE concise Korean sentence summarizing the core content.
 Output format: 소주제  요약문장
-Example: 주택 공급 확대  정부는 수도권 135만 채 공급 계획을 발표하고 있습니다.
-Do NOT use brackets or labels. Output natural Korean text only.
+Rules:
+- 소주제 must be a SPECIFIC noun/proper noun (e.g., "삼성SDI 매수 신호", "다리오 아모데이 창업 계기") — NOT vague labels like "투자 전략" or "결론"
+- Do NOT use brackets, labels, or markdown. Output natural Korean text only.
+- If this segment has no clear content shift, merge conceptually with the previous point.
 
-Transcript:
+Transcript segment:
 ${chunk.text}`;
 
   try {
@@ -398,14 +400,14 @@ ${chunk.text}`;
       config: { thinkingConfig: { thinkingBudget: 0 } },
     });
     const text = (result.text || '').trim();
-    const processedText = text.replace(/\n/g, '|||'); // Use a unique separator
-    // Always prepend the correct timestamp from chunk
+    const processedText = text.replace(/\n/g, '|||');
     return `${chunk.startTime} - ${processedText}`;
   } catch (e) {
     console.error(`Chunk summary failed for ${chunk.startTime}:`, e);
     return `${chunk.startTime} - [요약 실패]`;
   }
 }
+
 
 export async function analyzeContent(
 
