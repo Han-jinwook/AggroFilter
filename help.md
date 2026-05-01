@@ -1,4 +1,4 @@
-﻿# 외부 지원 요청서: Gemini 429 + 단계형 UX 지연 이슈
+# 외부 지원 요청서: Gemini 429 + 단계형 UX 지연 이슈
 
 작성 일시: 2026-04-27 21:17 (KST)
 프로젝트: AggroFilter (`d:/AggroFilter`)
@@ -83,24 +83,57 @@
 1. 현재 구조에서 Gemini 429를 실무적으로 줄일 수 있는 최적의 요청 스케줄링 패턴은?
 2. speed 실패 빈도가 높은 경우, full 단독 모드 fallback UX를 어떻게 설계해야 이탈률이 낮은가?
 3. Netlify/Next.js App Router 환경에서 분석 폴링 + 단계형 렌더의 권장 아키텍처는?
-4. 서버리스 환경에서 quota burst를 줄이기 위한 큐 도입 시 최소 변경안은?
+# AggroFilter 개발 가이드 & 이슈 로그
 
----
+## 🚨 최신 이슈 보고 (2026-05-01 22:45)
+**상태**: AI 분석 품질 저하 및 프롬프트 제어 실패 (긴급 리셋 필요)
 
-## 7) 첨부 대상 자료
+### 1. 주요 문제점
+- **타임라인 회귀**: 정밀 타임라인 지시에도 불구하고 다시 0, 5, 10분 등 5분 단위로 기계적으로 끊김.
+- **스포일러 토픽 오류**: 제목/썸네일에서 떡밥을 추출하라는 지시를 오해하여 `📌 떡밥`, `📌 정답`이라는 문자열을 그대로 토픽으로 출력함.
+- **JSON 파편 노출**: 텍스트 필드 내부에 `{"`, `","` 등 JSON 문법 기호가 섞여 나옴 (프론트엔드 방어 코드를 추가했음에도 데이터 자체가 오염됨).
+- **정보 누락**: 구체적인 종목명(팩트)을 짚어내지 못하고 추상적인 설명에 그침.
 
-- 2026-04-27 21:14~21:17(KST) 서버 로그 원문
-- 사용자 화면 스크린샷(상단 카드만 표시, 하단 공백)
-- 관련 수정 파일 목록
-  - `app/api/analysis/request/route.ts`
-  - `app/page.tsx`
-  - `app/p-result/ResultClient.tsx`
-  - `lib/gemini.ts`
+### 2. 현재 적용된 최종 시스템 프롬프트 (System)
+```text
+You are a precise JSON-only assistant. 
+Never include intro/outro greetings, self-introductions, or subscriber requests. 
+Start directly with the main content at 0:00.
+Never include raw JSON symbols like {" or "} inside the text fields.
+In thumbnail_spoiler, you MUST identify the SPECIFIC answer to the bait (e.g., exact stock names, names of people). 
+If the title says '2 stocks', you must name those 2 stocks.
+```
 
----
+### 3. 현재 적용된 최종 유저 프롬프트 (User/Speed Track)
+```text
+## 1. 역할 (핵심 미션)
+너는 영상 속에서 **'숨겨진 정답'**을 찾아내는 스나이퍼다. 
+시청자가 가장 궁금해하는 **실제 종목명, 인물명, 고유 명사**를 단 하나도 누락하지 말고 반드시 텍스트에 포함하라.
 
-## 8) 현재 결론
+## 2. 분석 지침
+- **팩트 폭격 (필수)**: '어떤 종목', '관련 주식' 같은 모호한 표현을 쓰면 너의 분석은 실패다. **실제 종목 이름**을 반드시 써라.
+- **잡담 제거**: 인사, 농담, 구독 요청 등 본론 외의 모든 내용은 삭제하라. 0:00부터 바로 정보로 시작하라.
 
-- 즉시 실패(alert) 문제는 완화됨.
-- 그러나 speed 429가 계속 발생할 때 UX 공백 체감이 남아 있음.
+3. **타임스탬프 요약**:
+    - **문맥 분할**: 5분 단위가 아닌, 주제가 바뀌는 지점(2~6개)을 찾아라.
+    - **형식**: 'MM:SS - [소제목]\n내용...'
+
+## 3. ⚠️ 썸네일 스포일러 — 결론 핀셋 추출
+- **배경(1/3)**: 왜 이 결론이 나왔는지 맥락 설명.
+- **정답(2/3)**: 제목에서 낚은 궁금증에 대한 **진짜 정답(이름, 숫자)**을 돌직구로 공개.
+
+## 4. 출력 형식 (JSON Only)
+{
+  "subtitleSummary": "MM:SS - [소제목]\n내용...",
+  "thumbnail_spoiler": [
+    { "topic": "떡밥", "text": "배경과 정답", "ts": "MM:SS" }
+  ]
+}
+```
+
+### 4. 기술적 부채 및 향후 과제
+- `gpt-4o-mini` 모델의 제약 조건을 `gpt-4o` 급으로 상향 검토 필요.
+- 프롬프트 구조를 JSON 응답에 더 최적화된 형태로 재설계 필요 (Few-shot 예시 보강).
+- 자막 데이터 전처리 시 타임스탬프를 더 명시적으로 태깅하여 전달할 것.
+UX 공백 체감이 남아 있음.
 - 이 구간은 API 쿼터 대응(백엔드 운영전략) + 클라이언트 fallback UX를 동시에 설계해야 안정적으로 해결 가능.
