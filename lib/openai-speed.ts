@@ -78,43 +78,38 @@ export async function analyzeContentSpeed(
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
 
-  // Few-shot 예시 블록: 언어에 따라 통째로 교체
   const fewShotExample = userLanguage === 'korean'
     ? `[가상의 낚시 영상 분석 예시]
-- 제목: "은퇴 후 노후 자금 다 날리는 최악의 투자 1위... 2가지 대안은?"
-- 자막: ... (생략) ...
-
+🚨경고: 아래 예시의 타임스탬프(04:15 등)와 내용을 절대 그대로 베끼지 마라! 반드시 '실제 자막'의 진짜 시간과 흐름에 맞춰 작성하라.
 {
-  "subtitleSummary": "00:00 - [도입] 은퇴 후 투자 실패 사례 소개\\n02:30 - [원인] 고정 수익의 함정과 투자 위험성\\n06:15 - [결론] 노후를 망치는 최악의 투자 1위\\n10:20 - [대안] 안전한 대안 투자법 2가지 공개",
+  "subtitleSummary": "00:00 - 은퇴 후 투자 실패의 뼈아픈 교훈\\n노후 자금으로 고정 수익을 노리고 상가 분양에 뛰어든 사람들의 실패 사례를 소개합니다. 안정적으로 보였던 월세 수입이 어떻게 큰 손실로 이어지는지 구체적인 데이터를 통해 분석합니다.\\n\\n04:15 - 상가 투자의 숨겨진 함정과 위험성\\n신도시 상가의 높은 공실률과 대출 이자 부담으로 인한 파산 위험을 경고합니다. 특히 분양 대행사의 과장 광고에 속아 노후 자금을 모두 잃게 되는 과정을 상세히 설명합니다.\\n\\n09:30 - 노후 자금을 지키는 안전한 대안 투자법\\n위험한 상가 투자 대신 '미국 배당 성장 ETF(SCHD)'와 같은 안전한 대안을 제시합니다. 장기적인 관점에서 배당 수익과 자본 차익을 동시에 얻을 수 있는 전략을 강조합니다.",
   "thumbnail_spoiler": [
     {
-      "topic": "최악의 투자 1위",
-      "text": "[출처: 유튜버의 개인 주장] 노후에 고정 수익을 노리고 접근하기 쉬운 투자법의 위험성을 경고함. 영상에서 꼽은 최악의 투자는 '신도시 상가 분양'으로, 높은 공실률 때문에 절대 피해야 한다고 명확히 지목함.",
-      "ts": "06:15"
+      "topic": "최악의 투자 1위: 신도시 상가 분양",
+      "text": "[출처: 유튜버의 주장] 영상에서 꼽은 최악의 투자는 '신도시 상가 분양'으로 지목함.",
+      "ts": "04:15"
     },
     {
-      "topic": "안전한 대안 투자법 2가지",
-      "text": "[출처: 유튜버의 개인 주장] 상가 투자 대신 노후 자금을 지킬 수 있는 안전한 대안으로 '미국 배당 성장 ETF(SCHD)'와 '국채 매입'을 구체적인 정답으로 제시함.",
-      "ts": "10:20"
+      "topic": "대안 투자법: SCHD ETF·국채",
+      "text": "[출처: 유튜버의 주장] 상가 투자 대신 '미국 배당 성장 ETF(SCHD)'를 대안으로 제시함.",
+      "ts": "09:30"
     }
   ]
 }`
     : `[Fictional Clickbait Video Analysis Example]
-- Title: "The #1 Worst Investment That Ruins Your Retirement... 2 Alternatives?"
-- Transcript: ... (omitted) ...
-
+🚨WARNING: DO NOT copy the timestamps (e.g., 04:15) or the exact content from this example. You MUST extract real timestamps and logical flow from the actual provided subtitles.
 {
-  "subtitleSummary": "00:00 - [Intro] Introduction to retirement investment failure cases\\n02:30 - [Cause] The trap of fixed-income investing\\n06:15 - [Conclusion] The #1 worst investment for retirees\\n10:20 - [Alternatives] Two safe alternatives revealed",
+  "subtitleSummary": "00:00 - Painful Lessons of Retirement Investment Failures\\nIntroduces failure cases of people who invested in commercial real estate aiming for fixed income. Analyzes through specific data how seemingly stable monthly rent income leads to massive losses.\\n\\n04:15 - Hidden Traps and Risks of Commercial Real Estate\\nWarns of bankruptcy risks due to high vacancy rates and loan interest burdens in new city commercial areas. Details the process of losing retirement funds due to exaggerated advertising.\\n\\n09:30 - Safe Alternative Investments to Protect Retirement Funds\\nSuggests 'US Dividend Growth ETF (SCHD)' as a safe alternative to risky commercial real estate. Emphasizes strategies to gain dividend income from a long-term perspective.",
   "thumbnail_spoiler": [
     {
-      "topic": "#1 Worst Investment",
-      "text": "[Source: YouTuber's Opinion] The video warns against fixed-income investment traps that retirees commonly fall for. The #1 worst investment identified is 'new city commercial real estate', explicitly called out due to high vacancy rates.",
-      "ts": "06:15"
+      "topic": "#1 Worst Investment: New City Commercial Real Estate",
+      "text": "[Source: YouTuber's Claim] The video specifically identifies 'new city commercial real estate' as the worst investment.",
+      "ts": "04:15"
     },
     {
-      "topic": "2 Safe Alternatives",
-      "text": "[Source: YouTuber's Opinion] Instead of commercial real estate, the video specifically names 'US Dividend Growth ETF (SCHD)' and 'Government Bonds' as concrete, safe alternatives for protecting retirement funds.",
-      "ts": "10:20"
+      "topic": "Alternative Investments: SCHD ETF & Government Bonds",
+      "text": "[Source: YouTuber's Claim] The video suggests 'US Dividend Growth ETF (SCHD)' as a safe alternative.",
+      "ts": "09:30"
     }
   ]
 }`;
