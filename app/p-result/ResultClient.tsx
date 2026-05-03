@@ -1130,7 +1130,7 @@ export default function ResultClient() {
 
       if (isHeading) {
         return (
-          <div key={lineIdx} className="text-base font-bold text-slate-900 mt-4 mb-1.5 first:mt-0">
+          <div key={lineIdx} className="text-base font-bold text-blue-600 mt-4 mb-1.5 first:mt-0">
             {renderedLine}
           </div>
         );
