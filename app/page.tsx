@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
