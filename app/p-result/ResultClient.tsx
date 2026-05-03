@@ -1083,22 +1083,22 @@ export default function ResultClient() {
       }
 
       return (
-        <div key={idx} className="mb-8 last:mb-0 text-left border-l-4 border-blue-100 pl-6 py-1">
-          <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div key={idx} className="mb-6 last:mb-0 text-left border-l-4 border-blue-100 pl-5 py-0.5">
+          <div className="flex flex-wrap items-center gap-2.5 mb-2">
             <button
               onClick={() => handleTimestampClick(chapter.ts)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all shrink-0 border border-blue-200/50 shadow-sm"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all shrink-0 border border-blue-200/50"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span className="text-sm tracking-tight">{chapter.ts}</span>
+              <Play className="w-3 h-3 fill-current" />
+              <span className="text-xs font-bold">{chapter.ts}</span>
             </button>
             {subtopic && (
-              <span className="font-black text-slate-950 text-lg md:text-xl tracking-tight leading-none">
+              <span className="font-bold text-slate-900 text-base tracking-tight">
                 {subtopic}
               </span>
             )}
           </div>
-          <div className="text-slate-700 leading-relaxed text-base md:text-[17px] pl-0.5 font-medium opacity-90">
+          <div className="text-slate-600 leading-relaxed text-sm md:text-base font-normal">
             {summaryText}
           </div>
         </div>
@@ -1109,12 +1109,10 @@ export default function ResultClient() {
   const renderHighlightedText = (text: string) => {
     if (!text) return null;
     
-    // 줄바꿈 기준으로 나누어 각 줄의 형식을 검사
     const lines = text.split('\n');
     
     return lines.map((line, lineIdx) => {
       const trimmedLine = line.trim();
-      // "1. ", "2. ", "3. " 등으로 시작하는지 확인
       const isHeading = /^\d+\.\s/.test(trimmedLine);
       
       const parts = line.split(/(\*\*[^*]+\*\*)/g);
@@ -1122,7 +1120,7 @@ export default function ResultClient() {
         if (part.startsWith('**') && part.endsWith('**')) {
           const inner = part.slice(2, -2);
           return (
-            <mark key={`${lineIdx}-${i}`} className="bg-yellow-200 text-gray-900 px-0.5 rounded-sm font-semibold" style={{ textDecoration: 'none' }}>
+            <mark key={`${lineIdx}-${i}`} className="bg-yellow-100 text-gray-900 px-0.5 rounded-sm font-semibold" style={{ textDecoration: 'none' }}>
               {inner}
             </mark>
           );
@@ -1132,14 +1130,14 @@ export default function ResultClient() {
 
       if (isHeading) {
         return (
-          <div key={lineIdx} className="text-base md:text-[18px] font-bold text-slate-900 mt-5 mb-2 first:mt-0">
+          <div key={lineIdx} className="text-base font-bold text-slate-900 mt-4 mb-1.5 first:mt-0">
             {renderedLine}
           </div>
         );
       }
 
       return (
-        <div key={lineIdx} className="mb-1 last:mb-0">
+        <div key={lineIdx} className="mb-1 last:mb-0 text-sm md:text-base text-slate-700">
           {renderedLine}
         </div>
       );
