@@ -1108,17 +1108,41 @@ export default function ResultClient() {
 
   const renderHighlightedText = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const inner = part.slice(2, -2);
+    
+    // 줄바꿈 기준으로 나누어 각 줄의 형식을 검사
+    const lines = text.split('\n');
+    
+    return lines.map((line, lineIdx) => {
+      const trimmedLine = line.trim();
+      // "1. ", "2. ", "3. " 등으로 시작하는지 확인
+      const isHeading = /^\d+\.\s/.test(trimmedLine);
+      
+      const parts = line.split(/(\*\*[^*]+\*\*)/g);
+      const renderedLine = parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          const inner = part.slice(2, -2);
+          return (
+            <mark key={`${lineIdx}-${i}`} className="bg-yellow-200 text-gray-900 px-0.5 rounded-sm font-semibold" style={{ textDecoration: 'none' }}>
+              {inner}
+            </mark>
+          );
+        }
+        return <span key={`${lineIdx}-${i}`}>{part}</span>;
+      });
+
+      if (isHeading) {
         return (
-          <mark key={i} className="bg-yellow-200 text-gray-900 px-0.5 rounded-sm font-semibold" style={{ textDecoration: 'none' }}>
-            {inner}
-          </mark>
+          <div key={lineIdx} className="text-base md:text-[18px] font-bold text-slate-900 mt-5 mb-2 first:mt-0">
+            {renderedLine}
+          </div>
         );
       }
-      return <span key={i}>{part}</span>;
+
+      return (
+        <div key={lineIdx} className="mb-1 last:mb-0">
+          {renderedLine}
+        </div>
+      );
     });
   };
 
