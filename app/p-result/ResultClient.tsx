@@ -1137,7 +1137,7 @@ export default function ResultClient() {
       }
 
       return (
-        <div key={lineIdx} className="mb-1 last:mb-0 text-sm md:text-base text-slate-700">
+        <div key={lineIdx} className="mb-1 last:mb-0 text-sm md:text-base font-normal text-slate-600">
           {renderedLine}
         </div>
       );
@@ -1512,7 +1512,7 @@ ${content}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
-              <div className={`text-sm leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
+              <div className={`leading-relaxed whitespace-pre-line ${!showMore ? 'line-clamp-4' : ''}`}>
                 {renderHighlightedText(
                   evaluationReasonText
                     .replace(/(어그로성\s*평가\s*\(\s*\d+\s*점)\s*\/\s*[^)]+\)/g, '$1)')
