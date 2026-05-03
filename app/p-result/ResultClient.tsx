@@ -306,8 +306,25 @@ export default function ResultClient() {
           return hasSummary || hasSpoiler
         }
 
-        const schedulePhase2Reveal = () => {
-          if (phase2ReadyRef.current || phase2TimerRef.current !== null) return
+        const schedulePhase2Reveal = (immediate = false) => {
+          if (phase2ReadyRef.current || phase2TimerRef.current !== null) {
+            if (immediate && !phase2ReadyRef.current) {
+              if (phase2TimerRef.current !== null) {
+                window.clearTimeout(phase2TimerRef.current)
+                phase2TimerRef.current = null
+              }
+              phase2ReadyRef.current = true
+              setShowPhase2(true)
+            }
+            return
+          }
+          
+          if (immediate) {
+            phase2ReadyRef.current = true
+            setShowPhase2(true)
+            return
+          }
+
           phase2TimerRef.current = window.setTimeout(() => {
             if (isCancelled) return
             phase2ReadyRef.current = true
@@ -324,8 +341,25 @@ export default function ResultClient() {
           }, 1300)
         }
 
-        const schedulePhase3Reveal = () => {
-          if (phase3TimerRef.current !== null || showPhase3) return
+        const schedulePhase3Reveal = (immediate = false) => {
+          if (phase3TimerRef.current !== null || showPhase3) {
+            if (immediate && !showPhase3) {
+              if (phase3TimerRef.current !== null) {
+                window.clearTimeout(phase3TimerRef.current)
+                phase3TimerRef.current = null
+              }
+              setShowPhase3(true)
+              setIsRefining(false)
+            }
+            return
+          }
+
+          if (immediate) {
+            setShowPhase3(true)
+            setIsRefining(false)
+            return
+          }
+
           if (phase2ReadyRef.current) {
             phase3TimerRef.current = window.setTimeout(() => {
               if (isCancelled) return
@@ -337,15 +371,15 @@ export default function ResultClient() {
           completedWaitingPhase3Ref.current = true
         }
 
+        const isCompletedOnFirstFetch = isCompletedPayload(data)
         if (!isCancelled) {
           setAnalysisData(data.analysisData)
           setLoading(false)
           if (hasSpeedPayload(data)) {
-            schedulePhase2Reveal()
+            schedulePhase2Reveal(isCompletedOnFirstFetch)
           }
         }
 
-        const isCompletedOnFirstFetch = isCompletedPayload(data)
         if (!isCompletedOnFirstFetch && !isCancelled) {
           setIsRefining(true)
         }
@@ -378,7 +412,7 @@ export default function ResultClient() {
           setAnalysisData(data.analysisData)
 
           if (isCompletedNow) {
-            schedulePhase3Reveal()
+            schedulePhase3Reveal(isCompletedOnFirstFetch)
           }
 
           if (isCompletedNow) {
