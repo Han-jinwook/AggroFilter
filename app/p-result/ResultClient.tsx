@@ -1063,7 +1063,13 @@ export default function ResultClient() {
           summaryText = cleanContent.substring(endBracketIdx + 1).trim();
         }
       } 
-      // 2. Fallback to "|||" or ":"
+      // 2. Fallback to "\n" (OpenAI Speed Track format)
+      else if (cleanContent.includes('\n')) {
+        const lines = cleanContent.split('\n');
+        subtopic = lines[0].trim();
+        summaryText = lines.slice(1).join('\n').trim();
+      }
+      // 3. Fallback to "|||" or ":"
       else if (cleanContent.includes('|||')) {
         const parts = cleanContent.split('|||');
         subtopic = parts[0].trim();
@@ -1077,22 +1083,22 @@ export default function ResultClient() {
       }
 
       return (
-        <div key={idx} className="mb-6 last:mb-0 text-left border-l-2 border-blue-200 pl-4">
-          <div className="flex items-center gap-3 mb-2">
+        <div key={idx} className="mb-8 last:mb-0 text-left border-l-4 border-blue-100 pl-6 py-1">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
             <button
               onClick={() => handleTimestampClick(chapter.ts)}
-              className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all shrink-0 border border-blue-200/50 shadow-sm"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              {chapter.ts}
+              <span className="text-sm tracking-tight">{chapter.ts}</span>
             </button>
             {subtopic && (
-              <span className="font-bold text-slate-900 text-base md:text-lg">
+              <span className="font-black text-slate-950 text-lg md:text-xl tracking-tight leading-none">
                 {subtopic}
               </span>
             )}
           </div>
-          <div className="text-gray-700 leading-relaxed text-sm md:text-base pl-0.5">
+          <div className="text-slate-700 leading-relaxed text-base md:text-[17px] pl-0.5 font-medium opacity-90">
             {summaryText}
           </div>
         </div>

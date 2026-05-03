@@ -20,6 +20,7 @@ export interface OTPVerifyResult {
   email?: string;
   nickname?: string;
   avatar_url?: string;
+  referral_code?: string;
   error?: string;
 }
 
@@ -50,12 +51,14 @@ export async function requestOTP(email: string): Promise<OTPRequestResult> {
  * OTP 인증코드 검증 → 성공 시 JWT를 localStorage에 저장
  * @param email 사용자 이메일
  * @param code 6자리 OTP 코드
+ * @param appId 앱 식별자 (예: AGGRO_FILTER)
+ * @param referralCode 추천인 코드
  */
-export async function verifyOTP(email: string, code: string): Promise<OTPVerifyResult> {
+export async function verifyOTP(email: string, code: string, appId?: string, referralCode?: string): Promise<OTPVerifyResult> {
   try {
     const { ok, data } = await hubFetch<OTPVerifyResult>('/api/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ email, code, appId, referralCode }),
     });
 
     if (!ok) {
@@ -70,10 +73,15 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
 
     const resolvedUserId = data.userId || data.familyUid;
 
-    // userId(UUID) 저장 (지갑 등에서 참조)
-    if (resolvedUserId && typeof window !== 'undefined') {
-      localStorage.setItem('merlin_user_id', resolvedUserId);
-      localStorage.setItem('merlin_family_uid', resolvedUserId);
+    // 데이터 저장 (지갑 및 UI에서 참조)
+    if (typeof window !== 'undefined') {
+      if (resolvedUserId) {
+        localStorage.setItem('merlin_user_id', resolvedUserId);
+        localStorage.setItem('merlin_family_uid', resolvedUserId);
+      }
+      if (data.referral_code) {
+        localStorage.setItem('userReferralCode', data.referral_code);
+      }
     }
 
     return {
@@ -84,6 +92,7 @@ export async function verifyOTP(email: string, code: string): Promise<OTPVerifyR
       email: data.email || email,
       nickname: data.nickname,
       avatar_url: data.avatar_url,
+      referral_code: data.referral_code
     };
   } catch (err) {
     console.error('[MerlinHub] verifyOTP error:', err);
@@ -97,6 +106,7 @@ export interface SessionResult {
   userId?: string;
   nickname?: string;
   avatar_url?: string;
+  referral_code?: string;
 }
 
 /**
@@ -113,12 +123,19 @@ export async function checkSession(): Promise<SessionResult> {
       return { valid: false };
     }
     const u = data.user;
+    
+    // UI 동기화를 위해 추천 코드 저장
+    if (u.referral_code && typeof window !== 'undefined') {
+      localStorage.setItem('userReferralCode', u.referral_code);
+    }
+
     return { 
       valid: true, 
       email: u.email, 
       userId: u.userId || u.id,
       nickname: u.nickname,
-      avatar_url: u.avatar_url
+      avatar_url: u.avatar_url,
+      referral_code: u.referral_code
     };
   } catch {
     return { valid: false };

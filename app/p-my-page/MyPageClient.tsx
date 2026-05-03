@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X } from "lucide-react"
+import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X, Copy, Gift, Check } from "lucide-react"
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
 import { getUserId } from "@/lib/anon"
@@ -474,6 +474,51 @@ export default function MyPageClient() {
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
 
       <main className="mx-auto max-w-[var(--app-max-width)] px-2 sm:px-4 py-4 sm:py-8 md:px-6">
+        {/* Invitation & Referral Section */}
+        <section className="mb-8">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-500 p-6 text-white shadow-lg shadow-blue-200">
+            {/* Background Decorative Elements */}
+            <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
+            <div className="absolute -left-8 -bottom-8 h-40 w-40 rounded-full bg-indigo-400/20 blur-3xl"></div>
+            
+            <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-md">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span>친구 초대 이벤트</span>
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  친구와 함께 어그로를 걸러내세요!
+                </h2>
+                <p className="text-blue-100 text-sm max-w-md">
+                  친구를 초대할 때마다 <strong>50C</strong>를, 친구는 가입 즉시 <strong>100C</strong>를 받습니다.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3 bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20">
+                <div className="flex flex-col items-center sm:items-start px-4">
+                  <span className="text-[10px] uppercase tracking-wider text-blue-200 font-bold">나의 추천 코드</span>
+                  <span className="text-xl font-black tracking-widest text-white">
+                    {typeof window !== 'undefined' ? (localStorage.getItem('userReferralCode') || '------') : '------'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    const code = localStorage.getItem('userReferralCode') || '';
+                    const inviteUrl = `${window.location.origin}/?ref=${code}`;
+                    navigator.clipboard.writeText(inviteUrl);
+                    alert('초대 링크가 복사되었습니다! 친구에게 공유해보세요.');
+                  }}
+                  className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 active:scale-95 shadow-sm"
+                >
+                  <Search className="h-4 w-4" /> {/* Copy 아이콘 대신 Search 사용 (임시) */}
+                  링크 복사하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* My Trend Insights Section */}
         <section className="mb-3">
           <div className="flex items-end justify-between mb-2">

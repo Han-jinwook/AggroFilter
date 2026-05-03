@@ -32,6 +32,15 @@ export default function MainPage() {
     const storedEmail = localStorage.getItem("userEmail")
     if (storedEmail) setUserEmail(storedEmail)
 
+    // 추천인 코드(ref) 캡처
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref) {
+      localStorage.setItem('pendingReferralCode', ref)
+      console.log('Referral code captured from URL:', ref)
+      setShowLoginModal(true)
+    }
+
     // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me → Hub SDK checkSession
     let isMounted = true
     checkSession().then((session) => {

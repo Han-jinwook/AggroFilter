@@ -16,10 +16,8 @@ interface TLoginModalProps {
 
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalProps) {
   const [step, setStep] = useState<"email" | "code">("email")
-  const [email, setEmail] = useState("")
-  const [code, setCode] = useState(["", "", "", "", "", ""])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [referralCode, setReferralCode] = useState("")
+  const [showReferralInput, setShowReferralInput] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -94,7 +92,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
         return
       }
 
-      const result = await verifyOTP(email, fullCode)
+      const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER', referralCode)
       if (!result.success) {
         setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
         setCode(["", "", "", "", "", ""])
@@ -105,6 +103,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       // 여기서는 UI 표시용 정보만 추가 저장
       if (result.email) localStorage.setItem('userEmail', result.email)
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
+      if (result.referral_code) localStorage.setItem('userReferralCode', result.referral_code)
       onLoginSuccess(result.email || email, result.userId || '')
     } catch (err) {
       console.error(err)
@@ -136,10 +135,23 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       setStep("email")
       setEmail("")
       setCode(["", "", "", "", "", ""])
+      setReferralCode("")
+      setShowReferralInput(false)
       setError("")
     }
     onOpenChange(isOpen)
   }
+
+  useEffect(() => {
+    if (open) {
+      const pendingCode = localStorage.getItem('pendingReferralCode')
+      if (pendingCode) {
+        setReferralCode(pendingCode.toUpperCase())
+        setShowReferralInput(true)
+        localStorage.removeItem('pendingReferralCode')
+      }
+    }
+  }, [open])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -168,6 +180,30 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   className="h-12"
                 />
               </div>
+
+              {!showReferralInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReferralInput(true)}
+                  className="text-xs text-blue-500 hover:underline"
+                >
+                  추천인 코드가 있으신가요?
+                </button>
+              ) : (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label htmlFor="referral" className="text-sm font-medium text-slate-600">
+                    추천인 코드 (선택)
+                  </label>
+                  <Input
+                    id="referral"
+                    placeholder="친구의 초대코드 입력"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    className="h-10 bg-slate-50"
+                  />
+                </div>
+              )}
+
               {error && <p className="text-sm text-red-500 text-center">{error}</p>}
               <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
                 {isLoading ? "발송 중..." : "인증코드 받기"}
