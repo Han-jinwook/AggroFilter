@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
 import { LoginModal } from "@/components/c-login-modal"
@@ -55,77 +53,7 @@ export default function MainPage() {
 
   // REFACTORED_BY_MERLIN_HUB: 매직링크 deprecated — Hub OTP 인증으로 전환됨
 
-  // 크롬 확장팩에서 진입 시 처리
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const from = params.get('from')
-    const urlParam = params.get('url')
-
-    if (!urlParam || autoStarted || isAnalyzing || isCompleted) return
-
-    // [대기제로 3단계 호환 안전망] 구버전 확장팩이 / 로 들어온 경우
-    // 결과 페이지로 즉시 이관하여 큰 썸네일 + 안내를 먼저 노출.
-    if (from === 'chrome-extension') {
-      router.replace(`/p-result?url=${encodeURIComponent(urlParam)}&from=chrome-extension`)
-      return
-    }
-
-    setUrl(urlParam)
-    setAutoStarted(true)
-
-    // 분석 시작 후 URL 파라미터 제거 → 리마운트/새로고침 시 중복 트리거 방지
-    window.history.replaceState({}, '', window.location.pathname)
-
-    startAnalysis(urlParam)
-  }, [autoStarted, isAnalyzing, isCompleted, router])
-
-  useEffect(() => {
-    const handleOpenLoginModal = () => {
-      setShowLoginModal(true)
-    }
-    window.addEventListener("openLoginModal", handleOpenLoginModal)
-    return () => {
-      window.removeEventListener("openLoginModal", handleOpenLoginModal)
-    }
-  }, [])
-
-  // 크롬 확장팩에서 자막 데이터 가져오기 (postMessage 리스닝)
-  const fetchTranscriptFromExtension = (): Promise<{ transcript?: string; transcriptItems?: any[] } | null> => {
-    return new Promise((resolve) => {
-      let resolved = false
-
-      const handler = (event: MessageEvent) => {
-        if (event.data?.type === 'AGGRO_TRANSCRIPT_DATA' && !resolved) {
-          resolved = true
-          window.removeEventListener('message', handler)
-          // 수신 확인 → inject-transcript.js가 반복 전송 중단
-          window.postMessage({ type: 'AGGRO_TRANSCRIPT_RECEIVED' }, '*')
-          const data = event.data.data
-          if (data?.transcript) {
-            console.log(`[확장팩] 자막 데이터 수신: ${data.transcript.length}자`)
-            resolve(data)
-          } else {
-            console.log('[확장팩] 자막 데이터 없음 — 서버 자막 추출로 진행')
-            resolve(null)
-          }
-        }
-      }
-
-      window.addEventListener('message', handler)
-
-      // 최대 8초 대기 (inject-transcript.js가 background 응답 받는 시간 포함)
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true
-          window.removeEventListener('message', handler)
-          console.log('[확장팩] 자막 데이터 대기 타임아웃 — 서버 자막 추출로 진행')
-          resolve(null)
-        }
-      }, 8000)
-    })
-  }
-
-  const startAnalysis = async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
+  const startAnalysis = useCallback(async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
     setIsAnalyzing(true)
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
@@ -287,7 +215,31 @@ export default function MainPage() {
     } finally {
       setIsAnalyzing(false);
     }
-  }
+  }, [router, userEmail])
+
+  // 크롬 확장팩에서 진입 시 처리
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const from = params.get('from')
+    const urlParam = params.get('url')
+
+    if (!urlParam || autoStarted || isAnalyzing || isCompleted) return
+
+    // [대기제로 3단계 호환 안전망] 구버전 확장팩이 / 로 들어온 경우
+    // 결과 페이지로 즉시 이관하여 큰 썸네일 + 안내를 먼저 노출.
+    if (from === 'chrome-extension') {
+      router.replace(`/p-result?url=${encodeURIComponent(urlParam)}&from=chrome-extension`)
+      return
+    }
+
+    setUrl(urlParam)
+    setAutoStarted(true)
+
+    // 분석 시작 후 URL 파라미터 제거 → 리마운트/새로고침 시 중복 트리거 방지
+    window.history.replaceState({}, '', window.location.pathname)
+
+    startAnalysis(urlParam)
+  }, [autoStarted, isAnalyzing, isCompleted, router, startAnalysis])
 
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)

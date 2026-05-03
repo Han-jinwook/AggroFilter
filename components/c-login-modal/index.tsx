@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/c-dialog"
@@ -16,6 +16,10 @@ interface TLoginModalProps {
 
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalProps) {
   const [step, setStep] = useState<"email" | "code">("email")
+  const [email, setEmail] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [code, setCode] = useState(["", "", "", "", "", ""])
+  const [error, setError] = useState("")
   const [referralCode, setReferralCode] = useState("")
   const [showReferralInput, setShowReferralInput] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
