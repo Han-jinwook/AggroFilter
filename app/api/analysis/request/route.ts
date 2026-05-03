@@ -454,11 +454,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. 라이브/생방송/하이라이트 (단순 재생 영상)
-    const liveKeywords = [
-      '라이브', '생방송', '생중계', '실시간 방송',
-      ' live', '(live)', '[live]',
-      'live stream', 'livestream', 'streaming', 'streamer', '스트리밍', '스트리머',
+    // 2. 라이브/생방송/하이라이트 (실제 생중계 여부와 키워드 조합으로 정교화)
+    const isActualLive = videoInfo.liveBroadcastContent === 'live' || videoInfo.liveBroadcastContent === 'upcoming';
+    
+    // 진짜 생중계 중인 경우 즉시 차단
+    if (isActualLive) {
+      return NextResponse.json(
+        { error: '실시간 라이브 방송은 분석할 수 없습니다.\n방송이 종료된 후 다시 시도해 주세요.' },
+        { status: 422, headers: corsHeaders }
+      );
+    }
+
+    // VOD 상태이지만 내용이 분석 부적합한 경우 (하이라이트, 다시보기 등)
+    const lowQualityVodKeywords = [
       '다시보기', '풀영상', '전편', '녹화본', '방송분', '(녹)',
       '무대영상', '공연영상', '콘서트', 'fancam', '직캠',
       '하이라이트', '풀 하이라이트', 'highlight', 'highlights',
@@ -469,9 +477,12 @@ export async function POST(request: Request) {
       '실시간', '방송중', '달립시다', '탐방',
       '역대급', '최신판', '멸망전', '대회', '스크림', '내전', '자랭',
     ];
-    if (liveKeywords.some(kw => titleLower.includes(kw))) {
+
+    // 제목에 '라이브'가 포함되어 있더라도 실제 방송 상태가 VOD(none)라면 분석 허용
+    // 단, 하이라이트나 다시보기 등 저품질 키워드가 포함된 경우는 기존처럼 차단
+    if (lowQualityVodKeywords.some(kw => titleLower.includes(kw))) {
       return NextResponse.json(
-        { error: '라이브·생방송·하이라이트 영상은 분석 대상이 아닙니다.\n편집된 리뷰·논평 영상은 정상 분석됩니다.' },
+        { error: '라이브 다시보기·하이라이트 영상은 분석 대상이 아닙니다.\n편집된 리뷰·논평 영상은 정상 분석됩니다.' },
         { status: 422, headers: corsHeaders }
       );
     }

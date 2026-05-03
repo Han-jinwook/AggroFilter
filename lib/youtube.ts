@@ -16,6 +16,7 @@ export interface VideoInfo {
   publishedAt?: string; // 영상 업로드 날짜 (ISO 8601)
   language?: string; // 언어 코드 (ISO 639-1: ko, en, ja, etc.)
   languageSource?: 'api' | 'unknown'; // 언어 감지 소스
+  liveBroadcastContent?: string; // 추가: 라이브 상태 (live, none, upcoming)
 }
 
 export interface TranscriptItem {
@@ -95,6 +96,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   const officialCategoryId = parseInt(snippet.categoryId || '0', 10);
   const duration = contentDetails?.duration || '';
   const viewCount = parseInt(statistics?.viewCount || '0', 10);
+  const liveBroadcastContent = snippet.liveBroadcastContent; // live, none, upcoming
 
   // Extract language information from YouTube API metadata
   const defaultLanguage = snippet.defaultLanguage || snippet.defaultAudioLanguage;
@@ -158,6 +160,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     viewCount,
     language,
     languageSource,
+    liveBroadcastContent,
   };
 }
 
