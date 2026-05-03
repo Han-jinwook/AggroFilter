@@ -1399,9 +1399,9 @@ ${content}
                             )}
                             <div className="flex-1">
                               {item.topic && (
-                                <p className="mb-1 text-xs font-bold text-amber-600">📌 {item.topic}</p>
+                                <p className="mb-1 text-base font-bold text-amber-600">📌 {item.topic}</p>
                               )}
-                              <p className="text-sm font-medium leading-relaxed text-gray-800">{item.text}</p>
+                              <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{item.text}</p>
                               {item.ts && (
                                 <button
                                   onClick={() => handleTimestampClick(item.ts!)}
@@ -1418,7 +1418,7 @@ ${content}
                     </div>
                   ) : (
                     <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                      <p className="text-sm font-medium leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
+                      <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
                       {analysisData.thumbnailSpoilerTs && (
                         <button
                           onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
