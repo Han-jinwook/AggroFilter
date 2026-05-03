@@ -1270,11 +1270,22 @@ ${content}
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <AppHeader onLoginClick={() => setShowLoginModal(true)} />
-        <div className="flex flex-1 items-center justify-center p-4">
-          <div className="text-center">
-            <p className="text-red-500 font-medium mb-2">⚠️ 오류 발생</p>
-            <p className="text-gray-600 mb-4">{error || "데이터를 찾을 수 없습니다."}</p>
-            <Button onClick={() => router.push("/")}>홈으로 돌아가기</Button>
+        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+          <div className="mb-6 rounded-full bg-red-50 p-6">
+            <span className="text-5xl">⚠️</span>
+          </div>
+          <h2 className="mb-2 text-2xl font-bold text-gray-900">분석에 실패했습니다</h2>
+          <p className="mb-8 max-w-sm text-gray-600">
+            {error || "데이터를 찾을 수 없거나 분석 중 오류가 발생했습니다."}
+          </p>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Button 
+              onClick={() => router.push("/")}
+              className="w-full py-6 text-lg font-bold shadow-xl rounded-2xl"
+            >
+              홈으로 돌아가기
+            </Button>
+            <p className="text-xs text-gray-400">문제가 지속되면 고객센터로 문의해주세요.</p>
           </div>
         </div>
       </div>
