@@ -459,6 +459,7 @@ function MockPaymentContent() {
         </div>
       </main>
 
+      <script type="text/javascript" src="https://pay.kcp.co.kr/plugin/payplus_web.jsp" />
     </div>
   )
 }
