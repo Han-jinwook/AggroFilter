@@ -145,12 +145,8 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
     };
   }
 
-  // 그 외 허브 API
-  return {
-    ok: true,
-    status: 200,
-    data: {} as T,
-  };
+  // 그 외 허브 API (결제 관련 /api/payment 등은 실제 서버로 통과시킴)
+  return null;
 }
 
 export async function hubFetch<T = any>(

@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
+import { requestKcpPayment, MerlinHub } from '@/src/services/merlin-hub-sdk'
+import Script from 'next/script'
 
 interface HistoryItem {
   id: number
@@ -41,19 +43,25 @@ function MockPaymentContent() {
   const [historyPage, setHistoryPage] = useState(1)
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
   const [historyLoading, setHistoryLoading] = useState(false)
+  
+  const [kcpParams, setKcpParams] = useState<any>(null)
+  const [origin, setOrigin] = useState('')
 
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
   const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : ''
 
   useEffect(() => {
-    const nick = localStorage.getItem('userNickname') || ''
-    setNickname(nick)
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin)
+      const nick = localStorage.getItem('userNickname') || ''
+      setNickname(nick)
 
-    const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
-    fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
-      .catch(() => {})
+      const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
+      fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
+        .catch(() => {})
+    }
   }, [uid])
 
   const fetchHistory = useCallback(async (page: number) => {
@@ -77,18 +85,19 @@ function MockPaymentContent() {
     if (tab === 'history') fetchHistory(historyPage)
   }, [tab, historyPage, fetchHistory])
 
-  // 코인 상품 — 패밀리 허브 공통 상품 (다른 패밀리 앱에서도 동일하게 사용)
-  // 어그로필터 기준 1회 분석 = 30C
+  // 코인 상품 — 패밀리 허브 공통 상품
   const options = useMemo(
     () => [
-      { credits: 1000, imgSrc: '/images/payment/card_1000.jpg' },
-      { credits: 5000, imgSrc: '/images/payment/card_5000.png' },
-      { credits: 10000, imgSrc: '/images/payment/card_10000.jpg' },
+      { credits: 1000, price: 1000, imgSrc: '/images/payment/card_1000.jpg' },
+      { credits: 5000, price: 4750, imgSrc: '/images/payment/card_5000.png' },
+      { credits: 10000, price: 9000, imgSrc: '/images/payment/card_10000.jpg' },
     ],
     []
   )
 
-  const handlePay = async (credits: number) => {
+  const selectedPkg = useMemo(() => options.find(o => o.credits === selectedOption) || options[0], [selectedOption, options])
+
+  const handlePay = async () => {
     if (!nickname) {
       alert('로그인이 필요합니다.')
       window.dispatchEvent(new CustomEvent('openLoginModal'))
@@ -97,25 +106,33 @@ function MockPaymentContent() {
 
     try {
       setIsPaying(true)
-      setChargeResult(null)
-      const res = await fetch('/api/payment/mock-charge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credits, userId: uid }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        alert(data.error || '충전 실패')
-        return
-      }
-      setBalance(data.balance)
-      setChargeResult({ charged: data.charged, balance: data.balance })
-      window.dispatchEvent(new CustomEvent('creditsUpdated'))
+      
+      const result = await requestKcpPayment({
+        amount: selectedPkg.price,
+        coinAmount: selectedPkg.credits,
+        payMethodType: method,
+        returnUrl: `${origin}/api/payment/callback`
+      });
 
-      // 충전 후 메시지만 유지하고 자동 복귀 로직 제거 (심사관의 결제 플로우 확인을 위해)
-      // 화면 전환 없이 현재 페이지에 머무름.
+      if (!result.success || !result.paymentData) {
+        alert(result.error || '결제 준비 실패');
+        return;
+      }
+
+      setKcpParams(result.paymentData);
+
+      // KCP js_f_pay 호출을 위한 폼 서브밋
+      setTimeout(() => {
+        const form = document.querySelector('form[name="order_info"]') as any;
+        if (form && (window as any).js_f_pay) {
+          (window as any).js_f_pay(form);
+        } else {
+          alert('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        }
+      }, 100);
+
     } catch (_error) {
-      alert('네트워크 오류')
+      alert('네트워크 오류');
     } finally {
       setIsPaying(false)
     }
@@ -130,6 +147,31 @@ function MockPaymentContent() {
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
       <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8 space-y-4">
+        {/* KCP Hidden Form */}
+        <form name="order_info" method="post" style={{ display: 'none' }}>
+          <input type="hidden" name="ordr_idxx" value={kcpParams?.ordr_idxx || ''} />
+          <input type="hidden" name="good_name" value={kcpParams?.good_name || ''} />
+          <input type="hidden" name="good_mny" value={kcpParams?.good_mny || ''} />
+          <input type="hidden" name="buyr_name" value={nickname || ''} />
+          <input type="hidden" name="buyr_mail" value="" />
+          <input type="hidden" name="site_cd" value={kcpParams?.site_cd || 'ALRJ8'} />
+          <input type="hidden" name="site_name" value="어그로필터" />
+          <input type="hidden" name="pay_method" value={kcpParams?.pay_method || ''} />
+          <input type="hidden" name="req_tx" value="pay" />
+          <input type="hidden" name="currency" value="WON" />
+          <input type="hidden" name="module_type" value="01" />
+          <input type="hidden" name="res_cd" value="" />
+          <input type="hidden" name="res_msg" value="" />
+          <input type="hidden" name="enc_info" value="" />
+          <input type="hidden" name="enc_data" value="" />
+          <input type="hidden" name="ret_pay_method" value="" />
+          <input type="hidden" name="tran_cd" value="" />
+          <input type="hidden" name="use_pay_method" value="" />
+          <input type="hidden" name="buyr_tel1" value="" />
+          <input type="hidden" name="buyr_tel2" value="" />
+          <input type="hidden" name="param_opt_1" value={origin} />
+          <input type="hidden" name="Ret_URL" value={`${MerlinHub.getConfig().hubUrl}/api/payment/callback`} />
+        </form>
         {/* 상단 네비게이션 */}
         <div className="flex items-center justify-start pb-2">
           <Link
@@ -260,11 +302,10 @@ function MockPaymentContent() {
               </div>
             </div>
 
-            {/* 결제 버튼 */}
             <div className="pt-2">
               <button
                 disabled={isPaying || balance === null}
-                onClick={() => handlePay(selectedOption)}
+                onClick={() => handlePay()}
                 className="w-full relative flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 py-5 text-lg font-black text-white shadow-xl shadow-indigo-200 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0 overflow-hidden"
               >
                 {isPaying && (
@@ -354,6 +395,13 @@ function MockPaymentContent() {
           </div>
         </div>
       </main>
+
+      <Script 
+        src="https://pay.kcp.co.kr/plugin/pay_common.js" 
+        strategy="afterInteractive"
+        onLoad={() => console.log('KCP Script Loaded')}
+        onError={(e) => console.error('KCP Script Load Failed', e)}
+      />
     </div>
   )
 }
