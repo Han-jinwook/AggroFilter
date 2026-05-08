@@ -46,7 +46,7 @@ function MockPaymentContent() {
   
   const [kcpParams, setKcpParams] = useState<any>(null)
   const [origin, setOrigin] = useState('')
-  const [isKcpScriptLoaded, setIsKcpScriptLoaded] = useState(false)
+  const [isKcpScriptLoaded, setIsKcpScriptLoaded] = useState(true)
 
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
   const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : ''
@@ -63,42 +63,6 @@ function MockPaymentContent() {
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
 
-      // [KCP 스크립트 강제 주입 - document.write 우회 기술]
-      // 1. document.write 가로채기 (Monkey Patch)
-      // 이 로직은 Script 컴포넌트가 로드되기 전에 미리 준비되어야 함
-      if (!(document as any).write_patched) {
-        (document as any).write_patched = true;
-        const oldWrite = document.write;
-        (document as any).write = (content: string) => {
-          if (content.includes('script') || content.includes('object')) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = content;
-            const scripts = tempDiv.getElementsByTagName('script');
-            for (let i = 0; i < scripts.length; i++) {
-              const newS = document.createElement('script');
-              if (scripts[i].src) newS.src = scripts[i].src;
-              else newS.textContent = scripts[i].textContent;
-              document.body.appendChild(newS);
-            }
-          } else {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = content;
-            while (tempDiv.firstChild) {
-              document.body.appendChild(tempDiv.firstChild);
-            }
-          }
-        };
-      }
-
-      // 정밀 감시 및 강제 상태 업데이트
-      const monitorKcp = setInterval(() => {
-        if ((window as any).js_f_pay) {
-          setIsKcpScriptLoaded(true);
-          clearInterval(monitorKcp);
-        }
-      }, 500);
-
-      setTimeout(() => clearInterval(monitorKcp), 15000);
     }
   }, [uid])
 
@@ -140,13 +104,6 @@ function MockPaymentContent() {
       alert('로그인이 필요합니다.')
       window.dispatchEvent(new CustomEvent('openLoginModal'))
       return
-    }
-
-    // [강제 스크립트 복구 로직] 만약 js_f_pay가 없으면 즉시 수동 주입 시도
-    if (!(window as any).js_f_pay) {
-      const s = document.createElement('script');
-      s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-      document.body.appendChild(s);
     }
 
     try {
@@ -447,10 +404,6 @@ function MockPaymentContent() {
         </div>
       </main>
 
-      <Script 
-        src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"
-        strategy="afterInteractive"
-      />
     </div>
   )
 }
