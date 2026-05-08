@@ -3,8 +3,6 @@
 import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-import Script from 'next/script'
 import { AppHeader } from '@/components/c-app-header'
 import { requestKcpPayment, MerlinHub } from '@/src/services/merlin-hub-sdk'
 
@@ -99,6 +97,49 @@ function MockPaymentContent() {
 
   const selectedPkg = useMemo(() => options.find(o => o.credits === selectedOption) || options[0], [selectedOption, options])
 
+  // KCP 스크립트를 동적으로 로드하고, js_f_pay가 정의될 때까지 기다리는 Promise
+  const loadKcpScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // 이미 로드되어 있으면 즉시 resolve
+      if ((window as any).js_f_pay) {
+        console.log('[KCP] js_f_pay already available.');
+        resolve();
+        return;
+      }
+
+      // 기존에 삽입된 스크립트가 있으면 제거 후 재삽입 (캐시 초기화)
+      const existing = document.getElementById('kcp-payplus-script');
+      if (existing) existing.remove();
+
+      const script = document.createElement('script');
+      script.id = 'kcp-payplus-script';
+      script.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
+      script.async = false; // 동기 로드 강제
+
+      script.onload = () => {
+        console.log('[KCP] Script loaded. Waiting for js_f_pay initialization...');
+        // 스크립트 로드 후 js_f_pay가 정의될 때까지 폴링 (최대 3초)
+        let attempts = 0;
+        const poll = setInterval(() => {
+          if ((window as any).js_f_pay) {
+            clearInterval(poll);
+            console.log('[KCP] js_f_pay is ready!');
+            resolve();
+          } else if (attempts++ > 30) { // 100ms * 30 = 3초
+            clearInterval(poll);
+            reject(new Error('KCP 스크립트가 로드되었으나 js_f_pay 함수를 찾을 수 없습니다.'));
+          }
+        }, 100);
+      };
+
+      script.onerror = () => {
+        reject(new Error('KCP 스크립트 파일을 불러오는 데 실패했습니다. 네트워크 연결을 확인해 주세요.'));
+      };
+
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePay = async () => {
     if (!nickname) {
       alert('로그인이 필요합니다.')
@@ -108,7 +149,11 @@ function MockPaymentContent() {
 
     try {
       setIsPaying(true)
+
+      // 1단계: KCP 스크립트 로드 확인 (결제 버튼 클릭 시 최초 1회)
+      await loadKcpScript();
       
+      // 2단계: 허브에서 결제 준비 데이터 요청
       const result = await requestKcpPayment({
         amount: selectedPkg.price,
         coinAmount: selectedPkg.credits,
@@ -121,28 +166,23 @@ function MockPaymentContent() {
         return;
       }
 
+      // 3단계: 폼 데이터 세팅 후 KCP 팝업 호출
       setKcpParams(result.paymentData);
 
-      // KCP js_f_pay 호출을 위한 폼 서브밋 (최대 10회 재시도, 총 5초)
-      let retryCount = 0;
-      const triggerPay = () => {
-        const form = document.querySelector('form[name="order_info"]') as any;
-        if (form && (window as any).js_f_pay) {
-          console.log('[KCP] js_f_pay found, triggering payment popup...');
-          (window as any).js_f_pay(form);
-        } else if (retryCount < 10) {
-          retryCount++;
-          console.log(`[KCP] js_f_pay not found yet, retrying... (${retryCount}/10)`);
-          setTimeout(triggerPay, 500);
-        } else {
-          alert('결제 모듈(KCP)을 불러오지 못했습니다. 광고 차단 도구를 끄거나 페이지를 새로고침 해주세요.');
-        }
-      };
-      
-      setTimeout(triggerPay, 100);
+      // React state 업데이트가 DOM에 반영될 때까지 한 프레임 대기
+      await new Promise(r => setTimeout(r, 100));
 
-    } catch (_error) {
-      alert('네트워크 오류');
+      const form = document.querySelector('form[name="order_info"]') as any;
+      if (form && (window as any).js_f_pay) {
+        console.log('[KCP] Triggering payment popup...');
+        (window as any).js_f_pay(form);
+      } else {
+        alert('결제 모듈 초기화에 실패했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
+      }
+
+    } catch (err: any) {
+      console.error('[KCP] Error:', err);
+      alert(err?.message || '네트워크 오류가 발생했습니다.');
     } finally {
       setIsPaying(false)
     }

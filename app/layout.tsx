@@ -97,8 +97,6 @@ export default function RootLayout({ children }: TRootLayoutProps) {
         <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://pay.kcp.co.kr/plugin/payplus_web.jsp" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <script
