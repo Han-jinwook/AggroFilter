@@ -62,23 +62,30 @@ function MockPaymentContent() {
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
 
-      // [KCP 스크립트 강제 주입]
+      // [KCP 스크립트 강제 주입 - 순수 공식 주소 사용]
       const KCP_SCRIPT_ID = 'kcp-payment-script';
       if (!document.getElementById(KCP_SCRIPT_ID)) {
         const s = document.createElement('script');
         s.id = KCP_SCRIPT_ID;
-        s.src = `https://pay.kcp.co.kr/plugin/payplus_web.jsp?v=${Date.now()}`;
-        s.onload = () => setIsKcpScriptLoaded(true);
+        s.type = 'text/javascript';
+        s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
+        s.onload = () => {
+          console.log('[KCP] Script loaded successfully');
+          setIsKcpScriptLoaded(true);
+        };
+        s.onerror = () => console.error('[KCP] Script load failed');
         document.head.appendChild(s);
       } else if ((window as any).js_f_pay) {
         setIsKcpScriptLoaded(true);
       }
 
-      // KCP 스크립트 수동 체크 및 로드 확인
+      // KCP 스크립트 수동 체크 및 로드 확인 (안정성을 위해 1초 간격으로 시도)
+      let checkCount = 0;
       const checkKcp = () => {
         if ((window as any).js_f_pay) {
           setIsKcpScriptLoaded(true)
-        } else {
+        } else if (checkCount < 15) {
+          checkCount++;
           setTimeout(checkKcp, 1000)
         }
       }
