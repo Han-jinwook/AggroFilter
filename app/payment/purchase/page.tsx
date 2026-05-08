@@ -67,7 +67,7 @@ function MockPaymentContent() {
       if (!document.getElementById(KCP_SCRIPT_ID)) {
         const s = document.createElement('script');
         s.id = KCP_SCRIPT_ID;
-        s.src = 'https://pay.kcp.co.kr/plugin/pay_common.js';
+        s.src = `https://pay.kcp.co.kr/plugin/payplus_web.jsp?v=${Date.now()}`;
         s.onload = () => setIsKcpScriptLoaded(true);
         document.head.appendChild(s);
       } else if ((window as any).js_f_pay) {
@@ -129,7 +129,7 @@ function MockPaymentContent() {
     // [강제 스크립트 복구 로직] 만약 js_f_pay가 없으면 즉시 수동 주입 시도
     if (!(window as any).js_f_pay) {
       const s = document.createElement('script');
-      s.src = 'https://pay.kcp.co.kr/plugin/pay_common.js';
+      s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
       document.head.appendChild(s);
     }
 
