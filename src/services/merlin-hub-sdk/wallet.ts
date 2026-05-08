@@ -88,3 +88,35 @@ export async function getBalance(userId?: string): Promise<{ success: boolean; b
     return { success: false, error: '허브 서버 연결 실패' };
   }
 }
+
+/**
+ * KCP 결제 준비 요청 (Hub API 호출)
+ */
+export async function requestKcpPayment(params: {
+  amount: number;
+  coinAmount: number;
+  payMethodType: 'card' | 'phone';
+  returnUrl: string;
+}): Promise<{ success: boolean; paymentData?: any; error?: string }> {
+  try {
+    const { ok, data } = await hubFetch<any>('/api/payment/prepare', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: params.amount,
+        coin_amount: params.coinAmount,
+        pay_method_type: params.payMethodType,
+        app_id: 'AGGRO_FILTER',
+        return_url: params.returnUrl
+      }),
+    });
+
+    if (!ok) {
+      return { success: false, error: data?.message || '결제 준비 실패' };
+    }
+
+    return { success: true, paymentData: data.payment_data };
+  } catch (err) {
+    console.error('[MerlinHub] requestKcpPayment error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}

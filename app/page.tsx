@@ -156,7 +156,7 @@ export default function MainPage() {
         if (statusCode === 402 && errorData?.insufficientCredits === true) {
           alert('보유하신 코인이 부족합니다. 충전 페이지로 이동합니다.')
           const returnUrl = encodeURIComponent(window.location.pathname)
-          router.push(`/payment/mock?redirectUrl=${returnUrl}`)
+          router.push(`/payment/purchase?redirectUrl=${returnUrl}`)
           return
         }
 

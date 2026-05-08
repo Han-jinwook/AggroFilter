@@ -240,10 +240,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
           <Link
-            href="/payment/mock"
+            href="/payment/purchase"
             className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
           >
-            <div className={`p-2 rounded-xl transition-colors ${isActive('/payment/mock') ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}`}>
+            <div className={`p-2 rounded-xl transition-colors ${isActive('/payment/purchase') ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}`}>
               <Coins className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-bold text-primary">이용권 구매</span>
@@ -291,7 +291,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           {/* 코인 잔액 — 다른 메뉴와 동일한 톤(상단 잔액, 하단 라벨) */}
           {isLoggedIn && (
             <Link
-              href="/payment/mock"
+              href="/payment/purchase"
               className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
             >
               <div className="px-2.5 h-9 min-w-[40px] rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors flex items-center justify-center">

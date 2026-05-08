@@ -599,7 +599,7 @@ export default function ResultClient() {
             const errorData = e?.data
             if (statusCode === 402 && errorData?.insufficientCredits === true) {
               alert('보유하신 코인이 부족합니다. 충전 페이지로 이동합니다.')
-              router.replace('/payment/mock?redirectUrl=%2F')
+              router.replace('/payment/purchase?redirectUrl=%2F')
               return
             }
             if (statusCode === 422 && errorData?.cached === true) {

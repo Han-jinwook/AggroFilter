@@ -290,7 +290,7 @@ export async function POST(request: Request) {
                 lockClient = null;
                 lockedVideoId = null;
                 return NextResponse.json(
-                  { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
+                  { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
                   { status: 402, headers: corsHeaders }
                 );
               }
@@ -346,7 +346,7 @@ export async function POST(request: Request) {
         const userCredits = await getLatestCreditBalance(creditCheckClient, userId);
         if (!Number.isFinite(userCredits) || userCredits < 30) {
           return NextResponse.json(
-            { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/mock' },
+            { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
             { status: 402, headers: corsHeaders }
           );
         }
