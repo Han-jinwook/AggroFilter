@@ -9,7 +9,6 @@ import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
 import { Footer } from "@/components/c-footer"
-import Script from "next/script"
 
 interface TRootLayoutProps {
   children: React.ReactNode
@@ -98,7 +97,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
         <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <Script src="https://pay.kcp.co.kr/plugin/payplus_web.jsp" strategy="beforeInteractive" />
+        <script src="https://pay.kcp.co.kr/plugin/payplus_web.jsp" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <script
