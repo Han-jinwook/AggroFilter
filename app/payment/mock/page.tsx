@@ -46,6 +46,7 @@ function MockPaymentContent() {
   
   const [kcpParams, setKcpParams] = useState<any>(null)
   const [origin, setOrigin] = useState('')
+  const [isKcpScriptLoaded, setIsKcpScriptLoaded] = useState(false)
 
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
   const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : ''
@@ -61,6 +62,16 @@ function MockPaymentContent() {
         .then(r => r.json())
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
+
+      // KCP 스크립트 수동 체크 및 로드 확인
+      const checkKcp = () => {
+        if ((window as any).js_f_pay) {
+          setIsKcpScriptLoaded(true)
+        } else {
+          setTimeout(checkKcp, 500)
+        }
+      }
+      checkKcp()
     }
   }, [uid])
 
@@ -121,15 +132,21 @@ function MockPaymentContent() {
 
       setKcpParams(result.paymentData);
 
-      // KCP js_f_pay 호출을 위한 폼 서브밋
-      setTimeout(() => {
+      // KCP js_f_pay 호출을 위한 폼 서브밋 (최대 5회 재시도)
+      let retryCount = 0;
+      const triggerPay = () => {
         const form = document.querySelector('form[name="order_info"]') as any;
         if (form && (window as any).js_f_pay) {
           (window as any).js_f_pay(form);
+        } else if (retryCount < 5) {
+          retryCount++;
+          setTimeout(triggerPay, 300);
         } else {
-          alert('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+          alert('결제 모듈(KCP)을 불러오지 못했습니다. 광고 차단 도구를 끄거나 페이지를 새로고침 해주세요.');
         }
-      }, 100);
+      };
+      
+      setTimeout(triggerPay, 100);
 
     } catch (_error) {
       alert('네트워크 오류');
@@ -396,11 +413,9 @@ function MockPaymentContent() {
         </div>
       </main>
 
-      <Script 
+      <script 
         src="https://pay.kcp.co.kr/plugin/pay_common.js" 
-        strategy="afterInteractive"
-        onLoad={() => console.log('KCP Script Loaded')}
-        onError={(e) => console.error('KCP Script Load Failed', e)}
+        async
       />
     </div>
   )
