@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
@@ -43,9 +43,7 @@ function MockPaymentContent() {
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
   const [historyLoading, setHistoryLoading] = useState(false)
   
-  const [kcpParams, setKcpParams] = useState<any>(null)
   const [origin, setOrigin] = useState('')
-  const [isKcpScriptLoaded, setIsKcpScriptLoaded] = useState(true)
 
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
   const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : ''
@@ -98,73 +96,6 @@ function MockPaymentContent() {
 
   const selectedPkg = useMemo(() => options.find(o => o.credits === selectedOption) || options[0], [selectedOption, options])
 
-  // KCP 스크립트를 동적으로 로드하고, js_f_pay가 정의될 때까지 기다리는 Promise
-  // payplus_web.jsp는 내부적으로 document.write()를 사용해 추가 스크립트를 로드하므로,
-  // 해당 호출을 가로채는 패치를 먼저 적용한 뒤 스크립트를 로드해야 함.
-  const loadKcpScript = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // 이미 로드되어 있으면 즉시 resolve
-      if ((window as any).js_f_pay) {
-        console.log('[KCP] js_f_pay already available.');
-        resolve();
-        return;
-      }
-
-      // ★ 핵심: KCP 스크립트 로드 전에 document.write 패치 적용
-      // payplus_web.jsp 내부의 document.write('<script src="...">') 호출을
-      // 동적 스크립트 삽입으로 변환하여 SPA 환경에서도 정상 작동하게 함
-      if (!(document as any).__kcp_write_patched) {
-        (document as any).__kcp_write_patched = true;
-        (document as any).write = (html: string) => {
-          console.log('[KCP] document.write intercepted:', html.substring(0, 80));
-          const tmp = document.createElement('div');
-          tmp.innerHTML = html;
-          tmp.querySelectorAll('script').forEach((s) => {
-            const newScript = document.createElement('script');
-            if (s.src) {
-              newScript.src = s.src;
-              newScript.async = false;
-            } else {
-              newScript.textContent = s.textContent;
-            }
-            document.head.appendChild(newScript);
-          });
-        };
-      }
-
-      // 기존에 삽입된 KCP 스크립트가 있으면 제거 후 재삽입
-      const existing = document.getElementById('kcp-payplus-script');
-      if (existing) existing.remove();
-
-      const script = document.createElement('script');
-      script.id = 'kcp-payplus-script';
-      script.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-      script.async = false;
-
-      script.onload = () => {
-        console.log('[KCP] Entry script loaded. Polling for js_f_pay (max 5s)...');
-        // document.write로 삽입된 추가 스크립트가 로드될 시간을 포함해 최대 5초 대기
-        let attempts = 0;
-        const poll = setInterval(() => {
-          if ((window as any).js_f_pay) {
-            clearInterval(poll);
-            console.log('[KCP] js_f_pay is ready!');
-            resolve();
-          } else if (attempts++ > 50) { // 100ms * 50 = 5초
-            clearInterval(poll);
-            reject(new Error('KCP 스크립트가 로드되었으나 js_f_pay 함수를 찾을 수 없습니다.'));
-          }
-        }, 100);
-      };
-
-      script.onerror = () => {
-        reject(new Error('KCP 스크립트 파일을 불러오는 데 실패했습니다. 네트워크 연결을 확인해 주세요.'));
-      };
-
-      document.head.appendChild(script);
-    });
-  };
-
   const handlePay = async () => {
     if (!nickname) {
       alert('로그인이 필요합니다.')
@@ -175,39 +106,46 @@ function MockPaymentContent() {
     try {
       setIsPaying(true)
 
-      // 1단계: KCP 스크립트 로드 확인 (결제 버튼 클릭 시 최초 1회)
-      await loadKcpScript();
-      
-      // 2단계: 허브에서 결제 준비 데이터 요청
+      // 1단계: 허브에서 결제 준비 데이터 요청
       const result = await requestKcpPayment({
         amount: selectedPkg.price,
         coinAmount: selectedPkg.credits,
         payMethodType: method,
         returnUrl: `${origin}/api/payment/callback`
-      });
+      })
 
       if (!result.success || !result.paymentData) {
-        alert(result.error || '결제 준비 실패');
-        return;
+        alert(result.error || '결제 준비 실패')
+        return
       }
 
-      // 3단계: 폼 데이터 세팅 후 KCP 팝업 호출
-      setKcpParams(result.paymentData);
+      // 2단계: 결제 파라미터를 URL로 인코딩하여 KCP 전용 HTML 팝업으로 전달
+      // (순수 HTML 환경에서 KCP 스크립트가 document.write로 js_f_pay를 정의하므로 확실히 작동)
+      const params = result.paymentData
+      const qs = new URLSearchParams({
+        ordr_idxx:  params.ordr_idxx  || '',
+        good_name:  params.good_name  || '',
+        good_mny:   String(params.good_mny || ''),
+        buyr_name:  nickname,
+        site_cd:    params.site_cd    || 'ALRJ8',
+        pay_method: params.pay_method || '',
+        param_opt_1: origin,
+        Ret_URL:    `${MerlinHub.getConfig().hubUrl}/api/payment/callback`,
+      }).toString()
 
-      // React state 업데이트가 DOM에 반영될 때까지 한 프레임 대기
-      await new Promise(r => setTimeout(r, 100));
+      const popup = window.open(
+        `/api/payment/kcp-page?${qs}`,
+        'kcp_payment_popup',
+        'width=490,height=620,scrollbars=yes,resizable=yes,left=200,top=100'
+      )
 
-      const form = document.querySelector('form[name="order_info"]') as any;
-      if (form && (window as any).js_f_pay) {
-        console.log('[KCP] Triggering payment popup...');
-        (window as any).js_f_pay(form);
-      } else {
-        alert('결제 모듈 초기화에 실패했습니다. 페이지를 새로고침 후 다시 시도해 주세요.');
+      if (!popup) {
+        alert('팝업이 차단되었습니다.\n브라우저 주소창의 팝업 차단 해제 버튼을 클릭하고 다시 시도해 주세요.')
       }
 
     } catch (err: any) {
-      console.error('[KCP] Error:', err);
-      alert(err?.message || '네트워크 오류가 발생했습니다.');
+      console.error('[KCP] Error:', err)
+      alert(err?.message || '네트워크 오류가 발생했습니다.')
     } finally {
       setIsPaying(false)
     }
@@ -222,31 +160,6 @@ function MockPaymentContent() {
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
       <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8 space-y-4">
-        {/* KCP Hidden Form */}
-        <form name="order_info" method="post" style={{ display: 'none' }}>
-          <input type="hidden" name="ordr_idxx" value={kcpParams?.ordr_idxx || ''} />
-          <input type="hidden" name="good_name" value={kcpParams?.good_name || ''} />
-          <input type="hidden" name="good_mny" value={kcpParams?.good_mny || ''} />
-          <input type="hidden" name="buyr_name" value={nickname || ''} />
-          <input type="hidden" name="buyr_mail" value="" />
-          <input type="hidden" name="site_cd" value={kcpParams?.site_cd || 'ALRJ8'} />
-          <input type="hidden" name="site_name" value="어그로필터" />
-          <input type="hidden" name="pay_method" value={kcpParams?.pay_method || ''} />
-          <input type="hidden" name="req_tx" value="pay" />
-          <input type="hidden" name="currency" value="WON" />
-          <input type="hidden" name="module_type" value="01" />
-          <input type="hidden" name="res_cd" value="" />
-          <input type="hidden" name="res_msg" value="" />
-          <input type="hidden" name="enc_info" value="" />
-          <input type="hidden" name="enc_data" value="" />
-          <input type="hidden" name="ret_pay_method" value="" />
-          <input type="hidden" name="tran_cd" value="" />
-          <input type="hidden" name="use_pay_method" value="" />
-          <input type="hidden" name="buyr_tel1" value="" />
-          <input type="hidden" name="buyr_tel2" value="" />
-          <input type="hidden" name="param_opt_1" value={origin} />
-          <input type="hidden" name="Ret_URL" value={`${MerlinHub.getConfig().hubUrl}/api/payment/callback`} />
-        </form>
         {/* 상단 네비게이션 */}
         <div className="flex items-center justify-start pb-2">
           <Link
