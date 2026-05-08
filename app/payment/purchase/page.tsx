@@ -292,7 +292,7 @@ function MockPaymentContent() {
 
             <div className="pt-2">
               <button
-                disabled={isPaying || balance === null || !isKcpScriptLoaded}
+                disabled={isPaying || balance === null}
                 onClick={() => handlePay()}
                 className="w-full relative flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 py-5 text-lg font-black text-white shadow-xl shadow-indigo-200 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0 overflow-hidden"
               >
