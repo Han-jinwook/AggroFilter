@@ -62,35 +62,43 @@ function MockPaymentContent() {
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
 
-      // [KCP 스크립트 강제 주입 - 극강 고도화]
+      // [KCP 스크립트 강제 주입 - 디버깅 모드]
       const KCP_SCRIPT_ID = 'kcp-payment-script';
-      if (!document.getElementById(KCP_SCRIPT_ID)) {
-        const s = document.createElement('script');
+      let s = document.getElementById(KCP_SCRIPT_ID) as HTMLScriptElement;
+      
+      if (!s) {
+        s = document.createElement('script');
         s.id = KCP_SCRIPT_ID;
         s.type = 'text/javascript';
-        s.charset = 'euc-kr'; // KCP 표준 인코딩 명시
+        s.charset = 'euc-kr';
         s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-        s.async = false; // 동기식 실행 유도
-        s.defer = false;
+        
         s.onload = () => {
-          console.log('[KCP] Script loaded via onload event');
-          setIsKcpScriptLoaded(true);
+          console.log('[KCP] onload fired');
+          if ((window as any).js_f_pay) {
+            setIsKcpScriptLoaded(true);
+          } else {
+            // 로드는 되었으나 함수가 없는 경우
+            console.warn('[KCP] Loaded but js_f_pay is missing');
+          }
         };
-        s.onerror = (e) => console.error('[KCP] Script load error:', e);
-        document.head.appendChild(s);
+        
+        s.onerror = () => {
+          console.error('[KCP] Script tag error event');
+        };
+        
+        document.body.appendChild(s);
       }
 
-      // KCP 스크립트 전역 객체 정밀 감시 (0.2초 간격)
+      // 정밀 감시 및 강제 상태 업데이트
       const monitorKcp = setInterval(() => {
         if ((window as any).js_f_pay) {
-          console.log('[KCP] js_f_pay detected!');
           setIsKcpScriptLoaded(true);
           clearInterval(monitorKcp);
         }
-      }, 200);
+      }, 500);
 
-      // 10초 후 감시 중단 (자원 낭비 방지)
-      setTimeout(() => clearInterval(monitorKcp), 10000);
+      setTimeout(() => clearInterval(monitorKcp), 15000);
     }
   }, [uid])
 
