@@ -99,6 +99,8 @@ function MockPaymentContent() {
   const selectedPkg = useMemo(() => options.find(o => o.credits === selectedOption) || options[0], [selectedOption, options])
 
   // KCP 스크립트를 동적으로 로드하고, js_f_pay가 정의될 때까지 기다리는 Promise
+  // payplus_web.jsp는 내부적으로 document.write()를 사용해 추가 스크립트를 로드하므로,
+  // 해당 호출을 가로채는 패치를 먼저 적용한 뒤 스크립트를 로드해야 함.
   const loadKcpScript = (): Promise<void> => {
     return new Promise((resolve, reject) => {
       // 이미 로드되어 있으면 즉시 resolve
@@ -108,25 +110,47 @@ function MockPaymentContent() {
         return;
       }
 
-      // 기존에 삽입된 스크립트가 있으면 제거 후 재삽입 (캐시 초기화)
+      // ★ 핵심: KCP 스크립트 로드 전에 document.write 패치 적용
+      // payplus_web.jsp 내부의 document.write('<script src="...">') 호출을
+      // 동적 스크립트 삽입으로 변환하여 SPA 환경에서도 정상 작동하게 함
+      if (!(document as any).__kcp_write_patched) {
+        (document as any).__kcp_write_patched = true;
+        (document as any).write = (html: string) => {
+          console.log('[KCP] document.write intercepted:', html.substring(0, 80));
+          const tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          tmp.querySelectorAll('script').forEach((s) => {
+            const newScript = document.createElement('script');
+            if (s.src) {
+              newScript.src = s.src;
+              newScript.async = false;
+            } else {
+              newScript.textContent = s.textContent;
+            }
+            document.head.appendChild(newScript);
+          });
+        };
+      }
+
+      // 기존에 삽입된 KCP 스크립트가 있으면 제거 후 재삽입
       const existing = document.getElementById('kcp-payplus-script');
       if (existing) existing.remove();
 
       const script = document.createElement('script');
       script.id = 'kcp-payplus-script';
       script.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-      script.async = false; // 동기 로드 강제
+      script.async = false;
 
       script.onload = () => {
-        console.log('[KCP] Script loaded. Waiting for js_f_pay initialization...');
-        // 스크립트 로드 후 js_f_pay가 정의될 때까지 폴링 (최대 3초)
+        console.log('[KCP] Entry script loaded. Polling for js_f_pay (max 5s)...');
+        // document.write로 삽입된 추가 스크립트가 로드될 시간을 포함해 최대 5초 대기
         let attempts = 0;
         const poll = setInterval(() => {
           if ((window as any).js_f_pay) {
             clearInterval(poll);
             console.log('[KCP] js_f_pay is ready!');
             resolve();
-          } else if (attempts++ > 30) { // 100ms * 30 = 3초
+          } else if (attempts++ > 50) { // 100ms * 50 = 5초
             clearInterval(poll);
             reject(new Error('KCP 스크립트가 로드되었으나 js_f_pay 함수를 찾을 수 없습니다.'));
           }
@@ -137,7 +161,7 @@ function MockPaymentContent() {
         reject(new Error('KCP 스크립트 파일을 불러오는 데 실패했습니다. 네트워크 연결을 확인해 주세요.'));
       };
 
-      document.body.appendChild(script);
+      document.head.appendChild(script);
     });
   };
 
