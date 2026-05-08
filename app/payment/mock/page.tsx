@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
 import { requestKcpPayment, MerlinHub } from '@/src/services/merlin-hub-sdk'
-import Script from 'next/script'
 
 interface HistoryItem {
   id: number
@@ -63,12 +62,24 @@ function MockPaymentContent() {
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
 
+      // [KCP 스크립트 강제 주입]
+      const KCP_SCRIPT_ID = 'kcp-payment-script';
+      if (!document.getElementById(KCP_SCRIPT_ID)) {
+        const s = document.createElement('script');
+        s.id = KCP_SCRIPT_ID;
+        s.src = 'https://pay.kcp.co.kr/plugin/pay_common.js';
+        s.onload = () => setIsKcpScriptLoaded(true);
+        document.head.appendChild(s);
+      } else if ((window as any).js_f_pay) {
+        setIsKcpScriptLoaded(true);
+      }
+
       // KCP 스크립트 수동 체크 및 로드 확인
       const checkKcp = () => {
         if ((window as any).js_f_pay) {
           setIsKcpScriptLoaded(true)
         } else {
-          setTimeout(checkKcp, 500)
+          setTimeout(checkKcp, 1000)
         }
       }
       checkKcp()
@@ -113,6 +124,13 @@ function MockPaymentContent() {
       alert('로그인이 필요합니다.')
       window.dispatchEvent(new CustomEvent('openLoginModal'))
       return
+    }
+
+    // [강제 스크립트 복구 로직] 만약 js_f_pay가 없으면 즉시 수동 주입 시도
+    if (!(window as any).js_f_pay) {
+      const s = document.createElement('script');
+      s.src = 'https://pay.kcp.co.kr/plugin/pay_common.js';
+      document.head.appendChild(s);
     }
 
     try {
@@ -413,10 +431,6 @@ function MockPaymentContent() {
         </div>
       </main>
 
-      <script 
-        src="https://pay.kcp.co.kr/plugin/pay_common.js" 
-        async
-      />
     </div>
   )
 }
