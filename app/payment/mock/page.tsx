@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import Script from 'next/script'
 import { AppHeader } from '@/components/c-app-header'
 import { requestKcpPayment, MerlinHub } from '@/src/services/merlin-hub-sdk'
 
@@ -63,9 +64,10 @@ function MockPaymentContent() {
         .catch(() => {})
 
       // [KCP 스크립트 강제 주입 - document.write 우회 기술]
-      const KCP_SCRIPT_ID = 'kcp-payment-script';
-      if (!document.getElementById(KCP_SCRIPT_ID)) {
-        // 1. document.write 가로채기 (Monkey Patch)
+      // 1. document.write 가로채기 (Monkey Patch)
+      // 이 로직은 Script 컴포넌트가 로드되기 전에 미리 준비되어야 함
+      if (!(document as any).write_patched) {
+        (document as any).write_patched = true;
         const oldWrite = document.write;
         (document as any).write = (content: string) => {
           if (content.includes('script') || content.includes('object')) {
@@ -86,20 +88,6 @@ function MockPaymentContent() {
             }
           }
         };
-
-        const s = document.createElement('script');
-        s.id = KCP_SCRIPT_ID;
-        s.type = 'text/javascript';
-        s.charset = 'euc-kr';
-        s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-        
-        s.onload = () => {
-          console.log('[KCP] Core script loaded');
-          // 로드 완료 후 원래 write 함수로 복구 (안정성)
-          // setTimeout(() => { (document as any).write = oldWrite; }, 1000);
-        };
-        
-        document.body.appendChild(s);
       }
 
       // 정밀 감시 및 강제 상태 업데이트
@@ -158,7 +146,7 @@ function MockPaymentContent() {
     if (!(window as any).js_f_pay) {
       const s = document.createElement('script');
       s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
-      document.head.appendChild(s);
+      document.body.appendChild(s);
     }
 
     try {
@@ -367,7 +355,7 @@ function MockPaymentContent() {
 
             <div className="pt-2">
               <button
-                disabled={isPaying || balance === null}
+                disabled={isPaying || balance === null || !isKcpScriptLoaded}
                 onClick={() => handlePay()}
                 className="w-full relative flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-8 py-5 text-lg font-black text-white shadow-xl shadow-indigo-200 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0 overflow-hidden"
               >
@@ -459,7 +447,10 @@ function MockPaymentContent() {
         </div>
       </main>
 
-      <script type="text/javascript" src="https://pay.kcp.co.kr/plugin/payplus_web.jsp" />
+      <Script 
+        src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"
+        strategy="afterInteractive"
+      />
     </div>
   )
 }
