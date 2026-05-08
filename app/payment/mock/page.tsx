@@ -62,29 +62,41 @@ function MockPaymentContent() {
         .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
         .catch(() => {})
 
-      // [KCP 스크립트 강제 주입 - 디버깅 모드]
+      // [KCP 스크립트 강제 주입 - document.write 우회 기술]
       const KCP_SCRIPT_ID = 'kcp-payment-script';
-      let s = document.getElementById(KCP_SCRIPT_ID) as HTMLScriptElement;
-      
-      if (!s) {
-        s = document.createElement('script');
+      if (!document.getElementById(KCP_SCRIPT_ID)) {
+        // 1. document.write 가로채기 (Monkey Patch)
+        const oldWrite = document.write;
+        (document as any).write = (content: string) => {
+          if (content.includes('script') || content.includes('object')) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            const scripts = tempDiv.getElementsByTagName('script');
+            for (let i = 0; i < scripts.length; i++) {
+              const newS = document.createElement('script');
+              if (scripts[i].src) newS.src = scripts[i].src;
+              else newS.textContent = scripts[i].textContent;
+              document.body.appendChild(newS);
+            }
+          } else {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            while (tempDiv.firstChild) {
+              document.body.appendChild(tempDiv.firstChild);
+            }
+          }
+        };
+
+        const s = document.createElement('script');
         s.id = KCP_SCRIPT_ID;
         s.type = 'text/javascript';
         s.charset = 'euc-kr';
         s.src = 'https://pay.kcp.co.kr/plugin/payplus_web.jsp';
         
         s.onload = () => {
-          console.log('[KCP] onload fired');
-          if ((window as any).js_f_pay) {
-            setIsKcpScriptLoaded(true);
-          } else {
-            // 로드는 되었으나 함수가 없는 경우
-            console.warn('[KCP] Loaded but js_f_pay is missing');
-          }
-        };
-        
-        s.onerror = () => {
-          console.error('[KCP] Script tag error event');
+          console.log('[KCP] Core script loaded');
+          // 로드 완료 후 원래 write 함수로 복구 (안정성)
+          // setTimeout(() => { (document as any).write = oldWrite; }, 1000);
         };
         
         document.body.appendChild(s);
