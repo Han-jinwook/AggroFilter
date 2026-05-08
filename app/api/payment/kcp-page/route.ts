@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 <body>
   <div class="box">
     <div class="spinner"></div>
-    <p>결제창을 불러오는 중입니다...</p>
+    <p id="status">결제창을 불러오는 중입니다...</p>
   </div>
 
   <form name="order_info" method="post" style="display:none">
@@ -62,17 +62,34 @@ export async function GET(req: NextRequest) {
   </form>
 
   <script>
-    window.onload = function () {
+    var attempts = 0;
+    var maxAttempts = 100; // 10초 (100ms * 100)
+
+    function checkAndPay() {
+      console.log('[KCP-POPUP] Checking js_f_pay... attempt=' + attempts + ', defined=' + (typeof js_f_pay));
+      
       if (typeof js_f_pay === 'function') {
+        console.log('[KCP-POPUP] js_f_pay found! Triggering...');
+        document.getElementById('status').textContent = '결제창을 여는 중...';
         js_f_pay(document.order_info);
+      } else if (attempts++ < maxAttempts) {
+        document.getElementById('status').textContent = '결제 모듈 로드 중... (' + Math.ceil((maxAttempts - attempts) / 10) + '초)';
+        setTimeout(checkAndPay, 100);
       } else {
+        console.error('[KCP-POPUP] js_f_pay NOT defined after 10s. window keys:', Object.keys(window).filter(k => k.includes('js') || k.includes('kcp') || k.includes('pay')));
         document.body.innerHTML =
           '<div style="text-align:center;padding:40px;font-family:sans-serif;color:#ef4444">' +
           '<p style="font-size:18px;font-weight:bold;">결제 모듈 로드 실패</p>' +
           '<p>이 창을 닫고 페이지를 새로고침 후 다시 시도해 주세요.</p>' +
+          '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">오류코드: KCP_MODULE_UNAVAILABLE</p>' +
           '</div>';
       }
-    };
+    }
+
+    // DOM 로드 완료 후 즉시 시작
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(checkAndPay, 300);
+    });
   </script>
 </body>
 </html>`
