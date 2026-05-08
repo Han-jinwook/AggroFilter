@@ -123,15 +123,17 @@ function MockPaymentContent() {
 
       setKcpParams(result.paymentData);
 
-      // KCP js_f_pay 호출을 위한 폼 서브밋 (최대 5회 재시도)
+      // KCP js_f_pay 호출을 위한 폼 서브밋 (최대 10회 재시도, 총 5초)
       let retryCount = 0;
       const triggerPay = () => {
         const form = document.querySelector('form[name="order_info"]') as any;
         if (form && (window as any).js_f_pay) {
+          console.log('[KCP] js_f_pay found, triggering payment popup...');
           (window as any).js_f_pay(form);
-        } else if (retryCount < 5) {
+        } else if (retryCount < 10) {
           retryCount++;
-          setTimeout(triggerPay, 300);
+          console.log(`[KCP] js_f_pay not found yet, retrying... (${retryCount}/10)`);
+          setTimeout(triggerPay, 500);
         } else {
           alert('결제 모듈(KCP)을 불러오지 못했습니다. 광고 차단 도구를 끄거나 페이지를 새로고침 해주세요.');
         }
