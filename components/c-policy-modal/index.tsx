@@ -55,7 +55,7 @@ function PrivacyContent() {
     <div className="space-y-8">
       <section>
         <h2 className="text-xl font-bold text-slate-900 mb-3">1. 수집하는 개인정보</h2>
-        <p>어그로필터(이하 &quot;서비스&quot;)는 다음과 같은 정보를 수집합니다.</p>
+        <p><strong>썬드림 주식회사</strong>(이하 &quot;회사&quot;)는 다음과 같은 정보를 수집합니다.</p>
         <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
           <li><strong>이메일 주소</strong>: 로그인 및 알림 발송 목적</li>
           <li><strong>닉네임</strong>: 서비스 내 프로필 표시 목적 (선택)</li>
@@ -85,7 +85,7 @@ function PrivacyContent() {
 
       <section>
         <h2 className="text-xl font-bold text-slate-900 mb-3">4. 개인정보의 제3자 제공</h2>
-        <p>서비스는 원칙적으로 이용자의 개인정보를 외부에 제공하지 않습니다. 단, 다음의 경우는 예외로 합니다.</p>
+        <p><strong>회사</strong>는 원칙적으로 이용자의 개인정보를 외부에 제공하지 않습니다. 단, 다음의 경우는 예외로 합니다.</p>
         <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
           <li>이용자가 사전에 동의한 경우</li>
           <li>법령의 규정에 의거하거나 수사기관의 요청이 있는 경우</li>
@@ -117,7 +117,7 @@ function PrivacyContent() {
         <ul className="list-none space-y-1 text-slate-700">
           <li><strong>상호명</strong>: 썬드림 주식회사</li>
           <li><strong>서비스명</strong>: 어그로필터 (AggroFilter)</li>
-          <li><strong>대표자/책임자</strong>: 한진욱</li>
+          <li><strong>대표자/책임자</strong>: 백은숙</li>
           <li><strong>문의 이메일</strong>: beakes@naver.com</li>
           <li><strong>웹사이트</strong>: https://aggrofilter.com</li>
         </ul>
@@ -139,7 +139,7 @@ function TermsContent() {
         <p>본 약관은 <strong>썬드림 주식회사</strong>(이하 &quot;회사&quot;)가 제공하는 어그로필터 서비스(이하 &quot;서비스&quot;)의 이용 조건 및 절차에 관한 사항을 규정함을 목적으로 합니다.</p>
         <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
           <li>상호: 썬드림 주식회사</li>
-          <li>대표: 한진욱</li>
+          <li>대표: 백은숙</li>
           <li>이메일: beakes@naver.com</li>
         </ul>
       </section>
