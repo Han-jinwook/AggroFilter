@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer-when-downgrade">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>결제 진행 중 | 어그로필터</title>
   <script src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"></script>
@@ -66,29 +67,34 @@ export async function GET(req: NextRequest) {
     var maxAttempts = 100; // 10초 (100ms * 100)
 
     function checkAndPay() {
-      console.log('[KCP-POPUP] Checking js_f_pay... attempt=' + attempts + ', defined=' + (typeof js_f_pay));
+      // js_f_pay(구버전) 또는 KCP_Pay_Execute(신버전) 중 하나가 로드되었는지 확인
+      var kcpFunc = (typeof js_f_pay === 'function') ? js_f_pay : 
+                    (typeof KCP_Pay_Execute === 'function') ? KCP_Pay_Execute : null;
       
-      if (typeof js_f_pay === 'function') {
-        console.log('[KCP-POPUP] js_f_pay found! Triggering...');
+      console.log('[KCP-POPUP] Checking KCP function... attempt=' + attempts + ', defined=' + (kcpFunc ? 'YES' : 'NO'));
+      
+      if (kcpFunc) {
+        console.log('[KCP-POPUP] KCP function found! Triggering...');
         document.getElementById('status').textContent = '결제창을 여는 중...';
-        js_f_pay(document.order_info);
+        kcpFunc(document.order_info);
       } else if (attempts++ < maxAttempts) {
         document.getElementById('status').textContent = '결제 모듈 로드 중... (' + Math.ceil((maxAttempts - attempts) / 10) + '초)';
         setTimeout(checkAndPay, 100);
       } else {
-        console.error('[KCP-POPUP] js_f_pay NOT defined after 10s. window keys:', Object.keys(window).filter(k => k.includes('js') || k.includes('kcp') || k.includes('pay')));
+        console.error('[KCP-POPUP] KCP module NOT defined after 10s. window keys:', Object.keys(window).filter(k => k.includes('js') || k.includes('kcp') || k.includes('pay')));
         document.body.innerHTML =
           '<div style="text-align:center;padding:40px;font-family:sans-serif;color:#ef4444">' +
           '<p style="font-size:18px;font-weight:bold;">결제 모듈 로드 실패</p>' +
           '<p>이 창을 닫고 페이지를 새로고침 후 다시 시도해 주세요.</p>' +
           '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">오류코드: KCP_MODULE_UNAVAILABLE</p>' +
+          '<p style="font-size:10px;color:#cbd5e1;margin-top:8px;">도메인 승인(Referer) 문제일 수 있습니다.</p>' +
           '</div>';
       }
     }
 
     // DOM 로드 완료 후 즉시 시작
     document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(checkAndPay, 300);
+      setTimeout(checkAndPay, 500);
     });
   </script>
 </body>
@@ -98,6 +104,7 @@ export async function GET(req: NextRequest) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer-when-downgrade' // 헤더에서도 한 번 더 명시
     },
   })
 }
