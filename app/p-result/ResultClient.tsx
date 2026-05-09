@@ -10,6 +10,7 @@ import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
+import { AnalysisGuide } from "@/app/p-result/c-result/analysis-guide"
 import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
@@ -1250,6 +1251,7 @@ ${content}
                   <span className="hero-caret" aria-hidden="true" />
                 </p>
               </div>
+              <AnalysisGuide />
             </div>
           </main>
           <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
@@ -1410,7 +1412,10 @@ ${content}
               </div>
             )}
           </div>
-          {showPhase2 && (
+            {/* 대기 시간 가이드 (요약/스포일러가 나오기 전까지 노출) */}
+            {!showPhase2 && <AnalysisGuide />}
+
+            {showPhase2 && (
             <>
               <div className="bg-background pb-3 pt-0">
                 <SubtitleButtons 

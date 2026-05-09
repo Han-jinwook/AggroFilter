@@ -106,22 +106,6 @@ function MockPaymentContent() {
     try {
       setIsPaying(true)
 
-      // 팝업 차단 방지: 클릭 제스처가 살아있을 때 빈 창을 먼저 엽니다.
-      const popup = window.open(
-        'about:blank',
-        'kcp_payment_popup',
-        'width=760,height=580,scrollbars=yes,resizable=yes,left=200,top=100'
-      );
-
-      if (!popup) {
-        setIsPaying(false);
-        alert('팝업이 차단되었습니다.\n브라우저 주소창의 팝업 차단 해제 버튼을 클릭하고 다시 시도해 주세요.');
-        return;
-      }
-
-      // 팝업창에 로딩 표시
-      popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;margin:0;background:#f8fafc;"><div style="text-align:center;"><div style="width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div><p>결제 준비 중...</p></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style></body></html>');
-
       // 1단계: 허브에서 결제 준비 데이터 요청
       const result = await requestKcpPayment({
         amount: selectedPkg.price,
@@ -131,8 +115,7 @@ function MockPaymentContent() {
       })
 
       if (!result.success || !result.paymentData) {
-        popup.close();
-        alert(result.error || '결제 준비 실패');
+        alert(result.error || '결제 준비 실패')
         return
       }
 
@@ -149,8 +132,15 @@ function MockPaymentContent() {
         Ret_URL:    `${MerlinHub.getConfig().hubUrl}/api/payment/callback`,
       }).toString()
 
-      // 데이터가 준비되면 팝업의 주소를 실제 결제 페이지로 변경
-      popup.location.href = `/api/payment/kcp-page?${qs}`;
+      const popup = window.open(
+        `/api/payment/kcp-page?${qs}`,
+        'kcp_payment_popup',
+        'width=760,height=580,scrollbars=yes,resizable=yes,left=200,top=100'
+      )
+
+      if (!popup) {
+        alert('팝업이 차단되었습니다.\n브라우저 주소창의 팝업 차단 해제 버튼을 클릭하고 다시 시도해 주세요.')
+      }
 
     } catch (err: any) {
       console.error('[KCP] Error:', err)
