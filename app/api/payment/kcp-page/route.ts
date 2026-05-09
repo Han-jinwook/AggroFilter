@@ -77,11 +77,13 @@ export async function GET(req: NextRequest) {
         isTriggered = true;
         console.log('[KCP-POPUP] KCP function found! Triggering...');
         
-        // KCP UI가 뜰 때 기존 로딩 UI가 방해되지 않도록 투명도 조절
-        document.getElementById('loading-box').style.opacity = '0';
+        // KCP UI가 팝업 전체를 차지하도록 로딩 박스를 제거
+        var lb = document.getElementById('loading-box');
+        lb.style.opacity = '0';
         setTimeout(function() {
+          lb.style.display = 'none';
           kcpFunc(document.order_info);
-        }, 50);
+        }, 300);
       } else if (attempts++ < maxAttempts) {
         document.getElementById('status').textContent = '결제 모듈 로드 중... (' + Math.ceil((maxAttempts - attempts) / 10) + '초)';
         setTimeout(checkAndPay, 100);
