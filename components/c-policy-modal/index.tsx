@@ -27,7 +27,7 @@ export function PolicyModal({ type, isOpen, onClose }: PolicyModalProps) {
             {isPrivacy ? '개인정보 처리방침' : '서비스 이용약관'}
           </DialogTitle>
           <p className="text-sm text-slate-500 mt-1">
-            최종 업데이트: {isPrivacy ? '2026년 3월 4일' : '2026년 4월 23일'}
+            최종 업데이트: 2026년 4월 23일
           </p>
         </DialogHeader>
 
