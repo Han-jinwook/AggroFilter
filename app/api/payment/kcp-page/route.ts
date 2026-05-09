@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
   <title>결제 진행 중 | 어그로필터</title>
   <script src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
-    #loading-box { text-align: center; color: #475569; transition: opacity 0.3s ease; }
+    body { margin: 0; padding: 0; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; background: #fff; }
+    #loading-box { text-align: center; color: #475569; transition: opacity 0.3s ease; padding-top: 200px; }
     .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
