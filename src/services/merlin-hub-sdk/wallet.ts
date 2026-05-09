@@ -1,21 +1,4 @@
-/**
- * Merlin Hub SDK — Wallet Module
- * 통합 크레딧 차감/조회 (Idempotency Key 필수)
- */
-
 import { hubFetch } from './client';
-
-export interface UseCreditParams {
-  amount: number;
-  requestId: string;       // Idempotency Key — 중복 차감 방지
-  displayText?: string;    // 원장에 표시할 설명 (예: "영상 분석 1회")
-}
-
-export interface UseCreditResult {
-  success: boolean;
-  balance?: number;
-  error?: string;
-}
 
 export interface WalletBalance {
   balance: number;
@@ -23,65 +6,13 @@ export interface WalletBalance {
 }
 
 /**
- * 크레딧 차감 요청
- * @param params 차감 파라미터 (amount, requestId 필수)
+ * 1. 현재 크레딧 잔액 조회
+ * @param userId UUID (Hub family_uid)
  */
-export async function useCredit(params: UseCreditParams): Promise<UseCreditResult> {
+export async function getBalance(userId: string): Promise<{ success: boolean; balance?: number; error?: string }> {
   try {
-    const { ok, data } = await hubFetch<UseCreditResult>('/api/wallet/use', {
-      method: 'POST',
-      body: JSON.stringify({
-        amount: params.amount,
-        request_id: params.requestId,
-        display_text: params.displayText || '크레딧 사용',
-      }),
-    });
-
-    if (!ok) {
-      return { success: false, error: data?.error || '크레딧 차감 실패' };
-    }
-
-    return { success: true, balance: data.balance };
-  } catch (err) {
-    console.error('[MerlinHub] useCredit error:', err);
-    return { success: false, error: '허브 서버 연결 실패' };
-  }
-}
-
-/**
- * localStorage에서 userId(UUID) 조회
- */
-export function getUserId(): string | null {
-  if (typeof window === 'undefined') return null;
-  const userId = localStorage.getItem('merlin_user_id');
-  if (userId) return userId;
-
-  const legacyFamilyUid = localStorage.getItem('merlin_family_uid');
-  if (legacyFamilyUid) {
-    localStorage.setItem('merlin_user_id', legacyFamilyUid);
-    return legacyFamilyUid;
-  }
-
-  return null;
-}
-
-/**
- * 현재 크레딧 잔액 조회
- * @param userId 지정하지 않으면 localStorage에서 자동 조회
- */
-export async function getBalance(userId?: string): Promise<{ success: boolean; balance?: number; error?: string }> {
-  const uid = userId || getUserId();
-  if (!uid) {
-    return { success: false, error: '로그인이 필요합니다 (userId 없음)' };
-  }
-
-  try {
-    const { ok, data } = await hubFetch<WalletBalance>(`/api/wallet/balance?userId=${encodeURIComponent(uid)}`);
-
-    if (!ok) {
-      return { success: false, error: '잔액 조회 실패' };
-    }
-
+    const { ok, data } = await hubFetch<any>(`/api/wallet/balance?userId=${encodeURIComponent(userId)}`);
+    if (!ok) return { success: false, error: data?.message || '잔액 조회 실패' };
     return { success: true, balance: data.balance };
   } catch (err) {
     console.error('[MerlinHub] getBalance error:', err);
@@ -90,7 +21,106 @@ export async function getBalance(userId?: string): Promise<{ success: boolean; b
 }
 
 /**
- * KCP 결제 준비 요청 (Hub API 호출)
+ * 2. 과금 단가표 조회 (Pricing Info)
+ * @param videoId 영상 ID (resource_id)
+ */
+export async function getPricing(videoId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const { ok, data } = await hubFetch<any>(`/api/wallet/pricing?app_id=AGGRO_FILTER&action_type=ANALYSIS&resource_id=${videoId}`);
+    if (!ok) return { success: false, error: data?.message || '단가 조회 실패' };
+    return { success: true, data: data.data };
+  } catch (err) {
+    console.error('[MerlinHub] getPricing error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}
+
+/**
+ * 3. 통합 트랜잭션 처리 (고정가 차감)
+ */
+export async function processTransaction(params: {
+  userId: string;
+  amount: number;
+  requestId: string;
+  displayText: string;
+}): Promise<{ success: boolean; balance?: number; error?: string }> {
+  try {
+    const { ok, data } = await hubFetch<any>('/api/wallet/transaction', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: params.userId,
+        amount: params.amount,
+        request_id: params.requestId,
+        transaction_type: params.amount < 0 ? 'SPEND' : 'CHARGE',
+        display_text: params.displayText,
+        app_id: 'AGGRO_FILTER'
+      }),
+    });
+    if (!ok) return { success: false, error: data?.message || '트랜잭션 처리 실패' };
+    return { success: true, balance: data.balance };
+  } catch (err) {
+    console.error('[MerlinHub] processTransaction error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}
+
+/**
+ * 4. 동적 과금 계산 및 청구 (신규 영상 분석 시)
+ */
+export async function chargeDynamic(params: {
+  userId: string;
+  videoId: string;
+  rawCost: number;
+  requestId: string;
+  displayText: string;
+}): Promise<{ success: boolean; balance?: number; error?: string }> {
+  try {
+    const { ok, data } = await hubFetch<any>('/api/wallet/transaction/dynamic', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: params.userId,
+        app_id: 'AGGRO_FILTER',
+        resource_id: params.videoId,
+        raw_cost: params.rawCost,
+        request_id: params.requestId,
+        display_text: params.displayText
+      }),
+    });
+    if (!ok) return { success: false, error: data?.message || '동적 과금 처리 실패' };
+    return { success: true, balance: data.balance };
+  } catch (err) {
+    console.error('[MerlinHub] chargeDynamic error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}
+
+/**
+ * 5. 이용 내역 조회 (History)
+ */
+export async function getHistory(userId: string, page: number = 1): Promise<{ 
+  success: boolean; 
+  history?: any[]; 
+  total?: number; 
+  totalPages?: number; 
+  error?: string;
+}> {
+  try {
+    const { ok, data } = await hubFetch<any>(`/api/wallet/history?userId=${encodeURIComponent(userId)}&page=${page}`);
+    if (!ok) return { success: false, error: data?.message || '내역 조회 실패' };
+    return { 
+      success: true, 
+      history: data.history, 
+      total: data.total, 
+      totalPages: data.totalPages 
+    };
+  } catch (err) {
+    console.error('[MerlinHub] getHistory error:', err);
+    return { success: false, error: '허브 서버 연결 실패' };
+  }
+}
+
+/**
+ * KCP 결제 준비 요청
  */
 export async function requestKcpPayment(params: {
   amount: number;
@@ -109,14 +139,11 @@ export async function requestKcpPayment(params: {
         return_url: params.returnUrl
       }),
     });
-
-    if (!ok) {
-      return { success: false, error: data?.message || '결제 준비 실패' };
-    }
-
+    if (!ok) return { success: false, error: data?.message || '결제 준비 실패' };
     return { success: true, paymentData: data.payment_data };
   } catch (err) {
     console.error('[MerlinHub] requestKcpPayment error:', err);
     return { success: false, error: '허브 서버 연결 실패' };
   }
 }
+

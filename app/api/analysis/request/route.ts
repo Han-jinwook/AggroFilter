@@ -8,6 +8,7 @@ import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
+import { getBalance, getPricing, processTransaction, chargeDynamic } from '@/src/services/merlin-hub-sdk/wallet';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -279,30 +280,36 @@ export async function POST(request: Request) {
             console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
 
             // ── 캐시 히트에도 코인 차감 (유료 콘텐츠 열람 Paywall) ──
-            // REFACTORED_BY_MERLIN_HUB: t_users 코인 차감 → Hub wallet 이관 예정
             let cachedCreditDeducted = false;
             if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
-              await ensureCreditHistoryTable(lockClient);
-              const userCredits = await getLatestCreditBalance(lockClient, userId);
-              if (!Number.isFinite(userCredits) || userCredits < 30) {
-                await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
-                lockClient.release();
-                lockClient = null;
-                lockedVideoId = null;
+              // 1. 해당 영상의 고정 단가 조회 (허브 중앙 관리)
+              const pricingRes = await getPricing(videoId);
+              const fixedPrice = pricingRes.success && pricingRes.data?.price ? pricingRes.data.price : 30;
+
+              // 2. 잔액 조회
+              const balanceRes = await getBalance(userId);
+              if (!balanceRes.success || (balanceRes.balance ?? 0) < fixedPrice) {
+                if (lockClient) {
+                  await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
+                  lockClient.release();
+                }
                 return NextResponse.json(
-                  { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
+                  { error: `코인이 부족합니다. (${fixedPrice}C 필요)`, insufficientCredits: true, redirectUrl: '/payment/purchase' },
                   { status: 402, headers: corsHeaders }
                 );
               }
 
-              const newBalance = await appendCreditHistory(lockClient, {
+              // 3. 트랜잭션 요청
+              const txRes = await processTransaction({
                 userId,
-                amount: -30,
-                description: '영상 분석 (캐시)',
-                type: 'analysis',
+                amount: -fixedPrice,
+                requestId: `cached_${videoId}_${Date.now()}`,
+                displayText: `영상 분석 (열람) - ${fixedPrice}C`
               });
-              cachedCreditDeducted = true;
-              console.log(`[Credit·Cache] userId=${userId}, -30C → balance=${newBalance}`);
+              cachedCreditDeducted = txRes.success;
+              if (cachedCreditDeducted) {
+                console.log(`[Credit·Cache] userId=${userId}, -${fixedPrice}C → balance=${txRes.balance}`);
+              }
             }
 
             await lockClient.query(`
@@ -337,21 +344,15 @@ export async function POST(request: Request) {
         // Continue to fresh analysis if lock/check fails
       }
 
-    // ── 코인 잔액 체크 (새 분석 시에만, 캐시 히트는 무료) ──
+    // ── 코인 잔액 체크 (새 분석 시 최소 임계값 체크) ──
     if (!isRecheck && userId && !userId.startsWith('anon_')) {
-      const creditCheckClient = await pool.connect();
-      try {
-        // REFACTORED_BY_MERLIN_HUB: t_users 코인 조회 → Hub wallet 이관 예정
-        await ensureCreditHistoryTable(creditCheckClient);
-        const userCredits = await getLatestCreditBalance(creditCheckClient, userId);
-        if (!Number.isFinite(userCredits) || userCredits < 30) {
-          return NextResponse.json(
-            { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
-            { status: 402, headers: corsHeaders }
-          );
-        }
-      } finally {
-        creditCheckClient.release();
+      const balanceRes = await getBalance(userId);
+      // 신규 분석 시작을 위한 최소 코인 보유량 (임시 30C)
+      if (!balanceRes.success || (balanceRes.balance ?? 0) < 30) {
+        return NextResponse.json(
+          { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
+          { status: 402, headers: corsHeaders }
+        );
       }
     }
 
@@ -1464,26 +1465,22 @@ export async function POST(request: Request) {
         creditDeducted = true;
       }
 
-      // ── 일반 코인 차감 + 타임패스(ad_free_until) 갱신 ──
-      // REFACTORED_BY_MERLIN_HUB: t_users 코인 차감 → Hub wallet 이관 예정
+      // ── 일반 코인 차감 (동적 과금 적용) ──
       if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
-        await ensureCreditHistoryTable(client);
-        const currentBalance = await getLatestCreditBalance(client, actualUserId);
-        if (!Number.isFinite(currentBalance) || currentBalance < 30) {
-          const err: any = new Error('코인이 부족합니다. 충전 후 다시 시도해주세요.');
-          err.statusCode = 402;
-          throw err;
-        }
-
-        const newBalance = await appendCreditHistory(client, {
+        const rawTokenCost = analysisResult.usageMetadata?.totalTokenCount || 10; // 토큰 사용량 추출 (없으면 최소 10)
+        
+        const dynamicRes = await chargeDynamic({
           userId: actualUserId,
-          amount: -30,
-          description: '영상 분석',
-          type: 'analysis',
+          videoId,
+          rawCost: rawTokenCost,
+          requestId: `fresh_${videoId}_${analysisId}`,
+          displayText: `영상 분석 (신규) - ${videoId}`
         });
 
-        creditDeducted = true;
-        console.log(`[Credit] userId=${actualUserId}, -30C → balance=${newBalance}`);
+        creditDeducted = dynamicRes.success;
+        if (creditDeducted) {
+          console.log(`[Credit·Dynamic] userId=${actualUserId}, rawTokens=${rawTokenCost} → balance=${dynamicRes.balance}`);
+        }
       }
 
       // 5-5. 채널 구독 처리

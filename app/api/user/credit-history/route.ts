@@ -1,21 +1,12 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { getHistory } from '@/src/services/merlin-hub-sdk/wallet';
 import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
 
-const ENSURE_TABLE = `
-  CREATE TABLE IF NOT EXISTS t_credit_history (
-    f_id BIGSERIAL PRIMARY KEY,
-    f_user_id TEXT NOT NULL,
-    f_type TEXT NOT NULL,
-    f_amount INTEGER NOT NULL,
-    f_balance INTEGER NOT NULL,
-    f_description TEXT,
-    f_created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-  )
-`;
-
+/**
+ * [REFACTORED] Hub 중앙 지갑 기반 이용 내역 조회
+ */
 export async function GET(request: Request) {
   try {
     let userId: string | undefined;
@@ -37,46 +28,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ history: [], loggedIn: false });
     }
 
-    const client = await pool.connect();
-    try {
-      await client.query(ENSURE_TABLE);
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
 
-      const page = Math.max(1, Number(new URL(request.url).searchParams.get('page')) || 1);
-      const limit = 20;
-      const offset = (page - 1) * limit;
+    // Hub SDK를 통한 이용 내역 조회
+    const res = await getHistory(userId, page);
 
-      const countRes = await client.query(
-        'SELECT COUNT(*) as total FROM t_credit_history WHERE f_user_id = $1',
-        [userId]
-      );
-      const total = Number(countRes.rows[0].total);
-
-      const res = await client.query(
-        `SELECT f_id, f_type, f_amount, f_balance, f_description, f_created_at
-         FROM t_credit_history
-         WHERE f_user_id = $1
-         ORDER BY f_created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [userId, limit, offset]
-      );
-
-      return NextResponse.json({
-        history: res.rows.map(r => ({
-          id: r.f_id,
-          type: r.f_type,
-          amount: r.f_amount,
-          balance: r.f_balance,
-          description: r.f_description,
-          createdAt: r.f_created_at,
-        })),
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-        loggedIn: true,
-      });
-    } finally {
-      client.release();
+    if (!res.success) {
+      return NextResponse.json({ history: [], loggedIn: true, error: res.error });
     }
+
+    return NextResponse.json({
+      history: (res.history || []).map(r => ({
+        id: r.id,
+        type: r.transaction_type,
+        amount: r.amount,
+        // Hub API가 balance를 각 레코드마다 제공하지 않으면 여기서 계산하거나 생략 (프론트엔드 호환성 유지)
+        balance: r.balance || 0, 
+        description: r.display_text,
+        createdAt: r.created_at,
+      })),
+      total: res.total || 0,
+      page: res.page || page,
+      totalPages: res.totalPages || 1,
+      loggedIn: true,
+    });
   } catch (error) {
     console.error('Credit history error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

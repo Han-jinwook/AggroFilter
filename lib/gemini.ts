@@ -772,11 +772,10 @@ export async function analyzeContent(
     });
     
     // Validate response immediately to trigger fallback if blocked/empty
-    const text = response.text;
-    console.log("Raw AI Response:", text);
-    if (!text) throw new Error("Empty response from AI (Likely Safety Block)");
-    
-    return response;
+    return {
+      text,
+      usageMetadata: response.usageMetadata
+    };
   };
 
   try {
@@ -947,7 +946,7 @@ export async function analyzeContent(
       console.error(`🚨 [GROUNDING MISS] 정치/시사 콘텐츠인데 Google Search 미사용! 제목: "${title}" — 분석 결과가 부정확할 수 있음`)
     }
 
-    return { ...analysisData, groundingUsed, groundingQueries };
+    return { ...analysisData, groundingUsed, groundingQueries, usageMetadata: result.usageMetadata };
 
   } catch (error: any) {
     console.error("Gemini Analysis Error Full Details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));

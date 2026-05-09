@@ -111,25 +111,29 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
     }
   }
 
-  // /api/wallet/use — 차감 (프론트 호출 시)
-  // 프론트엔드에서 강제 차감은 하지 않고, 서버(route.ts)에서 t_credit_history를 통해 차감됨.
-  // 여기서는 최신 잔액만 반환해서 헤더 업데이트 유도.
-  if (path === '/api/wallet/use' && method === 'POST') {
+  // /api/wallet/history — 이용 내역 (로컬 API가 이미 Hub 연동형으로 바뀌었으므로, 직접 호출 시에도 로컬 연동 유지)
+  if (path.startsWith('/api/wallet/history')) {
     try {
-      const res = await fetch(`/api/user/credits?userId=${TEST_USER_ID}`, { cache: 'no-store' });
+      const res = await fetch(`/api/user/credit-history?userId=${TEST_USER_ID}`, { cache: 'no-store' });
       const data = await res.json();
       return {
         ok: true,
         status: 200,
-        data: { success: true, balance: data.credits || 0 } as T,
+        data: data as T,
       };
     } catch {
-      return {
-        ok: true,
-        status: 200,
-        data: { success: true, balance: 0 } as T,
-      };
+      return { ok: true, status: 200, data: { history: [] } as T };
     }
+  }
+
+  // /api/wallet/use 또는 /api/wallet/transaction/dynamic — 차감
+  if ((path === '/api/wallet/use' || path.startsWith('/api/wallet/transaction')) && method === 'POST') {
+    // 테스트 세션에서는 실제 차감 대신 성공 응답만 반환 (또는 필요시 로컬 API 호출)
+    return {
+      ok: true,
+      status: 200,
+      data: { success: true, balance: 9999 } as T,
+    };
   }
 
   // /api/auth/profile — 프로필 갱신
