@@ -136,7 +136,7 @@ function MockPaymentContent() {
       const popup = window.open(
         `/api/payment/kcp-page?${qs}`,
         'kcp_payment_popup',
-        'width=490,height=620,scrollbars=yes,resizable=yes,left=200,top=100'
+        'width=750,height=800,scrollbars=yes,resizable=yes,left=200,top=100'
       )
 
       if (!popup) {
