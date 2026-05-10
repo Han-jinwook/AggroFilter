@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
-import { requestKcpPayment, MerlinHub } from '@/src/services/merlin-hub-sdk'
+import { requestKcpPayment, MerlinHub, hubFetch } from '@/src/services/merlin-hub-sdk'
 
 interface HistoryItem {
   id: number
@@ -54,10 +54,13 @@ function MockPaymentContent() {
       const nick = localStorage.getItem('userNickname') || ''
       setNickname(nick)
 
-      const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
-      fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => { if (typeof d.credits === 'number') setBalance(d.credits) })
+      // REFACTORED: 허브 SDK를 사용하여 실시간 잔액 동기화
+      hubFetch('/api/wallet/balance')
+        .then(res => {
+          if (res.ok && typeof res.data.balance === 'number') {
+            setBalance(res.data.balance)
+          }
+        })
         .catch(() => {})
 
     }
@@ -67,12 +70,12 @@ function MockPaymentContent() {
     if (!uid) return
     setHistoryLoading(true)
     try {
-      const res = await fetch(`/api/user/credit-history?userId=${encodeURIComponent(uid)}&page=${page}`, { cache: 'no-store' })
-      const data = await res.json()
-      if (data.history) {
-        setHistory(data.history)
-        setHistoryTotalPages(data.totalPages || 1)
-        setHistoryPage(data.page || 1)
+      // REFACTORED: 허브 SDK를 사용하여 실시간 이용 내역 동기화
+      const res = await hubFetch(`/api/wallet/history?page=${page}`)
+      if (res.ok && res.data.history) {
+        setHistory(res.data.history)
+        setHistoryTotalPages(res.data.totalPages || 1)
+        setHistoryPage(res.data.page || 1)
       }
     } catch (_error) {
     } finally {
