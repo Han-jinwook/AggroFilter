@@ -30,12 +30,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setIsLoading(true)
     try {
-      // 심사용 테스트 계정: Hub API 생략
-      if (email === 'test@aggrofilter.com') {
-        setStep("code")
-        setTimeout(() => inputRefs.current[0]?.focus(), 100)
-        return
-      }
+      /* REFACTORED: 심사용 테스트 계정도 정석대로 허브 OTP 요청을 보냅니다. */
 
       const result = await requestOTP(email)
       if (!result.success) throw new Error(result.error || 'Failed to send OTP')
@@ -82,19 +77,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      // KCP 심사관용 테스트 계정: Hub API 우회 및 고정 세션 생성
-      // SDK의 hubFetch가 'test-session-token'을 감지하면 허브 호출 없이 mock 응답 반환
-      if (email === 'test@aggrofilter.com' && fullCode === '111111') {
-        const testUserId = '00000000-0000-4000-8000-000000000001'
-        localStorage.setItem('merlin_user_id', testUserId)
-        localStorage.setItem('userEmail', email)
-        localStorage.setItem('userNickname', 'KCP심사관')
-        localStorage.setItem('userId', testUserId)
-        localStorage.setItem('merlin_session_token', 'test-session-token')
-
-        onLoginSuccess(email, testUserId)
-        return
-      }
+      /* REFACTORED: KCP 심사관 계정도 정석대로 허브 verifyOTP를 호출합니다. */
 
       const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER', referralCode)
       if (!result.success) {

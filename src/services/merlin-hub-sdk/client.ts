@@ -17,10 +17,9 @@ export const TEST_USER_ID = '00000000-0000-4000-8000-000000000001';
 export const TEST_EMAIL = 'test@aggrofilter.com';
 export const TEST_NICKNAME = 'KCP심사관';
 
-/** 현재 localStorage 세션이 KCP 심사용 테스트 세션인지 */
+/** 현재 localStorage 세션이 KCP 심사용 테스트 세션인지 (사용 안 함 - 정석대로 허브 호출하도록 수정) */
 export function isTestSession(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(SESSION_TOKEN_KEY) === TEST_SESSION_TOKEN;
+  return false;
 }
 
 // ── 세션 토큰 관리 ──
