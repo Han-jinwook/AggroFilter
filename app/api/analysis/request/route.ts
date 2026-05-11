@@ -1479,12 +1479,12 @@ export async function POST(request: Request) {
         );
         const groundingCount = Number(analysisResult.groundingQueries?.length || 0);
         
-        // [Billing Logic] 1 Search Query = 5C raw (1000 tokens = 1C 기준 시 5,000 tokens raw)
-        const groundingTokens = groundingCount * 5000;
+        // [Billing Logic] 1 Search Query = 5C (10,000 tokens = 1C 기준 시 50,000 tokens)
+        const groundingTokens = groundingCount * 50000;
         const totalRawTokens = speedTokens + fullTokens + groundingTokens;
         
-        // 최소 10 토큰 보장 (에러 대비)
-        const finalRawCost = Math.max(10, totalRawTokens);
+        // 10,000 토큰당 1C 환율 적용 (허브가 1000:1을 사용하므로 여기서 10으로 나눔)
+        const finalRawCost = Math.max(1, totalRawTokens / 10);
         
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
