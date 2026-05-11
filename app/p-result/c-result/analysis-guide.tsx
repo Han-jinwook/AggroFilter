@@ -7,15 +7,6 @@ export function AnalysisGuide() {
   return (
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
       <div className="rounded-3xl border border-slate-200 bg-white/60 backdrop-blur-md p-6 md:p-8 shadow-xl shadow-slate-200/50">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 leading-tight">분석 대기 중...</h3>
-            <p className="text-sm text-slate-500">AI가 영상의 진실을 파악하고 있습니다.</p>
-          </div>
-        </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* 분석 가능 영역 */}

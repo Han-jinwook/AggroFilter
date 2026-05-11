@@ -1412,8 +1412,6 @@ ${content}
               </div>
             )}
           </div>
-            {/* 대기 시간 가이드 (요약/스포일러가 나오기 전까지 노출) */}
-            {!showPhase2 && <AnalysisGuide />}
 
             {showPhase2 && (
             <>
@@ -1518,6 +1516,9 @@ ${content}
               </div>
             </>
           )}
+
+          {/* 분석 가이드를 썸네일 하단으로 이동 (정밀 분석 전까지 노출) */}
+          {!showPhase3 && <AnalysisGuide />}
 
           {showPhase3 && (
             <>
