@@ -157,7 +157,7 @@ function MockPaymentContent() {
     if (!iso) return '...';
     const d = new Date(iso)
     if (isNaN(d.getTime())) return '...';
-    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
   return (
@@ -334,7 +334,6 @@ function MockPaymentContent() {
                 <div className="mt-4 divide-y divide-slate-100">
                   {history.map((item) => {
                     const rawDesc = item.display_text || item.description || ''
-                    // 플랫폼 통합 브랜딩을 위한 포맷팅
                     let formattedDesc = rawDesc
                       .replace('(신규)', '')
                       .replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전')
@@ -344,18 +343,28 @@ function MockPaymentContent() {
                       formattedDesc = `어그로필터 - ${formattedDesc}`
                     }
 
+                    // 스타일 분리를 위해 파트 나누기
+                    const parts = formattedDesc.split(' - ')
+                    const prefix = parts.slice(0, 2).join(' - ')
+                    const title = parts.slice(2).join(' - ')
+
                     return (
-                      <div key={item.id} className="flex items-center justify-between py-3">
-                        <div>
-                          <div className="text-sm font-bold text-slate-900">{formattedDesc}</div>
-                          <div className="text-xs text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
+                      <div key={item.id} className="flex items-center justify-between py-4 group">
+                        <div className="flex-1 pr-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{prefix}</span>
+                            <span className="text-sm font-black text-slate-800 leading-snug break-all line-clamp-2">
+                              {title || prefix}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[10px] font-medium text-slate-300">{formatDate(item.created_at || item.createdAt)}</div>
                         </div>
-                        <div className="text-right">
-                          <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                        <div className="text-right shrink-0">
+                          <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
                           </div>
                           {item.balance !== undefined && item.balance !== null && (
-                            <div className="text-xs text-slate-400">잔액 {Number(item.balance).toLocaleString()} C</div>
+                            <div className="text-[10px] font-bold text-slate-300">잔액 {Number(item.balance).toLocaleString()} C</div>
                           )}
                         </div>
                       </div>

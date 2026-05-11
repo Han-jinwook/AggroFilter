@@ -1486,12 +1486,14 @@ export async function POST(request: Request) {
         // 10,000 토큰당 1C 환율 적용 (허브가 1000:1을 사용하므로 여기서 10으로 나눔)
         const finalRawCost = Math.max(1, totalRawTokens / 10);
         
+        const displayTitle = videoMetadata?.title || speedResult?.title || analysisResult?.title || videoId;
+        
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
           videoId,
           rawCost: finalRawCost,
           requestId: `fresh_${videoId}_${analysisId}`,
-          displayText: `어그로필터 - 영상 분석 - ${analysisResult.title || videoId}`
+          displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
         });
 
         creditDeducted = dynamicRes.success;
