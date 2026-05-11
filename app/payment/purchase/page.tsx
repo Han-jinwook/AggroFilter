@@ -154,7 +154,9 @@ function MockPaymentContent() {
   }
 
   const formatDate = (iso: string) => {
+    if (!iso) return '...';
     const d = new Date(iso)
+    if (isNaN(d.getTime())) return '...';
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
@@ -333,14 +335,14 @@ function MockPaymentContent() {
                   {history.map((item) => (
                     <div key={item.id} className="flex items-center justify-between py-3">
                       <div>
-                        <div className="text-sm font-bold text-slate-900">{item.description}</div>
-                        <div className="text-xs text-slate-400">{formatDate(item.createdAt)}</div>
+                        <div className="text-sm font-bold text-slate-900">{item.display_text || item.description}</div>
+                        <div className="text-xs text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-sm font-black ${item.amount > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                          {item.amount > 0 ? '+' : ''}{item.amount.toLocaleString()} C
+                        <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                          {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
                         </div>
-                        <div className="text-xs text-slate-400">잔액 {item.balance.toLocaleString()} C</div>
+                        <div className="text-xs text-slate-400">잔액 {Number(item.balance || 0).toLocaleString()} C</div>
                       </div>
                     </div>
                   ))}
