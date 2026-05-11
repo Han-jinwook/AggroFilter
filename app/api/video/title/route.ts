@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+// 기존 프로젝트 설정과 동일하게 Pool 생성 (환경 변수 사용)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,14 +18,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const analysis = await prisma.t_analyses.findFirst({
-      where: { f_video_id: videoId },
-      select: { f_title: true },
-      orderBy: { f_created_at: 'desc' }
-    });
+    // pg 클라이언트를 사용하여 t_analyses 테이블에서 제목 조회
+    const result = await pool.query(
+      'SELECT f_title FROM t_analyses WHERE f_video_id = $1 ORDER BY f_created_at DESC LIMIT 1',
+      [videoId]
+    );
 
-    if (analysis && analysis.f_title) {
-      return NextResponse.json({ title: analysis.f_title });
+    if (result.rows.length > 0 && result.rows[0].f_title) {
+      return NextResponse.json({ title: result.rows[0].f_title });
     }
 
     return NextResponse.json({ title: null });
