@@ -1479,8 +1479,8 @@ export async function POST(request: Request) {
         );
         const groundingCount = Number(analysisResult.groundingQueries?.length || 0);
         
-        // [Billing Logic] 1 Search Query = 50C raw (1000 tokens = 1C 기준 시 50,000 tokens raw)
-        const groundingTokens = groundingCount * 50000;
+        // [Billing Logic] 1 Search Query = 5C raw (1000 tokens = 1C 기준 시 5,000 tokens raw)
+        const groundingTokens = groundingCount * 5000;
         const totalRawTokens = speedTokens + fullTokens + groundingTokens;
         
         // 최소 10 토큰 보장 (에러 대비)
