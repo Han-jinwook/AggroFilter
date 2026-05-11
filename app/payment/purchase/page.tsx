@@ -217,17 +217,25 @@ function MockPaymentContent() {
                 let formattedDesc = rawDesc.replace('(신규)', '').replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전').trim()
                 if (!formattedDesc.startsWith('어그로필터')) formattedDesc = `어그로필터 - ${formattedDesc}`
 
+                // 스타일 분리 로직 (Badge 적용)
+                const parts = formattedDesc.split(' - ')
+                const appName = parts[0]
+                const actionAndTitle = parts.slice(1).join(' - ')
+
                 return (
-                  <div key={item.id} className="py-3 group">
+                  <div key={item.id} className="py-3.5 group">
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-sm font-bold text-slate-800 truncate flex-1">
-                        {formattedDesc}
+                      <div className="text-sm font-bold text-slate-800 truncate flex-1 flex items-center gap-2">
+                        <span className="shrink-0 px-2 py-0.5 rounded-full bg-indigo-50 text-[10px] font-black text-indigo-600 border border-indigo-100">
+                          {appName}
+                        </span>
+                        <span className="truncate">{actionAndTitle}</span>
                       </div>
                       <div className={`text-sm font-black shrink-0 ${Number(item.amount) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-0.5">
+                    <div className="flex items-center justify-between mt-1">
                       <div className="text-[10px] font-medium text-slate-400">
                         {formatDate(item.created_at || item.createdAt)}
                       </div>
@@ -241,13 +249,27 @@ function MockPaymentContent() {
             </div>
             {historyTotalPages > 1 && (
               <div className="mt-4 flex items-center justify-center gap-3">
-                <button disabled={historyPage <= 1} onClick={() => setHistoryPage(p => p - 1)} className="rounded-lg px-3 py-1.5 text-xs font-bold border border-slate-200">이전</button>
+                <button disabled={historyPage <= 1} onClick={() => setHistoryPage(p => p - 1)} className="rounded-lg px-3 py-1.5 text-xs font-bold border border-slate-200 disabled:opacity-30">이전</button>
                 <span className="text-xs text-slate-500">{historyPage} / {historyTotalPages}</span>
-                <button disabled={historyPage >= historyTotalPages} onClick={() => setHistoryPage(p => p + 1)} className="rounded-lg px-3 py-1.5 text-xs font-bold border border-slate-200">다음</button>
+                <button disabled={historyPage >= historyTotalPages} onClick={() => setHistoryPage(p => p + 1)} className="rounded-lg px-3 py-1.5 text-xs font-bold border border-slate-200 disabled:opacity-30">다음</button>
               </div>
             )}
           </div>
         )}
+        <div className="rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-4">
+          <div>
+            <p className="font-bold text-slate-700 mb-1">상품정보</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다. 결제 즉시 코인이 충전되어 서비스를 이용할 수 있습니다.</p>
+          </div>
+          <div>
+            <p className="font-bold text-slate-700 mb-1">환불 정책 및 휴대폰 결제 안내</p>
+            <p className="mb-2">결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+            <div className="bg-white/50 p-3 rounded-lg border border-slate-200 text-rose-600 font-medium">
+              <p className="font-bold">※ 휴대폰 결제 환불 규정 (필독)</p>
+              <p className="mt-1">휴대폰 소액결제는 당월취소만 가능하며 결제자 본인명의 계좌로 환불됩니다. (휴대폰 결제의 경우 당월은 취소만 가능, 익월 이후 청구요금 수납 확인 후 결제자 본인 계좌 환불 가능)</p>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   )
