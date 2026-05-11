@@ -1045,6 +1045,7 @@ export async function POST(request: Request) {
         notAnalyzableReason: analysis.notAnalyzableReason,
         thumbnail_spoiler: analysis.thumbnail_spoiler,
         thumbnail_spoiler_ts: analysis.thumbnail_spoiler_ts,
+        usageMetadata: analysis.usageMetadata,
       };
 
       if (typeof speedResult.subtitleSummary === 'string' && speedResult.subtitleSummary.trim().length > 0) {
@@ -1467,7 +1468,10 @@ export async function POST(request: Request) {
 
       // ── 일반 코인 차감 (동적 과금 적용) ──
       if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
-        const rawTokenCost = analysisResult.usageMetadata?.totalTokenCount || 10; // 토큰 사용량 추출 (없으면 최소 10)
+        const rawTokenCost = 
+          analysisResult.usageMetadata?.totalTokenCount || 
+          analysisResult.usageMetadata?.total_token_count || 
+          10; // 토큰 사용량 추출 (없으면 최소 10)
         
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,

@@ -71,7 +71,7 @@ function MockPaymentContent() {
     setHistoryLoading(true)
     try {
       // REFACTORED: 허브 SDK를 사용하여 실시간 이용 내역 동기화
-      const res = await hubFetch(`/api/wallet/history?page=${page}`)
+      const res = await hubFetch(`/api/wallet/history?page=${page}&userId=${encodeURIComponent(uid)}`)
       if (res.ok && res.data.history) {
         setHistory(res.data.history)
         setHistoryTotalPages(res.data.totalPages || 1)
