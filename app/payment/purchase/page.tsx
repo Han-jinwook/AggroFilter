@@ -351,15 +351,16 @@ function MockPaymentContent() {
                           <div className="text-xs text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
                         </div>
                         <div className="text-right">
-                        <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                          {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
+                          <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
+                          </div>
+                          {item.balance !== undefined && item.balance !== null && (
+                            <div className="text-xs text-slate-400">잔액 {Number(item.balance).toLocaleString()} C</div>
+                          )}
                         </div>
-                        {item.balance !== undefined && item.balance !== null && (
-                          <div className="text-xs text-slate-400">잔액 {Number(item.balance).toLocaleString()} C</div>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
 
                 {historyTotalPages > 1 && (
