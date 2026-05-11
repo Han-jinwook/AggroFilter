@@ -332,13 +332,25 @@ function MockPaymentContent() {
             ) : (
               <>
                 <div className="mt-4 divide-y divide-slate-100">
-                  {history.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between py-3">
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">{item.display_text || item.description}</div>
-                        <div className="text-xs text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
-                      </div>
-                      <div className="text-right">
+                  {history.map((item) => {
+                    const rawDesc = item.display_text || item.description || ''
+                    // 플랫폼 통합 브랜딩을 위한 포맷팅
+                    let formattedDesc = rawDesc
+                      .replace('(신규)', '')
+                      .replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전')
+                      .trim()
+                    
+                    if (!formattedDesc.startsWith('어그로필터')) {
+                      formattedDesc = `어그로필터 - ${formattedDesc}`
+                    }
+
+                    return (
+                      <div key={item.id} className="flex items-center justify-between py-3">
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">{formattedDesc}</div>
+                          <div className="text-xs text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
+                        </div>
+                        <div className="text-right">
                         <div className={`text-sm font-black ${Number(item.amount) > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                           {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
                         </div>

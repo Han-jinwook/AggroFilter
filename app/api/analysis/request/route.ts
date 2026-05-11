@@ -1491,7 +1491,7 @@ export async function POST(request: Request) {
           videoId,
           rawCost: finalRawCost,
           requestId: `fresh_${videoId}_${analysisId}`,
-          displayText: `영상 분석 (신규) - ${videoId}`
+          displayText: `어그로필터 - 영상 분석 - ${analysisResult.title || videoId}`
         });
 
         creditDeducted = dynamicRes.success;
