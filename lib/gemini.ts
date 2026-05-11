@@ -773,7 +773,7 @@ export async function analyzeContent(
     
     // Validate response immediately to trigger fallback if blocked/empty
     return {
-      text,
+      text: response.text,
       usageMetadata: response.usageMetadata
     };
   };
