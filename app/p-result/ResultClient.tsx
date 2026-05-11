@@ -50,7 +50,7 @@ export default function ResultClient() {
   const searchParams = useSearchParams()
   const hasCountedView = useRef(false)
   const [showMore, setShowMore] = useState(true)
-  const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>(null)
+  const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>("summary")
   const [youthAge, setYouthAge] = useState("")
   const [newComment, setNewComment] = useState("")
   const [isCommentFocused, setIsCommentFocused] = useState(false)
