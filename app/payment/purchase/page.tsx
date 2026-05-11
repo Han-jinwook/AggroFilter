@@ -18,29 +18,6 @@ interface HistoryItem {
   created_at?: string
 }
 
-// 스마트 제목 리졸버 컴포넌트
-function TransactionDescription({ initialText }: { initialText: string }) {
-  const [displayText, setDisplayText] = useState(initialText)
-  
-  useEffect(() => {
-    // 11자리 유튜브 ID 패턴 감지 (예: qs3yA1cV5fc)
-    const match = initialText.match(/[a-zA-Z0-9_-]{11}/)
-    if (match && initialText.includes('영상 분석')) {
-      const videoId = match[0]
-      fetch(`/api/video/title?id=${videoId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.title) {
-            setDisplayText(initialText.replace(videoId, data.title))
-          }
-        })
-        .catch(() => {})
-    }
-  }, [initialText])
-
-  return <span className="truncate">{displayText}</span>
-}
-
 export default function PurchasePaymentPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
@@ -244,15 +221,19 @@ function MockPaymentContent() {
                   <div key={item.id} className="py-3 group">
                     <div className="flex items-center justify-between gap-4">
                       <div className="text-sm font-bold text-slate-800 truncate flex-1">
-                        <TransactionDescription initialText={formattedDesc} />
+                        {formattedDesc}
                       </div>
                       <div className={`text-sm font-black shrink-0 ${Number(item.amount) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount || 0).toLocaleString()} C
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
-                      <div className="text-[10px] font-medium text-slate-400">{formatDate(item.created_at || item.createdAt)}</div>
-                      {item.balance !== null && <div className="text-[10px] font-bold text-slate-300">잔액 {Number(item.balance).toLocaleString()} C</div>}
+                      <div className="text-[10px] font-medium text-slate-400">
+                        {formatDate(item.created_at || item.createdAt)}
+                      </div>
+                      {item.balance !== null && (
+                        <div className="text-[10px] font-bold text-slate-300">잔액 {Number(item.balance).toLocaleString()} C</div>
+                      )}
                     </div>
                   </div>
                 )
