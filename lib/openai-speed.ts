@@ -189,6 +189,7 @@ ${quickSummary}
     return {
       subtitleSummary: typeof parsed?.subtitleSummary === 'string' ? parsed.subtitleSummary : '',
       thumbnail_spoiler: Array.isArray(parsed?.thumbnail_spoiler) ? parsed.thumbnail_spoiler : [],
+      usage: response.usage
     };
   } catch (err) {
     console.warn('[Speed Track] 분석 실패:', err.message);

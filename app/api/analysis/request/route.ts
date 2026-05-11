@@ -881,6 +881,7 @@ export async function POST(request: Request) {
         speedResult = {
           subtitleSummary: speedAnalysis?.subtitleSummary,
           thumbnail_spoiler: speedAnalysis?.thumbnail_spoiler,
+          usage: speedAnalysis?.usage, // 토큰 정보 보존
         };
       } else {
         const speedErr: any = speedOutcome.error;
@@ -912,6 +913,9 @@ export async function POST(request: Request) {
         await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_recheck_at TIMESTAMP`);
         await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_published_at TIMESTAMP`);
         await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_processing_stage TEXT DEFAULT 'completed'`);
+        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_tokens_speed INTEGER DEFAULT 0`);
+        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_tokens_full INTEGER DEFAULT 0`);
+        await stageClient.query(`ALTER TABLE t_analyses ADD COLUMN IF NOT EXISTS f_grounding_count INTEGER DEFAULT 0`);
         await stageClient.query(`ALTER TABLE t_channels ADD COLUMN IF NOT EXISTS f_contact_email TEXT`);
 
         await stageClient.query(`
@@ -1466,24 +1470,42 @@ export async function POST(request: Request) {
         creditDeducted = true;
       }
 
-      // ── 일반 코인 차감 (동적 과금 적용) ──
+      // ── 일반 코인 차감 (동적 과금 적용: GPT + Gemini + Grounding 합산) ──
       if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
-        const rawTokenCost = 
+        const speedTokens = Number(speedResult?.usage?.total_tokens || 0);
+        const fullTokens = Number(
           analysisResult.usageMetadata?.totalTokenCount || 
-          analysisResult.usageMetadata?.total_token_count || 
-          10; // 토큰 사용량 추출 (없으면 최소 10)
+          analysisResult.usageMetadata?.total_token_count || 0
+        );
+        const groundingCount = Number(analysisResult.groundingQueries?.length || 0);
+        
+        // [Billing Logic] 1 Search Query = 50C raw (1000 tokens = 1C 기준 시 50,000 tokens raw)
+        const groundingTokens = groundingCount * 50000;
+        const totalRawTokens = speedTokens + fullTokens + groundingTokens;
+        
+        // 최소 10 토큰 보장 (에러 대비)
+        const finalRawCost = Math.max(10, totalRawTokens);
         
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
           videoId,
-          rawCost: rawTokenCost,
+          rawCost: finalRawCost,
           requestId: `fresh_${videoId}_${analysisId}`,
           displayText: `영상 분석 (신규) - ${videoId}`
         });
 
         creditDeducted = dynamicRes.success;
         if (creditDeducted) {
-          console.log(`[Credit·Dynamic] userId=${actualUserId}, rawTokens=${rawTokenCost} → balance=${dynamicRes.balance}`);
+          console.log(`[Credit·Dynamic] userId=${actualUserId}, speed=${speedTokens}, full=${fullTokens}, search=${groundingCount} → totalRaw=${finalRawCost}, balance=${dynamicRes.balance}`);
+          
+          // DB에 과금 근거 데이터 영구 기록
+          await client.query(`
+            UPDATE t_analyses 
+            SET f_tokens_speed = $2,
+                f_tokens_full = $3,
+                f_grounding_count = $4
+            WHERE f_id = $1
+          `, [analysisId, speedTokens, fullTokens, groundingCount]);
         }
       }
 

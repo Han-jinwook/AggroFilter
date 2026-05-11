@@ -772,9 +772,14 @@ export async function analyzeContent(
     });
     
     // Validate response immediately to trigger fallback if blocked/empty
+    const text = response.text;
+    const usageMetadata = response.usageMetadata || response.response?.usageMetadata;
+    const groundingMetadata = response.response?.candidates?.[0]?.groundingMetadata;
+
     return {
-      text: response.text,
-      usageMetadata: response.usageMetadata || response.response?.usageMetadata
+      text,
+      usageMetadata,
+      groundingMetadata
     };
   };
 
