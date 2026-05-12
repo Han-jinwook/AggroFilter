@@ -73,15 +73,32 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
         if (!session.valid || !session.email) return
 
         const email = session.email
-        const nicknameFromEmail = (email.split('@')[0] || '').trim()
+        const dbNickname = session.nickname
+        const dbAvatar = session.avatar_url
         const currentNickname = localStorage.getItem('userNickname') || ''
+        const currentAvatar = localStorage.getItem('userProfileImage') || ''
 
         if (localStorage.getItem('userEmail') !== email) localStorage.setItem('userEmail', email)
-        if (!currentNickname) localStorage.setItem('userNickname', nicknameFromEmail)
+        
+        // Hub의 닉네임/아바타가 있으면 무조건 동기화 (SSOT)
+        if (dbNickname && dbNickname !== currentNickname) {
+          localStorage.setItem('userNickname', dbNickname)
+          if (isMounted) setNickname(dbNickname)
+        } else if (!currentNickname) {
+          // 닉네임이 아예 없으면 이메일 앞부분이라도 설정
+          const fallback = (email.split('@')[0] || '').trim()
+          localStorage.setItem('userNickname', fallback)
+          if (isMounted) setNickname(fallback)
+        }
+
+        if (dbAvatar !== undefined && dbAvatar !== currentAvatar) {
+          localStorage.setItem('userProfileImage', dbAvatar || '')
+          if (isMounted) setProfileImage(dbAvatar || '')
+        }
 
         if (isMounted) {
-          if (!currentNickname) setNickname(nicknameFromEmail)
-          const localPart = nicknameFromEmail.toLowerCase()
+          const finalNickname = dbNickname || localStorage.getItem('userNickname') || ''
+          const localPart = (email.split('@')[0] || '').trim().toLowerCase()
           setIsAdmin(localPart === 'chiu3')
         }
       } catch {

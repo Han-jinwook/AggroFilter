@@ -351,12 +351,20 @@ export default function MyPageClient() {
       localStorage.setItem("merlin_family_uid", userId)
     }
 
-    const nickname = email.split("@")[0]
-    localStorage.setItem("userNickname", nickname)
-    localStorage.setItem("userProfileImage", "") 
-
+    // LoginModal에서 이미 저장했을 수 있으므로 확인 후 폴백
+    const existingNickname = localStorage.getItem("userNickname")
+    if (!existingNickname || existingNickname === email.split("@")[0]) {
+       const nickname = email.split("@")[0]
+       localStorage.setItem("userNickname", nickname)
+    }
+    
+    // 세션 동기화를 강제 실행하기 위해 이벤트를 발생시킴
     window.dispatchEvent(new CustomEvent("profileUpdated"))
     setShowLoginModal(false)
+    
+    // 전체 페이지 데이터 재로딩
+    fetchVideos()
+    fetchChannels()
   }
 
   const handleCloseGuide = () => {
