@@ -1,22 +1,22 @@
 'use client'
 
-import { Suspense, useState, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { AppHeader } from '@/components/c-app-header'
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Script from 'next/script'
 
+// KCP payplus_web.jsp 전역 함수 타입 선언
 declare global {
   interface Window {
-    TossPayments: (clientKey: string) => {
-      requestPayment: (method: string, options: Record<string, unknown>) => Promise<void>
-    }
+    js_f_pay: (formId: string) => void
+    // KCP 콜백 결과 수신 함수 (일부 환경에서 호출됨)
+    kcpCallback?: (res: Record<string, string>) => void
   }
 }
 
 const CREDIT_PLANS = [
-  { credits: 1, price: 1000, label: '🎫 [베이직] 33회 분석 이용권', desc: '1,000원' },
-  { credits: 5, price: 4500, label: '💎 [프로] 166회 분석 이용권', desc: '4,500원 (10% 할인)' },
-  { credits: 10, price: 9000, label: '👑 [프리미엄] 333회 분석 이용권', desc: '9,000원 (10% 할인)' },
+  { coins: 100,  price: 1000,  label: '🎫 [베이직] 100코인',   desc: '1,000원' },
+  { coins: 500,  price: 4500,  label: '💎 [프로] 500코인',     desc: '4,500원 (10% 할인)' },
+  { coins: 1100, price: 9000,  label: '👑 [프리미엄] 1100코인', desc: '9,000원 (10% 할인)' },
 ]
 
 export default function CheckoutPage() {
@@ -28,96 +28,172 @@ export default function CheckoutPage() {
 }
 
 function CheckoutContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectUrl = searchParams.get('redirectUrl') || '/'
+  const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirectUrl') || 'https://aggrofilter.com'
 
-  const [userId, setUserId] = useState<string | null>(null)
+  const [userId, setUserId]           = useState<string | null>(null)
+  const [authToken, setAuthToken]     = useState<string | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'phone'>('card')
-  const [sdkReady, setSdkReady] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sdkReady, setSdkReady]       = useState(false)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
+  const [orderData, setOrderData]     = useState<Record<string, string> | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
+  // 로그인 정보 조회
   useEffect(() => {
-    let isMounted = true
-    fetch('/api/auth/me', { cache: 'no-store' })
-      .then(async (res) => {
-        if (!res.ok) return null
-        return res.json()
-      })
-      .then((data) => {
-        if (!isMounted) return
+    let mounted = true
+    const token = localStorage.getItem('merlin_token') || localStorage.getItem('hub_token') || ''
+    if (token) setAuthToken(token)
+
+    fetch('/api/auth/me', {
+      cache: 'no-store',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!mounted) return
         const id = data?.user?.id || data?.user?.email || null
         if (id) {
           setUserId(id)
         } else {
-          // Supabase 서버 인증 실패 시 localStorage fallback
-          const fallbackId = localStorage.getItem('merlin_user_id') || localStorage.getItem('userEmail') || null
-          setUserId(fallbackId)
+          const fallback = localStorage.getItem('merlin_user_id') || localStorage.getItem('userEmail') || null
+          setUserId(fallback)
         }
       })
       .catch(() => {
-        const fallbackId = localStorage.getItem('merlin_user_id') || localStorage.getItem('userEmail') || null
-        if (isMounted) setUserId(fallbackId)
+        if (!mounted) return
+        const fallback = localStorage.getItem('merlin_user_id') || localStorage.getItem('userEmail') || null
+        setUserId(fallback)
       })
-    return () => { isMounted = false }
+    return () => { mounted = false }
   }, [])
 
+  // Hub에 결제 준비 요청 → KCP 결제창 호출 데이터 수령
   const handlePayment = useCallback(async () => {
     if (selectedPlan === null) return
-    if (!userId) {
-      setError('로그인이 필요합니다.')
-      return
-    }
-    if (!sdkReady || !window.TossPayments) {
-      setError('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
-      return
-    }
+    if (!userId) { setError('로그인이 필요합니다.'); return }
+    if (!sdkReady) { setError('결제 모듈 로드 중입니다. 잠시 후 다시 시도해주세요.'); return }
 
     const plan = CREDIT_PLANS[selectedPlan]
-    const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
-    if (!clientKey) {
-      setError('결제 설정 오류')
-      return
-    }
-
     setLoading(true)
     setError(null)
 
     try {
-      const orderId = `agf_${userId.slice(0, 8)}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-      const tossPayments = window.TossPayments(clientKey)
+      // Hub에서 ordr_idxx 발급
+      const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || 'https://merlin-family-hub.onrender.com'
+      const token  = authToken || localStorage.getItem('merlin_token') || localStorage.getItem('hub_token') || ''
 
-      await tossPayments.requestPayment('카드', {
-        amount: plan.price,
-        orderId,
-        orderName: `어그로필터 ${plan.label}`,
-        successUrl: `${window.location.origin}/payment/success?redirectUrl=${encodeURIComponent(redirectUrl)}`,
-        failUrl: `${window.location.origin}/payment/fail?redirectUrl=${encodeURIComponent(redirectUrl)}`,
+      const res = await fetch(`${hubUrl}/api/payment/prepare`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          amount:      plan.price,
+          coin_amount: plan.coins,
+          app_id:      'AGGROFILTER',
+          pay_method_type: paymentMethod,
+          return_url:  returnUrl
+        })
       })
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '결제가 취소되었습니다.'
-      if (!message.includes('USER_CANCEL')) {
-        setError(message)
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || '결제 준비에 실패했습니다.')
       }
-    } finally {
+
+      const data = await res.json()
+      if (!data.success || !data.payment_data) {
+        throw new Error(data.message || '결제 데이터를 받지 못했습니다.')
+      }
+
+      // KCP 폼 데이터 세팅 후 결제창 호출
+      setOrderData(data.payment_data)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '오류가 발생했습니다.'
+      setError(msg)
       setLoading(false)
     }
-  }, [selectedPlan, userId, sdkReady, redirectUrl])
+  }, [selectedPlan, userId, sdkReady, paymentMethod, returnUrl, authToken])
+
+  // orderData가 세팅되면 KCP 결제창 호출
+  useEffect(() => {
+    if (!orderData) return
+    if (typeof window.js_f_pay !== 'function') {
+      setError('KCP 결제 모듈이 로드되지 않았습니다. 페이지를 새로고침 후 다시 시도해주세요.')
+      setLoading(false)
+      return
+    }
+    // 다음 tick에 호출 (React 렌더 완료 후)
+    setTimeout(() => {
+      try {
+        window.js_f_pay('kcp_payment_form')
+      } catch (e) {
+        console.error('[KCP] js_f_pay 호출 오류:', e)
+        setError('결제창 호출에 실패했습니다.')
+        setLoading(false)
+      }
+    }, 100)
+  }, [orderData])
+
+  const plan = selectedPlan !== null ? CREDIT_PLANS[selectedPlan] : null
 
   return (
+    // 팝업 전용: 헤더/푸터 없음, 빈 흰 배경
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      {/* KCP payplus_web.jsp — beforeInteractive로 페이지 로드 전 실행 보장 */}
       <Script
-        src="https://js.tosspayments.com/v1/payment"
-        onLoad={() => setSdkReady(true)}
-        strategy="afterInteractive"
+        id="kcp-payplus"
+        src="https://pay.kcp.co.kr/plugin/payplus_web.jsp"
+        strategy="beforeInteractive"
+        onLoad={() => {
+          console.log('[KCP] payplus_web.jsp loaded, js_f_pay:', typeof window.js_f_pay)
+          setSdkReady(true)
+        }}
+        onError={() => {
+          console.error('[KCP] payplus_web.jsp failed to load')
+          setError('KCP 결제 스크립트를 불러오지 못했습니다.')
+        }}
       />
+
+      {/* ─── KCP 히든 폼 (js_f_pay가 참조) ─── */}
+      {orderData && (
+        <form
+          id="kcp_payment_form"
+          name="kcp_payment_form"
+          ref={formRef}
+          method="POST"
+          style={{ display: 'none' }}
+        >
+          <input type="hidden" name="site_cd"    value={orderData.site_cd    || ''} />
+          <input type="hidden" name="ordr_idxx"  value={orderData.ordr_idxx  || ''} />
+          <input type="hidden" name="good_mny"   value={String(orderData.good_mny   || '')} />
+          <input type="hidden" name="good_name"  value={orderData.good_name  || ''} />
+          <input type="hidden" name="buyr_name"  value={orderData.buyr_name  || ''} />
+          <input type="hidden" name="buyr_mail"  value={orderData.buyr_mail  || ''} />
+          <input type="hidden" name="site_name"  value={orderData.site_name  || ''} />
+          <input type="hidden" name="pay_method" value={orderData.pay_method || ''} />
+          <input type="hidden" name="req_tx"     value="pay" />
+          <input type="hidden" name="currency"   value="WON" />
+          {/* Hub 콜백 URL: param_opt_1에 기록해 두면 Hub /api/payment/callback에서 꺼냄 */}
+          <input type="hidden" name="param_opt_1" value={returnUrl} />
+          {/* KCP 결제창 결과가 돌아올 서버 URL */}
+          <input
+            type="hidden"
+            name="Ret_URL"
+            value={`${process.env.NEXT_PUBLIC_HUB_URL || 'https://merlin-family-hub.onrender.com'}/api/payment/callback`}
+          />
+        </form>
+      )}
+
       <main className="w-full max-w-lg">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
-          <h1 className="text-2xl font-black text-slate-900">어그로필터 분석 이용권 구매</h1>
+          <h1 className="text-2xl font-black text-slate-900">어그로필터 코인 충전</h1>
           <p className="mt-2 text-sm text-slate-600">
-            AI 신뢰도 분석에 사용할 이용권을 구매하세요.
+            AI 신뢰도 분석에 사용할 코인을 충전하세요.
           </p>
 
           {userId && (
@@ -127,12 +203,12 @@ function CheckoutContent() {
             </div>
           )}
 
-          {/* 1. 이용권 상품 선택 */}
+          {/* 1. 상품 선택 */}
           <div className="mt-6 space-y-3">
-            <h2 className="text-base font-black text-slate-900">1. 이용권 상품 선택</h2>
-            {CREDIT_PLANS.map((plan, idx) => (
+            <h2 className="text-base font-black text-slate-900">1. 충전 상품 선택</h2>
+            {CREDIT_PLANS.map((p, idx) => (
               <button
-                key={plan.credits}
+                key={p.coins}
                 onClick={() => setSelectedPlan(idx)}
                 className={
                   'w-full rounded-xl px-5 py-4 text-left border-2 transition-all ' +
@@ -142,10 +218,8 @@ function CheckoutContent() {
                 }
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-base font-black text-slate-900">{plan.label}</span>
-                  </div>
-                  <span className="text-base font-black text-indigo-600">{plan.desc}</span>
+                  <span className="text-base font-black text-slate-900">{p.label}</span>
+                  <span className="text-base font-black text-indigo-600">{p.desc}</span>
                 </div>
               </button>
             ))}
@@ -155,38 +229,27 @@ function CheckoutContent() {
           <div className="mt-6">
             <h2 className="text-base font-black text-slate-900 mb-4">2. 결제 수단 선택</h2>
             <div role="radiogroup" aria-label="결제 수단" className="grid grid-cols-2 gap-3">
-              <label
-                className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
-                  paymentMethod === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="card"
-                  checked={paymentMethod === 'card'}
-                  onChange={() => setPaymentMethod('card')}
-                  className="h-4 w-4 accent-indigo-600"
-                />
-                <span className="text-lg">💳</span>
-                <span className="font-bold">신용카드</span>
-              </label>
-              <label
-                className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
-                  paymentMethod === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="phone"
-                  checked={paymentMethod === 'phone'}
-                  onChange={() => setPaymentMethod('phone')}
-                  className="h-4 w-4 accent-indigo-600"
-                />
-                <span className="text-lg">📱</span>
-                <span className="font-bold">휴대폰 결제</span>
-              </label>
+              {(['card', 'phone'] as const).map((method) => (
+                <label
+                  key={method}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all cursor-pointer ${
+                    paymentMethod === method
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                      : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method}
+                    checked={paymentMethod === method}
+                    onChange={() => setPaymentMethod(method)}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <span className="text-lg">{method === 'card' ? '💳' : '📱'}</span>
+                  <span className="font-bold">{method === 'card' ? '신용카드' : '휴대폰 결제'}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -197,6 +260,7 @@ function CheckoutContent() {
           )}
 
           <button
+            id="kcp-pay-btn"
             onClick={handlePayment}
             disabled={selectedPlan === null || loading || !userId}
             className={
@@ -206,26 +270,34 @@ function CheckoutContent() {
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed')
             }
           >
-            {loading ? '결제 진행 중...' : !userId ? '로그인 필요' : '결제하기'}
+            {loading
+              ? '결제 준비 중...'
+              : !userId
+              ? '로그인 필요'
+              : !sdkReady
+              ? 'KCP 모듈 로딩 중...'
+              : plan
+              ? `${plan.price.toLocaleString()}원 결제하기`
+              : '상품을 선택해주세요'}
           </button>
 
           <button
-            onClick={() => router.push(redirectUrl)}
+            onClick={() => window.close()}
             className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
           >
-            취소하고 돌아가기
+            취소하고 닫기
           </button>
         </div>
 
-        {/* 상품 정보 및 정책 고지 */}
+        {/* 정책 고지 */}
         <div className="mt-6 rounded-xl bg-slate-100 border border-slate-200 p-5 text-xs text-slate-500 space-y-3">
           <div>
             <p className="font-bold text-slate-700 mb-1">상품정보</p>
-            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 이용권입니다.</p>
+            <p>본 상품은 어그로필터 AI 신뢰도 분석을 이용할 수 있는 디지털 코인입니다.</p>
           </div>
           <div>
-            <p className="font-bold text-slate-700 mb-1">배송/환불 정책</p>
-            <p>결제 완료 시 계정으로 즉시 지급되는 무형의 디지털 재화이므로 실물 배송은 없습니다. 결제 후 7일 이내, 이용권을 단 1회도 사용하지 않은 경우에 한하여 고객센터를 통해 전액 환불 가능합니다. (일부 사용 시 잔여분 환불 불가)</p>
+            <p className="font-bold text-slate-700 mb-1">환불 정책</p>
+            <p>결제 완료 즉시 계정으로 지급되는 디지털 재화입니다. 결제 후 7일 이내, 1회도 사용하지 않은 경우에 한해 전액 환불 가능합니다.</p>
           </div>
           <div>
             <p className="font-bold text-slate-700 mb-1">고객센터</p>

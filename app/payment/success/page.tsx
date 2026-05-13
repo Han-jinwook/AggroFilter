@@ -2,7 +2,6 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AppHeader } from '@/components/c-app-header'
 
 export default function PaymentSuccessPage() {
   return (
@@ -16,82 +15,45 @@ function PaymentSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const paymentKey = searchParams.get('paymentKey')
-  const orderId = searchParams.get('orderId') || searchParams.get('order_id') // 토스/KCP 공용 지원
-  const amount = searchParams.get('amount')
+  // KCP 콜백: order_id 파라미터 (Hub가 리다이렉트 시 붙여줌)
+  const orderId    = searchParams.get('order_id') || searchParams.get('orderId') || ''
   const redirectUrl = searchParams.get('redirectUrl') || '/'
 
-  const [status, setStatus] = useState<'confirming' | 'success' | 'error'>('confirming')
-  const [result, setResult] = useState<{ credits: number; totalCredits: number } | null>(null)
+  const [status, setStatus]   = useState<'confirming' | 'success' | 'error'>('confirming')
+  const [coins, setCoins]     = useState<number>(0)
+  const [balance, setBalance] = useState<number>(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    // [KCP/Hub 방식] 허브에서 이미 검증을 끝내고 보낸 경우
-    if (orderId && !paymentKey) {
-      console.log('[PaymentSuccess] Hub-verified order detected:', orderId);
-      
-      // 최신 잔액 조회하여 화면 갱신
-      fetch('/api/wallet/balance')
-        .then(res => res.json())
-        .then(data => {
-          setResult({ 
-            credits: 0, 
-            totalCredits: data.balance || 0 
-          })
-          setStatus('success')
-          // [이벤트 발생] 현재 창과 부모 창 모두 잔액 갱신
-          window.dispatchEvent(new CustomEvent('creditsUpdated'))
-          if (window.opener) {
-            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
-          }
-        })
-        .catch(() => {
-          setStatus('success') 
-          window.dispatchEvent(new CustomEvent('creditsUpdated'))
-          if (window.opener) {
-            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
-          }
-        })
-      return
-    }
-
-    // [Toss 방식] 클라이언트에서 추가 승인이 필요한 경우
-    if (!paymentKey || !orderId || !amount) {
+    if (!orderId) {
       setStatus('error')
       setErrorMsg('결제 정보가 올바르지 않습니다.')
       return
     }
 
-    let isMounted = true
+    // Hub에서 이미 콜백 처리 완료 → 지갑 잔액만 조회
+    let mounted = true
 
-    fetch('/api/payment/toss/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentKey, orderId, amount: Number(amount) }),
-    })
-      .then(async (res) => {
-        const data = await res.json()
-        if (!isMounted) return
-        if (res.ok && data.success) {
-          setResult({ credits: data.credits, totalCredits: data.totalCredits })
-          setStatus('success')
-          window.dispatchEvent(new CustomEvent('creditsUpdated'))
-          if (window.opener) {
-            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
-          }
-        } else {
-          setErrorMsg(data.error || '결제 승인에 실패했습니다.')
-          setStatus('error')
-        }
+    // 결제 성공 이벤트 발생 (부모 창 갱신용)
+    window.dispatchEvent(new CustomEvent('creditsUpdated'))
+    if (window.opener) {
+      try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch (e) {}
+    }
+
+    fetch('/api/wallet/balance', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then(data => {
+        if (!mounted) return
+        setBalance(data.balance || 0)
+        setStatus('success')
       })
       .catch(() => {
-        if (!isMounted) return
-        setErrorMsg('결제 처리 중 오류가 발생했습니다.')
-        setStatus('error')
+        if (!mounted) return
+        setStatus('success') // 잔액 조회 실패해도 결제 성공으로 표시
       })
 
-    return () => { isMounted = false }
-  }, [paymentKey, orderId, amount])
+    return () => { mounted = false }
+  }, [orderId])
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -103,12 +65,12 @@ function PaymentSuccessContent() {
               <div className="mx-auto w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
                 <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
               </div>
-              <h1 className="mt-4 text-xl font-black text-slate-900">결제 승인 중...</h1>
+              <h1 className="mt-4 text-xl font-black text-slate-900">결제 확인 중...</h1>
               <p className="mt-2 text-sm text-slate-600">잠시만 기다려주세요.</p>
             </>
           )}
 
-          {status === 'success' && result && (
+          {status === 'success' && (
             <>
               <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                 <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -116,13 +78,13 @@ function PaymentSuccessContent() {
                 </svg>
               </div>
               <h1 className="mt-4 text-xl font-black text-slate-900">결제 완료!</h1>
-              <p className="mt-2 text-sm text-slate-600">
-                <span className="font-bold text-indigo-600">{result.credits}코인</span>이 충전되었습니다.
-              </p>
-              <div className="mt-4 inline-block rounded-xl bg-slate-50 border border-slate-200 px-6 py-3">
-                <div className="text-xs text-slate-500">보유 코인</div>
-                <div className="text-2xl font-black text-slate-900">{result.totalCredits}</div>
-              </div>
+              <p className="mt-2 text-sm text-slate-600">코인이 계정으로 충전되었습니다.</p>
+              {balance > 0 && (
+                <div className="mt-4 inline-block rounded-xl bg-slate-50 border border-slate-200 px-6 py-3">
+                  <div className="text-xs text-slate-500">현재 보유 코인</div>
+                  <div className="text-2xl font-black text-slate-900">{balance}C</div>
+                </div>
+              )}
             </>
           )}
 

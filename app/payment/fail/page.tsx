@@ -2,7 +2,6 @@
 
 import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AppHeader } from '@/components/c-app-header'
 
 export default function PaymentFailPage() {
   return (
@@ -16,8 +15,8 @@ function PaymentFailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const code = searchParams.get('code') || ''
-  const message = searchParams.get('message') || searchParams.get('msg') || '결제가 취소되었거나 실패했습니다.'
+  const code        = searchParams.get('code') || ''
+  const message     = searchParams.get('message') || searchParams.get('msg') || '결제가 취소되었거나 실패했습니다.'
   const redirectUrl = searchParams.get('redirectUrl') || '/'
 
   return (
@@ -43,10 +42,10 @@ function PaymentFailContent() {
               다시 시도
             </button>
             <button
-              onClick={() => router.push(redirectUrl)}
+              onClick={() => window.close()}
               className="w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              돌아가기
+              창 닫기
             </button>
           </div>
         </div>
