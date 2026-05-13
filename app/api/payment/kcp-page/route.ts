@@ -10,7 +10,34 @@ import { NextRequest, NextResponse } from 'next/server'
  * 팝업 내부는 전통적인 HTML 환경이므로 KCP 스크립트가 정상 동작함.
  */
 export async function GET(req: NextRequest) {
+  return handleRequest(req)
+}
+
+export async function POST(req: NextRequest) {
+  return handleRequest(req)
+}
+
+async function handleRequest(req: NextRequest) {
+  const isPost = req.method === 'POST'
   const p = req.nextUrl.searchParams
+  
+  // POST일 경우 폼 데이터 파싱
+  let formData: FormData | null = null
+  if (isPost) {
+    try {
+      formData = await req.formData()
+    } catch (e) {
+      console.warn('[KCP-PAGE] Failed to parse form data in POST')
+    }
+  }
+
+  // 데이터 획득 유틸리티: URL 파라미터 우선, 그 다음 폼 데이터
+  const getVal = (key: string, defaultValue: string = '') => {
+    const urlVal = p.get(key)
+    if (urlVal) return urlVal
+    if (formData && formData.has(key)) return String(formData.get(key))
+    return defaultValue
+  }
 
   // 파라미터 이스케이프 처리 (XSS 방지)
   const esc = (val: string) =>
@@ -37,35 +64,35 @@ export async function GET(req: NextRequest) {
     <p id="status">결제창을 불러오는 중입니다...</p>
   </div>
 
-  <form name="order_info" method="post" style="display:none">
-    <input type="hidden" name="ordr_idxx"    value="${esc(p.get('ordr_idxx') || '')}" />
-    <input type="hidden" name="good_name"    value="${esc(p.get('good_name') || '')}" />
-    <input type="hidden" name="good_mny"     value="${esc(p.get('good_mny') || '')}" />
-    <input type="hidden" name="buyr_name"    value="${esc(p.get('buyr_name') || '')}" />
-    <input type="hidden" name="buyr_mail"    value="" />
-    <input type="hidden" name="site_cd"      value="${esc(p.get('site_cd') || 'ALRJ8')}" />
+  <form name="order_info" method="post">
+    <input type="hidden" name="ordr_idxx"    value="${esc(getVal('ordr_idxx'))}" />
+    <input type="hidden" name="good_name"    value="${esc(getVal('good_name'))}" />
+    <input type="hidden" name="good_mny"     value="${esc(getVal('good_mny'))}" />
+    <input type="hidden" name="buyr_name"    value="${esc(getVal('buyr_name'))}" />
+    <input type="hidden" name="buyr_mail"    value="${esc(getVal('buyr_mail'))}" />
+    <input type="hidden" name="site_cd"      value="${esc(getVal('site_cd', 'ALRJ8'))}" />
     <input type="hidden" name="site_name"    value="어그로필터" />
-    <input type="hidden" name="pay_method"   value="${esc(p.get('pay_method') || '')}" />
+    <input type="hidden" name="pay_method"   value="${esc(getVal('pay_method'))}" />
     <input type="hidden" name="req_tx"       value="pay" />
     <input type="hidden" name="currency"     value="WON" />
     <input type="hidden" name="module_type"  value="01" />
-    <input type="hidden" name="res_cd"       value="" />
-    <input type="hidden" name="res_msg"      value="" />
-    <input type="hidden" name="enc_info"     value="" />
-    <input type="hidden" name="enc_data"     value="" />
-    <input type="hidden" name="ret_pay_method" value="" />
-    <input type="hidden" name="tran_cd"      value="" />
-    <input type="hidden" name="use_pay_method" value="" />
-    <input type="hidden" name="buyr_tel1"    value="" />
-    <input type="hidden" name="buyr_tel2"    value="" />
-    <input type="hidden" name="param_opt_1"  value="${esc(p.get('param_opt_1') || '')}" />
-    <input type="hidden" name="Ret_URL"      value="${esc(p.get('Ret_URL') || '')}" />
+    <input type="hidden" name="res_cd"       value="${esc(getVal('res_cd'))}" />
+    <input type="hidden" name="res_msg"      value="${esc(getVal('res_msg'))}" />
+    <input type="hidden" name="enc_info"     value="${esc(getVal('enc_info'))}" />
+    <input type="hidden" name="enc_data"     value="${esc(getVal('enc_data'))}" />
+    <input type="hidden" name="ret_pay_method" value="${esc(getVal('ret_pay_method'))}" />
+    <input type="hidden" name="tran_cd"      value="${esc(getVal('tran_cd'))}" />
+    <input type="hidden" name="use_pay_method" value="${esc(getVal('use_pay_method'))}" />
+    <input type="hidden" name="buyr_tel1"    value="${esc(getVal('buyr_tel1'))}" />
+    <input type="hidden" name="buyr_tel2"    value="${esc(getVal('buyr_tel2'))}" />
+    <input type="hidden" name="param_opt_1"  value="${esc(getVal('param_opt_1'))}" />
+    <input type="hidden" name="Ret_URL"      value="${esc(getVal('Ret_URL'))}" />
   </form>
 
   <script>
     var attempts = 0;
     var maxAttempts = 100;
-    var isTriggered = false; // 중복 실행 방지 플래그
+    var isTriggered = false;
 
     function checkAndPay() {
       if (isTriggered) return;
@@ -77,19 +104,22 @@ export async function GET(req: NextRequest) {
         isTriggered = true;
         console.log('[KCP-POPUP] KCP function found! Triggering...');
         
-        // KCP UI가 팝업 전체를 차지하도록 로딩 박스를 제거
         var lb = document.getElementById('loading-box');
         lb.style.opacity = '0';
         setTimeout(function() {
           lb.style.display = 'none';
-          kcpFunc(document.order_info);
+          try {
+            kcpFunc(document.order_info);
+          } catch (e) {
+            console.error('[KCP-POPUP] Execution error:', e);
+            alert('결제 실행 중 오류가 발생했습니다.');
+          }
         }, 300);
       } else if (attempts++ < maxAttempts) {
         document.getElementById('status').textContent = '결제 모듈 로드 중... (' + Math.ceil((maxAttempts - attempts) / 10) + '초)';
         setTimeout(checkAndPay, 100);
       } else {
         isTriggered = true;
-        console.error('[KCP-POPUP] KCP module NOT defined after 10s.');
         document.body.innerHTML =
           '<div style="text-align:center;padding:40px;font-family:sans-serif;color:#ef4444">' +
           '<p style="font-size:18px;font-weight:bold;">결제 모듈 로드 실패</p>' +
@@ -99,7 +129,9 @@ export async function GET(req: NextRequest) {
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(checkAndPay, 200); // 대기 시간을 살짝 줄여 반응성 개선
+      // POST로 들어온 경우(암호화 데이터 등이 채워진 상태) 즉시 실행 시도
+      var delay = ${isPost ? 0 : 200};
+      setTimeout(checkAndPay, delay);
     });
   </script>
 </body>
@@ -109,7 +141,7 @@ export async function GET(req: NextRequest) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Referrer-Policy': 'no-referrer-when-downgrade' // 헤더에서도 한 번 더 명시
+      'Referrer-Policy': 'no-referrer-when-downgrade'
     },
   })
 }
