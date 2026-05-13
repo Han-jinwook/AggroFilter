@@ -35,8 +35,8 @@ export function BottomBanner() {
     return () => window.removeEventListener('creditsUpdated', checkAdFree)
   }, [])
 
-  // Exclude Home (/) and Settings (/settings)
-  if (pathname === "/" || pathname === "/settings" || pathname === "/p-settings") {
+  // Exclude Home (/), Settings (/settings), and Payment (/payment)
+  if (pathname === "/" || pathname === "/settings" || pathname === "/p-settings" || pathname.startsWith("/payment") || pathname.startsWith("/api/payment")) {
     return null
   }
 

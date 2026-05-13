@@ -28,6 +28,7 @@ export function SideWingAds() {
   }, []);
 
   if (pathname?.startsWith('/p-admin')) return null;
+  if (pathname?.startsWith('/payment') || pathname?.startsWith('/api/payment')) return null;
   if (adFree) return null;
   return (
     <>
