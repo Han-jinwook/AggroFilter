@@ -35,13 +35,22 @@ function PaymentSuccessContent() {
         .then(res => res.json())
         .then(data => {
           setResult({ 
-            credits: 0, // 개별 충전량은 URL에 없으므로 0으로 표시하거나 생략
+            credits: 0, 
             totalCredits: data.balance || 0 
           })
           setStatus('success')
+          // [이벤트 발생] 현재 창과 부모 창 모두 잔액 갱신
+          window.dispatchEvent(new CustomEvent('creditsUpdated'))
+          if (window.opener) {
+            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
+          }
         })
         .catch(() => {
-          setStatus('success') // 잔액 조회 실패해도 일단 성공으로 표시
+          setStatus('success') 
+          window.dispatchEvent(new CustomEvent('creditsUpdated'))
+          if (window.opener) {
+            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
+          }
         })
       return
     }
@@ -66,6 +75,10 @@ function PaymentSuccessContent() {
         if (res.ok && data.success) {
           setResult({ credits: data.credits, totalCredits: data.totalCredits })
           setStatus('success')
+          window.dispatchEvent(new CustomEvent('creditsUpdated'))
+          if (window.opener) {
+            try { window.opener.dispatchEvent(new CustomEvent('creditsUpdated')) } catch(e) {}
+          }
         } else {
           setErrorMsg(data.error || '결제 승인에 실패했습니다.')
           setStatus('error')

@@ -376,6 +376,7 @@ export default function ResultClient() {
         if (!isCancelled) {
           setAnalysisData(data.analysisData)
           setLoading(false)
+          window.dispatchEvent(new CustomEvent('creditsUpdated'))
           if (hasSpeedPayload(data)) {
             schedulePhase2Reveal(isCompletedOnFirstFetch)
           }
@@ -401,6 +402,7 @@ export default function ResultClient() {
 
             if (!isCancelled) {
               setAnalysisData(data.analysisData)
+              window.dispatchEvent(new CustomEvent('creditsUpdated'))
             }
 
             if (isCompletedPayload(data)) break
@@ -413,6 +415,7 @@ export default function ResultClient() {
           setAnalysisData(data.analysisData)
 
           if (isCompletedNow) {
+            window.dispatchEvent(new CustomEvent('creditsUpdated'))
             schedulePhase3Reveal(isCompletedOnFirstFetch)
           }
 
