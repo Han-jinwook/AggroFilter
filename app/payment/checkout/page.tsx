@@ -107,16 +107,15 @@ function CheckoutContent() {
   }, [selectedPlan, userId, sdkReady, redirectUrl])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <Script
         src="https://js.tosspayments.com/v1/payment"
         onLoad={() => setSdkReady(true)}
         strategy="afterInteractive"
       />
-      <AppHeader />
-      <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-black text-slate-900">어그로필터 분석 이용권 구매</h1>
+      <main className="w-full max-w-lg">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+          <h1 className="text-2xl font-black text-slate-900">어그로필터 분석 이용권 구매</h1>
           <p className="mt-2 text-sm text-slate-600">
             AI 신뢰도 분석에 사용할 이용권을 구매하세요.
           </p>
