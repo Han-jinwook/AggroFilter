@@ -94,10 +94,9 @@ function PaymentSuccessContent() {
   }, [paymentKey, orderId, amount])
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppHeader />
-      <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <main className="w-full max-w-md">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg text-center">
 
           {status === 'confirming' && (
             <>

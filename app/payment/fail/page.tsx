@@ -17,14 +17,13 @@ function PaymentFailContent() {
   const searchParams = useSearchParams()
 
   const code = searchParams.get('code') || ''
-  const message = searchParams.get('message') || '결제가 취소되었거나 실패했습니다.'
+  const message = searchParams.get('message') || searchParams.get('msg') || '결제가 취소되었거나 실패했습니다.'
   const redirectUrl = searchParams.get('redirectUrl') || '/'
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppHeader />
-      <main className="mx-auto max-w-[var(--app-max-width)] px-4 py-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <main className="w-full max-w-md">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
             <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
