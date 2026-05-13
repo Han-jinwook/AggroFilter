@@ -87,6 +87,10 @@ async function handleRequest(req: NextRequest) {
     <input type="hidden" name="buyr_tel2"    value="${esc(getVal('buyr_tel2'))}" />
     <input type="hidden" name="param_opt_1"  value="${esc(getVal('param_opt_1'))}" />
     <input type="hidden" name="Ret_URL"      value="${esc(getVal('Ret_URL'))}" />
+    
+    <input type="hidden" name="tno"          value="" />
+    <input type="hidden" name="trace_no"     value="" />
+    <input type="hidden" name="pay_tp"       value="" />
   </form>
 
   <script>
