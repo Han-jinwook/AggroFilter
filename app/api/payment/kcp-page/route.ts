@@ -64,7 +64,7 @@ async function handleRequest(req: NextRequest) {
     <p id="status">결제창을 불러오는 중입니다...</p>
   </div>
 
-  <form name="order_info" method="post">
+  <form name="order_info" method="post" action="${esc(getVal('Ret_URL'))}">
     <input type="hidden" name="ordr_idxx"    value="${esc(getVal('ordr_idxx'))}" />
     <input type="hidden" name="good_name"    value="${esc(getVal('good_name'))}" />
     <input type="hidden" name="good_mny"     value="${esc(getVal('good_mny'))}" />
