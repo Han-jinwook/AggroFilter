@@ -82,7 +82,7 @@ function CheckoutContent() {
 
     try {
       // Hub에서 ordr_idxx 발급
-      const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || 'https://merlin-family-hub.onrender.com'
+      const hubUrl = process.env.NEXT_PUBLIC_MERLIN_HUB_URL || 'https://merlinfamilyos.onrender.com'
       const token  = authToken || localStorage.getItem('merlin_token') || localStorage.getItem('hub_token') || ''
 
       const res = await fetch(`${hubUrl}/api/payment/prepare`, {
@@ -184,7 +184,7 @@ function CheckoutContent() {
           <input
             type="hidden"
             name="Ret_URL"
-            value={`${process.env.NEXT_PUBLIC_HUB_URL || 'https://merlin-family-hub.onrender.com'}/api/payment/callback`}
+            value={`${process.env.NEXT_PUBLIC_MERLIN_HUB_URL || 'https://merlinfamilyos.onrender.com'}/api/payment/callback`}
           />
         </form>
       )}
