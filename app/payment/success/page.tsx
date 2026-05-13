@@ -17,7 +17,7 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams()
 
   const paymentKey = searchParams.get('paymentKey')
-  const orderId = searchParams.get('orderId')
+  const orderId = searchParams.get('orderId') || searchParams.get('order_id') // 토스/KCP 공용 지원
   const amount = searchParams.get('amount')
   const redirectUrl = searchParams.get('redirectUrl') || '/'
 
@@ -26,6 +26,27 @@ function PaymentSuccessContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
+    // [KCP/Hub 방식] 허브에서 이미 검증을 끝내고 보낸 경우
+    if (orderId && !paymentKey) {
+      console.log('[PaymentSuccess] Hub-verified order detected:', orderId);
+      
+      // 최신 잔액 조회하여 화면 갱신
+      fetch('/api/wallet/balance')
+        .then(res => res.json())
+        .then(data => {
+          setResult({ 
+            credits: 0, // 개별 충전량은 URL에 없으므로 0으로 표시하거나 생략
+            totalCredits: data.balance || 0 
+          })
+          setStatus('success')
+        })
+        .catch(() => {
+          setStatus('success') // 잔액 조회 실패해도 일단 성공으로 표시
+        })
+      return
+    }
+
+    // [Toss 방식] 클라이언트에서 추가 승인이 필요한 경우
     if (!paymentKey || !orderId || !amount) {
       setStatus('error')
       setErrorMsg('결제 정보가 올바르지 않습니다.')
