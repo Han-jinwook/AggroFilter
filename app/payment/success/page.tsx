@@ -126,12 +126,22 @@ function PaymentSuccessContent() {
             </>
           )}
 
-          <button
-            onClick={() => router.push(redirectUrl)}
-            className="mt-6 w-full rounded-xl px-4 py-3 text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-          >
-            {status === 'success' ? '돌아가기' : '다시 시도'}
-          </button>
+          <div className="flex flex-col gap-3 mt-6">
+            {status === 'success' && (
+              <button
+                onClick={() => window.close()}
+                className="w-full rounded-xl px-4 py-3 text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              >
+                결제창 닫기
+              </button>
+            )}
+            <button
+              onClick={() => router.push(redirectUrl)}
+              className="w-full rounded-xl px-4 py-3 text-sm font-black bg-slate-100 text-slate-900 hover:bg-slate-200 transition-colors"
+            >
+              {status === 'success' ? '메인으로 돌아가기' : '다시 시도'}
+            </button>
+          </div>
         </div>
       </main>
     </div>
