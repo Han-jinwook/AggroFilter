@@ -28,7 +28,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'merlinfamilyos.onrender.com',
+        hostname: 'os.sundreamer.app',
       },
     ],
   },

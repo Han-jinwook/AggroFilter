@@ -184,7 +184,7 @@ function CheckoutContent() {
           <input
             type="hidden"
             name="Ret_URL"
-            value={`${process.env.NEXT_PUBLIC_MERLIN_HUB_URL || 'https://merlinfamilyos.onrender.com'}/api/payment/callback`}
+            value={`${process.env.NEXT_PUBLIC_MERLIN_HUB_URL || 'https://os.sundreamer.app'}/api/payment/callback`}
           />
         </form>
       )}
