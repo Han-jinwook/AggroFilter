@@ -14,7 +14,20 @@ export { useHubPayment } from './Core/useHubPayment';
 export { useHubNotifier } from './Core/useHubNotifier';
 export { useHubReferral } from './Core/useHubReferral';
 
-// 2. Custom UI Components (표준 UI 부품)
+// 2. Core 로직 (클라이언트에서도 자주 쓰는 함수들)
+export { 
+  checkSession, 
+  logout, 
+  getProfile, 
+  requestOTP, 
+  verifyOTP,
+  getBalance,
+  getUserId,
+  useCredit,
+  MerlinHubClient
+} from './Core';
+
+// 3. Custom UI Components (표준 UI 부품)
 export { HubProfileWidget } from './Custom/HubProfileWidget';
 export { HubAuthModal } from './Custom/HubAuthModal';
 export { HubRegisterNudge } from './Custom/HubRegisterNudge';

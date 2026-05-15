@@ -213,3 +213,39 @@ export async function hubFetch<T = any>(
   console.error('[MerlinHub] hubFetch failed after retries:', path, lastError);
   return { ok: false, status: 0, data: { error: '허브 서버 연결 실패' } as any };
 }
+
+/**
+ * [Compatibility] 클래스 기반 SDK 클라이언트
+ * 기존 컴포넌트들과의 호환성을 위해 유지합니다.
+ */
+export class MerlinHubClient {
+  async getProfile() {
+    const { getProfile } = await import('./auth');
+    return getProfile();
+  }
+
+  async sendOtp(email: string) {
+    const { requestOTP } = await import('./auth');
+    return requestOTP(email);
+  }
+
+  async verifyOtp(email: string, code: string) {
+    const { verifyOTP } = await import('./auth');
+    return verifyOTP(email, code);
+  }
+
+  async preparePayment(planId: string) {
+    // 임시 구현 (필요시 상세 구현)
+    return { success: true, planId };
+  }
+
+  async sendNotification(params: any) {
+    console.log('[MerlinHubClient] Notification requested:', params);
+    return { success: true };
+  }
+
+  async updateProfile(params: any) {
+    const { updateProfile } = await import('./auth');
+    return updateProfile(params);
+  }
+}

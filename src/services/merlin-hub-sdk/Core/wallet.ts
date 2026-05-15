@@ -147,3 +147,29 @@ export async function requestKcpPayment(params: {
   }
 }
 
+/**
+ * 6. 크레딧 사용 (고급 래퍼)
+ */
+export async function useCredit(params: {
+  amount: number;
+  displayText: string;
+  requestId: string;
+}) {
+  const userId = getUserId();
+  if (!userId) return { success: false, error: '로그인이 필요합니다.' };
+
+  return processTransaction({
+    userId,
+    amount: -Math.abs(params.amount),
+    requestId: params.requestId,
+    displayText: params.displayText
+  });
+}
+
+/**
+ * 7. 현재 로컬 스토리지에서 유저 ID 추출
+ */
+export function getUserId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('merlin_user_id') || localStorage.getItem('merlin_family_uid');
+}
