@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import Image from "next/image"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
@@ -20,8 +20,6 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
   const [isLoading, setIsLoading] = useState(false)
   const [code, setCode] = useState(["", "", "", "", "", ""])
   const [error, setError] = useState("")
-  const [referralCode, setReferralCode] = useState("")
-  const [showReferralInput, setShowReferralInput] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -30,8 +28,6 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setIsLoading(true)
     try {
-      /* REFACTORED: 심사용 테스트 계정도 정석대로 허브 OTP 요청을 보냅니다. */
-
       const result = await requestOTP(email)
       if (!result.success) throw new Error(result.error || 'Failed to send OTP')
       setStep("code")
@@ -77,20 +73,19 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      /* REFACTORED: KCP 심사관 계정도 정석대로 허브 verifyOTP를 호출합니다. */
-
-      const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER', referralCode)
+      // REFACTORED: 추천인 코드는 추후 공유 링크를 통해 자동 처리되므로 빈 값 전달
+      const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER')
       if (!result.success) {
         setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
         setCode(["", "", "", "", "", ""])
         setTimeout(() => inputRefs.current[0]?.focus(), 50)
         return
       }
-      // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_session_token + merlin_user_id 자동 저장
-      // 여기서는 UI 표시용 정보만 추가 저장
+
       if (result.email) localStorage.setItem('userEmail', result.email)
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
       if (result.referral_code) localStorage.setItem('userReferralCode', result.referral_code)
+      
       onLoginSuccess(result.email || email, result.userId || '')
     } catch (err) {
       console.error(err)
@@ -122,140 +117,139 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       setStep("email")
       setEmail("")
       setCode(["", "", "", "", "", ""])
-      setReferralCode("")
-      setShowReferralInput(false)
       setError("")
     }
     onOpenChange(isOpen)
   }
 
-  useEffect(() => {
-    if (open) {
-      const pendingCode = localStorage.getItem('pendingReferralCode')
-      if (pendingCode) {
-        setReferralCode(pendingCode.toUpperCase())
-        setShowReferralInput(true)
-        localStorage.removeItem('pendingReferralCode')
-      }
-    }
-  }, [open])
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold text-blue-600 dark:text-blue-400">
-            Merlin Family
-          </DialogTitle>
-          <p className="text-center text-sm text-muted-foreground">이메일 인증으로 패밀리 코인과 모든 기능을 이용하세요</p>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+        {/* 상단 장식용 배경 */}
+        <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-blue-600/10 to-indigo-600/5 -z-10" />
+        
+        <div className="px-8 pt-10 pb-12">
+          <DialogHeader className="flex flex-col items-center gap-4 mb-8">
+            <div className="relative w-48 h-12 mb-2">
+              <Image
+                src="/images/character-logo.png"
+                alt="AggroFilter"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <div className="space-y-2 text-center">
+              <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">
+                어그로필터에 오신 것을 환영합니다! 🎉
+              </DialogTitle>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed px-4">
+                지금 가입하시면 증정되는 <span className="text-blue-600 font-bold">무료 분석 코인</span>으로<br />
+                유튜브 정밀 분석을 바로 시작해보세요.
+              </p>
+            </div>
+          </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {step === "email" ? (
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  이메일 주소
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@email.com"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError("") }}
-                  required
-                  className="h-12"
-                />
-              </div>
-
-              {!showReferralInput ? (
-                <button
-                  type="button"
-                  onClick={() => setShowReferralInput(true)}
-                  className="text-xs text-blue-500 hover:underline"
-                >
-                  추천인 코드가 있으신가요?
-                </button>
-              ) : (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label htmlFor="referral" className="text-sm font-medium text-slate-600">
-                    추천인 코드 (선택)
+          <div className="space-y-6">
+            {step === "email" ? (
+              <form onSubmit={handleEmailSubmit} className="space-y-5">
+                <div className="space-y-2.5">
+                  <label htmlFor="email" className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    이메일 주소
                   </label>
                   <Input
-                    id="referral"
-                    placeholder="친구의 초대코드 입력"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                    className="h-10 bg-slate-50"
+                    id="email"
+                    type="email"
+                    placeholder="example@email.com"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError("") }}
+                    required
+                    className="h-14 bg-slate-50/50 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all rounded-2xl text-base px-5"
                   />
                 </div>
-              )}
 
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-              <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
-                {isLoading ? "발송 중..." : "인증코드 받기"}
-              </Button>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-                <span className="font-semibold">KCP 심사관 안내:</span>{' '}
-                <code className="font-mono">test@aggrofilter.com</code> 입력 후 인증코드{' '}
-                <code className="font-mono font-bold">111111</code>로 로그인하실 수 있습니다.
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-5">
-              <div className="text-center space-y-1">
-                <p className="font-semibold">📧 인증코드를 입력해주세요</p>
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium text-blue-600">{email}</span>로<br />
-                  6자리 코드를 발송했습니다. <span className="text-xs text-slate-400">(5분 유효)</span>
-                </p>
-              </div>
-              <div className="flex justify-center gap-2" onPaste={handleCodePaste}>
-                {code.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={el => { inputRefs.current[i] = el }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={e => handleCodeChange(i, e.target.value)}
-                    onKeyDown={e => handleCodeKeyDown(i, e)}
-                    className={`w-11 h-14 text-center text-xl font-bold border-2 rounded-lg outline-none transition-colors ${
-                      digit ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    } focus:border-blue-500`}
-                    disabled={isLoading}
-                  />
-                ))}
-              </div>
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-              {isLoading && <p className="text-sm text-blue-500 text-center">확인 중...</p>}
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="ghost"
-                  className="w-full text-sm text-muted-foreground hover:text-foreground"
-                  onClick={handleResend}
+                {error && (
+                  <div className="bg-red-50 text-red-500 text-xs font-bold py-3 px-4 rounded-xl border border-red-100 text-center animate-in fade-in slide-in-from-top-1">
+                    {error}
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "발송 중..." : "코드 재발송"}
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>발송 중...</span>
+                    </div>
+                  ) : "인증코드 받기"}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setStep("email"); setCode(["", "", "", "", "", ""]); setError("") }}
-                  className="text-xs text-muted-foreground"
-                >
-                  이메일 변경
-                </Button>
-              </div>
-            </div>
-          )}
+              </form>
+            ) : (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="text-center space-y-2">
+                  <p className="font-bold text-slate-800">📧 인증코드를 입력해주세요</p>
+                  <p className="text-sm text-slate-500 font-medium">
+                    <span className="text-blue-600 font-bold">{email}</span>로<br />
+                    6자리 코드를 발송했습니다.
+                  </p>
+                </div>
 
-          <p className="text-center text-xs text-muted-foreground">
-            로그인하시면 이용약관 및 개인정보처리방침에 동의하게 됩니다.
-          </p>
+                <div className="flex justify-center gap-2.5" onPaste={handleCodePaste}>
+                  {code.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={el => { inputRefs.current[i] = el }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={e => handleCodeChange(i, e.target.value)}
+                      onKeyDown={e => handleCodeKeyDown(i, e)}
+                      className={`w-12 h-16 text-center text-2xl font-black border-2 rounded-2xl outline-none transition-all shadow-sm ${
+                        digit 
+                          ? 'border-blue-500 bg-blue-50/50 text-blue-600' 
+                          : 'border-slate-200 bg-slate-50/50 text-slate-400 focus:border-blue-400'
+                      }`}
+                      disabled={isLoading}
+                    />
+                  ))}
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 text-red-500 text-xs font-bold py-3 px-4 rounded-xl border border-red-100 text-center">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  <Button
+                    variant="ghost"
+                    className="w-full h-12 text-sm font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    onClick={handleResend}
+                    disabled={isLoading}
+                  >
+                    코드를 못 받으셨나요? <span className="underline ml-1">재발송하기</span>
+                  </Button>
+                  <button
+                    onClick={() => { setStep("email"); setCode(["", "", "", "", "", ""]); setError("") }}
+                    className="text-xs font-bold text-slate-300 hover:text-slate-500 transition-colors"
+                  >
+                    이메일 주소 변경
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className="text-center text-[11px] leading-relaxed text-slate-400 font-medium pt-2">
+              가입하시면 이용약관 및 개인정보처리방침에<br />
+              동의하게 됩니다.
+            </p>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DialogContent>
   )
 }
