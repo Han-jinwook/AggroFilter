@@ -431,6 +431,7 @@ export default function ResultClient() {
               }
             }
 
+            /* REFACTORED: 예측 퀴즈 시스템 제거 예정 (주석 처리)
             // Load prediction: sessionStorage (current session) or DB (past record)
             let matched = false
             try {
@@ -509,6 +510,7 @@ export default function ResultClient() {
                 clickbait: 0,
               })
             }
+            */
           } else {
             setUserPredictionStats(null)
           }

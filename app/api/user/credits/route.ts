@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBalance } from '@/src/services/merlin-hub-sdk/wallet';
+import { getBalance } from '@/src/services/merlin-hub-sdk';
 
 export const runtime = 'nodejs';
 

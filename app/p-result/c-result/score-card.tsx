@@ -141,9 +141,9 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             </div>
           )}
 
+          {/* REFACTORED: 예측 등급 시스템 제거 예정 (주석 처리)
           {prediction ? (
             <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
-              {/* Line 1: This video's prediction */}
               <div className="flex items-center justify-center gap-1.5 text-sm flex-wrap">
                 <span className="font-medium text-gray-600">나의 신뢰도 촉은?</span>
                 <span className="text-lg font-bold text-purple-600">{prediction.predictedReliability}</span>
@@ -152,7 +152,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
                 <span className="font-medium text-gray-600">로</span>
                 <span className="text-base font-bold text-yellow-600">{prediction.tierEmoji} {prediction.tierLabel}({prediction.tier}급)</span>
               </div>
-              {/* Line 2: Cumulative average */}
               <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 bg-slate-50 rounded-lg py-1.5 px-2">
                 <span>◁</span>
                 <span>누적</span>
@@ -165,6 +164,7 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
               </div>
             </div>
           ) : null}
+          */}
         </div>
       </div>
     </div>

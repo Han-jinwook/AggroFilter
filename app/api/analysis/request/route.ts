@@ -8,7 +8,7 @@ import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
-import { getBalance, getPricing, processTransaction, chargeDynamic } from '@/src/services/merlin-hub-sdk/wallet';
+import { getBalance, getPricing, processTransaction, chargeDynamic } from '@/src/services/merlin-hub-sdk';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;

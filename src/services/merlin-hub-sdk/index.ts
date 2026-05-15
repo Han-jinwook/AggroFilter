@@ -1,37 +1,25 @@
 /**
- * Merlin Hub SDK
+ * Merlin Hub SDK v1.0.0
  * ─────────────────────────────────────────────
- * 싱글턴 패턴 SDK — 다른 패밀리 앱에서도 복사하여 재사용 가능
- * 
- * 사용법:
- *   import { MerlinHub } from '@/src/services/merlin-hub-sdk';
- *   await MerlinHub.auth.requestOTP('user@example.com');
- *   const result = await MerlinHub.auth.verifyOTP('user@example.com', '123456');
- *   const balance = await MerlinHub.wallet.getBalance();
+ * 통합 패키지 진입점
  */
 
-export { configureMerlinHub, getConfig } from './config';
-export type { MerlinHubConfig } from './config';
+// 1. Core 로직 (API, Auth, Wallet)
+export { MerlinHub, configureMerlinHub, getConfig } from './Core';
+export { hubFetch, getSessionToken, setSessionToken, clearSessionToken } from './Core/client';
+export { checkSession, logout, updateProfile, getProfile } from './Core/auth';
+export { getBalance, useCredit, requestKcpPayment } from './Core/wallet';
 
-export { hubFetch, getSessionToken, setSessionToken, clearSessionToken, isTokenExpired } from './client';
-export type { HubFetchResult } from './client';
+// 2. Core Hooks (비즈니스 로직 전용)
+export { useHubSession } from './Core/useHubSession';
+export { useHubAuth } from './Core/useHubAuth';
+export { useHubPayment } from './Core/useHubPayment';
+export { useHubNotifier } from './Core/useHubNotifier';
+export { useHubReferral } from './Core/useHubReferral';
 
-export { requestOTP, verifyOTP, checkSession, logout, updateProfile, getProfile } from './auth';
-export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileResult } from './auth';
-
-export { useCredit, getBalance, getUserId, requestKcpPayment } from './wallet';
-export type { UseCreditParams, UseCreditResult, WalletBalance } from './wallet';
-
-// ── Namespace export for convenience ──
-import * as auth from './auth';
-import * as wallet from './wallet';
-import * as client from './client';
-import { configureMerlinHub, getConfig } from './config';
-
-export const MerlinHub = {
-  configure: configureMerlinHub,
-  getConfig,
-  auth,
-  wallet,
-  client,
-} as const;
+// 3. Custom UI Components (표준 UI 부품)
+export { HubProfileWidget } from './Custom/HubProfileWidget';
+export { HubAuthModal } from './Custom/HubAuthModal';
+export { HubRegisterNudge } from './Custom/HubRegisterNudge';
+export { HubPaymentTrigger } from './Custom/HubPaymentTrigger';
+export { HubNotifier } from './Custom/HubNotifier';

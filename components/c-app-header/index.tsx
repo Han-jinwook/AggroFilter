@@ -9,6 +9,7 @@ import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
 import { checkSession, getBalance } from "@/src/services/merlin-hub-sdk"
+import { HubProfileWidget } from "@/src/services/merlin-hub-sdk/Custom/HubProfileWidget"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -320,47 +321,13 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </Link>
           )}
 
-          {/* 프로필 */}
-          {isLoggedIn ? (
-            <>
-              <Link
-                href="/p-settings"
-                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-              >
-                {profileImage ? (
-                  <div className="p-0.5 rounded-xl border-2 border-transparent group-hover:border-slate-200 transition-colors">
-                    <img
-                      src={profileImage}
-                      alt="Profile"
-                      className="h-9 w-9 rounded-lg object-cover shadow-sm"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-                    <span className="text-sm font-bold w-5 h-5 flex items-center justify-center">
-                      {getFirstChar(nickname)}
-                    </span>
-                  </div>
-                )}
-                <span className="text-[10px] font-bold text-slate-900">{nickname}</span>
-              </Link>
+          {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 */}
+          <HubProfileWidget />
 
-              {isAdmin && (
-                <div className="hidden lg:flex">
-                  <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
-                </div>
-              )}
-            </>
-          ) : (
-            <Link
-              href="/p-settings"
-              className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-            >
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
-                <span className="text-lg w-5 h-5 flex items-center justify-center">{anonEmoji || '🐾'}</span>
-              </div>
-              <span className="text-[10px] font-bold text-slate-500">{anonNickname || '게스트'}</span>
-            </Link>
+          {isAdmin && isLoggedIn && (
+            <div className="hidden lg:flex">
+              <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
+            </div>
           )}
         </div>
       </div>

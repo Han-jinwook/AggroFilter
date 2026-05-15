@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
-import { LoginModal } from "@/components/c-login-modal"
+import { HubAuthModal } from "@/src/services/merlin-hub-sdk/Custom/HubAuthModal"
+import { HubRegisterNudge } from "@/src/services/merlin-hub-sdk/Custom/HubRegisterNudge"
 import { HeroSection } from "@/app/c-home/hero-section"
 import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
@@ -309,6 +310,7 @@ export default function MainPage() {
             {!isAnalyzing && !isCompleted && (
               <>
                 <FeatureCards />
+                <HubRegisterNudge />
                 <OnboardingGuide />
               </>
             )}
@@ -320,7 +322,11 @@ export default function MainPage() {
         )}
       </main>
 
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+      <HubAuthModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={(email) => handleLoginSuccess(email, '')} 
+      />
     </div>
   )
 }

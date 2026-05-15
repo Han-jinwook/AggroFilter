@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
-import { requestKcpPayment, MerlinHub, hubFetch } from '@/src/services/merlin-hub-sdk'
+import { hubFetch } from '@/src/services/merlin-hub-sdk'
+import { HubPaymentTrigger } from '@/src/services/merlin-hub-sdk/Custom/HubPaymentTrigger'
 
 interface HistoryItem {
   id: number
@@ -202,9 +203,14 @@ function MockPaymentContent() {
                 </label>
               </div>
             </div>
-            <button onClick={() => handlePay()} className="w-full rounded-2xl bg-indigo-600 py-5 text-lg font-black text-white shadow-xl hover:bg-indigo-700 active:scale-[0.98]">
+            <HubPaymentTrigger
+              amount={selectedPkg.price}
+              coinAmount={selectedPkg.credits}
+              payMethodType={method}
+              className="w-full rounded-2xl bg-indigo-600 py-5 text-lg font-black text-white shadow-xl hover:bg-indigo-700 active:scale-[0.98]"
+            >
               {selectedOption.toLocaleString()} 코인 결제하기
-            </button>
+            </HubPaymentTrigger>
           </div>
         )}
 

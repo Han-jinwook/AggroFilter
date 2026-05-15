@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getHistory } from '@/src/services/merlin-hub-sdk/wallet';
+import { getHistory } from '@/src/services/merlin-hub-sdk';
 import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';

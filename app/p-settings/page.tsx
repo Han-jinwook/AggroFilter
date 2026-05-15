@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import AppHeader from '@/components/c-app-header'
-import { TierRoadmap } from './c-tier-roadmap'
+// import { TierRoadmap } from './c-tier-roadmap'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { isAnonymousUser, getUserId } from '@/lib/anon'
 import { MerlinHub } from '@/src/services/merlin-hub-sdk'
@@ -76,7 +76,7 @@ export default function SettingsPage() {
           })
           .catch(() => {})
 
-        // 예측 통계 fetch
+        /* REFACTORED: 예측 통계 시스템 제거 예정 (주석 처리)
         fetch(`/api/prediction/stats?id=${encodeURIComponent(uid)}`)
           .then(res => res.ok ? res.json() : null)
           .then(data => {
@@ -91,6 +91,7 @@ export default function SettingsPage() {
             }
           })
           .catch(() => {})
+        */
         }
 
         loadUserData()
@@ -270,14 +271,9 @@ export default function SettingsPage() {
       <main className="container mx-auto px-4 py-8 max-w-[var(--app-max-width)]">
         <h1 className="text-3xl font-bold mb-8">설정</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 왼쪽: 등급 로드맵 */}
-          <div className="order-2 lg:order-1">
-            <TierRoadmap currentTier={predictionStats.currentTier} currentGap={predictionStats.avgGap} totalPredictions={predictionStats.totalPredictions} />
-          </div>
-
-          {/* 오른쪽: 프로필 정보 */}
-          <div className="order-1 lg:order-2 space-y-6">
+        <div className="flex justify-center">
+          {/* 오른쪽: 프로필 정보 (로드맵 제거 후 중앙 배치) */}
+          <div className="w-full max-w-2xl space-y-6">
             <div className="bg-card border rounded-xl p-6 shadow-sm">
           <div className="flex items-start justify-between mb-6">
             <h2 className="text-xl font-semibold">프로필 정보</h2>
