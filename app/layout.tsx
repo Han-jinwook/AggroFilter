@@ -8,7 +8,7 @@ import { BottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
-import { HubNotifier } from "@/src/services/merlin-hub-sdk/Custom/HubNotifier"
+import { HubNotifier } from "@/src/services/merlin-hub-sdk/react"
 import { Footer } from "@/components/c-footer"
 
 interface TRootLayoutProps {

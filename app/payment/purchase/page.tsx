@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
 import { hubFetch } from '@/src/services/merlin-hub-sdk'
-import { HubPaymentTrigger } from '@/src/services/merlin-hub-sdk/Custom/HubPaymentTrigger'
+import { HubPaymentTrigger } from '@/src/services/merlin-hub-sdk/react'
 
 interface HistoryItem {
   id: number

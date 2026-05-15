@@ -9,7 +9,7 @@ import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
 import { checkSession, getBalance } from "@/src/services/merlin-hub-sdk"
-import { HubProfileWidget } from "@/src/services/merlin-hub-sdk/Custom/HubProfileWidget"
+import { HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
