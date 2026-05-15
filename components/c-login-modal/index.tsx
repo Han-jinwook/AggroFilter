@@ -249,7 +249,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
             </p>
           </div>
         </div>
-      </div>
-    </DialogContent>
+      </DialogContent>
+    </Dialog>
   )
 }
