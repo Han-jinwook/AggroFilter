@@ -322,7 +322,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           )}
 
           {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 */}
-          <HubProfileWidget />
+          <HubProfileWidget 
+            onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+            onProfileClick={() => window.location.href = '/p-my-page?tab=analysis'}
+          />
 
           {isAdmin && isLoggedIn && (
             <div className="hidden lg:flex">

@@ -44,11 +44,12 @@ export function useHubSession() {
       // 허브 API로부터 현재 유저 프로필 조회
       const profile = await client.getProfile();
       
-      if (profile) {
+      // profile.success가 true일 때만 로그인 상태로 간주
+      if (profile && profile.success) {
         setSession({
           isLoggedIn: true,
           isLoading: false,
-          user: profile,
+          user: profile as any,
           error: null,
         });
       } else {
