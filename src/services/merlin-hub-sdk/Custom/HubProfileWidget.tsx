@@ -47,7 +47,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
           <img 
             src="/hub_assets/guest_paw.png" 
             alt="Guest" 
-            className="w-full h-full object-contain p-1"
+            className="w-full h-full object-contain rounded-2xl"
           />
         </div>
         {showNickname && (
