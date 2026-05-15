@@ -43,11 +43,11 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
         onClick={onLoginClick}
         className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
       >
-        <div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center overflow-hidden border border-orange-100 group-hover:scale-105 transition-transform shadow-sm">
+        <div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center overflow-hidden border border-orange-100 group-hover:scale-105 transition-transform">
           <img 
             src="/hub_assets/guest_paw.png" 
             alt="Guest" 
-            className="w-[90%] h-[90%] object-contain p-0.5"
+            className="w-full h-full object-contain p-1"
           />
         </div>
         {showNickname && (
