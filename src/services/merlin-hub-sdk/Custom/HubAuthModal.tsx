@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Version: v1.0.0
- * Last Updated: 2026-05-15
+ * Version: v1.1.0
+ * Last Updated: 2026-05-16
  */
 import React, { useState } from 'react';
 import { useHubAuth } from '../Core/useHubAuth';

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
 import { Dialog, DialogContent } from "@/components/ui/c-dialog"
 import { requestOTP, verifyOTP } from "@/src/services/merlin-hub-sdk"
+import { Coins } from "lucide-react"
 
 interface TLoginModalProps {
   open: boolean
@@ -27,7 +28,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setIsLoading(true)
     try {
-      const result = await requestOTP(email)
+      const result = await requestOTP(email, 'AGGRO_FILTER')
       if (!result.success) throw new Error(result.error || 'Failed to send OTP')
       setStep("code")
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
@@ -99,7 +100,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setError("")
     setCode(["", "", "", "", "", ""])
     try {
-      const result = await requestOTP(email)
+      const result = await requestOTP(email, 'AGGRO_FILTER')
       if (!result.success) throw new Error(result.error || 'Failed')
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
     } catch (err: any) {
@@ -123,26 +124,31 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[3rem]" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <div className="px-8 pt-12 pb-10">
+        <div className="px-8 pt-8 pb-6">
           {step === "email" ? (
             <div className="animate-in fade-in zoom-in-95 duration-300">
-              <div className="flex flex-col items-center gap-6 mb-10">
-                <div className="space-y-4 text-center">
+              <div className="flex flex-col items-center gap-3 mb-6">
+                <div className="space-y-1 text-center">
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2">
                     <img
                       src={`/images/character-logo-ko.png?v=${Date.now()}`}
                       alt="어그로필터"
-                      className="h-10 w-auto object-contain"
+                      className="h-32 w-auto object-contain"
                     />
                     시작하기
                   </h2>
-                  <p className="text-[15px] text-slate-400 font-bold tracking-tight">
-                    지금 바로 무료 코인 받아 분석에 사용하세요
+                  <p className="text-[15px] text-slate-400 font-bold tracking-tight flex items-center justify-center gap-1.5">
+                    지금 바로 
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">
+                      <Coins className="w-3.5 h-3.5" />
+                      무료 코인
+                    </span> 
+                    받아 분석에 사용하세요
                   </p>
                 </div>
               </div>
 
-              <form onSubmit={handleEmailSubmit} className="space-y-6">
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <Input
                   id="email"
                   type="email"
@@ -150,7 +156,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError("") }}
                   required
-                  className="h-16 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-lg font-bold px-6 text-center"
+                  className="h-16 bg-white border-2 border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-2xl font-bold px-6 text-center placeholder:text-slate-300 placeholder:font-medium"
                 />
 
                 {error && (
@@ -164,7 +170,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "준비 중..." : "인증코드 받기"}
+                  {isLoading ? "발송 중..." : "인증코드 받기"}
                 </Button>
               </form>
             </div>
@@ -175,10 +181,15 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   <span className="text-3xl">📧</span>
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">인증코드를 입력해주세요</h3>
-                <p className="text-base text-slate-400 font-bold">
-                  <span className="text-blue-600 font-black">{email}</span>로<br/>
-                  6자리 코드를 발송했습니다.
-                </p>
+                <div className="space-y-1">
+                  <p className="text-base text-slate-400 font-bold">
+                    <span className="text-blue-600 font-black">{email}</span>로<br/>
+                    6자리 코드를 발송했습니다.
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-bold tracking-tight opacity-70">
+                    통합계정센터 <span className="text-slate-300 mx-1">|</span> <span className="text-slate-500">os.sundreamer.app</span>
+                  </p>
+                </div>
               </div>
 
               <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
@@ -221,17 +232,12 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   </Button>
                 </div>
 
-                <div className="pt-4 border-top border-slate-50">
-                  <p className="text-xs text-slate-400 font-bold tracking-tight">
-                    통합계정센터 <span className="text-slate-300 mx-1">|</span> <span className="text-slate-500">os.sundreamer.app</span>
-                  </p>
-                </div>
               </div>
             </div>
           )}
 
-          <div className="text-center mt-8">
-            <span className="text-[11px] text-slate-200 font-bold tracking-tight">
+          <div className="text-center mt-4">
+            <span className="text-[11px] text-slate-400 font-bold tracking-tight">
               시작 시 서비스 정책에 동의하게 됩니다.
             </span>
           </div>

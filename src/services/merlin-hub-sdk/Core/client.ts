@@ -1,4 +1,6 @@
 /**
+ * Version: v1.1.0
+ * Last Updated: 2026-05-16
  * Merlin Hub SDK — HTTP Client
  * - 모든 허브 통신에 CLIENT_ID/SECRET 헤더를 자동 부착
  * - 네트워크 실패 시 지수 백오프 재시도 (최대 3회)

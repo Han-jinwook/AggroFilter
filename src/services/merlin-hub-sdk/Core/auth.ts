@@ -1,4 +1,6 @@
 /**
+ * Version: v1.1.0
+ * Last Updated: 2026-05-16
  * Merlin Hub SDK — Auth Module
  * 이메일 OTP 인증: requestOTP → verifyOTP → JWT 저장
  * 프로필 관리: updateProfile → Hub family_users 직접 갱신
@@ -28,11 +30,11 @@ export interface OTPVerifyResult {
  * OTP 인증코드 발송 요청
  * @param email 사용자 이메일
  */
-export async function requestOTP(email: string): Promise<OTPRequestResult> {
+export async function requestOTP(email: string, appId?: string): Promise<OTPRequestResult> {
   try {
     const { ok, data } = await hubFetch<OTPRequestResult>('/api/auth/request-otp', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, appId }),
     });
 
     if (!ok) {

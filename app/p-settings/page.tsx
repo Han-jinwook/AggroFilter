@@ -269,7 +269,6 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="container mx-auto px-4 py-8 max-w-[var(--app-max-width)]">
-        <h1 className="text-3xl font-bold mb-8">설정</h1>
 
         <div className="flex justify-center">
           {/* 오른쪽: 프로필 정보 (로드맵 제거 후 중앙 배치) */}
@@ -331,53 +330,55 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* 이메일 */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-                <Mail className="h-4 w-4" />
-                이메일
-              </label>
-              {isAnon ? (
-                <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                  className="w-full rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 hover:from-blue-100 hover:to-sky-100 transition-colors cursor-pointer overflow-hidden"
-                >
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <Image src="/images/character-logo.png" alt="캐릭터" width={40} height={40} className="flex-shrink-0" unoptimized />
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-blue-700">이메일을 등록해봐요! 😊</p>
-                      <p className="text-xs text-blue-500 mt-0.5">분석 기록 보존 · 알림 수신 · 기기 변경 시 데이터 유지</p>
+            {/* 이메일 & 닉네임 (Desktop: 한 줄 / Mobile: 두 줄) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 이메일 */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                  <Mail className="h-4 w-4" />
+                  이메일
+                </label>
+                {isAnon ? (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+                    className="w-full rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 hover:from-blue-100 hover:to-sky-100 transition-colors cursor-pointer overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 px-4 py-2">
+                      <Image src="/images/character-logo.png" alt="캐릭터" width={40} height={40} className="flex-shrink-0" unoptimized />
+                      <div className="text-left">
+                        <p className="text-[11px] font-semibold text-blue-700">이메일 등록 😊</p>
+                        <p className="text-[9px] text-blue-500 mt-0.5">기록 보존 및 알림 수신</p>
+                      </div>
                     </div>
-                    <span className="ml-auto text-blue-400 text-lg">→</span>
-                  </div>
-                </button>
-              ) : (
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
-                />
-              )}
-            </div>
+                  </button>
+                ) : (
+                  <input
+                    type="email"
+                    value={email}
+                    disabled
+                    className="w-full px-4 py-2 border rounded-lg bg-muted text-muted-foreground cursor-not-allowed text-sm"
+                  />
+                )}
+              </div>
 
-            {/* 닉네임 */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-                <User className="h-4 w-4" />
-                닉네임
-              </label>
-              <input
-                type="text"
-                value={isEditing ? tempNickname : nickname}
-                onChange={(e) => setTempNickname(e.target.value)}
-                disabled={!isEditing}
-                className={`w-full px-4 py-2 border rounded-lg ${
-                  isEditing
-                    ? 'bg-background focus:outline-none focus:ring-2 focus:ring-primary'
-                    : 'bg-muted cursor-not-allowed'
-                }`}
-              />
+              {/* 닉네임 */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                  <User className="h-4 w-4" />
+                  닉네임
+                </label>
+                <input
+                  type="text"
+                  value={isEditing ? tempNickname : nickname}
+                  onChange={(e) => setTempNickname(e.target.value)}
+                  disabled={!isEditing}
+                  className={`w-full px-4 py-2 border rounded-lg text-sm ${
+                    isEditing
+                      ? 'bg-background focus:outline-none focus:ring-2 focus:ring-primary'
+                      : 'bg-muted cursor-not-allowed'
+                  }`}
+                />
+              </div>
             </div>
 
             {/* 편집 모드 버튼들 */}
