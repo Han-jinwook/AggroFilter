@@ -126,13 +126,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]" onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="px-10 pt-12 pb-10">
           <DialogHeader className="flex flex-col items-center gap-4 mb-8">
-            <div className="relative w-64 h-20 transition-transform hover:scale-105 duration-300">
-              <Image
+            <div className="relative w-64 h-20 transition-transform hover:scale-105 duration-300 flex items-center justify-center">
+              <img
                 src="/images/character-logo-ko.png"
                 alt="어그로필터"
-                fill
-                className="object-contain"
-                priority
+                className="max-w-full max-h-full object-contain"
               />
             </div>
             <div className="space-y-1 text-center">
