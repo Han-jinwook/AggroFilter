@@ -5,7 +5,7 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
+import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
 import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
@@ -169,15 +169,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
-          <Link
-            href="/payment/purchase"
-            className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
-          >
-            <div className={`p-2 rounded-xl transition-colors ${isActive('/payment/purchase') ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'}`}>
-              <Coins className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-bold text-primary">이용권 구매</span>
-          </Link>
 
           {/* 알림 종 — 로그인 상태에선 알림 페이지, 익명이면 로그인 모달 */}
           {isLoggedIn ? (
