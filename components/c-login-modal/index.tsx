@@ -1,11 +1,10 @@
 "use client"
 
 import type React from "react"
-import Image from "next/image"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/c-button"
 import { Input } from "@/components/ui/c-input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/c-dialog"
+import { Dialog, DialogContent } from "@/components/ui/c-dialog"
 import { requestOTP, verifyOTP } from "@/src/services/merlin-hub-sdk"
 
 interface TLoginModalProps {
@@ -123,103 +122,120 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <div className="px-10 pt-12 pb-10">
-          <DialogHeader className="flex flex-col items-center gap-4 mb-8">
-            <div className="relative w-64 h-20 transition-transform hover:scale-105 duration-300 flex items-center justify-center">
-              <img
-                src={`/images/character-logo-ko.png?v=${Date.now()}`}
-                alt="어그로필터"
-                width="256"
-                className="max-h-full object-contain"
-              />
-            </div>
-            <div className="space-y-1 text-center">
-              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
-                어그로필터 시작하기 🚀
-              </DialogTitle>
-              <p className="text-[14px] text-slate-400 font-bold tracking-tight">
-                지금 바로 무료 분석 코인을 받아보세요.
-              </p>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-8">
-            {step === "email" ? (
-              <form onSubmit={handleEmailSubmit} className="space-y-6">
-                <div className="space-y-3">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="이메일 주소 입력 (example@email.com)"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError("") }}
-                    required
-                    className="h-16 bg-slate-100/50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-[1.25rem] text-[17px] font-medium px-6 shadow-inner text-center"
+      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[3rem]" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <div className="px-8 pt-12 pb-10">
+          {step === "email" ? (
+            <div className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex flex-col items-center gap-6 mb-10">
+                <div className="relative w-64 h-16 transition-transform hover:scale-105 duration-300 flex items-center justify-center">
+                  <img
+                    src={`/images/character-logo-ko.png?v=${Date.now()}`}
+                    alt="어그로필터"
+                    className="max-w-full max-h-full object-contain"
                   />
                 </div>
+                <div className="space-y-2 text-center">
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+                    어그로필터 시작하기 🚀
+                  </h2>
+                  <p className="text-[15px] text-slate-400 font-bold tracking-tight">
+                    지금 바로 무료 분석 코인을 받아보세요.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleEmailSubmit} className="space-y-6">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="이메일 주소 입력 (example@email.com)"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError("") }}
+                  required
+                  className="h-16 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-lg font-bold px-6 text-center"
+                />
 
                 {error && (
-                  <div className="bg-red-50 text-red-500 text-sm font-bold py-4 px-6 rounded-2xl border border-red-100 text-center animate-in fade-in">
+                  <div className="bg-red-50 text-red-500 text-sm font-bold py-4 px-6 rounded-2xl border border-red-100 text-center">
                     {error}
                   </div>
                 )}
 
                 <Button 
                   type="submit" 
-                  className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-[1.25rem] shadow-xl shadow-blue-600/20 active:scale-[0.97] transition-all" 
+                  className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-600/20 active:scale-[0.98] transition-all" 
                   disabled={isLoading}
                 >
                   {isLoading ? "준비 중..." : "인증코드 받기"}
                 </Button>
               </form>
-            ) : (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500 text-center">
-                <div className="space-y-2">
-                  <p className="text-lg font-black text-slate-800 tracking-tight">인증코드를 입력해주세요</p>
-                  <p className="text-[14px] text-slate-400 font-bold">
-                    <span className="text-blue-600">{email}</span>로 발송했습니다.
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center space-y-10">
+              <div className="space-y-3">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-2xl mb-2">
+                  <span className="text-3xl">📧</span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">인증코드를 입력해주세요</h3>
+                <p className="text-base text-slate-400 font-bold">
+                  <span className="text-blue-600 font-black">{email}</span>로<br/>
+                  6자리 코드를 발송했습니다.
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
+                {code.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handleCodeChange(i, e.target.value)}
+                    onKeyDown={e => handleCodeKeyDown(i, e)}
+                    className={`w-12 h-16 text-center text-3xl font-black border-3 rounded-2xl outline-none transition-all ${
+                      digit 
+                        ? 'border-blue-500 bg-blue-50 text-blue-600 ring-4 ring-blue-500/10' 
+                        : 'border-slate-200 bg-white text-slate-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/5'
+                    }`}
+                    disabled={isLoading}
+                  />
+                ))}
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex flex-col gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleResend} 
+                    disabled={isLoading}
+                    className="h-14 border-2 border-slate-100 text-slate-600 font-black text-base rounded-xl hover:bg-slate-50 hover:border-slate-200 transition-all"
+                  >
+                    🔄 인증코드 재발송
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { setStep("email"); setCode(["", "", "", "", "", ""]); setError("") }}
+                    className="h-12 text-slate-400 font-bold text-sm hover:text-slate-600 hover:bg-transparent"
+                  >
+                    다른 이메일 주소 사용하기
+                  </Button>
+                </div>
+
+                <div className="pt-4 border-top border-slate-50">
+                  <p className="text-xs text-slate-400 font-bold tracking-tight">
+                    통합계정센터 <span className="text-slate-300 mx-1">|</span> <span className="text-slate-500">os.sundreamer.app</span>
                   </p>
-                  <div className="inline-block px-3 py-1 bg-slate-50 rounded-lg">
-                    <p className="text-[10px] text-slate-400 font-black tracking-tight">
-                      통합계정센터 (os.sundreamer.app)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-center gap-2.5" onPaste={handleCodePaste}>
-                  {code.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={el => { inputRefs.current[i] = el }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={e => handleCodeChange(i, e.target.value)}
-                      onKeyDown={e => handleCodeKeyDown(i, e)}
-                      className={`w-11 h-14 text-center text-2xl font-black border-2 rounded-xl outline-none transition-all ${
-                        digit 
-                          ? 'border-blue-500 bg-blue-50/50 text-blue-600 ring-2 ring-blue-500/10' 
-                          : 'border-slate-100 bg-slate-50/50 text-slate-300 focus:border-blue-400'
-                      }`}
-                      disabled={isLoading}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex justify-center gap-4 text-[13px] font-black text-slate-300">
-                  <button onClick={handleResend} disabled={isLoading} className="hover:text-blue-500 underline decoration-2 underline-offset-4">재발송</button>
-                  <button onClick={() => { setStep("email"); setCode(["", "", "", "", "", ""]); setError("") }} className="hover:text-slate-500">이메일 변경</button>
                 </div>
               </div>
-            )}
-
-            <div className="text-center pt-2">
-              <span className="text-[10px] text-slate-200 font-bold tracking-tight">
-                시작 시 정책에 동의하게 됩니다.
-              </span>
             </div>
+          )}
+
+          <div className="text-center mt-8">
+            <span className="text-[11px] text-slate-200 font-bold tracking-tight">
+              시작 시 서비스 정책에 동의하게 됩니다.
+            </span>
           </div>
         </div>
       </DialogContent>
