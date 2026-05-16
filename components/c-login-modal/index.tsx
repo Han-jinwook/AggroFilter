@@ -127,14 +127,15 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
           {step === "email" ? (
             <div className="animate-in fade-in zoom-in-95 duration-300">
               <div className="flex flex-col items-center gap-6 mb-10">
-                <div className="relative w-64 h-16 transition-transform hover:scale-105 duration-300 flex items-center justify-center">
-                  <img
-                    src={`/images/character-logo-ko.png?v=${Date.now()}`}
-                    alt="어그로필터"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-                <div className="space-y-2 text-center">
+                <div className="space-y-4 text-center">
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-2">
+                    <img
+                      src={`/images/character-logo-ko.png?v=${Date.now()}`}
+                      alt="어그로필터"
+                      className="h-10 w-auto object-contain"
+                    />
+                    시작하기
+                  </h2>
                   <p className="text-[15px] text-slate-400 font-bold tracking-tight">
                     지금 바로 무료 코인 받아 분석에 사용하세요
                   </p>
