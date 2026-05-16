@@ -73,7 +73,6 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      // REFACTORED: 추천인 코드는 추후 공유 링크를 통해 자동 처리되므로 빈 값 전달
       const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER')
       if (!result.success) {
         setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
@@ -124,37 +123,37 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl" onOpenAutoFocus={(e) => e.preventDefault()}>
-        {/* 상단 장식용 배경 */}
-        <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-blue-600/10 to-indigo-600/5 -z-10" />
+      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]" onOpenAutoFocus={(e) => e.preventDefault()}>
+        {/* 상단 부드러운 배경 색상 */}
+        <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-blue-50/80 to-transparent -z-10" />
         
-        <div className="px-8 pt-10 pb-12">
-          <DialogHeader className="flex flex-col items-center gap-4 mb-8">
-            <div className="relative w-48 h-12 mb-2">
+        <div className="px-10 pt-12 pb-10">
+          <DialogHeader className="flex flex-col items-center gap-6 mb-10">
+            <div className="relative w-64 h-24 transition-transform hover:scale-105 duration-300">
               <Image
                 src="/images/character-logo.png"
-                alt="AggroFilter"
+                alt="어그로필터"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
-            <div className="space-y-2 text-center">
-              <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">
-                어그로필터에 오신 것을 환영합니다! 🎉
+            <div className="space-y-3 text-center">
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
+                어그로필터 시작하기 🚀
               </DialogTitle>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed px-4">
-                지금 가입하시면 증정되는 <span className="text-blue-600 font-bold">무료 분석 코인</span>으로<br />
-                유튜브 정밀 분석을 바로 시작해보세요.
+              <p className="text-[15px] text-slate-500 font-semibold leading-relaxed tracking-tight">
+                지금 바로 <span className="text-blue-600 underline decoration-2 underline-offset-4">무료 분석 코인</span>을 받고<br />
+                정밀한 유튜브 분석을 경험해보세요.
               </p>
             </div>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {step === "email" ? (
-              <form onSubmit={handleEmailSubmit} className="space-y-5">
-                <div className="space-y-2.5">
-                  <label htmlFor="email" className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+              <form onSubmit={handleEmailSubmit} className="space-y-6">
+                <div className="space-y-3">
+                  <label htmlFor="email" className="text-[13px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">
                     이메일 주소
                   </label>
                   <Input
@@ -164,40 +163,40 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError("") }}
                     required
-                    className="h-14 bg-slate-50/50 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all rounded-2xl text-base px-5"
+                    className="h-16 bg-slate-100/50 border-transparent focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-3xl text-[17px] font-medium px-6 shadow-inner"
                   />
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 text-red-500 text-xs font-bold py-3 px-4 rounded-xl border border-red-100 text-center animate-in fade-in slide-in-from-top-1">
+                  <div className="bg-red-50 text-red-500 text-sm font-bold py-4 px-6 rounded-2xl border border-red-100 text-center animate-in fade-in slide-in-from-top-1">
                     {error}
                   </div>
                 )}
 
                 <Button 
                   type="submit" 
-                  className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-2xl shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all" 
+                  className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-3xl shadow-xl shadow-blue-600/20 active:scale-[0.97] transition-all" 
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>발송 중...</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>준비 중...</span>
                     </div>
                   ) : "인증코드 받기"}
                 </Button>
               </form>
             ) : (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="text-center space-y-2">
-                  <p className="font-bold text-slate-800">📧 인증코드를 입력해주세요</p>
-                  <p className="text-sm text-slate-500 font-medium">
-                    <span className="text-blue-600 font-bold">{email}</span>로<br />
-                    6자리 코드를 발송했습니다.
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-3 duration-500">
+                <div className="text-center space-y-3">
+                  <p className="text-lg font-black text-slate-800">📧 인증코드를 입력해주세요</p>
+                  <p className="text-[15px] text-slate-500 font-semibold">
+                    <span className="text-blue-600 font-black">{email}</span>로<br />
+                    6자리 코드를 보내드렸습니다.
                   </p>
                 </div>
 
-                <div className="flex justify-center gap-2.5" onPaste={handleCodePaste}>
+                <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
                   {code.map((digit, i) => (
                     <input
                       key={i}
@@ -208,10 +207,10 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                       value={digit}
                       onChange={e => handleCodeChange(i, e.target.value)}
                       onKeyDown={e => handleCodeKeyDown(i, e)}
-                      className={`w-12 h-16 text-center text-2xl font-black border-2 rounded-2xl outline-none transition-all shadow-sm ${
+                      className={`w-12 h-16 text-center text-3xl font-black border-2 rounded-2xl outline-none transition-all shadow-sm ${
                         digit 
-                          ? 'border-blue-500 bg-blue-50/50 text-blue-600' 
-                          : 'border-slate-200 bg-slate-50/50 text-slate-400 focus:border-blue-400'
+                          ? 'border-blue-500 bg-blue-50/50 text-blue-600 ring-4 ring-blue-500/10' 
+                          : 'border-slate-200 bg-slate-50/50 text-slate-400 focus:border-blue-400 focus:bg-white'
                       }`}
                       disabled={isLoading}
                     />
@@ -219,34 +218,35 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 text-red-500 text-xs font-bold py-3 px-4 rounded-xl border border-red-100 text-center">
+                  <div className="bg-red-50 text-red-500 text-sm font-bold py-4 px-6 rounded-2xl border border-red-100 text-center">
                     {error}
                   </div>
                 )}
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
                   <Button
                     variant="ghost"
-                    className="w-full h-12 text-sm font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    className="w-full h-14 text-[15px] font-black text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
                     onClick={handleResend}
                     disabled={isLoading}
                   >
-                    코드를 못 받으셨나요? <span className="underline ml-1">재발송하기</span>
+                    코드가 안 왔나요? <span className="underline decoration-2 underline-offset-4 ml-1">재발송</span>
                   </Button>
                   <button
                     onClick={() => { setStep("email"); setCode(["", "", "", "", "", ""]); setError("") }}
-                    className="text-xs font-bold text-slate-300 hover:text-slate-500 transition-colors"
+                    className="text-sm font-black text-slate-300 hover:text-slate-500 transition-colors tracking-tight"
                   >
-                    이메일 주소 변경
+                    다른 이메일 주소 사용하기
                   </button>
                 </div>
               </div>
             )}
 
-            <p className="text-center text-[11px] leading-relaxed text-slate-400 font-medium pt-2">
-              가입하시면 이용약관 및 개인정보처리방침에<br />
-              동의하게 됩니다.
-            </p>
+            <div className="text-center pt-4">
+              <span className="text-[11px] text-slate-300 font-bold tracking-tight">
+                시작 시 <span className="underline decoration-1 underline-offset-2 hover:text-slate-400 cursor-pointer">이용약관 및 정책</span>에 동의하게 됩니다.
+              </span>
+            </div>
           </div>
         </div>
       </DialogContent>
