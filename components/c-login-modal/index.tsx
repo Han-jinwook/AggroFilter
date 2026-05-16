@@ -135,11 +135,8 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   />
                 </div>
                 <div className="space-y-2 text-center">
-                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                    어그로필터 시작하기 🚀
-                  </h2>
                   <p className="text-[15px] text-slate-400 font-bold tracking-tight">
-                    지금 바로 무료 분석 코인을 받아보세요.
+                    지금 바로 무료 코인 받아 분석에 사용하세요
                   </p>
                 </div>
               </div>
