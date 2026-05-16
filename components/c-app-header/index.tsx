@@ -4,7 +4,7 @@ import type React from "react"
 
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
@@ -25,7 +25,7 @@ interface TAppHeaderProps {
 }
 
 export function AppHeader({ onLoginClick }: TAppHeaderProps) {
-  const pathname = usePathname()
+  const router = useRouter()
   const { user, isLoggedIn, balance: credits, isLoading } = useHub()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -227,7 +227,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 */}
           <HubProfileWidget 
             onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-            onProfileClick={() => window.location.href = '/p-my-page?tab=analysis'}
+            onProfileClick={() => router.push('/p-my-page?tab=analysis')}
           />
 
           {isAdmin && isLoggedIn && (
