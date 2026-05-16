@@ -6,7 +6,10 @@ import React from 'react';
 import { useHubPayment } from '../Core/useHubPayment';
 
 interface HubPaymentTriggerProps {
-  planId: string;
+  amount: number;
+  coinAmount: number;
+  payMethodType?: 'card' | 'phone';
+  returnUrl?: string;
   label?: string;
   className?: string;
   onSuccess?: () => void;
@@ -19,7 +22,10 @@ interface HubPaymentTriggerProps {
  * 클릭 시 허브의 KCP 결제창을 호출하는 표준 버튼 컴포넌트입니다.
  */
 export const HubPaymentTrigger: React.FC<HubPaymentTriggerProps> = ({
-  planId,
+  amount,
+  coinAmount,
+  payMethodType = 'card',
+  returnUrl,
   label = '결제하기',
   className = '',
   onSuccess,
@@ -29,15 +35,15 @@ export const HubPaymentTrigger: React.FC<HubPaymentTriggerProps> = ({
   const { status, requestPayment, error } = useHubPayment();
 
   const handlePayment = async () => {
-    const params = await requestPayment(planId);
+    const success = await requestPayment({
+      amount,
+      coinAmount,
+      payMethodType,
+      returnUrl
+    });
     
-    if (params) {
-      // TODO: window.js_f_pay(window.order_info) 등의 KCP 팝업 스크립트 실행
-      // 허브 서버와 연동된 결제 팝업이 뜹니다.
-      console.log('결제 준비 완료:', params);
-      
-      // 결제 완료 후의 로직은 허브의 성공 콜백 페이지에서 처리되거나
-      // 앱의 onSuccess 콜백으로 이어집니다.
+    if (success && onSuccess) {
+      onSuccess();
     } else if (error && onError) {
       onError(error);
     }

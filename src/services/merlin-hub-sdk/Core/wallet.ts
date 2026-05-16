@@ -26,7 +26,8 @@ export async function getBalance(userId: string): Promise<{ success: boolean; ba
  */
 export async function getPricing(videoId: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
-    const { ok, data } = await hubFetch<any>(`/api/wallet/pricing?app_id=AGGRO_FILTER&action_type=ANALYSIS&resource_id=${videoId}`);
+    const config = getConfig();
+    const { ok, data } = await hubFetch<any>(`/api/wallet/pricing?app_id=${config.appId || 'DEFAULT_APP'}&action_type=ANALYSIS&resource_id=${videoId}`);
     if (!ok) return { success: false, error: data?.message || '단가 조회 실패' };
     return { success: true, data: data.data };
   } catch (err) {
@@ -53,7 +54,7 @@ export async function processTransaction(params: {
         request_id: params.requestId,
         transaction_type: params.amount < 0 ? 'SPEND' : 'CHARGE',
         display_text: params.displayText,
-        app_id: 'AGGRO_FILTER'
+        app_id: getConfig().appId || 'DEFAULT_APP'
       }),
     });
     if (!ok) return { success: false, error: data?.message || '트랜잭션 처리 실패' };
@@ -79,7 +80,7 @@ export async function chargeDynamic(params: {
       method: 'POST',
       body: JSON.stringify({
         userId: params.userId,
-        app_id: 'AGGRO_FILTER',
+        app_id: getConfig().appId || 'DEFAULT_APP',
         resource_id: params.videoId,
         raw_cost: params.rawCost,
         request_id: params.requestId,
@@ -129,13 +130,14 @@ export async function requestKcpPayment(params: {
   returnUrl: string;
 }): Promise<{ success: boolean; paymentData?: any; error?: string }> {
   try {
+    const config = getConfig();
     const { ok, data } = await hubFetch<any>('/api/payment/prepare', {
       method: 'POST',
       body: JSON.stringify({
         amount: params.amount,
         coin_amount: params.coinAmount,
         pay_method_type: params.payMethodType,
-        app_id: 'AGGRO_FILTER',
+        app_id: config.appId || 'DEFAULT_APP',
         return_url: params.returnUrl
       }),
     });

@@ -120,7 +120,10 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
       return {
         ok: true,
         status: 200,
-        data: data as T,
+        data: {
+          history: data,
+          app_id: config.appId || 'DEFAULT_APP'
+        } as T,
       };
     } catch {
       return { ok: true, status: 200, data: { history: [] } as T };
@@ -236,8 +239,14 @@ export class MerlinHubClient {
     return verifyOTP(email, code);
   }
 
-  async preparePayment(planId: string) {
-    return { success: true, planId };
+  async preparePayment(params: {
+    amount: number;
+    coinAmount: number;
+    payMethodType: 'card' | 'phone';
+    returnUrl: string;
+  }) {
+    const { requestKcpPayment } = await import('./wallet');
+    return requestKcpPayment(params);
   }
 
   async sendNotification(params: any) {
