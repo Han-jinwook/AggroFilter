@@ -128,9 +128,10 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
           <DialogHeader className="flex flex-col items-center gap-4 mb-8">
             <div className="relative w-64 h-20 transition-transform hover:scale-105 duration-300 flex items-center justify-center">
               <img
-                src="/images/character-logo-ko.png"
+                src={`/images/character-logo-ko.png?v=${Date.now()}`}
                 alt="어그로필터"
-                className="max-w-full max-h-full object-contain"
+                width="256"
+                className="max-h-full object-contain"
               />
             </div>
             <div className="space-y-1 text-center">
