@@ -26,6 +26,7 @@ interface TAppHeaderProps {
 
 export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, isLoggedIn, balance: credits, isLoading } = useHub()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
