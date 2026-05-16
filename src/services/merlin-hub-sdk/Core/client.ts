@@ -154,89 +154,66 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
   return null;
 }
 
-// 중복 요청 방지를 위한 프로미스 캐시 (Deduplication)
-const pendingRequests = new Map<string, Promise<HubFetchResult<any>>>();
-
 export async function hubFetch<T = any>(
   path: string,
   options: RequestInit = {},
   retries = MAX_RETRIES
 ): Promise<HubFetchResult<T>> {
-  // GET 요청에 대해서만 중복 제거 적용
-  const method = (options.method || 'GET').toUpperCase();
-  const cacheKey = `${method}:${path}:${JSON.stringify(options.body || '')}`;
+  // KCP 심사관 테스트 세션 차단 — 허브 호출 우회
+  const mock = await getTestSessionMock<T>(path, options);
+  if (mock) return mock;
 
-  if (method === 'GET' && pendingRequests.has(cacheKey)) {
-    return pendingRequests.get(cacheKey)!;
+  const config = getConfig();
+  const url = `${config.hubUrl}${path}`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Client-Id': config.clientId,
+    'X-Client-Secret': config.clientSecret,
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  // 세션 토큰이 있으면 Authorization 헤더 추가
+  const token = getSessionToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const requestPromise = (async () => {
-    // KCP 심사관 테스트 세션 차단 — 허브 호출 우회
-    const mock = await getTestSessionMock<T>(path, options);
-    if (mock) return mock;
+  let lastError: Error | null = null;
 
-    const config = getConfig();
-    const url = `${config.hubUrl}${path}`;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'X-Client-Id': config.clientId,
-      'X-Client-Secret': config.clientSecret,
-      ...(options.headers as Record<string, string> || {}),
-    };
-
-    // 세션 토큰이 있으면 Authorization 헤더 추가
-    const token = getSessionToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const res = await fetch(url, { ...options, headers });
-        const data = await res.json().catch(() => ({}));
-
-        // 401 → JWT 만료 — 세션 클리어 후 이벤트 발행
-        if (res.status === 401) {
-          clearSessionToken();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('merlinSessionExpired'));
-          }
-          return { ok: false, status: 401, data: data as T };
+      // 401 → JWT 만료 — 세션 클리어 후 이벤트 발행
+      if (res.status === 401) {
+        clearSessionToken();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('merlinSessionExpired'));
         }
+        return { ok: false, status: 401, data: data as T };
+      }
 
-        // 5xx 서버 오류 → 재시도 대상
-        if (res.status >= 500 && attempt < retries - 1) {
-          await wait(RETRY_BASE_MS * Math.pow(2, attempt));
-          continue;
-        }
+      // 5xx 서버 오류 → 재시도 대상
+      if (res.status >= 500 && attempt < retries - 1) {
+        await wait(RETRY_BASE_MS * Math.pow(2, attempt));
+        continue;
+      }
 
-        return { ok: res.ok, status: res.status, data: data as T };
-      } catch (err) {
-        lastError = err as Error;
-        // 네트워크 오류(ECONNREFUSED 등) → 재시도
-        if (attempt < retries - 1) {
-          await wait(RETRY_BASE_MS * Math.pow(2, attempt));
-          continue;
-        }
+      return { ok: res.ok, status: res.status, data: data as T };
+    } catch (err) {
+      lastError = err as Error;
+      // 네트워크 오류(ECONNREFUSED 등) → 재시도
+      if (attempt < retries - 1) {
+        await wait(RETRY_BASE_MS * Math.pow(2, attempt));
+        continue;
       }
     }
-
-    console.error('[MerlinHub] hubFetch failed after retries:', path, lastError);
-    return { ok: false, status: 0, data: { error: '허브 서버 연결 실패' } as any };
-  })();
-
-  if (method === 'GET') {
-    pendingRequests.set(cacheKey, requestPromise);
-    // 요청이 완료되면 약간의 시간차를 두고 캐시에서 제거 (0.5초간 동일 요청 차단)
-    requestPromise.finally(() => {
-      setTimeout(() => pendingRequests.delete(cacheKey), 500);
-    });
   }
 
-  return requestPromise;
+  console.error('[MerlinHub] hubFetch failed after retries:', path, lastError);
+  return { ok: false, status: 0, data: { error: '허브 서버 연결 실패' } as any };
 }
 
 /**
@@ -260,7 +237,6 @@ export class MerlinHubClient {
   }
 
   async preparePayment(planId: string) {
-    // 임시 구현 (필요시 상세 구현)
     return { success: true, planId };
   }
 

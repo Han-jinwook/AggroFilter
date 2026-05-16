@@ -29,6 +29,7 @@ export interface OTPVerifyResult {
 /**
  * OTP 인증코드 발송 요청
  * @param email 사용자 이메일
+ * @param appId 앱 식별자 (예: AGGRO_FILTER)
  */
 export async function requestOTP(email: string, appId?: string): Promise<OTPRequestResult> {
   try {

@@ -1,15 +1,12 @@
 'use client';
 
 /**
- * Version: v1.0.0
+ * Version: v1.0.1 (Bug Fixes)
  * Last Updated: 2026-05-15
  */
 import { useState, useEffect } from 'react';
 import { MerlinHubClient } from './client';
 
-/**
- * Hub Profile/Session 정보
- */
 export interface HubSession {
   isLoggedIn: boolean;
   isLoading: boolean;
@@ -25,7 +22,6 @@ export interface HubSession {
 
 /**
  * [Core] Hub 세션 상태를 관리하는 커스텀 훅
- * 개별 앱은 이 훅을 통해 현재 유저가 허브에 로그인되어 있는지, 누구인지를 실시간으로 파악합니다.
  */
 export function useHubSession() {
   const [session, setSession] = useState<HubSession>({
@@ -41,10 +37,9 @@ export function useHubSession() {
     try {
       setSession(prev => ({ ...prev, isLoading: true }));
       
-      // 허브 API로부터 현재 유저 프로필 조회
       const profile = await client.getProfile();
       
-      // profile.success가 true일 때만 로그인 상태로 간주
+      // [FIX] profile 객체 존재 여부뿐만 아니라 success 필드까지 확인해야 함
       if (profile && profile.success) {
         setSession({
           isLoggedIn: true,

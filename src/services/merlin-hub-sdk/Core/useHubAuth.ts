@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Version: v1.1.0
  * Last Updated: 2026-05-16

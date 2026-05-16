@@ -13,7 +13,7 @@ export {
   setSessionToken, 
   clearSessionToken, 
   isTokenExpired,
-  MerlinHubClient // 클래스 기반 호환성 레이어
+  MerlinHubClient
 } from './Core/client';
 
 // 2. 인증 및 세션 (서버에서도 쓰이는 함수들)
@@ -37,7 +37,3 @@ export {
   getHistory,
   requestKcpPayment 
 } from './Core/wallet';
-
-// ⚠️ 중요: useHubAuth, HubProfileWidget 등의 React 의존성 부품은 
-// 서버 빌드 에러 방지를 위해 여기서 익스포트하지 않습니다.
-// 대신 '@/src/services/merlin-hub-sdk/react' 에서 가져오세요.
