@@ -196,7 +196,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                   </p>
                   <div className="inline-block px-4 py-1.5 bg-slate-100 rounded-full">
                     <p className="text-[11px] text-slate-400 font-bold">
-                      인증 메일은 <span className="text-slate-500">통합 계정 센터(os.sundreamer.app)</span>에서 발송됩니다.
+                      인증 메일은 <span className="text-slate-500">통합 계정 센터(멀린 허브)</span>에서 발송됩니다.
                     </p>
                   </div>
                 </div>
