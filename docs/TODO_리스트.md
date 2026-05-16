@@ -26,4 +26,18 @@
 - [ ] DB(`t_users`) 내 관련 필드(`avg_gap`, `total_predictions`, `current_tier`) 정리 검토.
 
 ---
+
+## 🔐 로그인 UI 전면 개편 및 브랜딩 수복 (2026-05-16) - [완료]
+
+> **배경**: 무거운 '가입' 이미지를 탈피하고, 통합 계정 센터(멀린 허브)와의 연동을 시각적으로 최적화하여 유저 진입 장벽을 낮춤.
+
+- [x] `components/c-login-modal/index.tsx`: **'Confident UI v4.0'** 적용.
+    - [x] 한글 가로형 로고(`character-logo-ko.png`) 적용 및 중복 헤더 제거.
+    - [x] 인증코드 입력 박스 확대(`w-12 h-16`) 및 시각적 강조.
+    - [x] 통합계정센터(`os.sundreamer.app`) 안내 문구 최적화.
+    - [x] 액션 버튼(재발송/이메일 변경) Prominent UI로 변경.
+- [x] `Merlin Hub (Hub Server)`: 인증 메일 템플릿 한글화 및 디자인 고도화.
+- [ ] **후속 미션**: 공유 링크(`?ref=CODE`) 자동 인식 및 추천인 연동.
+
+---
 > "안전하게 주석 처리 후, 확신이 들 때 완전히 제거한다." - Merlin 강령
