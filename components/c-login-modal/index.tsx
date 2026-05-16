@@ -187,13 +187,18 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                 </Button>
               </form>
             ) : (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
                 <div className="text-center space-y-3">
                   <p className="text-lg font-black text-slate-800">📧 인증코드를 입력해주세요</p>
-                  <p className="text-[15px] text-slate-500 font-semibold">
+                  <p className="text-[15px] text-slate-500 font-semibold leading-relaxed">
                     <span className="text-blue-600 font-black">{email}</span>로<br />
                     6자리 코드를 보내드렸습니다.
                   </p>
+                  <div className="inline-block px-4 py-1.5 bg-slate-100 rounded-full">
+                    <p className="text-[11px] text-slate-400 font-bold">
+                      인증 메일은 <span className="text-slate-500">통합 계정 센터(os.sundreamer.app)</span>에서 발송됩니다.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
