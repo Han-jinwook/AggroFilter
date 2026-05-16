@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
-import { HubAuthModal, HubRegisterNudge } from "@/src/services/merlin-hub-sdk/react"
+import { HubAuthModal, HubRegisterNudge, useHub } from "@/src/services/merlin-hub-sdk/react"
 import { HeroSection } from "@/app/c-home/hero-section"
 import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
@@ -14,13 +14,16 @@ import { checkSession } from "@/src/services/merlin-hub-sdk"
 
 export default function MainPage() {
   const router = useRouter()
+  const { user, isLoggedIn, refreshSession } = useHub()
+  const userEmail = user?.email || null
+  
   const [url, setUrl] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [autoStarted, setAutoStarted] = useState(false)
+
   // [대기제로 1단계] 확장팩 진입 시 홈 UI(찌꺼기) 즉시 숨김
   const [isExtensionEntry] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -29,9 +32,6 @@ export default function MainPage() {
   })
 
   useEffect(() => {
-    const storedEmail = localStorage.getItem("userEmail")
-    if (storedEmail) setUserEmail(storedEmail)
-
     // 추천인 코드(ref) 캡처
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref')
@@ -39,17 +39,6 @@ export default function MainPage() {
       localStorage.setItem('pendingReferralCode', ref)
       console.log('Referral code captured from URL:', ref)
       setShowLoginModal(true)
-    }
-
-    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me → Hub SDK checkSession
-    let isMounted = true
-    checkSession().then((session) => {
-      if (!session.valid || !session.email) return
-      localStorage.setItem('userEmail', session.email)
-      if (isMounted) setUserEmail(session.email)
-    }).catch(() => {})
-    return () => {
-      isMounted = false
     }
   }, [])
 

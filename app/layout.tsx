@@ -8,7 +8,7 @@ import { BottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
-import { HubNotifier } from "@/src/services/merlin-hub-sdk/react"
+import { HubNotifier, HubProvider } from "@/src/services/merlin-hub-sdk/react"
 import { Footer } from "@/components/c-footer"
 
 interface TRootLayoutProps {
@@ -124,17 +124,19 @@ export default function RootLayout({ children }: TRootLayoutProps) {
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="flex min-h-screen flex-col">
-            <div className="flex-1">
-              {children}
+          <HubProvider>
+            <div className="flex min-h-screen flex-col">
+              <div className="flex-1">
+                {children}
+              </div>
+              <Footer />
             </div>
-            <Footer />
-          </div>
-          <GlobalLoginModal />
-          <HubNotifier />
-          <SideWingAds />
-          <BottomBanner />
-          <Analytics />
+            <GlobalLoginModal />
+            <HubNotifier />
+            <SideWingAds />
+            <BottomBanner />
+            <Analytics />
+          </HubProvider>
         </ThemeProvider>
       </body>
     </html>

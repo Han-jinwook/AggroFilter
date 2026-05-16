@@ -48,10 +48,10 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200">
-        
+
         {/* 닫기 버튼 */}
         <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
         </button>
 
         <div className="p-8 md:p-10 flex flex-col items-center">
@@ -68,8 +68,8 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
             <form onSubmit={handleSend} className="w-full space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-400 mb-2 ml-1">이메일 주소</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
                   placeholder="example@email.com"
@@ -77,8 +77,8 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                   required
                 />
               </div>
-              
-              <button 
+
+              <button
                 type="submit"
                 disabled={status === 'sending'}
                 className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50"
@@ -99,8 +99,8 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                 <div className="text-xl font-mono font-bold text-blue-500">{formatTimer()}</div>
               </div>
 
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value.slice(0, 6))}
                 placeholder="6자리 코드 입력"
@@ -108,7 +108,7 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                 required
               />
 
-              <button 
+              <button
                 type="submit"
                 disabled={status === 'verifying' || timer === 0}
                 className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50"

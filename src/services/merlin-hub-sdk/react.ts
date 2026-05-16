@@ -13,6 +13,7 @@ export { useHubAuth } from './Core/useHubAuth';
 export { useHubPayment } from './Core/useHubPayment';
 export { useHubNotifier } from './Core/useHubNotifier';
 export { useHubReferral } from './Core/useHubReferral';
+export { HubProvider, useHub } from './HubProvider';
 
 // 2. Core 로직 (클라이언트에서도 자주 쓰는 함수들)
 export { 

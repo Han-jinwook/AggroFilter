@@ -8,8 +8,7 @@ import { usePathname } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield, Coins } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
-import { checkSession, getBalance } from "@/src/services/merlin-hub-sdk"
-import { HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
+import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -27,96 +26,25 @@ interface TAppHeaderProps {
 
 export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const pathname = usePathname()
-  const [nickname, setNickname] = useState("")
-  const [profileImage, setProfileImage] = useState("")
+  const { user, isLoggedIn, balance: credits, isLoading } = useHub()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [anonEmoji, setAnonEmoji] = useState("")
-  const [anonNickname, setAnonNickname] = useState("")
-  const [credits, setCredits] = useState<number | null>(null)
 
-  const isLoggedIn = nickname.length > 0
-
+  // 관리자 권한 확인 (User 객체가 바뀌면 수행)
   useEffect(() => {
-    const loadProfile = () => {
-      const savedNickname = localStorage.getItem("userNickname") || ""
-      const savedProfileImage = localStorage.getItem("userProfileImage") || ""
-      const email = localStorage.getItem("userEmail") || ""
-      setNickname(savedNickname)
-      setProfileImage(savedProfileImage)
-      const localPart = (email.split("@")[0] || "").trim().toLowerCase()
+    if (user?.email) {
+      const localPart = (user.email.split("@")[0] || "").trim().toLowerCase()
       setIsAdmin(localPart === "chiu3")
+    } else {
+      setIsAdmin(false)
     }
+  }, [user])
 
-    loadProfile()
-
-    // REFACTORED_BY_MERLIN_HUB: 익명 세션 제거, stub만 유지
-    setAnonEmoji(getAnonEmoji())
-    setAnonNickname(getAnonNickname())
-
-    const handleProfileUpdate = () => {
-      loadProfile()
-    }
-
-    window.addEventListener("profileUpdated", handleProfileUpdate)
-    return () => {
-      window.removeEventListener("profileUpdated", handleProfileUpdate)
-    }
-  }, [])
-
-  useEffect(() => {
-    let isMounted = true
-
-    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/auth/me → Hub SDK checkSession
-    const syncSession = async () => {
-      try {
-        const session = await checkSession()
-        if (!session.valid || !session.email) return
-
-        const email = session.email
-        const dbNickname = session.nickname
-        const dbAvatar = session.avatar_url
-        const currentNickname = localStorage.getItem('userNickname') || ''
-        const currentAvatar = localStorage.getItem('userProfileImage') || ''
-
-        if (localStorage.getItem('userEmail') !== email) localStorage.setItem('userEmail', email)
-        
-        // Hub의 닉네임/아바타가 있으면 무조건 동기화 (SSOT)
-        if (dbNickname && dbNickname !== currentNickname) {
-          localStorage.setItem('userNickname', dbNickname)
-          if (isMounted) setNickname(dbNickname)
-        } else if (!currentNickname) {
-          // 닉네임이 아예 없으면 이메일 앞부분이라도 설정
-          const fallback = (email.split('@')[0] || '').trim()
-          localStorage.setItem('userNickname', fallback)
-          if (isMounted) setNickname(fallback)
-        }
-
-        if (dbAvatar !== undefined && dbAvatar !== currentAvatar) {
-          localStorage.setItem('userProfileImage', dbAvatar || '')
-          if (isMounted) setProfileImage(dbAvatar || '')
-        }
-
-        if (isMounted) {
-          const finalNickname = dbNickname || localStorage.getItem('userNickname') || ''
-          const localPart = (email.split('@')[0] || '').trim().toLowerCase()
-          setIsAdmin(localPart === 'chiu3')
-        }
-      } catch {
-      }
-    }
-
-    syncSession()
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
+  // 알림 개수만 별도로 관리 (알림은 Hub SDK가 아직 전담하지 않음)
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!isLoggedIn) {
       setUnreadCount(0)
-      setCredits(null)
       return
     }
 
@@ -132,25 +60,9 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
       }
     }
 
-    // REFACTORED_BY_MERLIN_HUB: 로컬 /api/user/credits → Hub wallet SDK
-    const fetchCredits = async () => {
-      try {
-        const result = await getBalance()
-        if (result.success && typeof result.balance === 'number') setCredits(result.balance)
-      } catch {}
-    }
-
     fetchUnreadCount()
-    fetchCredits()
     const interval = window.setInterval(fetchUnreadCount, 30000)
-
-    const handleCreditsUpdated = () => fetchCredits()
-    window.addEventListener('creditsUpdated', handleCreditsUpdated)
-
-    return () => {
-      window.clearInterval(interval)
-      window.removeEventListener('creditsUpdated', handleCreditsUpdated)
-    }
+    return () => window.clearInterval(interval)
   }, [isLoggedIn])
 
   const isActive = (path: string) => {
