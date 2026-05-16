@@ -1,6 +1,6 @@
 /**
- * Version: v1.0.0
- * Last Updated: 2026-05-15
+ * Version: v1.1.0
+ * Last Updated: 2026-05-16
  */
 import React, { useState, useEffect } from 'react';
 import { useHubReferral } from '../Core/useHubReferral';
@@ -12,8 +12,8 @@ interface HubReferralWidgetProps {
 }
 
 /**
- * [Custom] 추천인 공유 위젯
- * 유저의 초대 코드를 노출하고 복사할 수 있게 해주는 홍보용 위젯입니다.
+ * [Custom] 친구 초대(Referral) 위젯
+ * 초대자(Inviter)의 코드를 노출하고 가입자(Invitee) 유치를 돕는 UI 컴포넌트입니다.
  */
 export const HubReferralWidget: React.FC<HubReferralWidgetProps> = ({
   className = '',
@@ -21,25 +21,25 @@ export const HubReferralWidget: React.FC<HubReferralWidgetProps> = ({
   description = '친구를 초대하고 함께 무료 코인을 받으세요!',
 }) => {
   const { getMyReferralInfo, isLoading } = useHubReferral();
-  const [referralCode, setReferralCode] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     const fetchInfo = async () => {
       const info = await getMyReferralInfo();
-      if (info) setReferralCode(info.code);
+      if (info) setInviteCode(info.code);
     };
     fetchInfo();
   }, []);
 
   const handleCopy = () => {
-    if (!referralCode) return;
-    navigator.clipboard.writeText(referralCode);
+    if (!inviteCode) return;
+    navigator.clipboard.writeText(inviteCode);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  if (isLoading && !referralCode) {
+  if (isLoading && !inviteCode) {
     return <div className="w-full h-32 bg-gray-50 animate-pulse rounded-2xl" />;
   }
 
@@ -58,7 +58,7 @@ export const HubReferralWidget: React.FC<HubReferralWidgetProps> = ({
           <span className="text-[10px] uppercase tracking-widest text-indigo-200 font-bold">내 초대 코드</span>
           <div className="flex items-center gap-3 w-full">
             <div className="flex-grow bg-white/10 rounded-lg px-4 py-3 text-2xl font-mono font-bold tracking-wider text-center border border-white/5">
-              {referralCode || '-------'}
+              {inviteCode || '-------'}
             </div>
             <button
               onClick={handleCopy}
