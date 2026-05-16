@@ -166,6 +166,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             label="My Page"
             href="/p-my-page?tab=analysis"
             active={isActive("/p-my-page")}
+            onClick={handleMyPageClick}
           />
 
           <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
@@ -228,7 +229,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 */}
           <HubProfileWidget 
             onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-            onProfileClick={() => router.push('/p-my-page?tab=analysis')}
+            onProfileClick={() => router.push('/p-settings')}
           />
 
           {isAdmin && isLoggedIn && (
