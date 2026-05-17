@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-16
  */
 import { useState, useEffect, useCallback } from 'react';
-import { MerlinHubClient } from './client';
+import { MerlinHubClient } from '../CoreLogic/client';
 
 export type AuthStatus = 'idle' | 'sending' | 'sent' | 'verifying' | 'success' | 'error';
 

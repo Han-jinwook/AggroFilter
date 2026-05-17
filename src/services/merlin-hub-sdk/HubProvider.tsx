@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { checkSession, getBalance } from './Core';
+import { checkSession, getBalance, getUserId } from './CoreLogic/index';
 
 interface HubUser {
   id: string;
@@ -29,7 +29,10 @@ export function HubProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBalance = useCallback(async () => {
     try {
-      const result = await getBalance();
+      const userId = getUserId();
+      if (!userId) return;
+      
+      const result = await getBalance(userId);
       if (result.success && typeof result.balance === 'number') {
         setBalance(result.balance);
       }

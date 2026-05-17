@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-16
  */
 import { useState, useCallback } from 'react';
-import { MerlinHubClient } from './client';
+import { MerlinHubClient } from '../CoreLogic/client';
 
 /**
  * [Core] Hub 초대 시스템(Referral) 및 보상 연동을 담당하는 커스텀 훅

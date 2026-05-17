@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-16
  */
 import React, { useState, useEffect } from 'react';
-import { useHubReferral } from '../Core/useHubReferral';
+import { useHubReferral } from './useHubReferral';
 
 interface HubReferralWidgetProps {
   className?: string;

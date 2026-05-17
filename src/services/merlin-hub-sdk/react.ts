@@ -9,11 +9,11 @@
 
 // 1. Core Hooks (비즈니스 로직)
 export { HubProvider, useHub } from './HubProvider';
-export { useHubSession } from './Core/useHubSession';
-export { useHubAuth } from './Core/useHubAuth';
-export { useHubPayment } from './Core/useHubPayment';
-export { useHubNotifier } from './Core/useHubNotifier';
-export { useHubReferral } from './Core/useHubReferral';
+export { useHubSession } from './Session/useHubSession';
+export { useHubAuth } from './Auth/useHubAuth';
+export { useHubPayment } from './Wallet/useHubPayment';
+export { useHubNotifier } from './Notification/useHubNotifier';
+export { useHubReferral } from './Referral/useHubReferral';
 
 // 2. Core 로직 (클라이언트에서도 자주 쓰는 함수들)
 export { 
@@ -26,12 +26,12 @@ export {
   getUserId,
   useCredit,
   MerlinHubClient
-} from './Core';
+} from './CoreLogic';
 
 // 3. Custom UI Components (표준 UI 부품)
-export { HubProfileWidget } from './Custom/HubProfileWidget';
-export { HubAuthModal } from './Custom/HubAuthModal';
-export { HubRegisterNudge } from './Custom/HubRegisterNudge';
-export { HubPaymentTrigger } from './Custom/HubPaymentTrigger';
-export { HubNotifier, showToast } from './Custom/HubNotifier';
-export { HubReferralWidget } from './Custom/HubReferralWidget';
+export { HubProfileWidget, HubAvatar } from './Session/HubProfileWidget';
+export { HubAuthModal } from './Auth/HubAuthModal';
+export { HubRegisterNudge } from './UI/HubRegisterNudge';
+export { HubPaymentTrigger } from './Wallet/HubPaymentTrigger';
+export { HubNotifier, showToast } from './Notification/HubNotifier';
+export { HubReferralWidget } from './Referral/HubReferralWidget';

@@ -122,7 +122,7 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
         status: 200,
         data: {
           history: data,
-          app_id: config.appId || 'DEFAULT_APP'
+          app_id: getConfig().appId || 'DEFAULT_APP'
         } as T,
       };
     } catch {
@@ -225,17 +225,17 @@ export async function hubFetch<T = any>(
  */
 export class MerlinHubClient {
   async getProfile() {
-    const { getProfile } = await import('./auth');
+    const { getProfile } = await import('../Auth/auth');
     return getProfile();
   }
 
   async sendOtp(email: string) {
-    const { requestOTP } = await import('./auth');
+    const { requestOTP } = await import('../Auth/auth');
     return requestOTP(email);
   }
 
   async verifyOtp(email: string, code: string) {
-    const { verifyOTP } = await import('./auth');
+    const { verifyOTP } = await import('../Auth/auth');
     return verifyOTP(email, code);
   }
 
@@ -245,7 +245,7 @@ export class MerlinHubClient {
     payMethodType: 'card' | 'phone';
     returnUrl: string;
   }) {
-    const { requestKcpPayment } = await import('./wallet');
+    const { requestKcpPayment } = await import('../Wallet/wallet');
     return requestKcpPayment(params);
   }
 
@@ -255,7 +255,13 @@ export class MerlinHubClient {
   }
 
   async updateProfile(params: any) {
-    const { updateProfile } = await import('./auth');
+    const { updateProfile } = await import('../Auth/auth');
     return updateProfile(params);
+  }
+
+  async registerReferrer(code: string) {
+    // 임시 구현: 실제 구현 시에는 auth.ts에 별도 함수를 만들거나 서버 호출
+    console.log('[MerlinHubClient] registerReferrer requested:', code);
+    return { success: true };
   }
 }

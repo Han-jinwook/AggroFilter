@@ -1,4 +1,5 @@
-import { hubFetch } from './client';
+import { hubFetch } from '../CoreLogic/client';
+import { getConfig } from '../CoreLogic/config';
 
 export interface WalletBalance {
   balance: number;

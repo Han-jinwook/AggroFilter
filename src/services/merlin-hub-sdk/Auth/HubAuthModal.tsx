@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-16
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { useHubAuth } from '../Core/useHubAuth';
+import { useHubAuth } from './useHubAuth';
 
 interface HubAuthModalProps {
   isOpen: boolean;

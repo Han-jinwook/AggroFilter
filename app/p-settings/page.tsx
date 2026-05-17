@@ -8,6 +8,7 @@ import AppHeader from '@/components/c-app-header'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { isAnonymousUser, getUserId } from '@/lib/anon'
 import { MerlinHub } from '@/src/services/merlin-hub-sdk'
+import { HubAvatar } from '@/src/services/merlin-hub-sdk/react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -291,23 +292,13 @@ export default function SettingsPage() {
             {/* 프로필 이미지 */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                {getDisplayImage() ? (
-                  <img
-                    src={getDisplayImage()}
-                    alt="Profile"
-                    className="h-20 w-20 rounded-full object-cover border"
-                  />
-                ) : isAnon ? (
-                  <div className="h-20 w-20 rounded-full bg-amber-50 flex items-center justify-center">
-                    <span className="text-4xl">🐾</span>
-                  </div>
-                ) : (
-                  <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-primary">
-                      {getFirstChar(getDisplayNickname())}
-                    </span>
-                  </div>
-                )}
+                <HubAvatar 
+                  isLoggedIn={!isAnon}
+                  avatarUrl={getDisplayImage()}
+                  nickname={getDisplayNickname()}
+                  size="lg"
+                  className="border"
+                />
                 {isEditing && (
                   <label className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
                     <Camera className="h-4 w-4" />

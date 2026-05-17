@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-15
  */
 import React from 'react';
-import { useHubPayment } from '../Core/useHubPayment';
+import { useHubPayment } from './useHubPayment';
 
 interface HubPaymentTriggerProps {
   amount: number;

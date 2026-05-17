@@ -1,12 +1,12 @@
 /**
- * Version: v1.1.0
- * Last Updated: 2026-05-16
+ * Version: v1.1.2
+ * Last Updated: 2026-05-17
  * Merlin Hub SDK — Auth Module
  * 이메일 OTP 인증: requestOTP → verifyOTP → JWT 저장
  * 프로필 관리: updateProfile → Hub family_users 직접 갱신
  */
 
-import { hubFetch, setSessionToken, clearSessionToken, getSessionToken } from './client';
+import { hubFetch, setSessionToken, clearSessionToken, getSessionToken } from '../CoreLogic/client';
 
 export interface OTPRequestResult {
   success: boolean;
@@ -24,6 +24,7 @@ export interface OTPVerifyResult {
   avatar_url?: string;
   referral_code?: string;
   error?: string;
+  message?: string;
 }
 
 /**
@@ -120,7 +121,8 @@ export async function checkSession(): Promise<SessionResult> {
   if (!token) return { valid: false };
 
   try {
-    const { ok, data } = await hubFetch<{ success: boolean; user: any }>('/api/auth/me');
+    const timestamp = Date.now();
+    const { ok, data } = await hubFetch<{ success: boolean; user: any }>(`/api/auth/me?t=${timestamp}`);
     if (!ok || !data.success) {
       clearSessionToken();
       return { valid: false };
@@ -157,6 +159,10 @@ export interface ProfileResult {
   nickname?: string;
   avatar_url?: string;
   profile_image?: string; // 허브에서 profile_image로 반환할 경우 대비
+  referral_code?: string;
+  invite_count?: number;
+  total_referral_reward?: number;
+  credits?: number;
   error?: string;
 }
 
@@ -200,7 +206,8 @@ export async function getProfile(): Promise<ProfileResult> {
     return {
       success: true,
       nickname: session.nickname,
-      avatar_url: session.avatar_url
+      avatar_url: session.avatar_url,
+      referral_code: session.referral_code
     };
   } catch (err) {
     console.error('[MerlinHub] getProfile error:', err);

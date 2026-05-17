@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-15
  */
 import { useCallback } from 'react';
-import { MerlinHubClient } from './client';
+import { MerlinHubClient } from '../CoreLogic/client';
 
 /**
  * [Core] Hub 알림 시스템 연동을 담당하는 커스텀 훅

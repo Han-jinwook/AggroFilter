@@ -7,6 +7,7 @@ export interface MerlinHubConfig {
   hubUrl: string;
   clientId: string;
   clientSecret: string;
+  appId?: string;
 }
 
 const DEFAULT_CONFIG: MerlinHubConfig = {

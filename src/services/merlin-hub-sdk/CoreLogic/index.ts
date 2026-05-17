@@ -13,18 +13,18 @@
 export { configureMerlinHub, getConfig } from './config';
 export type { MerlinHubConfig } from './config';
 
-export { hubFetch, getSessionToken, setSessionToken, clearSessionToken, isTokenExpired } from './client';
+export { hubFetch, getSessionToken, setSessionToken, clearSessionToken, isTokenExpired, MerlinHubClient } from './client';
 export type { HubFetchResult } from './client';
 
-export { requestOTP, verifyOTP, checkSession, logout, updateProfile, getProfile } from './auth';
-export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileResult } from './auth';
+export { requestOTP, verifyOTP, checkSession, logout, updateProfile, getProfile } from '../Auth/auth';
+export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileResult } from '../Auth/auth';
 
-export { useCredit, getBalance, getUserId, requestKcpPayment } from './wallet';
-export type { UseCreditParams, UseCreditResult, WalletBalance } from './wallet';
+export { useCredit, getBalance, getUserId, requestKcpPayment } from '../Wallet/wallet';
+export type { WalletBalance } from '../Wallet/wallet';
 
 // ── Namespace export for convenience ──
-import * as auth from './auth';
-import * as wallet from './wallet';
+import * as auth from '../Auth/auth';
+import * as wallet from '../Wallet/wallet';
 import * as client from './client';
 import { configureMerlinHub, getConfig } from './config';
 

@@ -4,7 +4,7 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { requestKcpPayment } from './wallet';
-import { getConfig } from './config';
+import { getConfig } from '../CoreLogic/config';
 
 export type PaymentStatus = 'idle' | 'preparing' | 'pending' | 'success' | 'error';
 
@@ -132,7 +132,7 @@ export function useHubPayment() {
    * 코인 잔액 조회
    */
   const getBalance = useCallback(async () => {
-    const { getProfile } = await import('./auth');
+    const { getProfile } = await import('../Auth/auth');
     try {
       const profile = await getProfile();
       return profile?.credits || 0;

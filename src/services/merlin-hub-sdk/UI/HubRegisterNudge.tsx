@@ -3,7 +3,7 @@
  * Last Updated: 2026-05-15
  */
 import React from 'react';
-import { useHubSession } from '../Core/useHubSession';
+import { useHubSession } from '../Session/useHubSession';
 
 interface HubRegisterNudgeProps {
   onRegisterClick?: () => void;

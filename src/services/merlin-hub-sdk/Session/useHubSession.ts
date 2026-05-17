@@ -5,7 +5,7 @@
  * Last Updated: 2026-05-15
  */
 import { useState, useEffect } from 'react';
-import { MerlinHubClient } from './client';
+import { MerlinHubClient } from '../CoreLogic/client';
 
 export interface HubSession {
   isLoggedIn: boolean;

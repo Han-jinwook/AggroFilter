@@ -6,7 +6,7 @@
  */
 
 // 1. 핵심 설정 및 클라이언트
-export { MerlinHub, configureMerlinHub, getConfig } from './Core';
+export { MerlinHub, configureMerlinHub, getConfig } from './CoreLogic/index';
 export { 
   hubFetch, 
   getSessionToken, 
@@ -14,7 +14,7 @@ export {
   clearSessionToken, 
   isTokenExpired,
   MerlinHubClient
-} from './Core/client';
+} from './CoreLogic/client';
 
 // 2. 인증 및 세션 (서버에서도 쓰이는 함수들)
 export { 
@@ -24,7 +24,7 @@ export {
   logout, 
   updateProfile, 
   getProfile 
-} from './Core/auth';
+} from './Auth/auth';
 
 // 3. 지갑 및 과금 (서버 API Route에서 필수)
 export { 
@@ -36,4 +36,4 @@ export {
   chargeDynamic, 
   getHistory,
   requestKcpPayment 
-} from './Core/wallet';
+} from './Wallet/wallet';
