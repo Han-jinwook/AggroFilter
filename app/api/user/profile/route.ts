@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase Admin Client for Hub DB (wwopcuitvjldixkyzpzi)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// 래퍼 함수로 만들어 빌드 타임에 실행되지 않도록 방지합니다.
+const getSupabase = () => {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+};
 
 function nicknameFromEmail(email?: string | null): string {
   if (!email) return '사용자';
@@ -29,7 +35,7 @@ export async function PUT(request: NextRequest) {
     if (resolvedNickname) updateData.nickname = resolvedNickname;
     if (resolvedImage) updateData.avatar_url = resolvedImage;
 
-    let query = supabase.from('family_users').update(updateData);
+    let query = getSupabase().from('family_users').update(updateData);
 
     const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     if (isUuid) {
@@ -79,7 +85,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Email or ID is required' }, { status: 400 });
     }
 
-    let query = supabase.from('family_users').select('*');
+    let query = getSupabase().from('family_users').select('*');
 
     const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     if (isUuid) {
