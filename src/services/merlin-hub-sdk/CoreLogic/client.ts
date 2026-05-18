@@ -264,4 +264,12 @@ export class MerlinHubClient {
     console.log('[MerlinHubClient] registerReferrer requested:', code);
     return { success: true };
   }
+
+  async getReferrals() {
+    const res = await hubFetch<{ success: boolean; referrals: any[] }>('/api/auth/referrals');
+    if (res.ok && res.data.success) {
+      return res.data.referrals;
+    }
+    return [];
+  }
 }

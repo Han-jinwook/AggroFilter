@@ -8,10 +8,13 @@ import AppHeader from '@/components/c-app-header'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { isAnonymousUser, getUserId } from '@/lib/anon'
 import { MerlinHub } from '@/src/services/merlin-hub-sdk'
-import { HubAvatar, HubReferralWidget, HubHistoryList } from '@/src/services/merlin-hub-sdk/react'
+import { HubAvatar, HubReferralWidget, HubHistoryList, useHubReferral } from '@/src/services/merlin-hub-sdk/react'
 
 export default function SettingsPage() {
   const router = useRouter()
+  const { getReferralHistory } = useHubReferral()
+  const [referralHistory, setReferralHistory] = useState<any[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [nickname, setNickname] = useState('')
   const [profileImage, setProfileImage] = useState('')
@@ -40,6 +43,15 @@ export default function SettingsPage() {
         const loadUserData = async () => {
           const uid = getUserId()
           if (!uid) return
+
+          // 초대 실적 목록 조회
+          setIsHistoryLoading(true)
+          getReferralHistory()
+            .then(res => {
+              if (res) setReferralHistory(res)
+            })
+            .catch(err => console.error('Failed to load referrals:', err))
+            .finally(() => setIsHistoryLoading(false))
 
         // REFACTORED_BY_MERLIN_HUB: 로컬 API 대신 Hub SDK에서 프로필 조회
         MerlinHub.auth.getProfile()
@@ -276,7 +288,7 @@ export default function SettingsPage() {
           {!isAnon && (
             <div className="w-full lg:w-1/3 flex-shrink-0 flex flex-col gap-6">
               <HubReferralWidget />
-              <HubHistoryList history={[]} />
+              <HubHistoryList history={referralHistory} isLoading={isHistoryLoading} />
             </div>
           )}
 

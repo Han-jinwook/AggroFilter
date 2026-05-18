@@ -52,10 +52,26 @@ export function useHubReferral() {
     }
   }, []);
 
+  /**
+   * 나의 초대 실적 목록 조회
+   */
+  const getReferralHistory = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      return await client.getReferrals();
+    } catch (err) {
+      console.error('[MerlinHub] 초대 실적 목록 조회 실패:', err);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     getMyReferralInfo,
     registerInviter,
+    getReferralHistory,
     // [Alias] 가시성을 위해 명칭 제공
     registerInviteeFlow: registerInviter 
   };
