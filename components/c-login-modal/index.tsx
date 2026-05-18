@@ -93,6 +93,20 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
       if (result.referral_code) localStorage.setItem('userReferralCode', result.referral_code)
       
+      // 정산 성공했으므로 익명 시절 돌린 영상의 최초 분석자(f_user_id)를 가입 유저 ID로 체인지(마이그레이션)
+      if (pendingVideoId && result.userId) {
+        try {
+          await fetch('/api/analysis/link-guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId: pendingVideoId, userId: result.userId })
+          });
+          console.log(`[LoginModal] Successfully linked guest analysis ${pendingVideoId} to user ${result.userId}`);
+        } catch (linkErr) {
+          console.error('[LoginModal] Failed to link guest analysis:', linkErr);
+        }
+      }
+
       // 정산 성공했으므로 가불금 정보 및 추천인 임시 코드 삭제
       localStorage.removeItem('pending_usage_fee')
       localStorage.removeItem('pending_video_id')
