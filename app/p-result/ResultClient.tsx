@@ -198,6 +198,7 @@ export default function ResultClient() {
       } else {
         const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
         if (trialCount >= 1) {
+          window.dispatchEvent(new CustomEvent('openLoginModal'))
           throw new Error('로그인이 필요합니다.')
         }
         analysisUserId = 'trial_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8)
@@ -435,6 +436,9 @@ export default function ResultClient() {
               if (!isCancelled) {
                 setAnalysisData(data.analysisData)
                 setUserPredictionStats(data.userPredictionStats || null)
+                if (isAnonymousUser()) {
+                  setShowBenefitModal(true)
+                }
               }
             }
 
