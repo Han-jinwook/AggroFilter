@@ -57,12 +57,21 @@ export async function requestOTP(email: string, appId?: string): Promise<OTPRequ
  * @param code 6자리 OTP 코드
  * @param appId 앱 식별자 (예: AGGRO_FILTER)
  * @param referralCode 추천인 코드
+ * @param pendingUsageFee 비회원 시절 가불된 분석 비용
+ * @param pendingVideoId 비회원 시절 분석된 비디오 ID
  */
-export async function verifyOTP(email: string, code: string, appId?: string, referralCode?: string): Promise<OTPVerifyResult> {
+export async function verifyOTP(
+  email: string, 
+  code: string, 
+  appId?: string, 
+  referralCode?: string,
+  pendingUsageFee?: number,
+  pendingVideoId?: string
+): Promise<OTPVerifyResult> {
   try {
     const { ok, data } = await hubFetch<OTPVerifyResult>('/api/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ email, code, appId, referralCode }),
+      body: JSON.stringify({ email, code, appId, referralCode, pendingUsageFee, pendingVideoId }),
     });
 
     if (!ok) {

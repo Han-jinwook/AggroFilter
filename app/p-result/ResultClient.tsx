@@ -263,6 +263,13 @@ export default function ResultClient() {
       if (isAnonymousUser()) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1
         localStorage.setItem('anonAnalysisCount', String(count))
+        
+        // 가불 금액 저장!
+        if (resolved?.price) {
+          localStorage.setItem('pending_usage_fee', String(resolved.price))
+          localStorage.setItem('pending_video_id', String(resolved.videoId || resolved.analysisId))
+          console.log(`[Guest Pre-charge] Saved pending_usage_fee: ${resolved.price}C`)
+        }
       }
 
       return resolved.analysisId as string

@@ -192,6 +192,13 @@ export default function MainPage() {
       if (isAnonymousUser()) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
         localStorage.setItem('anonAnalysisCount', String(count));
+        
+        // 가불 금액 저장!
+        if (result?.price) {
+          localStorage.setItem('pending_usage_fee', String(result.price));
+          localStorage.setItem('pending_video_id', String(result.videoId || result.analysisId || readyAnalysisId));
+          console.log(`[Guest Pre-charge] Saved pending_usage_fee: ${result.price}C`);
+        }
       }
 
       // Analysis is saved in DB with user_id, no localStorage needed

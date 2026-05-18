@@ -75,7 +75,7 @@ export async function chargeDynamic(params: {
   rawCost: number;
   requestId: string;
   displayText: string;
-}): Promise<{ success: boolean; balance?: number; error?: string }> {
+}): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
   try {
     const { ok, data } = await hubFetch<any>('/api/wallet/transaction/dynamic', {
       method: 'POST',

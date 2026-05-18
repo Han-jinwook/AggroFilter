@@ -279,13 +279,12 @@ export async function POST(request: Request) {
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
             console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
 
-            // ── 캐시 히트에도 코인 차감 (유료 콘텐츠 열람 Paywall) ──
+            // ── 캐시 히트에도 코인 차감 (유료 콘텐츠 열람 Paywall) 및 가격 조회 ──
+            const pricingRes = await getPricing(videoId);
+            const fixedPrice = pricingRes.success && pricingRes.data?.price ? pricingRes.data.price : 30;
+
             let cachedCreditDeducted = false;
             if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
-              // 1. 해당 영상의 고정 단가 조회 (허브 중앙 관리)
-              const pricingRes = await getPricing(videoId);
-              const fixedPrice = pricingRes.success && pricingRes.data?.price ? pricingRes.data.price : 30;
-
               // 2. 잔액 조회
               const balanceRes = await getBalance(userId);
               if (!balanceRes.success || (balanceRes.balance ?? 0) < fixedPrice) {
@@ -330,6 +329,7 @@ export async function POST(request: Request) {
               analysisId: row.f_id,
               cached: true,
               creditDeducted: cachedCreditDeducted,
+              price: fixedPrice,
             }, { headers: corsHeaders });
           }
         }
@@ -1255,6 +1255,7 @@ export async function POST(request: Request) {
     const client = await pool.connect();
     
     let creditDeducted = false;
+    let estimatedPrice: number | null = null;
 
     try {
       await client.query('BEGIN');
@@ -1471,7 +1472,7 @@ export async function POST(request: Request) {
       }
 
       // ── 일반 코인 차감 (동적 과금 적용: GPT + Gemini + Grounding 합산) ──
-      if (!isRecheck && actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
+      if (!isRecheck && actualUserId) {
         const speedTokens = Number(speedResult?.usage?.total_tokens || 0);
         const fullTokens = Number(
           analysisResult.usageMetadata?.totalTokenCount || 
@@ -1496,9 +1497,12 @@ export async function POST(request: Request) {
           displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
         });
 
-        creditDeducted = dynamicRes.success;
-        if (creditDeducted) {
-          console.log(`[Credit·Dynamic] userId=${actualUserId}, speed=${speedTokens}, full=${fullTokens}, search=${groundingCount} → totalRaw=${finalRawCost}, balance=${dynamicRes.balance}`);
+        const isGuest = actualUserId.startsWith('anon_') || actualUserId.startsWith('trial_');
+        creditDeducted = !isGuest && dynamicRes.success;
+        estimatedPrice = dynamicRes.price || 30; // 30C fallback
+
+        if (dynamicRes.success) {
+          console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, speed=${speedTokens}, full=${fullTokens}, search=${groundingCount} → totalRaw=${finalRawCost}, price=${estimatedPrice}`);
           
           // DB에 과금 근거 데이터 영구 기록
           await client.query(`
@@ -1581,6 +1585,7 @@ export async function POST(request: Request) {
         : '분석이 완료되었습니다.',
       analysisId: finalAnalysisId,
       creditDeducted,
+      price: estimatedPrice,
     }, { headers: corsHeaders });
 
   } catch (error) {

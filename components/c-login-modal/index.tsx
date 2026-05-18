@@ -73,7 +73,15 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
     setIsLoading(true)
     setError("")
     try {
-      const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER')
+      // 1. localStorage에서 추천인 코드, 가불금 및 비디오 정보 읽기
+      const referralCode = localStorage.getItem('pendingReferralCode') || undefined
+      const pendingUsageFeeStr = localStorage.getItem('pending_usage_fee')
+      const pendingUsageFee = pendingUsageFeeStr ? parseInt(pendingUsageFeeStr, 10) : undefined
+      const pendingVideoId = localStorage.getItem('pending_video_id') || undefined
+
+      console.log(`[LoginModal] Verifying OTP with referralCode=${referralCode}, pendingUsageFee=${pendingUsageFee}, pendingVideoId=${pendingVideoId}`)
+
+      const result = await verifyOTP(email, fullCode, 'AGGRO_FILTER', referralCode, pendingUsageFee, pendingVideoId)
       if (!result.success) {
         setError(result.error || '코드가 올바르지 않거나 만료되었습니다.')
         setCode(["", "", "", "", "", ""])
@@ -84,6 +92,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
       if (result.email) localStorage.setItem('userEmail', result.email)
       if (result.nickname) localStorage.setItem('userNickname', result.nickname)
       if (result.referral_code) localStorage.setItem('userReferralCode', result.referral_code)
+      
+      // 정산 성공했으므로 가불금 정보 및 추천인 임시 코드 삭제
+      localStorage.removeItem('pending_usage_fee')
+      localStorage.removeItem('pending_video_id')
+      localStorage.removeItem('pendingReferralCode')
       
       onLoginSuccess(result.email || email, result.userId || '')
     } catch (err) {
