@@ -30,6 +30,27 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const { user, isLoggedIn, balance: credits, isLoading } = useHub()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [pendingFee, setPendingFee] = useState<number | null>(null)
+
+  // 비로그인 가불금 실시간 감지
+  useEffect(() => {
+    const updatePendingFee = () => {
+      const stored = localStorage.getItem('pending_usage_fee')
+      if (stored) {
+        setPendingFee(parseInt(stored, 10))
+      } else {
+        setPendingFee(null)
+      }
+    }
+    
+    updatePendingFee()
+    window.addEventListener('creditsUpdated', updatePendingFee)
+    window.addEventListener('profileUpdated', updatePendingFee)
+    return () => {
+      window.removeEventListener('creditsUpdated', updatePendingFee)
+      window.removeEventListener('profileUpdated', updatePendingFee)
+    }
+  }, [])
 
   // 관리자 권한 확인 (User 객체가 바뀌면 수행)
   useEffect(() => {
@@ -211,18 +232,33 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </button>
           )}
 
-          {/* 코인 잔액 — 다른 메뉴와 동일한 톤(상단 잔액, 하단 라벨) */}
-          {isLoggedIn && (
+          {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
+          {(isLoggedIn || pendingFee !== null) && (
             <Link
-              href="/payment/purchase"
+              href={isLoggedIn ? "/payment/purchase" : "#"}
+              onClick={(e) => {
+                if (!isLoggedIn) {
+                  e.preventDefault()
+                  window.dispatchEvent(new CustomEvent('openLoginModal'))
+                }
+              }}
               className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
             >
-              <div className="px-2.5 h-9 min-w-[40px] rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors flex items-center justify-center">
+              <div className={`px-2.5 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
+                !isLoggedIn && pendingFee !== null 
+                  ? "bg-red-50 text-red-600 group-hover:bg-red-100 animate-bounce" 
+                  : "bg-amber-50 text-amber-600 group-hover:bg-amber-100"
+              }`}>
                 <span className="text-sm font-black tabular-nums">
-                  {credits !== null ? `${credits.toLocaleString()} C` : '…'}
+                  {isLoggedIn 
+                    ? (credits !== null ? `${credits.toLocaleString()} C` : '…')
+                    : `-${pendingFee} C`
+                  }
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-amber-600">코인</span>
+              <span className={`text-[10px] font-bold ${
+                !isLoggedIn && pendingFee !== null ? "text-red-600 font-black" : "text-amber-600"
+              }`}>코인</span>
             </Link>
           )}
 
