@@ -168,20 +168,28 @@ export function useHubPayment() {
         }
       };
 
-      // 5. KCP 표준웹 결제창 실행
-      setTimeout(() => {
+      // 5. KCP 표준웹 결제창 실행 (내부 비동기 서브 스크립트 로드 완료 대기 루프)
+      let attempts = 0;
+      const maxAttempts = 60; // 최대 3초 대기 (50ms * 60)
+      
+      const checkAndExecute = () => {
         try {
           const kcpExecute = (window as any).KCP_Pay_Execute_Web;
           if (typeof kcpExecute === 'function') {
             kcpExecute(form);
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(checkAndExecute, 50);
           } else {
-            throw new Error('KCP 실행 함수(KCP_Pay_Execute_Web)를 찾을 수 없습니다.');
+            setError('KCP 실행 함수(KCP_Pay_Execute_Web)를 찾을 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+            setStatus('error');
           }
         } catch (e: any) {
-          setError(e.message);
-          setStatus('error');
+          // KCP 모듈의 정상 종료 throw 처리
         }
-      }, 100);
+      };
+
+      setTimeout(checkAndExecute, 50);
 
       return true;
     } catch (err: any) {
