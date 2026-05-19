@@ -331,9 +331,9 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                         <div className="text-[10px] font-medium text-slate-400">
                           {formatDate(item.created_at || item.createdAt)}
                         </div>
-                        {item.balance !== null && (
+                        {typeof item.balance === 'number' && !isNaN(item.balance) && (
                           <div className="text-[10px] font-bold text-slate-300">
-                            잔액 {Number(item.balance).toLocaleString()} C
+                            잔액 {item.balance.toLocaleString()} C
                           </div>
                         )}
                       </div>
