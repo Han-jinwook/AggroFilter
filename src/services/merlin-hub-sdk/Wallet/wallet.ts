@@ -127,7 +127,7 @@ export async function getHistory(userId: string, page: number = 1): Promise<{
 export async function requestKcpPayment(params: {
   amount: number;
   coinAmount: number;
-  payMethodType: 'card' | 'phone';
+  payMethodType: 'card' | 'phone' | 'bank';
   returnUrl: string;
 }): Promise<{ success: boolean; paymentData?: any; error?: string }> {
   try {

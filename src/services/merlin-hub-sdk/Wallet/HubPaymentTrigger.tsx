@@ -1,6 +1,6 @@
 /**
- * Version: v1.0.0
- * Last Updated: 2026-05-15
+ * Version: v1.1.0
+ * Last Updated: 2026-05-19
  */
 import React from 'react';
 import { useHubPayment } from './useHubPayment';
@@ -8,7 +8,7 @@ import { useHubPayment } from './useHubPayment';
 interface HubPaymentTriggerProps {
   amount: number;
   coinAmount: number;
-  payMethodType?: 'card' | 'phone';
+  payMethodType?: 'card' | 'phone' | 'bank';
   returnUrl?: string;
   label?: string;
   className?: string;

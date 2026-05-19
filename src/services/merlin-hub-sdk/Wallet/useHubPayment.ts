@@ -1,6 +1,6 @@
 /**
- * Version: v1.2.0
- * Last Updated: 2026-05-16
+ * Version: v1.3.0
+ * Last Updated: 2026-05-19
  */
 import { useState, useCallback, useEffect } from 'react';
 import { requestKcpPayment } from './wallet';
@@ -40,7 +40,7 @@ export function useHubPayment() {
   const requestPayment = useCallback(async (params: {
     amount: number;
     coinAmount: number;
-    payMethodType: 'card' | 'phone';
+    payMethodType: 'card' | 'phone' | 'bank';
     returnUrl?: string;
   }) => {
     try {

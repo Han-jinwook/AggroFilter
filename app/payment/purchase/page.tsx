@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppHeader } from '@/components/c-app-header'
-import { hubFetch } from '@/src/services/merlin-hub-sdk'
+import { hubFetch, requestKcpPayment } from '@/src/services/merlin-hub-sdk'
 import { HubPaymentTrigger } from '@/src/services/merlin-hub-sdk/react'
 
 interface HistoryItem {
@@ -40,7 +40,7 @@ function MockPaymentContent() {
   const [nickname, setNickname] = useState('')
   const [chargeResult, setChargeResult] = useState<{ charged: number; balance: number } | null>(null)
   const [tab, setTab] = useState<'charge' | 'history'>('charge')
-  const [method, setMethod] = useState<'card' | 'phone'>('card')
+  const [method, setMethod] = useState<'card' | 'phone' | 'bank'>('card')
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyPage, setHistoryPage] = useState(1)
   const [historyTotalPages, setHistoryTotalPages] = useState(1)
@@ -192,14 +192,18 @@ function MockPaymentContent() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-black text-slate-900">2. 결제 수단 선택</h2>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-3 gap-3">
                 <label className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 cursor-pointer ${method === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50'}`}>
-                  <input type="radio" checked={method === 'card'} onChange={() => setMethod('card')} className="h-4 w-4" />
+                  <input type="radio" checked={method === 'card'} onChange={() => setMethod('card')} className="h-4.5 w-4.5 accent-indigo-600" />
                   <span className="font-bold">신용카드</span>
                 </label>
                 <label className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 cursor-pointer ${method === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50'}`}>
-                  <input type="radio" checked={method === 'phone'} onChange={() => setMethod('phone')} className="h-4 w-4" />
+                  <input type="radio" checked={method === 'phone'} onChange={() => setMethod('phone')} className="h-4.5 w-4.5 accent-indigo-600" />
                   <span className="font-bold">휴대폰 결제</span>
+                </label>
+                <label className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 cursor-pointer ${method === 'bank' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50'}`}>
+                  <input type="radio" checked={method === 'bank'} onChange={() => setMethod('bank')} className="h-4.5 w-4.5 accent-indigo-600" />
+                  <span className="font-bold">계좌이체</span>
                 </label>
               </div>
             </div>
