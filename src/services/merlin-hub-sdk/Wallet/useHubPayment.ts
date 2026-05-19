@@ -48,7 +48,7 @@ export function useHubPayment() {
       const siteCd = orderData.site_cd || '';
 
       // 2. KCP 표준결제 JS 스크립트 동적 로드 (site_cd에 맞춰 테스트/운영 분기)
-      const isTest = siteCd.startsWith('T') || siteCd === 'ALRJ8' || siteCd.startsWith('A') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isTest = siteCd.startsWith('T');
       const targetSrc = isTest 
         ? 'https://testspay.kcp.co.kr/plugin/kcp_spay_hub.js'
         : 'https://spay.kcp.co.kr/plugin/kcp_spay_hub.js';

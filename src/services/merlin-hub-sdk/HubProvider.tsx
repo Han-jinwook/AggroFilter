@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { checkSession, getBalance, getUserId } from './CoreLogic/index';
+import { configureMerlinHub } from './CoreLogic/config';
 
 interface HubUser {
   id: string;
@@ -21,11 +22,18 @@ interface HubContextType {
 
 const HubContext = createContext<HubContextType | undefined>(undefined);
 
-export function HubProvider({ children }: { children: React.ReactNode }) {
+export function HubProvider({ children, appId }: { children: React.ReactNode; appId?: string }) {
   const [user, setUser] = useState<HubUser | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState<number | null>(null);
+
+  // appId 설정 주입
+  useEffect(() => {
+    if (appId) {
+      configureMerlinHub({ appId });
+    }
+  }, [appId]);
 
   const refreshBalance = useCallback(async () => {
     try {

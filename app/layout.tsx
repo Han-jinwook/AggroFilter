@@ -124,7 +124,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <HubProvider>
+          <HubProvider appId="AGGROFILTER">
             <div className="flex min-h-screen flex-col">
               <div className="flex-1">
                 {children}
