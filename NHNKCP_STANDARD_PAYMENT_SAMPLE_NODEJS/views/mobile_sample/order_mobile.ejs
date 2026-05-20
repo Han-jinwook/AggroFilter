@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>*** NHN KCP API SAMPLE ***</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=yes, target-densitydpi=medium-dpi">  
+    <link href="/public/static/css/style.css" rel="stylesheet" type="text/css" id="cssLink"/>
+    <script type="text/javascript">
+        /* kcp web 결제창 호츨 (변경불가) */
+        function call_pay_form()
+        {
+            var v_frm = document.order_info;
+            var PayUrl = v_frm.PayUrl.value;
+            // 인코딩 방식에 따른 변경 -- Start
+            if(v_frm.encoding_trans == undefined)
+            {
+                v_frm.action = PayUrl;
+            }
+            else
+            {
+                // encoding_trans "UTF-8" 인 경우
+                if(v_frm.encoding_trans.value == "UTF-8")
+                {
+                    v_frm.action = PayUrl.substring(0,PayUrl.lastIndexOf("/"))  + "/jsp/encodingFilter/encodingFilter.jsp";
+                    v_frm.PayUrl.value = PayUrl;
+                }
+                else
+                {
+                    v_frm.action = PayUrl;
+                }
+            }
+            v_frm.submit();
+        }
+        
+        /* kcp 통신을 통해 받은 암호화 정보 체크 후 결제 요청 (변경불가) */
+        function chk_pay()
+        {
+            self.name = "tar_opener";
+            var res_cd = "<%= post_data.res_cd %>";
+            if (res_cd != "" && res_cd != "0000" )
+            {
+                /* 결제인증 실패에 대한 처리 */
+                if (res_cd == "3001")
+                {
+                    alert("사용자가 취소하였습니다.");
+                }
+                res_cd = "";
+                location.href = "/mobile_sample/trade_reg"; // 샘플에서는 거래등록 페이지로 이동
+            }
+
+            /* 결제인증 완료 후 결제승인 요청을 위한 비즈니스 로직 구현 */ 
+            var pay_form = document.pay_form;
+            if (pay_form.enc_info.value && pay_form.enc_data.value)
+                pay_form.submit();
+        }
+    </script>
+</head>
+<body onload="chk_pay();">
+    <div class="wrap">
+        <form name="order_info" method="post">
+            <div class="header">
+                <a href="/" class="btn-back"><span>뒤로가기</span></a>
+                <h1 class="title">주문/결제 SAMPLE</h1>
+            </div>
+            <div id="skipCont" class="contents">
+                <p class="txt-type-1">이 페이지는 거래등록 완료 후 주문 요청하는 샘플 페이지입니다.</p>
+                <h2 class="title-type-3">주문정보</h2>
+                <ul class="list-type-1">
+                    <li>
+                        <div class="left"><p class="title">주문번호</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 pc-wd-2">
+                                <input type="text" name="ordr_idxx" value="<%=post_data.ordr_idxx %>" maxlength="50" readonly />
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="left"><p class="title">상품명</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 pc-wd-2">
+                                <input type="text" name="good_name" value="<%=post_data.good_name %>" readonly />
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="left"><p class="title">결제금액</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 gap-2 pc-wd-2">
+                                <input type="text" name="good_mny" value="<%=post_data.good_mny %>" maxlength="9" readonly />
+                                <span class="txt-price">원</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="left"><p class="title">주문자명</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 pc-wd-2">
+                                <input type="text" name="buyr_name" value="홍길동" />
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="left"><p class="title">휴대폰번호</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 pc-wd-2">
+                                <input type="text" name="buyr_tel2" value="010-0000-0000" />
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="left"><p class="title">이메일</p></div>
+                        <div class="right">
+                            <div class="ipt-type-1 pc-wd-2">
+                                <input type="text" name="buyr_mail" value="" />
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+                <div Class="Line-Type-1"></div>
+                <ul class="list-btn-2">
+                    <li class="pc-only-show"><a href="/" class="btn-type-3 pc-wd-2">뒤로</a></li>
+                    <li><a href="#none" onclick="call_pay_form();" class="btn-type-2 pc-wd-3">결제요청</a></li> 
+                </ul>
+            </div>
+
+            <div class="grid-footer">
+                <div class="inner">
+                    <div class="footer">
+                        ⓒ NHN KCP Corp.
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" name="shop_name"       value="TEST SITE" />
+            <input type="hidden" name="site_cd"         value="<%=post_data.site_cd %>" />
+            <input type="hidden" name="currency"        value="410"/>
+            <input type="hidden" name="pay_method"      value="<%=post_data.pay_method %>" />
+            <input type="hidden" name="van_code"        value="<%=post_data.van_code %>" />
+            <input type="hidden" name="quotaopt"        value="12"/>
+            <!-- 리턴 URL (kcp와 통신후 결제를 요청할 수 있는 암호화 데이터를 전송 받을 가맹점의 주문페이지 URL) -->
+            <input type="hidden" name="Ret_URL"         value="<%=post_data.Ret_URL %>" />
+            <!-- 거래등록 응답값 -->
+            <input type="hidden" name="approval_key" id="approval" value="<%=post_data.approvalKey%>"/>
+            <input type="hidden" name="PayUrl"                     value="<%=post_data.PayUrl%>" />
+            <!-- 추가 파라미터 ( 가맹점에서 별도의 값전달시 param_opt 를 사용하여 값 전달 ) -->
+            <input type="hidden" name="param_opt_1"     value="" />
+            <input type="hidden" name="param_opt_2"     value="" />
+            <input type="hidden" name="param_opt_3"     value="" />
+            <!-- UTF-8 인코딩 적용 -->
+            <input type="hidden" name="encoding_trans" value="UTF-8" />
+        </form>
+    </div>
+    <form name="pay_form" method="post" action="/kcp_api_pay">
+        <input type="hidden" name="site_cd"        value="<%=post_data.site_cd%>" />
+        <input type="hidden" name="tran_cd"        value="<%=post_data.tran_cd%>" />
+        <input type="hidden" name="enc_info"       value="<%=post_data.enc_info%>" />
+        <input type="hidden" name="enc_data"       value="<%=post_data.enc_data%>" />
+
+        <input type="hidden" name="ordr_idxx"      value="<%=post_data.ordr_idxx%>" />
+        <input type="hidden" name="good_mny"       value="<%=post_data.good_mny%>" />
+        <input type="hidden" name="good_name"      value="<%=post_data.good_name%>" />
+        <input type="hidden" name="buyr_name"      value="<%=post_data.buyr_name%>" />        
+        <input type="hidden" name="buyr_tel2"      value="<%=post_data.buyr_tel2%>" />       
+        <input type="hidden" name="buyr_mail"      value="<%=post_data.buyr_mail%>" />         
+
+        <input type="hidden" name="param_opt_1"    value="<%=post_data.param_opt_1%>" />
+        <input type="hidden" name="param_opt_2"    value="<%=post_data.param_opt_2%>" />
+        <input type="hidden" name="param_opt_3"    value="<%=post_data.param_opt_3%>" />
+    </form>
+</body>
+</html>

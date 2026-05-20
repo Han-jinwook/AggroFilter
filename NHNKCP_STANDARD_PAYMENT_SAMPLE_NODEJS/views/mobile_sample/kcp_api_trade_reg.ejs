@@ -1,0 +1,47 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>*** NHN KCP API SAMPLE ***</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=yes, target-densitydpi=medium-dpi">  
+    <script type="text/javascript">
+        function goReq()
+        {
+            // 거래등록 처리 정상
+            if ( '<%=res_data.Code%>' == "0000" ) 
+            {
+                alert("거래등록 성공");
+                document.form_trade_reg.action = "/mobile_sample/order_mobile";
+                document.form_trade_reg.submit();
+            }
+        
+            // 거래등록 처리 실패, 여기(샘플)에서는 trade_reg page로 리턴 합니다.
+            else
+            {
+                alert(
+                    "거래등록 실패" + "\n" +
+                    "Code : <%=res_data.Code%>" + "\n" + 
+                    "Message : <%=res_data.Message%>"
+                )
+                location.href = "/mobile_sample/trade_reg";
+            }
+                    
+        }
+    </script>
+</head>
+<body onload="goReq();">
+    <form name="form_trade_reg" method="post">
+        <input type="hidden" name="site_cd"         value="<%=req_data.site_cd %>" />
+        <input type="hidden" name="ordr_idxx"       value="<%=req_data.ordr_idxx %>" />
+        <input type="hidden" name="good_mny"        value="<%=req_data.good_mny %>" />
+        <input type="hidden" name="good_name"       value="<%=req_data.good_name %>" />
+        <input type="hidden" name="pay_method"      value="<%=req_data.pay_method %>" />
+        <input type="hidden" name="van_code"        value="<%=post_data.van_code %>" />
+        <input type="hidden" name="Ret_URL"         value="<%=req_data.Ret_URL %>" />
+        <input type="hidden" name="approvalKey"     value="<%=res_data.approvalKey %>" />
+        <input type="hidden" name="PayUrl"          value="<%=res_data.PayUrl %>" />
+        <input type="hidden" name="res_cd"          value="<%=res_data.Code%>" />
+    </form>
+</body>
+</html>
