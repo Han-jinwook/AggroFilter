@@ -118,6 +118,23 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes hub-coin-float-1 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-6px) rotate(2deg); }
+        }
+        @keyframes hub-coin-float-2 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(-4deg); }
+        }
+        @keyframes hub-coin-float-3 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-5px) rotate(3deg); }
+        }
+        .hub-coin-1 { animation: hub-coin-float-1 5s ease-in-out infinite; }
+        .hub-coin-2 { animation: hub-coin-float-2 6s ease-in-out infinite; }
+        .hub-coin-3 { animation: hub-coin-float-3 4.4s ease-in-out infinite; }
+      `}} />
       <main className="mx-auto max-w-[var(--app-max-width,720px)] px-4 py-8 space-y-4">
         {/* 상단 네비게이션 */}
         <div className="flex items-center justify-start pb-2">
@@ -175,36 +192,171 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {options.map((opt) => {
                   const isSelected = selectedOption === opt.credits;
+                  const isBestValue = opt.credits === 5000;
+                  const discountPercent = opt.discount;
+
                   return (
                     <button
                       key={opt.credits}
                       onClick={() => setSelectedOption(opt.credits)}
-                      className={`relative flex flex-col justify-between text-left rounded-2xl p-5 min-h-[160px] bg-gradient-to-br ${
-                        opt.gradient
-                      } text-white transition-all duration-300 hover:scale-[1.03] hover:shadow-xl shadow-md ${
-                        isSelected ? 'ring-4 ring-indigo-600 scale-[1.02]' : ''
+                      className={`relative w-full text-left rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.03] active:scale-[0.99] border-2 ${
+                        isSelected
+                          ? 'border-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.35)]'
+                          : 'border-white/5'
                       }`}
+                      style={{
+                        background: 'linear-gradient(135deg, #130c25 0%, #0d091a 100%)',
+                        minHeight: '220px',
+                      }}
                     >
-                      {/* 할인 배지 */}
-                      {opt.discount > 0 && (
-                        <span className="absolute top-3.5 right-3.5 px-2 py-0.5 rounded-full bg-rose-500 text-[10px] font-black uppercase tracking-wider shadow-sm animate-pulse">
-                          {opt.discount}% 할인
-                        </span>
+                      {/* Decorative glowing gradient circle background */}
+                      <div className="absolute -top-10 -left-10 w-28 h-28 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                      <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                      {/* Floating glowing SVG coin graphics */}
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 w-28 h-28 flex items-center justify-center pointer-events-none select-none">
+                        {/* Large coin */}
+                        <div className="hub-coin-1">
+                          <svg className="w-16 h-16 drop-shadow-[0_0_12px_rgba(99,102,241,0.5)]" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="32" r="30" fill="url(#coinGradOuter)" stroke="url(#coinBorderGrad)" strokeWidth="2" />
+                            <circle cx="32" cy="32" r="24" fill="url(#coinGradInner)" />
+                            <text x="32" y="39" textAnchor="middle" fill="#ffffff" fontSize="22" fontWeight="900" fontFamily="sans-serif">C</text>
+                            <defs>
+                              <linearGradient id="coinGradOuter" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#6366F1" />
+                                <stop offset="0.5" stopColor="#4F46E5" />
+                                <stop offset="1" stopColor="#312E81" />
+                              </linearGradient>
+                              <linearGradient id="coinBorderGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#A5B4FC" />
+                                <stop offset="1" stopColor="#312E81" />
+                              </linearGradient>
+                              <linearGradient id="coinGradInner" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#4F46E5" />
+                                <stop offset="1" stopColor="#1E1B4B" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                        </div>
+
+                        {/* Floating tiny coin left */}
+                        <div className="absolute left-0 top-3 hub-coin-2">
+                          <svg className="w-8 h-8 opacity-70 drop-shadow-[0_0_6px_rgba(99,102,241,0.3)]" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="32" r="30" fill="url(#coinGradOuter2)" stroke="url(#coinBorderGrad2)" strokeWidth="2" />
+                            <circle cx="32" cy="32" r="24" fill="url(#coinGradInner2)" />
+                            <text x="32" y="39" textAnchor="middle" fill="#ffffff" fontSize="22" fontWeight="900" fontFamily="sans-serif">C</text>
+                            <defs>
+                              <linearGradient id="coinGradOuter2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#818CF8" />
+                                <stop offset="1" stopColor="#312E81" />
+                              </linearGradient>
+                              <linearGradient id="coinBorderGrad2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#C7D2FE" />
+                                <stop offset="1" stopColor="#1E1B4B" />
+                              </linearGradient>
+                              <linearGradient id="coinGradInner2" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#312E81" />
+                                <stop offset="1" stopColor="#0F172A" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                        </div>
+
+                        {/* Floating tiny coin right */}
+                        <div className="absolute right-0 bottom-2 hub-coin-3">
+                          <svg className="w-6 h-6 opacity-50 drop-shadow-[0_0_4px_rgba(168,85,247,0.3)]" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="32" r="30" fill="url(#coinGradOuter3)" stroke="url(#coinBorderGrad3)" strokeWidth="2" />
+                            <circle cx="32" cy="32" r="24" fill="url(#coinGradInner3)" />
+                            <text x="32" y="39" textAnchor="middle" fill="#ffffff" fontSize="22" fontWeight="900" fontFamily="sans-serif">C</text>
+                            <defs>
+                              <linearGradient id="coinGradOuter3" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#A855F7" />
+                                <stop offset="1" stopColor="#581C87" />
+                              </linearGradient>
+                              <linearGradient id="coinBorderGrad3" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#E9D5FF" />
+                                <stop offset="1" stopColor="#3B0764" />
+                              </linearGradient>
+                              <linearGradient id="coinGradInner3" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                                <stop stopColor="#581C87" />
+                                <stop offset="1" stopColor="#0F172A" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Content Container */}
+                      <div className="relative h-full flex flex-col justify-between p-6 z-10">
+                        {/* Upper Details */}
+                        <div>
+                          {/* App Badge */}
+                          <div className="inline-block px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black tracking-widest text-indigo-300 uppercase mb-3">
+                            {appName} COIN
+                          </div>
+
+                          {/* Coins Amount */}
+                          <div className="text-3xl font-extrabold text-white tracking-tight">
+                            {opt.credits.toLocaleString()} 코인
+                          </div>
+                        </div>
+
+                        {/* Mid-Lower Price & Tag */}
+                        <div className="mt-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-black bg-gradient-to-r from-indigo-400 via-purple-300 to-white bg-clip-text text-transparent">
+                              {opt.price.toLocaleString()}원
+                            </span>
+                            {discountPercent > 0 && (
+                              <span className="text-xs font-bold text-rose-400">
+                                ({discountPercent}% 할인)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Divider Line */}
+                        <div className="w-2/3 my-3 border-t border-white/10" />
+
+                        {/* Bottom Feature badges */}
+                        <div className="flex items-center gap-3 text-[9px] text-slate-400 font-bold tracking-wider">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            안전결제
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            즉시충전
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            평생유효
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Best Value Badge top-right */}
+                      {isBestValue && (
+                        <div className="absolute top-0 right-6 bg-gradient-to-b from-indigo-500 to-indigo-700 text-white font-extrabold text-[9px] px-2.5 py-1.5 rounded-b-lg shadow-[0_2px_8px_rgba(79,70,229,0.3)] flex items-center gap-1 tracking-wider uppercase">
+                          <svg className="w-2.5 h-2.5 text-amber-300 fill-current" viewBox="0 0 20 20">
+                            <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
+                          </svg>
+                          BEST VALUE
+                        </div>
                       )}
 
-                      {/* 상단 코인 정보 */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black tracking-widest text-indigo-300 uppercase">
-                          {appName} COIN
-                        </span>
-                        <div className="text-2xl font-black">{opt.credits.toLocaleString()} 코인</div>
-                      </div>
-
-                      {/* 하단 가격 및 간단 설명 */}
-                      <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-baseline">
-                        <div className="text-xs text-white/60 font-medium">안전결제 · 즉시충전</div>
-                        <div className="text-lg font-black text-amber-300">{opt.price.toLocaleString()}원</div>
-                      </div>
+                      {/* Standard Discount Tag top-right (if not best value but discounted) */}
+                      {!isBestValue && discountPercent > 0 && (
+                        <div className="absolute top-4 right-4 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[9px] font-black tracking-wider animate-pulse">
+                          {discountPercent}% 할인
+                        </div>
+                      )}
                     </button>
                   );
                 })}
