@@ -214,7 +214,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
             {/* 결제 수단 선택 */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-base font-black text-slate-900">2. 결제 수단 선택</h2>
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <label
                   className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 cursor-pointer transition-all ${
                     method === 'card'
@@ -244,21 +244,6 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                     className="h-4.5 w-4.5 accent-indigo-600"
                   />
                   <span className="font-bold text-sm">휴대폰 결제</span>
-                </label>
-                <label
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 py-4 cursor-pointer transition-all ${
-                    method === 'bank'
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-inner'
-                      : 'border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    checked={method === 'bank'}
-                    onChange={() => setMethod('bank')}
-                    className="h-4.5 w-4.5 accent-indigo-600"
-                  />
-                  <span className="font-bold text-sm">계좌이체</span>
                 </label>
               </div>
             </div>
