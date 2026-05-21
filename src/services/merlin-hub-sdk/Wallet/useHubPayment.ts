@@ -1,8 +1,8 @@
 /**
- * Version: v1.3.1
- * Last Updated: 2026-05-19
+ * Version: v1.3.3
+ * Last Updated: 2026-05-21
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { requestKcpPayment } from './wallet';
 import { getConfig } from '../CoreLogic/config';
 
@@ -15,6 +15,29 @@ export type PaymentStatus = 'idle' | 'preparing' | 'pending' | 'success' | 'erro
 export function useHubPayment() {
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  // 컴포넌트 마운트 시점에 브라우저 환경을 감지하여 KCP 표준결제 SDK 스크립트 사전 로드
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const isLocal = window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1' ||
+                    window.location.hostname.includes('dev') ||
+                    window.location.hostname.includes('localhost');
+
+    const targetSrc = isLocal
+      ? 'https://testspay.kcp.co.kr/plugin/kcp_spay_hub.js'
+      : 'https://spay.kcp.co.kr/plugin/kcp_spay_hub.js';
+
+    const existing = document.getElementById('kcp-payplus-sdk');
+    if (!existing) {
+      const script = document.createElement('script');
+      script.id = 'kcp-payplus-sdk';
+      script.src = targetSrc;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }, []);
 
   /**
    * 결제창 호출 실행
@@ -173,19 +196,25 @@ export function useHubPayment() {
       const maxAttempts = 60; // 최대 3초 대기 (50ms * 60)
       
       const checkAndExecute = () => {
-        try {
-          const kcpExecute = (window as any).KCP_Pay_Execute_Web;
-          if (typeof kcpExecute === 'function') {
+        const kcpExecute = (window as any).KCP_Pay_Execute_Web;
+        if (typeof kcpExecute === 'function') {
+          try {
             kcpExecute(form);
-          } else if (attempts < maxAttempts) {
+          } catch (e: any) {
+            // KCP SDK는 정상 동작 과정에서 실행 중단을 위해 의도적으로 Exception을 throw합니다.
+            // 따라서 실행 시 발생한 예외는 무시하고 정상 흐름으로 간주합니다.
+            console.log('[KCP Execute] 결제 모듈 실행 함수 호출됨 (KCP 내부 예외 발생 가능하나 정상 흐름):', e);
+          }
+        } else {
+          // 아직 함수가 준비되지 않았다면 대기 루프를 지속합니다.
+          if (attempts < maxAttempts) {
             attempts++;
             setTimeout(checkAndExecute, 50);
           } else {
-            setError('KCP 실행 함수(KCP_Pay_Execute_Web)를 찾을 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+            console.error('[KCP Execute Error] KCP_Pay_Execute_Web 함수를 찾을 수 없습니다.');
+            setError('KCP 결제 모듈 실행에 실패했습니다. 페이지를 새로고침 후 다시 시도해주세요.');
             setStatus('error');
           }
-        } catch (e: any) {
-          // KCP 모듈의 정상 종료 throw 처리
         }
       };
 
