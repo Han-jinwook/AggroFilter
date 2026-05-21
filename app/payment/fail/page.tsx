@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function PaymentFailPage() {
@@ -18,6 +18,14 @@ function PaymentFailContent() {
   const code        = searchParams.get('code') || ''
   const message     = searchParams.get('message') || searchParams.get('msg') || '결제가 취소되었거나 실패했습니다.'
   const redirectUrl = searchParams.get('redirectUrl') || '/'
+
+  const [isPopup, setIsPopup] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsPopup(!!window.opener)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -41,12 +49,21 @@ function PaymentFailContent() {
             >
               다시 시도
             </button>
-            <button
-              onClick={() => window.close()}
-              className="w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
-            >
-              창 닫기
-            </button>
+            {isPopup ? (
+              <button
+                onClick={() => window.close()}
+                className="w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                창 닫기
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push(redirectUrl)}
+                className="w-full rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                {redirectUrl === '/' ? '메인으로 돌아가기' : '이전 페이지로 돌아가기'}
+              </button>
+            )}
           </div>
         </div>
       </main>

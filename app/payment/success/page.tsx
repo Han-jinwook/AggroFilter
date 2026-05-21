@@ -23,6 +23,13 @@ function PaymentSuccessContent() {
   const [coins, setCoins]     = useState<number>(0)
   const [balance, setBalance] = useState<number>(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isPopup, setIsPopup] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsPopup(!!window.opener)
+    }
+  }, [])
 
   useEffect(() => {
     if (!orderId) {
@@ -102,19 +109,38 @@ function PaymentSuccessContent() {
 
           <div className="flex flex-col gap-3 mt-6">
             {status === 'success' && (
+              isPopup ? (
+                <>
+                  <button
+                    onClick={() => window.close()}
+                    className="w-full rounded-xl px-4 py-3 text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    결제창 닫기
+                  </button>
+                  <button
+                    onClick={() => router.push(redirectUrl)}
+                    className="w-full rounded-xl px-4 py-3 text-sm font-black bg-slate-100 text-slate-900 hover:bg-slate-200 transition-colors"
+                  >
+                    {redirectUrl === '/' ? '메인으로 돌아가기' : '이전 페이지로 돌아가기'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => router.push(redirectUrl)}
+                  className="w-full rounded-xl px-4 py-3 text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  {redirectUrl === '/' ? '메인으로 돌아가기' : '이전 페이지로 돌아가기'}
+                </button>
+              )
+            )}
+            {status !== 'success' && (
               <button
-                onClick={() => window.close()}
-                className="w-full rounded-xl px-4 py-3 text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                onClick={() => router.push(redirectUrl)}
+                className="w-full rounded-xl px-4 py-3 text-sm font-black bg-slate-100 text-slate-900 hover:bg-slate-200 transition-colors"
               >
-                결제창 닫기
+                다시 시도
               </button>
             )}
-            <button
-              onClick={() => router.push(redirectUrl)}
-              className="w-full rounded-xl px-4 py-3 text-sm font-black bg-slate-100 text-slate-900 hover:bg-slate-200 transition-colors"
-            >
-              {status === 'success' ? '메인으로 돌아가기' : '다시 시도'}
-            </button>
           </div>
         </div>
       </main>

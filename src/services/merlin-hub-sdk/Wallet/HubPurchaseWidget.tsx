@@ -232,7 +232,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
               amount={selectedPkg.price}
               coinAmount={selectedPkg.credits}
               payMethodType={method}
-              returnUrl={`${origin}/api/payment/callback`}
+              returnUrl={`${origin}/api/payment/callback?redirectUrl=${encodeURIComponent(targetRedirectUrl)}`}
               onSuccess={onSuccess}
               onError={onError}
               className="w-full rounded-2xl bg-indigo-600 py-5 text-lg font-black text-white shadow-xl hover:bg-indigo-700 active:scale-[0.98] transition-all"

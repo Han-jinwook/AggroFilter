@@ -156,7 +156,7 @@ function MockPaymentContent() {
         amount: selectedPkg.price,
         coinAmount: selectedPkg.credits,
         payMethodType: method,
-        returnUrl: `${origin}/api/payment/callback`
+        returnUrl: `${origin}/api/payment/callback?redirectUrl=${encodeURIComponent(redirectUrl)}`
       });
 
       if (!result.success || !result.paymentData) {
@@ -220,7 +220,7 @@ function MockPaymentContent() {
           <input type="hidden" name="use_pay_method" value="" />
           <input type="hidden" name="buyr_tel1" value="" />
           <input type="hidden" name="buyr_tel2" value="" />
-          <input type="hidden" name="param_opt_1" value={origin} />
+          <input type="hidden" name="param_opt_1" value={`${origin}/api/payment/callback?redirectUrl=${encodeURIComponent(redirectUrl)}`} />
           <input type="hidden" name="Ret_URL" value={`${MerlinHub.getConfig().hubUrl}/api/payment/callback`} />
         </form>
         {/* 상단 네비게이션 */}
