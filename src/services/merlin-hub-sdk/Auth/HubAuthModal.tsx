@@ -27,13 +27,22 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
 }) => {
   const { status, sendOtp, verifyOtp, timer, formatTimer, error, reset } = useHubAuth();
   const [inputEmail, setInputEmail] = useState('');
+  const [emailHistory, setEmailHistory] = useState<string[]>([]);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // 모달이 열릴 때 초기화
+  // 모달이 열릴 때 초기화 및 이메일 히스토리 로드
   useEffect(() => {
     if (isOpen) {
       // reset(); // 기존 상태 유지할지 여부 선택 가능
+      if (typeof window !== 'undefined') {
+        try {
+          const history = JSON.parse(localStorage.getItem('merlin_email_history') || '[]');
+          if (Array.isArray(history)) {
+            setEmailHistory(history.filter(h => typeof h === 'string' && h.includes('@')));
+          }
+        } catch (_) {}
+      }
     } else {
       setCodeDigits(['', '', '', '', '', '']);
     }
@@ -44,6 +53,17 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status === 'sending') return;
+
+    if (inputEmail && inputEmail.includes('@')) {
+      try {
+        const history = JSON.parse(localStorage.getItem('merlin_email_history') || '[]');
+        const filtered = history.filter((h: string) => h !== inputEmail);
+        const newHistory = [inputEmail, ...filtered].slice(0, 4);
+        localStorage.setItem('merlin_email_history', JSON.stringify(newHistory));
+        setEmailHistory(newHistory);
+      } catch (_) {}
+    }
+
     await sendOtp(inputEmail);
   };
 
@@ -119,6 +139,8 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
               <div className="relative">
                 <input 
                   type="email" 
+                  name="email"
+                  autoComplete="email"
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
                   placeholder="example@email.com"
@@ -127,6 +149,21 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                   autoFocus
                 />
               </div>
+              
+              {emailHistory.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-center -mt-2 animate-in fade-in duration-200">
+                  {emailHistory.map((email) => (
+                    <button
+                      key={email}
+                      type="button"
+                      onClick={() => setInputEmail(email)}
+                      className="text-xs px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all border border-slate-200/50"
+                    >
+                      {email}
+                    </button>
+                  ))}
+                </div>
+              )}
               
               <button 
                 type="submit"

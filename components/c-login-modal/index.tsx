@@ -17,16 +17,41 @@ interface TLoginModalProps {
 export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalProps) {
   const [step, setStep] = useState<"email" | "code">("email")
   const [email, setEmail] = useState("")
+  const [emailHistory, setEmailHistory] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [code, setCode] = useState(["", "", "", "", "", ""])
   const [error, setError] = useState("")
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // 이메일 히스토리 불러오기
+  useEffect(() => {
+    if (open && typeof window !== 'undefined') {
+      try {
+        const history = JSON.parse(localStorage.getItem('merlin_email_history') || '[]');
+        if (Array.isArray(history)) {
+          setEmailHistory(history.filter(h => typeof h === 'string' && h.includes('@')));
+        }
+      } catch (_) {}
+    }
+  }, [open]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
     setError("")
     setIsLoading(true)
+
+    // 이메일 히스토리 저장
+    if (email && email.includes('@')) {
+      try {
+        const history = JSON.parse(localStorage.getItem('merlin_email_history') || '[]');
+        const filtered = history.filter((h: string) => h !== email);
+        const newHistory = [email, ...filtered].slice(0, 4);
+        localStorage.setItem('merlin_email_history', JSON.stringify(newHistory));
+        setEmailHistory(newHistory);
+      } catch (_) {}
+    }
+
     try {
       const result = await requestOTP(email, 'AGGRO_FILTER')
       if (!result.success) throw new Error(result.error || 'Failed to send OTP')
@@ -179,12 +204,29 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: TLoginModalPr
                 <Input
                   id="email"
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder="이메일 주소 입력 (example@email.com)"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError("") }}
                   required
                   className="h-16 bg-white border-2 border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-2xl font-bold px-6 text-center placeholder:text-slate-300 placeholder:font-medium"
                 />
+
+                {emailHistory.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center mt-1 animate-in fade-in duration-200">
+                    {emailHistory.map((emailItem) => (
+                      <button
+                        key={emailItem}
+                        type="button"
+                        onClick={() => setEmail(emailItem)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all border border-slate-200/50"
+                      >
+                        {emailItem}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {error && (
                   <div className="bg-red-50 text-red-500 text-sm font-bold py-4 px-6 rounded-2xl border border-red-100 text-center">
