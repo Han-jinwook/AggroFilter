@@ -1,5 +1,5 @@
 /**
- * Version: v1.3.3
+ * Version: v1.3.4
  * Last Updated: 2026-05-21
  */
 import { useState, useCallback, useEffect } from 'react';
@@ -202,8 +202,27 @@ export function useHubPayment() {
             kcpExecute(form);
           } catch (e: any) {
             // KCP SDK는 정상 동작 과정에서 실행 중단을 위해 의도적으로 Exception을 throw합니다.
-            // 따라서 실행 시 발생한 예외는 무시하고 정상 흐름으로 간주합니다.
-            console.log('[KCP Execute] 결제 모듈 실행 함수 호출됨 (KCP 내부 예외 발생 가능하나 정상 흐름):', e);
+            // 하지만 아직 로딩 초기 단계(attempts < maxAttempts)이고, 던져진 예외가 
+            // ReferenceError, TypeError 이거나 특정 undefined 관련 메시지인 경우 
+            // 의존성 스크립트(jQuery 등)가 덜 로드되어 발생한 실질적 오류로 판단하고 재시도합니다.
+            const isInitError = e instanceof TypeError || 
+                                e instanceof ReferenceError || 
+                                (e && e.message && (
+                                  e.message.includes('undefined') || 
+                                  e.message.includes('not defined') || 
+                                  e.message.includes('null') || 
+                                  e.message.includes('jQuery') || 
+                                  e.message.includes('$')
+                                ));
+
+            if (isInitError && attempts < maxAttempts) {
+              attempts++;
+              console.warn(`[KCP Execute] 의존성 미로드 오류 발생으로 재시도 중 (${attempts}/${maxAttempts}):`, e);
+              setTimeout(checkAndExecute, 50);
+            } else {
+              // 의도된 종료 예외이거나, 대기 시간을 초과한 경우
+              console.log('[KCP Execute] 결제 모듈 실행 함수 호출됨 (KCP 내부 예외 발생 가능하나 정상 흐름):', e);
+            }
           }
         } else {
           // 아직 함수가 준비되지 않았다면 대기 루프를 지속합니다.
