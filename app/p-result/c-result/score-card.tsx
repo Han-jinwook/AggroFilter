@@ -50,25 +50,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
     return '허위/조작(실질 손실 가능)'
   })()
 
-  const formatDeltaRow = (label: string, before: number | null, after: number | null, isPercent: boolean) => {
-    if (before === null || after === null) return null
-    const diff = after - before
-    const diffText = diff === 0 ? "0" : diff > 0 ? `+${diff}` : `${diff}`
-    const valueBefore = isPercent ? `${before}%` : String(before)
-    const valueAfter = isPercent ? `${after}%` : String(after)
-    const diffClass = diff > 0 ? "text-emerald-600" : diff < 0 ? "text-rose-600" : "text-slate-500"
-    return (
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-bold text-slate-700">{label}</span>
-        <div className="flex items-center gap-1 font-bold">
-          <span className="text-slate-500">{valueBefore}</span>
-          <span className="text-slate-300">→</span>
-          <span className="text-slate-900">{valueAfter}</span>
-          <span className={diffClass}>({diffText})</span>
-        </div>
-      </div>
-    )
-  }
 
   const toggleTooltip = (type: string) => {
     setActiveTooltip(activeTooltip === type ? null : type)
@@ -130,16 +111,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             />
           </div>
 
-          {recheckDelta && (
-            <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <div className="text-[11px] font-black text-slate-700 mb-1">재검 변경사항</div>
-              <div className="space-y-1">
-                {formatDeltaRow('정확성', recheckDelta.before.accuracy, recheckDelta.after.accuracy, true)}
-                {formatDeltaRow('어그로성', recheckDelta.before.clickbait, recheckDelta.after.clickbait, true)}
-                {formatDeltaRow('신뢰도', recheckDelta.before.trust, recheckDelta.after.trust, false)}
-              </div>
-            </div>
-          )}
 
           {/* REFACTORED: 예측 등급 시스템 제거 예정 (주석 처리)
           {prediction ? (
