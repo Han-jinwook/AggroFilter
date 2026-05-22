@@ -33,7 +33,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   redirectUrl = '/',
   onSuccess,
   onError,
-  theme = 'cyber',
+  theme = 'modern',
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
