@@ -712,7 +712,7 @@ export async function analyzeContent(
     `;
 
   // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
-  const tryModel = async (modelName: string) => {
+  const tryModel = async (modelName: string, extraInstructions?: string) => {
     console.log(`Initializing Gemini model: ${modelName}`);
     
     // Allow controversial content for analysis purposes (Analysis tool need to see the bad stuff to rate it)
@@ -743,6 +743,8 @@ export async function analyzeContent(
     const finalPrompt = `
       ${systemPrompt}
       
+      ${extraInstructions ? `[추가 지시사항 및 경고]\n${extraInstructions}\n` : ''}
+
       [분석 대상 데이터]
       채널명: ${channelName}
       제목: ${title}
@@ -775,16 +777,30 @@ export async function analyzeContent(
     const text = response.text;
     const usageMetadata = response.usageMetadata || response.response?.usageMetadata;
     const groundingMetadata = response.response?.candidates?.[0]?.groundingMetadata;
+    const candidates = response.response?.candidates;
 
     return {
       text,
       usageMetadata,
-      groundingMetadata
+      groundingMetadata,
+      candidates
     };
   };
 
+  // 2024년 11월 1일 이후 영상인지 판정
+  const isPostNov2024 = (() => {
+    if (!publishedAt) return false;
+    try {
+      const uploadDate = new Date(publishedAt);
+      const targetDate = new Date('2024-11-01T00:00:00Z');
+      return uploadDate >= targetDate;
+    } catch {
+      return false;
+    }
+  })();
+
   try {
-    let result;
+    let result: any = null;
     // Strategy: Primary model + safe fallback
     const modelsToTry = ["gemini-2.5-flash"];
     
@@ -793,7 +809,56 @@ export async function analyzeContent(
       try {
         console.log(`Attempting analysis with model: ${modelName}`);
         result = await tryModel(modelName);
-        if (result) break; // Success
+        
+        if (result) {
+          // [grounding 검증 및 강제 재시도]
+          // 2024년 11월 1일 이후 영상인데 구글 검색을 돌리지 않은 경우
+          const groundingMetadata = result.groundingMetadata;
+          const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
+          const groundingUsed = groundingQueries.length > 0;
+
+          // 임시로 is_valid_target 여부 추출 시도
+          let isValidTarget = true; // 기본값은 true (보수적으로 팩트체크 대상이라 가정)
+          if (result.text) {
+            try {
+              let jsonString = result.text.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
+              const firstBrace = jsonString.indexOf('{');
+              const lastBrace = jsonString.lastIndexOf('}');
+              if (firstBrace !== -1 && lastBrace !== -1) {
+                  jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+              }
+              const tempObj = JSON.parse(jsonString);
+              if (tempObj && typeof tempObj.is_valid_target === 'boolean') {
+                isValidTarget = tempObj.is_valid_target;
+              }
+            } catch {
+              // 파싱 실패시에는 보수적으로 true로 설정하여 팩트체크를 시도하도록 함
+            }
+          }
+          
+          if (isPostNov2024 && isValidTarget && !groundingUsed) {
+            console.warn(`🚨 [GROUNDING RETRY] 2024년 11월 1일 이후 영상이면서 팩트체크 대상인데 Google Search 미사용 감지! 재시도를 시작합니다. 제목: "${title}"`);
+            
+            const extraWarning = `
+              ⚠️ [경고: 절대 준수 규칙]
+              이 영상은 너의 학습 데이터 종료 시점(2024년 10월) 이후인 최신 시점(${uploadDateStr || '2024년 11월 1일 이후'})에 업로드된 영상입니다.
+              따라서 영상 속 인물, 직위, 사건, 정권 상황 등 모든 팩트는 너의 기존 지식에 존재하지 않거나 현재 시점과 완전히 다를 가능성이 매우 높습니다.
+              반드시 googleSearch 도구(구글 검색)를 명시적으로 실행하여 해당 사실을 인터넷 뉴스 검색으로 대조 확인한 후, 그 팩트만을 기반으로 채점하십시오.
+              절대 기존 학습 지식에만 의존하여 "사실이 아니다" 혹은 "존재하지 않는다"라고 성급히 단정 짓지 마십시오.
+            `;
+            
+            // 검색 강제 프롬프트를 얹어서 다시 시도
+            const retryResult = await tryModel(modelName, extraWarning).catch((retryErr) => {
+              console.error("Google Search 강제 재시도 중 오류 발생, 1차 결과를 유지합니다:", retryErr.message);
+              return null;
+            });
+            
+            if (retryResult) {
+              result = retryResult;
+            }
+          }
+          break; // Success
+        }
       } catch (error: any) {
         lastError = error;
         console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
@@ -822,8 +887,8 @@ export async function analyzeContent(
       }
     }
 
-    if (!result && lastError) {
-      throw lastError;
+    if (!result) {
+      throw lastError || new Error("Gemini analysis failed to produce a result");
     }
 
     const text = result.text;
@@ -853,7 +918,7 @@ export async function analyzeContent(
       
       // Repair attempt 1: Fix unescaped control characters inside string values
       let repaired = jsonString
-        .replace(/[\x00-\x1F\x7F]/g, (ch) => {
+        .replace(/[\x00-\x1F\x7F]/g, (ch: string) => {
           if (ch === '\n') return '\\n';
           if (ch === '\r') return '\\r';
           if (ch === '\t') return '\\t';
@@ -939,16 +1004,16 @@ export async function analyzeContent(
     // -----------------------------------
 
     // grounding 사용 여부 감지
-    const groundingMetadata = result?.candidates?.[0]?.groundingMetadata
-    const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? []
-    const groundingUsed = groundingQueries.length > 0
-    console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`)
+    const groundingMetadata = result.groundingMetadata;
+    const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
+    const groundingUsed = groundingQueries.length > 0;
+    console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`);
 
     // ⚠️ 정치/시사 키워드가 있는데 grounding 미사용 시 경고
-    const POLITICAL_KEYWORDS = /선거|경선|투표|대선|총선|보궐|지방선거|당선|낙선|출마|사퇴|탄핵|임명|해임|국회|여당|야당|민주당|국민의힘|대통령|지사|시장|의원|속보|긴급|수사|체포|구속|판결|기소/
-    const hasPoliticalKeyword = POLITICAL_KEYWORDS.test(title) || POLITICAL_KEYWORDS.test(transcript?.substring(0, 2000) || '')
+    const POLITICAL_KEYWORDS = /선거|경선|투표|대선|총선|보궐|지방선거|당선|낙선|출마|사퇴|탄핵|임명|해임|국회|여당|야당|민주당|국민의힘|대통령|지사|시장|의원|속보|긴급|수사|체포|구속|판결|기소/;
+    const hasPoliticalKeyword = POLITICAL_KEYWORDS.test(title) || POLITICAL_KEYWORDS.test(transcript?.substring(0, 2000) || '');
     if (hasPoliticalKeyword && !groundingUsed) {
-      console.error(`🚨 [GROUNDING MISS] 정치/시사 콘텐츠인데 Google Search 미사용! 제목: "${title}" — 분석 결과가 부정확할 수 있음`)
+      console.error(`🚨 [GROUNDING MISS] 정치/시사 콘텐츠인데 Google Search 미사용! 제목: "${title}" — 분석 결과가 부정확할 수 있음`);
     }
 
     return { ...analysisData, groundingUsed, groundingQueries, usageMetadata: result.usageMetadata };
