@@ -68,18 +68,31 @@ function normalizeEvaluationReasonScores(
   }
 
   if (Number.isFinite(trust)) {
-    // Try to replace existing score first
+    const tVal = Math.round(trust);
+    const emoji = tVal >= 70 ? '🟢' : tVal >= 40 ? '🟡' : '🔴';
+    const colorLabel = tVal >= 70 ? 'Green' : tVal >= 40 ? 'Yellow' : 'Red';
+
+    // Try to replace existing score first (with or without emoji and label)
     const replaced = out.replace(
-      /(신뢰도\s*총평\s*)\(\s*\d+\s*점/g,
-      `$1(${Math.round(trust)}점`
+      /(신뢰도\s*총평\s*)\(\s*\d+\s*점\s*(?:\/\s*[^)]+)?\)/g,
+      `$1(${tVal}점 / ${emoji}${colorLabel})`
     );
     
-    // If no replacement happened, insert the score
+    // If no replacement happened, try simpler format (XX점) without parenthesis closure
     if (replaced === out) {
-      out = out.replace(
-        /(3\.\s*신뢰도\s*총평)(:)/,
-        `$1 (${Math.round(trust)}점)$2`
+      const replacedSimple = out.replace(
+        /(신뢰도\s*총평\s*)\(\s*\d+\s*점\s*\)/g,
+        `$1(${tVal}점 / ${emoji}${colorLabel})`
       );
+      if (replacedSimple === out) {
+        // If still no replacement happened, insert the score
+        out = out.replace(
+          /(3\.\s*신뢰도\s*총평)(:)/,
+          `$1 (${tVal}점 / ${emoji}${colorLabel})$2`
+        );
+      } else {
+        out = replacedSimple;
+      }
     } else {
       out = replaced;
     }

@@ -63,18 +63,31 @@ function normalizeEvaluationReasonScores(
   }
 
   if (Number.isFinite(trust)) {
-    // Try to replace existing score first
+    const tVal = Math.round(trust);
+    const emoji = tVal >= 70 ? '🟢' : tVal >= 40 ? '🟡' : '🔴';
+    const colorLabel = tVal >= 70 ? 'Green' : tVal >= 40 ? 'Yellow' : 'Red';
+
+    // Try to replace existing score first (with or without emoji and label)
     const replaced = out.replace(
-      /(신뢰도\s*총평\s*)\(\s*\d+\s*점/g,
-      `$1(${Math.round(trust)}점`
+      /(신뢰도\s*총평\s*)\(\s*\d+\s*점\s*(?:\/\s*[^)]+)?\)/g,
+      `$1(${tVal}점 / ${emoji}${colorLabel})`
     );
     
-    // If no replacement happened, insert the score
+    // If no replacement happened, try simpler format (XX점) without parenthesis closure
     if (replaced === out) {
-      out = out.replace(
-        /(3\.\s*신뢰도\s*총평)(:)/,
-        `$1 (${Math.round(trust)}점)$2`
+      const replacedSimple = out.replace(
+        /(신뢰도\s*총평\s*)\(\s*\d+\s*점\s*\)/g,
+        `$1(${tVal}점 / ${emoji}${colorLabel})`
       );
+      if (replacedSimple === out) {
+        // If still no replacement happened, insert the score
+        out = out.replace(
+          /(3\.\s*신뢰도\s*총평)(:)/,
+          `$1 (${tVal}점 / ${emoji}${colorLabel})$2`
+        );
+      } else {
+        out = replacedSimple;
+      }
     } else {
       out = replaced;
     }
@@ -83,22 +96,34 @@ function normalizeEvaluationReasonScores(
   return out;
 }
 
-// Test with actual DB data format (without scores)
-const testText = `1. 내용 정확성 검증: 이 영상은 AI 메모리 시장, D램 및 낸드 가격 전망...<br /><br />2. 어그로성 평가:<br />이 점수는 '과장(오해/시간적 피해/낚임 수준)' 구간입니다. 제목...<br /><br />3. 신뢰도 총평: 전반적으로...`;
+// Test with wrong emoji/grade format
+const testText1 = `1. 내용 정확성 검증: ...<br /><br />2. 어그로성 평가:<br /><br />3. 신뢰도 총평 (38점 / 🟡Yellow): 전반적으로...`;
+const testText2 = `1. 내용 정확성 검증: ...<br /><br />2. 어그로성 평가:<br /><br />3. 신뢰도 총평 (38점 / 🟡 Yellow): 전반적으로...`;
+const testText3 = `1. 내용 정확성 검증: ...<br /><br />2. 어그로성 평가:<br /><br />3. 신뢰도 총평: 전반적으로...`;
 
 const scores = {
   accuracy: 90,
   clickbait: 35,
-  trust: 78
+  trust: 38
 };
 
-console.log('=== BEFORE ===');
-console.log(testText.substring(0, 300));
-console.log('\n=== AFTER ===');
-const result = normalizeEvaluationReasonScores(testText, scores);
-console.log(result.substring(0, 400));
+console.log('=== testText1 (38점 / 🟡Yellow -> 38점 / 🔴Red) ===');
+const result1 = normalizeEvaluationReasonScores(testText1, scores);
+console.log(result1);
+console.log('Valid:', result1.includes('3. 신뢰도 총평 (38점 / 🔴Red):'));
 
-console.log('\n=== VERIFICATION ===');
-console.log('Has "1. 내용 정확성 검증 (90점):":', result.includes('1. 내용 정확성 검증 (90점):'));
-console.log('Has "2. 어그로성 평가 (35점":', result.includes('2. 어그로성 평가 (35점'));
-console.log('Has "3. 신뢰도 총평 (78점)":', result.includes('3. 신뢰도 총평 (78점)'));
+console.log('\n=== testText2 (38점 / 🟡 Yellow -> 38점 / 🔴Red) ===');
+const result2 = normalizeEvaluationReasonScores(testText2, scores);
+console.log(result2);
+console.log('Valid:', result2.includes('3. 신뢰도 총평 (38점 / 🔴Red):'));
+
+console.log('\n=== testText3 (Insert score) ===');
+const result3 = normalizeEvaluationReasonScores(testText3, scores);
+console.log(result3);
+console.log('Valid:', result3.includes('3. 신뢰도 총평 (38점 / 🔴Red):'));
+
+console.log('\n=== testText1 with trust=78 (38점 / 🟡Yellow -> 78점 / 🟢Green) ===');
+const result4 = normalizeEvaluationReasonScores(testText1, { ...scores, trust: 78 });
+console.log(result4);
+console.log('Valid:', result4.includes('3. 신뢰도 총평 (78점 / 🟢Green):'));
+
