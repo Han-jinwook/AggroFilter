@@ -434,6 +434,18 @@ export async function analyzeContent(
   // Gemini API 클라이언트 초기화
   const ai = new GoogleGenAI({ apiKey });
 
+  // 2024년 11월 1일 이후 영상인지 판정
+  const isPostNov2024 = (() => {
+    if (!publishedAt) return false;
+    try {
+      const uploadDate = new Date(publishedAt);
+      const targetDate = new Date('2024-11-01T00:00:00Z');
+      return uploadDate >= targetDate;
+    } catch {
+      return false;
+    }
+  })();
+
   const analysisProfile = getGeminiAnalysisProfile({
     durationIso: duration,
     transcript,
@@ -712,7 +724,7 @@ export async function analyzeContent(
     `;
 
   // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
-  const tryModel = async (modelName: string, extraInstructions?: string) => {
+  const tryModel = async (modelName: string, extraInstructions?: string, disableThinking?: boolean) => {
     console.log(`Initializing Gemini model: ${modelName}`);
     
     // Allow controversial content for analysis purposes (Analysis tool need to see the bad stuff to rate it)
@@ -725,7 +737,7 @@ export async function analyzeContent(
 
     // Construct inputs: text prompt + thumbnail image (if available)
     // 긴 자막은 앞/중간/끝 균등 샘플링으로 타임아웃 방지
-    const MAX_TRANSCRIPT_CHARS = 8000;
+    const MAX_TRANSCRIPT_CHARS = 2000;
     const trimmedTranscript = (() => {
       if (!transcript || transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
       const s1 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.4); // 앞 40%
@@ -744,12 +756,13 @@ export async function analyzeContent(
       ${systemPrompt}
       
       ${extraInstructions ? `[추가 지시사항 및 경고]\n${extraInstructions}\n` : ''}
+      ${disableThinking ? `⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]\n이 영상은 2024년 11월 1일 이후 최신 영상이거나 팩트체크가 매우 중요합니다. 반드시 Google Search 도구를 활용해 최근 관련 사실을 확인하여 정확성 점수를 매기세요.\n` : ''}
 
       [분석 대상 데이터]
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${trimmedTranscript}
+      ${subtitleSummaryOverride ? subtitleSummaryOverride : trimmedTranscript}
     `;
 
     const contents: any[] = [finalPrompt];
@@ -764,11 +777,11 @@ export async function analyzeContent(
         temperature: 0.2,
         topP: 0.85,
         safetySettings,
-        thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget },
+        ...(disableThinking ? {} : { thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget } }),
         tools: [{ googleSearch: {} }],
       },
     }, {
-      timeoutMs: analysisProfile.timeoutMs,
+      timeoutMs: disableThinking ? 180000 : analysisProfile.timeoutMs,
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
@@ -787,18 +800,6 @@ export async function analyzeContent(
     };
   };
 
-  // 2024년 11월 1일 이후 영상인지 판정
-  const isPostNov2024 = (() => {
-    if (!publishedAt) return false;
-    try {
-      const uploadDate = new Date(publishedAt);
-      const targetDate = new Date('2024-11-01T00:00:00Z');
-      return uploadDate >= targetDate;
-    } catch {
-      return false;
-    }
-  })();
-
   try {
     let result: any = null;
     // Strategy: Primary model + safe fallback
@@ -808,7 +809,7 @@ export async function analyzeContent(
     for (const modelName of modelsToTry) {
       try {
         console.log(`Attempting analysis with model: ${modelName}`);
-        result = await tryModel(modelName);
+        result = await tryModel(modelName, undefined, isPostNov2024);
         
         if (result) {
           // [grounding 검증 및 강제 재시도]
@@ -848,7 +849,7 @@ export async function analyzeContent(
             `;
             
             // 검색 강제 프롬프트를 얹어서 다시 시도
-            const retryResult = await tryModel(modelName, extraWarning).catch((retryErr) => {
+            const retryResult = await tryModel(modelName, extraWarning, true).catch((retryErr) => {
               console.error("Google Search 강제 재시도 중 오류 발생, 1차 결과를 유지합니다:", retryErr.message);
               return null;
             });
