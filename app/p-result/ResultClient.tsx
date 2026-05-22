@@ -15,7 +15,6 @@ import { getCategoryName } from "@/lib/constants"
 import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
 import { ShareModal } from "@/components/c-share-modal"
-import { AccessibilityToolbar } from "@/components/c-accessibility-toolbar"
 import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
 
 function extractVideoId(url: string): string {
@@ -969,55 +968,6 @@ export default function ResultClient() {
   }
 
   const [showShareModal, setShowShareModal] = useState(false)
-  const [largeFontMode, setLargeFontMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('largeFontMode') === 'true'
-    }
-    return false
-  })
-
-  const handleLargeFontToggle = (enabled: boolean) => {
-    setLargeFontMode(enabled)
-    localStorage.setItem('largeFontMode', String(enabled))
-  }
-
-  const buildTTSText = () => {
-    if (!analysisData) return ''
-    const parts: string[] = []
-    parts.push(`분석 결과를 읽어드리겠습니다.`)
-    parts.push(`영상 제목: ${analysisData.videoTitle}`)
-    parts.push(`채널: ${analysisData.channelName}`)
-    parts.push(`신뢰도 점수는 100점 만점에 ${analysisData.scores.trust}점입니다.`)
-    parts.push(`정확성은 ${analysisData.scores.accuracy}퍼센트이고, 어그로성은 ${analysisData.scores.clickbait}퍼센트입니다.`)
-
-    const trust = analysisData.scores.trust
-    if (trust >= 70) {
-      parts.push(`이 영상은 블루 등급으로, 비교적 신뢰할 수 있는 콘텐츠입니다.`)
-    } else if (trust >= 40) {
-      parts.push(`이 영상은 옐로우 등급으로, 주의가 필요한 콘텐츠입니다.`)
-    } else {
-      parts.push(`이 영상은 레드 등급으로, 신뢰도가 낮은 콘텐츠입니다. 주의하세요.`)
-    }
-
-    if (analysisData.evaluationReason) {
-      const cleanReason = analysisData.evaluationReason
-        .replace(/<br\s*\/?>/g, ' ')
-        .replace(/\([^)]*\)/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-      if (cleanReason.length <= 500) {
-        parts.push(`평가 내용: ${cleanReason}`)
-      } else {
-        parts.push(`평가 내용: ${cleanReason.slice(0, 500)}`)
-      }
-    }
-
-    if (analysisData.overallAssessment) {
-      parts.push(`종합 평가: ${analysisData.overallAssessment}`)
-    }
-
-    return parts.join('. ')
-  }
 
   const handleShare = () => {
     if (!analysisData) return
@@ -1390,7 +1340,7 @@ ${content}
           url={typeof window !== 'undefined' ? window.location.href : ''}
         />
       )}
-      <main className={`pt-6 pb-24 ${largeFontMode ? 'text-lg [&_.text-sm]:text-base [&_.text-xs]:text-sm [&_.text-\\[11px\\]]:text-xs [&_.text-\\[10px\\]]:text-xs [&_.text-base]:text-lg [&_.leading-relaxed]:leading-loose' : ''}`}>
+      <main className="pt-6 pb-24">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
           <div className="bg-background pb-2 pt-2">
@@ -1569,13 +1519,6 @@ ${content}
                 }
               })() : undefined}
               userPredictionStats={userPredictionStats}
-              accessibilityToolbar={
-                <AccessibilityToolbar
-                  ttsText={buildTTSText()}
-                  onLargeFontToggle={handleLargeFontToggle}
-                  largeFontEnabled={largeFontMode}
-                />
-              }
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">

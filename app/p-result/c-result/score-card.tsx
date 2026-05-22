@@ -32,10 +32,9 @@ interface TScoreCardProps {
     currentTierLabel: string | null
     tierEmoji: string | null
   } | null
-  accessibilityToolbar?: ReactNode
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats, accessibilityToolbar }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
@@ -66,7 +65,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
             #{topic}
           </span>
         </div>
-        {accessibilityToolbar && <div className="flex-shrink-0">{accessibilityToolbar}</div>}
       </div>
 
       <div className="relative">
