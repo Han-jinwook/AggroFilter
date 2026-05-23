@@ -50,9 +50,8 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   const [selectedOption, setSelectedOption] = useState<number>(1000);
   const [tab, setTab] = useState<'charge' | 'history'>('charge');
   const [method, setMethod] = useState<'card' | 'phone' | 'bank'>('card');
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
-  const [historyTotalPages, setHistoryTotalPages] = useState(1);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [origin, setOrigin] = useState('');
 
@@ -68,40 +67,68 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
     }
   }, []);
 
-  const fetchHistory = useCallback(async (page: number) => {
+  const fetchHistory = useCallback(async () => {
     if (!uid) return;
     try {
       setHistoryLoading(true);
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        userId: uid,
-        type: filterType,
-        app: filterApp,
-        period: filterPeriod
-      });
-      const res = await hubFetch(`/api/wallet/history?${queryParams.toString()}`);
+      // 서버에서 전체 내역을 한 번에 가져오기 (limit 등 추가)
+      const res = await hubFetch(`/api/wallet/history?userId=${encodeURIComponent(uid)}&limit=1000`);
       if (res.ok && res.data.history) {
-        setHistory(res.data.history);
-        setHistoryTotalPages(res.data.totalPages || 1);
-        setHistoryPage(res.data.page || 1);
+        setAllHistory(res.data.history);
       }
     } catch (_error) {
-      // 에러 처리 무시
     } finally {
       setHistoryLoading(false);
     }
-  }, [uid, filterType, filterApp, filterPeriod]);
+  }, [uid]);
+
+  const filteredHistory = useMemo(() => {
+    let result = allHistory;
+    
+    if (filterType === 'charge') {
+      result = result.filter(item => Number(item.amount) > 0);
+    } else if (filterType === 'use') {
+      result = result.filter(item => Number(item.amount) <= 0);
+    }
+
+    if (filterApp !== 'all') {
+      result = result.filter(item => {
+        const rawDesc = item.display_text || item.description || '';
+        let formattedDesc = rawDesc.replace('(신규)', '').replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전').trim();
+        if (!formattedDesc.startsWith(appName)) formattedDesc = `${appName} - ${formattedDesc}`;
+        const itemAppName = formattedDesc.split(' - ')[0];
+        return itemAppName === filterApp;
+      });
+    }
+
+    if (filterPeriod !== 'all') {
+      const now = new Date();
+      let limitDate = new Date();
+      if (filterPeriod === '1m') limitDate.setMonth(now.getMonth() - 1);
+      if (filterPeriod === '3m') limitDate.setMonth(now.getMonth() - 3);
+      if (filterPeriod === '6m') limitDate.setMonth(now.getMonth() - 6);
+      if (filterPeriod === '1y') limitDate.setFullYear(now.getFullYear() - 1);
+      
+      result = result.filter(item => {
+        const d = new Date(item.created_at || item.createdAt);
+        return d >= limitDate;
+      });
+    }
+    return result;
+  }, [allHistory, filterType, filterApp, filterPeriod, appName]);
+
+  const itemsPerPage = 10;
+  const historyTotalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage));
+  const currentHistory = filteredHistory.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage);
 
   useEffect(() => {
-    if (tab === 'history') {
-      fetchHistory(historyPage);
+    if (tab === 'history' && allHistory.length === 0) {
+      fetchHistory();
     }
-  }, [tab, historyPage, fetchHistory]);
+  }, [tab, fetchHistory, allHistory.length]);
 
   useEffect(() => {
-    if (tab === 'history') {
-      setHistoryPage(1);
-    }
+    setHistoryPage(1);
   }, [filterType, filterApp, filterPeriod]);
 
   const options = useMemo(
@@ -282,13 +309,13 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
               </div>
-            ) : history.length === 0 ? (
+            ) : currentHistory.length === 0 ? (
               <div className="text-center py-10 text-sm font-medium text-slate-500">
                 이용 내역이 존재하지 않습니다.
               </div>
             ) : (
               <div className="mt-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2">
-                {history.map((item) => {
+                {currentHistory.map((item) => {
                   const rawDesc = item.display_text || item.description || '';
                   let formattedDesc = rawDesc
                     .replace('(신규)', '')
