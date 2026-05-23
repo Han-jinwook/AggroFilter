@@ -48,8 +48,6 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
 
   const [selectedOption, setSelectedOption] = useState<number>(1000);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [nickname, setNickname] = useState('');
   const [tab, setTab] = useState<'charge' | 'history'>('charge');
   const [method, setMethod] = useState<'card' | 'phone' | 'bank'>('card');
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -63,18 +61,8 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
-      const nick = localStorage.getItem('userNickname') || '';
-      setNickname(nick);
-
-      hubFetch('/api/wallet/balance')
-        .then((res) => {
-          if (res.ok && typeof res.data.balance === 'number') {
-            setBalance(res.data.balance);
-          }
-        })
-        .catch(() => {});
     }
-  }, [uid]);
+  }, []);
 
   const fetchHistory = useCallback(async (page: number) => {
     if (!uid) return;
@@ -127,20 +115,11 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       <main className="mx-auto max-w-[var(--app-max-width,720px)] px-4 py-8 space-y-4">
-        {/* 잔액 표시 영역 */}
-        <div className="rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-500 font-medium">{nickname || '(로그인 필요)'}</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl text-indigo-600 font-black">
-                  {balance !== null ? balance.toLocaleString() : '…'}
-                </span>
-                <span className="text-sm font-bold text-slate-500">C</span>
-              </div>
-            </div>
-            <div className="text-3xl drop-shadow-md">💰</div>
-          </div>
+        {/* 페이지 타이틀 */}
+        <div className="px-2 pt-2 pb-1">
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+            코인 충전 / 내역
+          </h1>
         </div>
 
         {/* 탭 전환 영역 */}
