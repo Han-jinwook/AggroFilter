@@ -31,18 +31,16 @@ export function BottomBanner() {
   }, [])
 
 
-  // Exclude Home (/), Settings (/settings), and Payment (/payment)
-  if (pathname === "/" || pathname === "/settings" || pathname === "/p-settings" || pathname.startsWith("/payment") || pathname.startsWith("/api/payment")) {
-    return null
-  }
+  if (pathname?.startsWith('/p-admin')) return null;
+  if (pathname?.startsWith('/payment') || pathname?.startsWith('/api/payment')) return null;
 
   if (isClosed) return null
   if (adFree) return null
 
   return (
     <>
-      <div className="h-14 xl:hidden" aria-hidden />
-      <div className="fixed bottom-0 left-0 right-0 z-50 xl:hidden">
+      <div className="h-14 min-[1120px]:hidden" aria-hidden />
+      <div className="fixed bottom-0 left-0 right-0 z-50 min-[1120px]:hidden">
         <div className="h-14 bg-[#1A1A1A]/80 backdrop-blur-md border-t border-white/10">
           <div className="mx-auto flex h-full max-w-[var(--app-max-width)] items-center justify-between px-3 sm:px-4">
             <div className="min-w-0">
