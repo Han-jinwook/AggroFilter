@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
-import { useHub, HubProfileWidget, HubProfileModal } from "@/src/services/merlin-hub-sdk/react"
+import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -31,7 +31,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendingFee, setPendingFee] = useState<number | null>(null)
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
 
   // 비로그인 가불금 실시간 감지
   useEffect(() => {
@@ -264,10 +263,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </Link>
             )}
 
-            {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 */}
+            {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 (클릭 시 페이지 이동) */}
             <HubProfileWidget 
               onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-              onProfileClick={() => setIsProfileModalOpen(true)}
+              onProfileClick={() => router.push('/p-settings')}
             />
 
             {isAdmin && isLoggedIn && (
@@ -278,14 +277,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           </div>
         </div>
       </header>
-      <HubProfileModal 
-        isOpen={isProfileModalOpen} 
-        onClose={() => setIsProfileModalOpen(false)} 
-        onLogout={() => {
-          // 어그로필터 전용 로그아웃 콜백 (메인 이동 등)
-          router.push('/')
-        }}
-      />
     </>
   )
 }
