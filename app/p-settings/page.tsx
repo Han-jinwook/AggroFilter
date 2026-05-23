@@ -281,7 +281,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-6 lg:px-12 py-8 max-w-3xl">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* 왼쪽: 추천 위젯 및 초대 실적 (로그인 유저만 노출) */}
