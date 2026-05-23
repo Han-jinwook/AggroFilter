@@ -281,19 +281,19 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* 왼쪽: 추천 위젯 및 초대 실적 (로그인 유저만 노출) */}
           {!isAnon && (
-            <div className="w-full lg:w-1/3 flex-shrink-0 flex flex-col gap-6">
+            <div className="w-full flex flex-col gap-6">
               <HubReferralWidget />
               <HubHistoryList history={referralHistory} isLoading={isHistoryLoading} />
             </div>
           )}
 
           {/* 오른쪽: 프로필 정보 및 알림 설정 */}
-          <div className="w-full lg:flex-1 space-y-6">
+          <div className={`w-full space-y-6 ${isAnon ? 'lg:col-span-2 max-w-xl mx-auto' : ''}`}>
             <div className="bg-card border rounded-xl p-6 shadow-sm">
           <div className="flex items-start justify-between mb-6">
             <h2 className="text-xl font-semibold">프로필 정보</h2>
