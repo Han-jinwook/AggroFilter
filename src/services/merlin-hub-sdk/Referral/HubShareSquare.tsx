@@ -3,6 +3,7 @@
  * Last Updated: 2026-05-23
  */
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useHubReferral } from './useHubReferral';
 
 interface HubShareSquareProps {
@@ -20,8 +21,9 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
   className = '',
   customTitle = '이 페이지를 친구에게 공유해보세요!',
   customUrl,
-  description = '공유 링크에는 내 추천인 코드가 포함되어 혜택이 자동 적립됩니다.',
+  description = '공유 링크에는 내 추천인 코드가 포함되어 전달됩니다.',
 }) => {
+  const pathname = usePathname();
   const { getMyReferralInfo, isLoading } = useHubReferral();
   const [inviteCode, setInviteCode] = useState('');
   const [isCopied, setIsCopied] = useState(false);
@@ -33,6 +35,11 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
     };
     fetchInfo();
   }, [getMyReferralInfo]);
+
+  // 페이지 이동(또는 customUrl 변경) 시 복사 완료 상태 초기화
+  useEffect(() => {
+    setIsCopied(false);
+  }, [pathname, customUrl]);
 
   const handleCopy = () => {
     if (typeof window === 'undefined') return;
@@ -72,10 +79,6 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
 
       <div className="relative z-10 flex flex-col h-full justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold backdrop-blur-md mb-3">
-            <span className="text-yellow-300">🎁</span>
-            <span>추천인 코드 자동 첨부</span>
-          </div>
           <h3 className="text-sm font-bold leading-snug tracking-tight line-clamp-2">
             {customTitle}
           </h3>
