@@ -139,9 +139,9 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                     <img
                       src={appLogoUrl}
                       alt={appName}
-                      className="h-24 md:h-32 w-auto max-w-[200px] md:max-w-[250px] object-contain"
+                      className="h-24 md:h-32 w-auto max-w-[200px] md:max-w-[250px] object-contain shrink"
                     />
-                    <span>{title}</span>
+                    <span className="shrink-0 whitespace-nowrap">{title}</span>
                   </h2>
                   <p className="mt-2 text-[15px] text-slate-400 font-bold tracking-tight flex items-center justify-center gap-1.5">
                     지금 바로 
@@ -162,7 +162,7 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
                   placeholder="이메일 주소 입력 (example@email.com)"
-                  className="w-full h-16 bg-white border-2 border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-[17px] md:text-xl font-bold px-6 text-center placeholder:text-slate-300 placeholder:font-medium outline-none"
+                  className="w-full h-16 bg-white border-2 border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-8 focus:ring-blue-500/5 transition-all rounded-2xl text-2xl font-bold px-6 text-center placeholder:text-slate-300 placeholder:font-medium outline-none"
                   required
                   autoFocus
                 />
@@ -231,7 +231,7 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                     value={digit}
                     onChange={e => handleDigitChange(i, e.target.value)}
                     onKeyDown={e => handleKeyDown(i, e)}
-                    className={`w-10 h-14 sm:w-12 sm:h-16 text-center text-2xl sm:text-3xl font-black border-2 sm:border-3 rounded-2xl outline-none transition-all ${
+                    className={`w-12 h-16 text-center text-3xl font-black border-[3px] rounded-2xl outline-none transition-all ${
                       digit 
                         ? 'border-blue-500 bg-blue-50 text-blue-600 ring-4 ring-blue-500/10' 
                         : 'border-slate-200 bg-white text-slate-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-400/5'
