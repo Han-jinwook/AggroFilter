@@ -114,7 +114,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      <main className="mx-auto max-w-[var(--app-max-width,720px)] px-4 py-8 space-y-4">
+      <main className="mx-auto max-w-[var(--app-max-width,720px)] px-4 py-4 space-y-3">
         {/* 페이지 타이틀 */}
         <div className="px-2 pt-2 pb-1">
           <h1 className="text-xl font-bold text-slate-800 tracking-tight">
@@ -236,7 +236,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                 이용 내역이 존재하지 않습니다.
               </div>
             ) : (
-              <div className="mt-4 divide-y divide-slate-100">
+              <div className="mt-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2">
                 {history.map((item) => {
                   const rawDesc = item.display_text || item.description || '';
                   let formattedDesc = rawDesc
