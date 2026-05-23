@@ -3,7 +3,6 @@
  * Last Updated: 2026-05-23
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { hubFetch } from '../CoreLogic/client';
 import { HubPaymentTrigger } from './HubPaymentTrigger';
 import { getConfig } from '../CoreLogic/config';
@@ -46,11 +45,6 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
   const targetRedirectUrl = redirectUrlParam.startsWith('/') ? redirectUrlParam : '/';
 
-  const handleGoBack = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.location.href = targetRedirectUrl;
-    }
-  }, [targetRedirectUrl]);
 
 
   const [selectedOption, setSelectedOption] = useState<number>(1000);
@@ -133,30 +127,19 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       <main className="mx-auto max-w-[var(--app-max-width,720px)] px-4 py-8 space-y-4">
-        {/* 상단 네비게이션 */}
-        <div className="flex items-center justify-start pb-2">
-          <button
-            onClick={handleGoBack}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all active:scale-95 group bg-white border-2 border-slate-200 text-slate-700 shadow-sm hover:border-slate-300 hover:shadow-md"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            홈으로 돌아가기
-          </button>
-        </div>
-
         {/* 잔액 표시 영역 */}
-        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-md">
+        <div className="rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs text-slate-500 font-medium">{nickname || '(로그인 필요)'}</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-3xl text-indigo-600 font-black">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl text-indigo-600 font-black">
                   {balance !== null ? balance.toLocaleString() : '…'}
                 </span>
                 <span className="text-sm font-bold text-slate-500">C</span>
               </div>
             </div>
-            <div className="text-4xl drop-shadow-md">💰</div>
+            <div className="text-3xl drop-shadow-md">💰</div>
           </div>
         </div>
 
