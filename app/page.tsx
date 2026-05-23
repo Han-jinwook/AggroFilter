@@ -188,6 +188,12 @@ export default function MainPage() {
       // 크레딧 차감 후 헤더 + 광고 컴포넌트 갱신
       window.dispatchEvent(new CustomEvent('creditsUpdated'));
 
+      // 과금 성공 시 5분 광고 제거 타임패스 저장
+      if (result?.adFreeUntil) {
+        localStorage.setItem('ad_free_until', result.adFreeUntil);
+        console.log(`[AdFree] 타임패스 저장: ${result.adFreeUntil}`);
+      }
+
       // 익명 사용자 분석 횟수 추적 (모달은 결과 페이지에서 표시)
       if (isAnonymousUser()) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
@@ -200,6 +206,7 @@ export default function MainPage() {
           console.log(`[Guest Pre-charge] Saved pending_usage_fee: ${result.price}C`);
         }
       }
+
 
       // Analysis is saved in DB with user_id, no localStorage needed
       const readyAnalysisId = result.analysisId;

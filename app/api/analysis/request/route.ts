@@ -1269,6 +1269,7 @@ export async function POST(request: Request) {
     
     let creditDeducted = false;
     let estimatedPrice: number | null = null;
+    let adFreeUntil: string | null = null;
 
     try {
       await client.query('BEGIN');
@@ -1517,6 +1518,12 @@ export async function POST(request: Request) {
         if (dynamicRes.success) {
           console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, speed=${speedTokens}, full=${fullTokens}, search=${groundingCount} → totalRaw=${finalRawCost}, price=${estimatedPrice}`);
           
+          // 과금 성공 시 5분 광고 제거 타임패스 설정
+          if (!isGuest) {
+            adFreeUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+            console.log(`[AdFree] userId=${actualUserId} adFreeUntil=${adFreeUntil}`);
+          }
+
           // DB에 과금 근거 데이터 영구 기록
           await client.query(`
             UPDATE t_analyses 
@@ -1599,6 +1606,7 @@ export async function POST(request: Request) {
       analysisId: finalAnalysisId,
       creditDeducted,
       price: estimatedPrice,
+      adFreeUntil: adFreeUntil || null,
     }, { headers: corsHeaders });
 
   } catch (error) {

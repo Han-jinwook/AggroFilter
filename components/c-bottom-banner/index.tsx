@@ -17,23 +17,19 @@ export function BottomBanner() {
     }
 
     const checkAdFree = () => {
-      const uid = localStorage.getItem('merlin_user_id') || ''
-      const qs = uid ? `?userId=${encodeURIComponent(uid)}` : ''
-      fetch(`/api/user/credits${qs}`, { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => {
-          if (d.adFreeUntil && new Date(d.adFreeUntil) > new Date()) {
-            setAdFree(true)
-          } else {
-            setAdFree(false)
-          }
-        })
-        .catch(() => {})
+      // 확장팩 과금 분석 후 저장된 타임패스를 localStorage에서 직접 확인
+      const until = localStorage.getItem('ad_free_until');
+      if (until && new Date(until) > new Date()) {
+        setAdFree(true)
+      } else {
+        setAdFree(false)
+      }
     }
     checkAdFree()
     window.addEventListener('creditsUpdated', checkAdFree)
     return () => window.removeEventListener('creditsUpdated', checkAdFree)
   }, [])
+
 
   // Exclude Home (/), Settings (/settings), and Payment (/payment)
   if (pathname === "/" || pathname === "/settings" || pathname === "/p-settings" || pathname.startsWith("/payment") || pathname.startsWith("/api/payment")) {
