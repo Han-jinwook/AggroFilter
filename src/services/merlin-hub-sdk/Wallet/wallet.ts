@@ -89,7 +89,7 @@ export async function chargeDynamic(params: {
       }),
     });
     if (!ok) return { success: false, error: data?.message || '동적 과금 처리 실패' };
-    return { success: true, balance: data.balance };
+    return { success: true, balance: data.balance, price: data.price };
   } catch (err) {
     console.error('[MerlinHub] chargeDynamic error:', err);
     return { success: false, error: '허브 서버 연결 실패' };

@@ -5,7 +5,7 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/c-button"
 import { AppHeader, checkLoginStatus } from "@/components/c-app-header"
-import { LoginModal } from "@/components/c-login-modal"
+import { HubAuthModal } from "@/src/services/merlin-hub-sdk/react"
 import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
@@ -1220,7 +1220,14 @@ ${content}
               <AnalysisGuide />
             </div>
           </main>
-          <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+          <HubAuthModal 
+            isOpen={showLoginModal} 
+            onClose={() => setShowLoginModal(false)} 
+            onSuccess={handleLoginSuccess} 
+            appName="어그로필터" 
+            appLogoUrl="/images/character-logo-ko.png" 
+            subtitleActionText="분석에" 
+          />
         </div>
       )
     }
@@ -1276,7 +1283,14 @@ ${content}
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader onLoginClick={() => setShowLoginModal(true)} />
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+      <HubAuthModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess} 
+        appName="어그로필터" 
+        appLogoUrl="/images/character-logo-ko.png" 
+        subtitleActionText="분석에" 
+      />
 
       {/* 혜택 안내 모달 */}
       {showBenefitModal && (

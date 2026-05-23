@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X, Copy, Gift, Check } from "lucide-react"
 import { AppHeader } from "@/components/c-app-header"
-import { LoginModal } from "@/components/c-login-modal"
+import { HubAuthModal } from "@/src/services/merlin-hub-sdk/react"
 import { getUserId } from "@/lib/anon"
 
 interface TAnalysisVideo {
@@ -1045,7 +1045,14 @@ export default function MyPageClient() {
         </div>
       </main>
 
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+      <HubAuthModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess} 
+        appName="어그로필터" 
+        appLogoUrl="/images/character-logo-ko.png" 
+        subtitleActionText="분석에" 
+      />
     </div>
   )
 }

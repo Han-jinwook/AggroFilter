@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
-import { LoginModal } from '@/components/c-login-modal'
+import { HubAuthModal } from '@/src/services/merlin-hub-sdk/react'
 import { isAnonymousUser } from '@/lib/anon'
 import { Settings, X, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
 
@@ -301,7 +301,14 @@ export default function Page() {
         </div>
       )}
 
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+      <HubAuthModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onSuccess={handleLoginSuccess} 
+        appName="어그로필터" 
+        appLogoUrl="/images/character-logo-ko.png" 
+        subtitleActionText="분석에" 
+      />
     </div>
   )
 }
