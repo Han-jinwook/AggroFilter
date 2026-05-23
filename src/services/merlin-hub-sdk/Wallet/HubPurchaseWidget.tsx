@@ -3,7 +3,6 @@
  * Last Updated: 2026-05-23
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { hubFetch } from '../CoreLogic/client';
 import { HubPaymentTrigger } from './HubPaymentTrigger';
@@ -33,11 +32,26 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   onSuccess,
   onError,
 }) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [redirectUrlParam, setRedirectUrlParam] = useState<string>(redirectUrl);
 
-  const redirectUrlParam = searchParams.get('redirectUrl') || redirectUrl;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlFromQuery = params.get('redirectUrl');
+      if (urlFromQuery) {
+        setRedirectUrlParam(urlFromQuery);
+      }
+    }
+  }, []);
+
   const targetRedirectUrl = redirectUrlParam.startsWith('/') ? redirectUrlParam : '/';
+
+  const handleGoBack = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.location.href = targetRedirectUrl;
+    }
+  }, [targetRedirectUrl]);
+
 
   const [selectedOption, setSelectedOption] = useState<number>(1000);
   const [balance, setBalance] = useState<number | null>(null);
@@ -122,7 +136,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
         {/* 상단 네비게이션 */}
         <div className="flex items-center justify-start pb-2">
           <button
-            onClick={() => router.push(targetRedirectUrl)}
+            onClick={handleGoBack}
             className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all active:scale-95 group bg-white border-2 border-slate-200 text-slate-700 shadow-sm hover:border-slate-300 hover:shadow-md"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
