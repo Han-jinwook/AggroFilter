@@ -167,9 +167,9 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                   autoFocus
                 />
                 
-                {emailHistory.length > 0 && (
+                {emailHistory.filter(e => e !== inputEmail).length > 0 && (
                   <div className="flex flex-wrap gap-2 justify-center mt-1 animate-in fade-in duration-200">
-                    {emailHistory.map((email) => (
+                    {emailHistory.filter(e => e !== inputEmail).map((email) => (
                       <button
                         key={email}
                         type="button"
