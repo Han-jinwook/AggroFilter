@@ -8,7 +8,7 @@ import AppHeader from '@/components/c-app-header'
 import { User, Mail, Camera, Edit2, Save, X, LogOut, Bell } from 'lucide-react'
 import { isAnonymousUser, getUserId } from '@/lib/anon'
 import { MerlinHub } from '@/src/services/merlin-hub-sdk'
-import { HubAvatar, HubReferralWidget, HubHistoryList, useHubReferral } from '@/src/services/merlin-hub-sdk/react'
+import { HubAvatar, HubHistoryList, useHubReferral } from '@/src/services/merlin-hub-sdk/react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -284,10 +284,9 @@ export default function SettingsPage() {
       <main className="container mx-auto px-4 lg:px-8 py-8 max-w-4xl">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* 왼쪽: 추천 위젯 및 초대 실적 (로그인 유저만 노출) */}
+          {/* 왼쪽: 초대 실적 (로그인 유저만 노출) */}
           {!isAnon && (
             <div className="w-full flex flex-col gap-6">
-              <HubReferralWidget />
               <HubHistoryList history={referralHistory} isLoading={isHistoryLoading} />
             </div>
           )}

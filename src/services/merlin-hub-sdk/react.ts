@@ -38,4 +38,5 @@ export { HubNotifier, showToast } from './Notification/HubNotifier';
 export { HubReferralWidget } from './Referral/HubReferralWidget';
 export { HubHistoryList } from './Referral/HubHistoryList';
 export { HubShareButton } from './Referral/HubShareButton';
+export { HubShareSquare } from './Referral/HubShareSquare';
 export { HubWelcomeNudge } from './UI/HubWelcomeNudge';

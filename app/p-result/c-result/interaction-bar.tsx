@@ -10,7 +10,6 @@ interface TInteractionBarProps {
   dislikeCount: number
   onLike: () => void
   onDislike: () => void
-  onShare: () => void
 }
 
 export function InteractionBar({
@@ -20,7 +19,6 @@ export function InteractionBar({
   dislikeCount,
   onLike,
   onDislike,
-  onShare,
 }: TInteractionBarProps) {
   return (
     <div className="flex items-center gap-4 rounded-full border-2 border-gray-300 bg-white p-1.5 px-4 shadow-sm">
@@ -49,15 +47,6 @@ export function InteractionBar({
         </Button>
         <span className="text-sm text-muted-foreground">{dislikeCount}</span>
       </div>
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-10 w-10 rounded-full border-2 border-blue-400 bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all ml-2"
-        onClick={onShare}
-      >
-        <Share2 className="h-5 w-5" />
-        <span className="sr-only">공유하기</span>
-      </Button>
     </div>
   )
 }

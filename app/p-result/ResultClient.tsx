@@ -1687,7 +1687,6 @@ ${content}
               dislikeCount={dislikeCount} 
               onLike={() => requireLogin("like", handleLikeClick)} 
               onDislike={() => requireLogin("like", handleDislikeClick)} 
-              onShare={handleShare} 
             />
           </div>
           <div className="rounded-3xl border-4 border-gray-300 bg-white p-5">
