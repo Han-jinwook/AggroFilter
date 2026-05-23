@@ -56,6 +56,10 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [origin, setOrigin] = useState('');
 
+  const [filterType, setFilterType] = useState<'all' | 'charge' | 'use'>('all');
+  const [filterApp, setFilterApp] = useState<'all' | string>(appName);
+  const [filterPeriod, setFilterPeriod] = useState<'1m' | '3m' | '6m' | '1y' | 'all'>('1m');
+
   const uid = typeof window !== 'undefined' ? (localStorage.getItem('merlin_user_id') || '') : '';
 
   useEffect(() => {
@@ -66,9 +70,16 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
   const fetchHistory = useCallback(async (page: number) => {
     if (!uid) return;
-    setHistoryLoading(true);
     try {
-      const res = await hubFetch(`/api/wallet/history?page=${page}&userId=${encodeURIComponent(uid)}`);
+      setHistoryLoading(true);
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        userId: uid,
+        type: filterType,
+        app: filterApp,
+        period: filterPeriod
+      });
+      const res = await hubFetch(`/api/wallet/history?${queryParams.toString()}`);
       if (res.ok && res.data.history) {
         setHistory(res.data.history);
         setHistoryTotalPages(res.data.totalPages || 1);
@@ -79,13 +90,19 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
     } finally {
       setHistoryLoading(false);
     }
-  }, [uid]);
+  }, [uid, filterType, filterApp, filterPeriod]);
 
   useEffect(() => {
     if (tab === 'history') {
       fetchHistory(historyPage);
     }
   }, [tab, historyPage, fetchHistory]);
+
+  useEffect(() => {
+    if (tab === 'history') {
+      setHistoryPage(1);
+    }
+  }, [filterType, filterApp, filterPeriod]);
 
   const options = useMemo(
     () => [
@@ -223,7 +240,41 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
         {/* 이용 내역 탭 화면 */}
         {tab === 'history' && (
           <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-md">
-            <h2 className="text-base text-slate-900 font-extrabold">이용 내역</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 className="text-base text-slate-900 font-extrabold">이용 내역</h2>
+              <select 
+                value={filterPeriod} 
+                onChange={(e) => setFilterPeriod(e.target.value as any)}
+                className="text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              >
+                <option value="1m">1개월</option>
+                <option value="3m">3개월</option>
+                <option value="6m">6개월</option>
+                <option value="1y">1년</option>
+                <option value="all">전체기간</option>
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
+              <div className="flex bg-slate-200/50 p-1 rounded-full w-fit">
+                <button onClick={() => setFilterType('all')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterType === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>전체</button>
+                <button onClick={() => setFilterType('charge')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterType === 'charge' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>충전</button>
+                <button onClick={() => setFilterType('use')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterType === 'use' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>사용</button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500">앱</span>
+                <select
+                  value={filterApp}
+                  onChange={(e) => setFilterApp(e.target.value)}
+                  className="text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                >
+                  <option value="all">모든 앱</option>
+                  <option value={appName}>{appName}</option>
+                </select>
+              </div>
+            </div>
+
             {historyLoading ? (
               <div className="flex items-center justify-center py-10">
                 <svg className="animate-spin h-6 w-6 text-indigo-600" viewBox="0 0 24 24">
@@ -252,13 +303,13 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                   const actionAndTitle = parts.slice(1).join(' - ');
 
                   return (
-                    <div key={item.id} className="border-b border-slate-100 py-3.5 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
+                    <div key={item.id} className="border-b border-slate-100 py-3 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
                       <div className="flex items-center justify-between gap-4">
                         <div className="text-sm font-bold truncate flex-1 flex items-center gap-2 text-slate-800">
                           <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-600 border border-indigo-100">
                             {itemAppName}
                           </span>
-                          <span className="truncate">{actionAndTitle}</span>
+                          <span className="truncate leading-tight">{actionAndTitle}</span>
                         </div>
                         <div
                           className={`text-sm font-black shrink-0 ${
@@ -269,12 +320,12 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
                           {Number(item.amount || 0).toLocaleString()} C
                         </div>
                       </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <div className="text-[10px] font-medium text-slate-500">
+                      <div className="flex items-center justify-between mt-0.5">
+                        <div className="text-xs font-medium text-slate-400">
                           {formatDate(item.created_at || item.createdAt)}
                         </div>
                         {typeof item.balance === 'number' && !isNaN(item.balance) && (
-                          <div className="text-[10px] font-bold text-slate-400">
+                          <div className="text-[10px] font-bold text-slate-300">
                             잔액 {item.balance.toLocaleString()} C
                           </div>
                         )}
