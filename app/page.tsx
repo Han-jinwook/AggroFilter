@@ -249,7 +249,6 @@ export default function MainPage() {
   const handleLoginSuccess = async (email: string, userId: string) => {
     localStorage.setItem("userEmail", email)
     if (userId) localStorage.setItem("userId", userId)
-    setUserEmail(email)
 
     // DB에서 프로필 정보 fetch (source of truth)
     try {
@@ -327,7 +326,10 @@ export default function MainPage() {
       <HubAuthModal 
         isOpen={showLoginModal} 
         onClose={() => setShowLoginModal(false)} 
-        onSuccess={(email) => handleLoginSuccess(email, '')} 
+        onSuccess={(email) => {
+          handleLoginSuccess(email, '')
+          setShowLoginModal(false)
+        }} 
       />
     </div>
   )
