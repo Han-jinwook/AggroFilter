@@ -330,6 +330,9 @@ export default function MainPage() {
           handleLoginSuccess(email, '')
           setShowLoginModal(false)
         }} 
+        appName="어그로필터" 
+        appLogoUrl="/images/character-logo-ko.png" 
+        subtitleActionText="분석에" 
       />
     </div>
   )
