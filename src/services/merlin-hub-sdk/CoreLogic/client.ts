@@ -230,6 +230,7 @@ export class MerlinHubClient {
   }
 
   async sendOtp(email: string) {
+    // 앱별 인증 컨텍스트를 주입하여 인증 메일을 올바르게 전송합니다
     const { requestOTP } = await import('../Auth/auth');
     const { getConfig } = await import('./config');
     return requestOTP(email, getConfig().appId);
