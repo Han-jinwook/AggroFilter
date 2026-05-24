@@ -231,12 +231,20 @@ export class MerlinHubClient {
 
   async sendOtp(email: string) {
     const { requestOTP } = await import('../Auth/auth');
-    return requestOTP(email);
+    const { getConfig } = await import('./config');
+    return requestOTP(email, getConfig().appId);
   }
 
   async verifyOtp(email: string, code: string) {
     const { verifyOTP } = await import('../Auth/auth');
-    return verifyOTP(email, code);
+    const { getConfig } = await import('./config');
+    
+    // 로컬스토리지에서 초대코드 조회 후 파라미터 전달
+    let referralCode = undefined;
+    if (typeof window !== 'undefined') {
+      referralCode = localStorage.getItem('userReferralCode') || undefined;
+    }
+    return verifyOTP(email, code, getConfig().appId, referralCode);
   }
 
   async preparePayment(params: {
