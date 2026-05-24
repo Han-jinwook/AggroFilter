@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "어그로필터",
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "어그로필터 | AI 유튜브 신뢰도 분석",
     description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
-    images: ["/og"],
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
