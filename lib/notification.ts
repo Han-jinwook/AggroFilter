@@ -78,25 +78,18 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
       const currentGrade = getReliabilityGrade(reliabilityScore);
       const isCurrentTop10Percent = current_rank <= top10PercentThreshold;
 
-      // 구독자 조회 (알림 활성화된 사용자만 + 사용자별 알림 설정)
+      // 구독자 조회 (알림 활성화된 사용자만 + 사용자별 스마트 알림 동의 여부)
       // 알림 조건: 해당 채널 영상 2개 이상 열람한 유저만 대상
       const MIN_VIDEO_VIEWS_FOR_NOTIFY = 2;
 
       const subscribers = await client.query(`
         SELECT 
           s.f_user_id as user_id,
-          s.f_last_rank,
           s.f_last_reliability_grade,
-          s.f_last_reliability_score,
-          s.f_last_top10_percent_status,
-          s.f_top10_notified_at,
           u.f_nickname,
           c.f_title as channel_name,
           c.f_thumbnail_url as channel_thumbnail,
-          COALESCE(u.f_notify_grade_change, TRUE) as notify_grade,
-          COALESCE(u.f_notify_ranking_change, TRUE) as notify_ranking,
-          COALESCE(u.f_notify_top10_change, TRUE) as notify_top10,
-          COALESCE(u.f_ranking_threshold, 10) as ranking_threshold
+          COALESCE(u.f_smart_notification, TRUE) as smart_notification
         FROM t_channel_subscriptions s
         JOIN t_users u ON s.f_user_id = u.f_id
         JOIN t_channels c ON s.f_channel_id = c.f_channel_id
@@ -110,11 +103,9 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
 
       for (const sub of subscribers.rows) {
         const oldGrade = sub.f_last_reliability_grade;
-        const oldRank = sub.f_last_rank;
-        const oldTop10PercentStatus = sub.f_last_top10_percent_status;
 
         // 그레이드 변화 감지 → send-grade-change
-        if (sub.notify_grade && oldGrade && oldGrade !== currentGrade) {
+        if (sub.smart_notification && oldGrade && oldGrade !== currentGrade) {
           console.log(`[알림] 그레이드 변화: ${sub.channel_name} (${oldGrade} → ${currentGrade})`);
           
           fetch(`${baseUrl}/api/notification/send-grade-change`, {
@@ -132,56 +123,6 @@ export async function checkRankingChangesAndNotify(categoryId: number, language:
           }).catch(err => {
             console.error('[알림] 그레이드 변화 알림 발송 실패:', err);
           });
-        }
-
-        // 순위 변동 감지 (유저별 threshold% 이상 변동) → send-ranking-change
-        const userThreshold = Math.max(1, Math.ceil(totalChannels * (sub.ranking_threshold / 100)));
-        if (sub.notify_ranking && oldRank && Math.abs(current_rank - oldRank) >= userThreshold) {
-          console.log(`[알림] 순위 변동: ${sub.channel_name} (${oldRank}위 → ${current_rank}위)`);
-          
-          fetch(`${baseUrl}/api/notification/send-ranking-change`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: sub.user_id,
-              channelName: sub.channel_name,
-              channelId: f_channel_id,
-              channelThumbnail: sub.channel_thumbnail,
-              oldRank: oldRank,
-              newRank: current_rank,
-              categoryName: null
-            })
-          }).catch(err => {
-            console.error('[알림] 순위 변동 알림 발송 실패:', err);
-          });
-        }
-
-        // 상위 10% 진입/탈락 감지 → send-top10-change (7일 쿨다운)
-        const top10CooldownOk = !sub.f_top10_notified_at ||
-          (Date.now() - new Date(sub.f_top10_notified_at).getTime()) > 7 * 24 * 60 * 60 * 1000;
-        if (sub.notify_top10 && top10CooldownOk && oldTop10PercentStatus !== null && oldTop10PercentStatus !== undefined && oldTop10PercentStatus !== isCurrentTop10Percent) {
-          console.log(`[알림] 상위 10%: ${sub.channel_name} (${oldTop10PercentStatus ? '탈락' : '진입'})`);
-          
-          fetch(`${baseUrl}/api/notification/send-top10-change`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: sub.user_id,
-              channelName: sub.channel_name,
-              channelId: f_channel_id,
-              channelThumbnail: sub.channel_thumbnail,
-              isEntered: isCurrentTop10Percent,
-              categoryName: null
-            })
-          }).catch(err => {
-            console.error('[알림] 상위 10% 변화 알림 발송 실패:', err);
-          });
-          // 쿨다운 타임스탬프 업데이트
-          await client.query(`
-            UPDATE t_channel_subscriptions
-            SET f_top10_notified_at = NOW()
-            WHERE f_user_id = $1 AND f_channel_id = $2
-          `, [sub.user_id, f_channel_id]);
         }
       }
 

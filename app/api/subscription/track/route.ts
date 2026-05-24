@@ -57,32 +57,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, skipped: true, reason: 'channelId not found' });
       }
 
-      // 채널 구독 upsert
-      const existing = await client.query(
-        `SELECT f_id, f_subscribed_at
-         FROM t_channel_subscriptions
-         WHERE f_user_id = $1 AND f_channel_id = $2
-         LIMIT 1`,
-        [userId, channelId]
-      );
-
-      if (existing.rows.length === 0) {
-        await client.query(
-          `INSERT INTO t_channel_subscriptions (f_user_id, f_channel_id, f_subscribed_at)
-           VALUES ($1, $2, NOW())`,
-          [userId, channelId]
-        );
-      } else {
-        const subscribedAt = existing.rows[0]?.f_subscribed_at;
-        if (!subscribedAt) {
-          await client.query(
-            `UPDATE t_channel_subscriptions
-             SET f_subscribed_at = NOW()
-             WHERE f_id = $1`,
-            [existing.rows[0].f_id]
-          );
-        }
-      }
+      // 단순 조회 시에는 채널 구독(관심 채널 등록)을 하지 않습니다. (구독 범위 축소)
 
       // 영상 구독 upsert (내 구독일 = NOW())
       if (videoId) {

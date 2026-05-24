@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
 import { HubAuthModal } from '@/src/services/merlin-hub-sdk/react'
 import { isAnonymousUser } from '@/lib/anon'
-import { Settings, X, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
+import { Settings, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
 
 type TNotification = {
   id: number
@@ -15,20 +15,6 @@ type TNotification = {
   is_read: boolean
   created_at: string
 }
-
-type TNotificationSettings = {
-  gradeChange: boolean
-  rankingChange: boolean
-  top10Change: boolean
-}
-
-const DEFAULT_SETTINGS: TNotificationSettings = {
-  gradeChange: true,
-  rankingChange: true,
-  top10Change: true,
-}
-
-const SETTINGS_KEY = 'notification_settings_v1'
 
 const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string; label: string }> = {
   grade_change: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', label: '등급 변화' },
@@ -52,14 +38,11 @@ function timeAgo(dateStr: string): string {
 
 export default function Page() {
   const router = useRouter()
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [settings, setSettings] = useState<TNotificationSettings>(DEFAULT_SETTINGS)
   const [notifications, setNotifications] = useState<TNotification[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
-  const email = typeof window !== 'undefined' ? localStorage.getItem('userEmail') || '' : ''
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
   const userId = typeof window !== 'undefined' ? localStorage.getItem('merlin_user_id') || '' : ''
 
@@ -84,25 +67,6 @@ export default function Page() {
   }, [userId])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SETTINGS_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      setSettings({
-        gradeChange: Boolean(parsed?.gradeChange),
-        rankingChange: Boolean(parsed?.rankingChange),
-        top10Change: Boolean(parsed?.top10Change),
-      })
-    } catch {}
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-    } catch {}
-  }, [settings])
 
   const markAsRead = async (ids: number[]) => {
     if (!userId || ids.length === 0) return
@@ -134,43 +98,7 @@ export default function Page() {
     localStorage.setItem('userNickname', loginEmail.split('@')[0])
     window.dispatchEvent(new CustomEvent('profileUpdated'))
     setShowLoginModal(false)
-    // 로그인 후 페이지 새로고침하여 알림 데이터 로드
     window.location.reload()
-  }
-
-  const ToggleRow = ({
-    label,
-    description,
-    checked,
-    onChange,
-  }: {
-    label: string
-    description: string
-    checked: boolean
-    onChange: (next: boolean) => void
-  }) => {
-    return (
-      <div className="flex items-center justify-between gap-4 py-3">
-        <div className="min-w-0">
-          <div className="text-sm font-bold text-slate-900">{label}</div>
-          <div className="text-xs text-slate-500 mt-0.5">{description}</div>
-        </div>
-        <button
-          type="button"
-          onClick={() => onChange(!checked)}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            checked ? 'bg-indigo-600' : 'bg-slate-200'
-          }`}
-          aria-pressed={checked}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-              checked ? 'translate-x-5' : 'translate-x-1'
-            }`}
-          />
-        </button>
-      </div>
-    )
   }
 
   return (
@@ -197,7 +125,7 @@ export default function Page() {
             )}
             <button
               type="button"
-              onClick={() => setIsSettingsOpen(true)}
+              onClick={() => router.push('/p-settings')}
               className="h-10 w-10 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all"
               aria-label="알림 설정"
             >
@@ -214,7 +142,7 @@ export default function Page() {
           <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
             <Bell className="h-12 w-12 text-slate-300 mx-auto mb-4" />
             <p className="text-sm font-bold text-slate-500">아직 알림이 없습니다</p>
-            <p className="text-xs text-slate-400 mt-1">구독한 채널에 변화가 생기면 여기에 표시됩니다</p>
+            <p className="text-xs text-slate-400 mt-1">관심 등록한 채널에 변화가 생기면 여기에 표시됩니다</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -255,51 +183,6 @@ export default function Page() {
           </div>
         )}
       </main>
-
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setIsSettingsOpen(false)}
-            aria-label="닫기"
-          />
-          <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[92vw] max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="text-base font-black text-slate-900">알림 설정</div>
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(false)}
-                className="h-9 w-9 rounded-full hover:bg-slate-100 flex items-center justify-center active:scale-95 transition-all"
-                aria-label="닫기"
-              >
-                <X className="h-5 w-5 text-slate-600" />
-              </button>
-            </div>
-
-            <div className="px-5 py-2 divide-y divide-slate-100">
-              <ToggleRow
-                label="등급 변화"
-                description="구독한 채널의 신뢰도 등급(레드/옐로우/그린)이 바뀌면 알려줍니다"
-                checked={settings.gradeChange}
-                onChange={(next) => setSettings((prev) => ({ ...prev, gradeChange: next }))}
-              />
-              <ToggleRow
-                label="랭킹 변화"
-                description="구독한 채널의 카테고리 랭킹이 10% 이상 변동되면 알려줍니다"
-                checked={settings.rankingChange}
-                onChange={(next) => setSettings((prev) => ({ ...prev, rankingChange: next }))}
-              />
-              <ToggleRow
-                label="상위 10% 진입/탈락"
-                description="구독한 채널이 상위 10%에 들어오거나 벗어나면 알려줍니다"
-                checked={settings.top10Change}
-                onChange={(next) => setSettings((prev) => ({ ...prev, top10Change: next }))}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       <HubAuthModal 
         isOpen={showLoginModal} 

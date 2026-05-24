@@ -3,7 +3,6 @@
  * Last Updated: 2026-05-23
  */
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
 import { useHubReferral } from './useHubReferral';
 
 interface HubShareSquareProps {
@@ -23,10 +22,23 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
   customUrl,
   description = '공유 링크에는 내 추천인 코드가 포함되어 전달됩니다.',
 }) => {
-  const pathname = usePathname();
+  const [pathname, setPathname] = useState('');
   const { getMyReferralInfo, isLoading } = useHubReferral();
   const [inviteCode, setInviteCode] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPathname(window.location.pathname);
+      const handleLocationChange = () => {
+        setPathname(window.location.pathname);
+      };
+      window.addEventListener('popstate', handleLocationChange);
+      return () => {
+        window.removeEventListener('popstate', handleLocationChange);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     const fetchInfo = async () => {
