@@ -26,7 +26,7 @@ export function SideWingAds() {
   if (pathname?.startsWith('/p-admin')) return null;
   if (pathname?.startsWith('/payment') || pathname?.startsWith('/api/payment')) return null;
 
-  let customTitle = "어그로필터 - 가짜뉴스 판독기";
+  let customTitle = "어그로필터 - 가짜 유튜브 영상 분석기";
   if (pathname?.startsWith('/p-result/')) {
     customTitle = "[어그로필터] 충격적인 이 영상의 신뢰도 점수는?";
   }

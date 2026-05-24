@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     default: "어그로필터 | AI 유튜브 신뢰도 분석",
     template: "%s | 어그로필터",
   },
-  description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
+  description: "썸네일 스포일러 / AI 정밀 팩트체크 / 청정 유튜버 랭킹",
   icons: {
     icon: "/icon.png",
     apple: "/apple-icon.png",
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "어그로필터 | AI 유튜브 신뢰도 분석",
-    description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
+    description: "썸네일 스포일러 / AI 정밀 팩트체크 / 청정 유튜버 랭킹",
     url: "/",
     siteName: "어그로필터",
     locale: "ko_KR",
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "어그로필터 | AI 유튜브 신뢰도 분석",
-    description: "유튜브 영상의 신뢰도를 AI로 분석합니다. 어그로성, 정확성, 신뢰도 점수를 한눈에 확인하세요.",
+    description: "썸네일 스포일러 / AI 정밀 팩트체크 / 청정 유튜버 랭킹",
     images: ["/og-image.png"],
   },
   robots: {
