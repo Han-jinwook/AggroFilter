@@ -95,12 +95,7 @@ export default function SettingsPage() {
               description="관심 채널의 신뢰도 등급(안전/주의/위험) 변동 시 알려드립니다."
               enabled={smartNotification}
               onChange={handleToggleSmartNotification}
-            >
-              <div className="mt-2 text-[11px] text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-100/50 leading-relaxed space-y-1">
-                <p>• 알림은 하루 2회(오전 12시 · 오후 7시) 모아서 발송됩니다.</p>
-                <p>• 신뢰도 등급 변화 알림은 보다 정확한 비교를 위해, 동일 채널의 영상을 최소 2개 이상 분석/열람한 채널에 한해서만 제공됩니다.</p>
-              </div>
-            </HubNotificationCard>
+            />
 
             {/* 3. 하단: 허브 공통 로그아웃 카드 */}
             <HubLogoutCard onLogout={() => router.push('/')} />
