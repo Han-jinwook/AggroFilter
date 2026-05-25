@@ -11,6 +11,8 @@ import { ToastContainer } from "@/components/c-toast"
 import { HubNotifier, HubProvider } from "@/src/services/merlin-hub-sdk/react"
 import { Footer } from "@/components/c-footer"
 
+import { ReferralTracker } from "@/components/ReferralTracker"
+
 interface TRootLayoutProps {
   children: React.ReactNode
 }
@@ -125,6 +127,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <HubProvider appId="AGGROFILTER">
+            <ReferralTracker />
             <div className="flex min-h-screen flex-col">
               <div className="flex-1">
                 {children}
