@@ -435,7 +435,8 @@ export default function ResultClient() {
               if (!isCancelled) {
                 setAnalysisData(data.analysisData)
                 setUserPredictionStats(data.userPredictionStats || null)
-                if (isAnonymousUser()) {
+                const anonAnalysisCount = typeof window !== 'undefined' ? parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) : 0;
+                if (isAnonymousUser() && anonAnalysisCount >= 1) {
                   setShowBenefitModal(true)
                 }
               }
@@ -1319,7 +1320,7 @@ ${content}
                 <span className="text-xl">🔔</span>
                 <div>
                   <div className="text-sm font-semibold text-gray-800">채널 신뢰도 변동 알림</div>
-                  <div className="text-xs text-gray-500">구독 채널 순위가 바뀌면 바로 알림</div>
+                  <div className="text-xs text-gray-500">구독 채널 신뢰도가 바뀌면 바로 알림</div>
                 </div>
               </li>
             </ul>
