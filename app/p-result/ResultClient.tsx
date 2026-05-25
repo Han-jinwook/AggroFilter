@@ -69,7 +69,9 @@ export default function ResultClient() {
   const [userNickname, setUserNickname] = useState<string>("")
   const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [showBenefitModal, setShowBenefitModal] = useState(false)
+  const { trackShare } = useHubShare()
+  const { user } = useHub()
+  const [isClient, setIsClient] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
   const [playerTime, setPlayerTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
@@ -437,7 +439,7 @@ export default function ResultClient() {
                 setUserPredictionStats(data.userPredictionStats || null)
                 const anonAnalysisCount = typeof window !== 'undefined' ? parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) : 0;
                 if (isAnonymousUser() && anonAnalysisCount >= 1) {
-                  setShowBenefitModal(true)
+                  import("@/src/services/merlin-hub-sdk/react").then(m => m.markFreeTrialCompleted())
                 }
               }
             }
@@ -1293,59 +1295,6 @@ ${content}
         subtitleActionText="분석에" 
       />
 
-      {/* 혜택 안내 모달 */}
-      {showBenefitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-5">
-            <div className="text-center">
-              <div className="text-3xl mb-2">🎁</div>
-              <h2 className="text-lg font-bold text-gray-900">이메일 등록하면 이런 게 좋아요!</h2>
-            </div>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <span className="text-xl">💾</span>
-                <div>
-                  <div className="text-sm font-semibold text-gray-800">분석 데이터 영구 보존</div>
-                  <div className="text-xs text-gray-500">기기를 바꿔도 내 분석 기록이 그대로</div>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-xl">📱</span>
-                <div>
-                  <div className="text-sm font-semibold text-gray-800">PC · 모바일 어디서든</div>
-                  <div className="text-xs text-gray-500">로그인만 하면 모든 기기에서 동일하게</div>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-xl">🔔</span>
-                <div>
-                  <div className="text-sm font-semibold text-gray-800">채널 신뢰도 변동 알림</div>
-                  <div className="text-xs text-gray-500">구독 채널 신뢰도가 바뀌면 바로 알림</div>
-                </div>
-              </li>
-            </ul>
-            <div className="flex flex-col gap-2 pt-1">
-              <button
-                onClick={() => {
-                  setShowBenefitModal(false);
-                  setTimeout(() => setShowLoginModal(true), 200);
-                }}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors"
-              >
-                이메일 등록하기
-              </button>
-              <button
-                onClick={() => {
-                  setShowBenefitModal(false);
-                }}
-                className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                다음에 할게요
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {analysisData && (
         <ShareModal
           open={showShareModal}
