@@ -1,4 +1,4 @@
-import type React from "react"
+import React, { Suspense } from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/react"
@@ -127,7 +127,9 @@ export default function RootLayout({ children }: TRootLayoutProps) {
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <HubProvider appId="AGGROFILTER">
-            <ReferralTracker />
+            <Suspense fallback={null}>
+              <ReferralTracker />
+            </Suspense>
             <div className="flex min-h-screen flex-col">
               <div className="flex-1">
                 {children}
