@@ -16,7 +16,26 @@ interface HistoryItem {
   display_text?: string;
   createdAt: string;
   created_at?: string;
+  app_id?: string;
 }
+
+const getAppDisplayName = (appId?: string) => {
+  if (!appId) return '어그로필터';
+  const id = appId.toUpperCase();
+  if (id === 'AGGROFILTER' || id === 'AGGRO_FILTER' || id === 'APP-01' || id === 'DEFAULT_APP') {
+    return '어그로필터';
+  }
+  if (id === 'VAULTER' || id === 'Vaulter') {
+    return '금고지기';
+  }
+  if (id === 'BES2') {
+    return 'Bes2';
+  }
+  if (id === 'WHATTOEAT') {
+    return '뭐먹지';
+  }
+  return appId;
+};
 
 interface HubPurchaseWidgetProps {
   appName?: string;
@@ -93,10 +112,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
     if (filterApp !== 'all') {
       result = result.filter(item => {
-        const rawDesc = item.display_text || item.description || '';
-        let formattedDesc = rawDesc.replace('(신규)', '').replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전').trim();
-        if (!formattedDesc.startsWith(appName)) formattedDesc = `${appName} - ${formattedDesc}`;
-        const itemAppName = formattedDesc.split(' - ')[0];
+        const itemAppName = getAppDisplayName(item.app_id);
         return itemAppName === filterApp;
       });
     }
@@ -317,17 +333,24 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
               <div className="mt-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2">
                 {currentHistory.map((item) => {
                   const rawDesc = item.display_text || item.description || '';
-                  let formattedDesc = rawDesc
+                  const itemAppName = getAppDisplayName(item.app_id);
+                  let actionAndTitle = rawDesc
                     .replace('(신규)', '')
                     .replace('KCP 심사관 테스트 코인 충전 (5,000C)', '코인 충전')
                     .trim();
-                  if (!formattedDesc.startsWith(appName)) {
-                    formattedDesc = `${appName} - ${formattedDesc}`;
+
+                  // Strip app name prefix if it starts with it
+                  const prefix = `${itemAppName} -`;
+                  if (actionAndTitle.startsWith(prefix)) {
+                    actionAndTitle = actionAndTitle.substring(prefix.length).trim();
+                  } else if (actionAndTitle.startsWith(itemAppName)) {
+                    actionAndTitle = actionAndTitle.substring(itemAppName.length).trim();
                   }
 
-                  const parts = formattedDesc.split(' - ');
-                  const itemAppName = parts[0];
-                  const actionAndTitle = parts.slice(1).join(' - ');
+                  // Fallback if empty after stripping
+                  if (!actionAndTitle) {
+                    actionAndTitle = rawDesc;
+                  }
 
                   return (
                     <div key={item.id} className="border-b border-slate-100 py-3 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
