@@ -64,7 +64,8 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
                 )}
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>
