@@ -298,9 +298,9 @@ export async function POST(request: Request) {
 
             let cachedCreditDeducted = false;
             if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
-              // 2. 잔액 조회
+              // 2. 잔액 조회 (잔액이 0 이상이면 허용, 첫 결제 후 웰컴 500C 보상을 위함)
               const balanceRes = await getBalance(userId);
-              if (!balanceRes.success || (balanceRes.balance ?? 0) < fixedPrice) {
+              if (!balanceRes.success || (balanceRes.balance ?? 0) < 0) {
                 if (lockClient) {
                   await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
                   lockClient.release();
@@ -360,8 +360,9 @@ export async function POST(request: Request) {
     // ── 코인 잔액 체크 (새 분석 시 최소 임계값 체크) ──
     if (!isRecheck && userId && !userId.startsWith('anon_')) {
       const balanceRes = await getBalance(userId);
-      // 신규 분석 시작을 위한 최소 코인 보유량 (임시 30C)
-      if (!balanceRes.success || (balanceRes.balance ?? 0) < 30) {
+      // 신규 분석 시 잔액 0 이상이면 허용 (첫 분석 후 웰컴 보상 500C로 자동 상환됨)
+      // 이미 잔액이 마이너스인 경우에만 차단
+      if (!balanceRes.success || (balanceRes.balance ?? 0) < 0) {
         return NextResponse.json(
           { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
           { status: 402, headers: corsHeaders }
