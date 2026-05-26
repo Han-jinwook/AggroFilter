@@ -45,7 +45,7 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
                 <div>
                   <p className="font-semibold text-gray-800">
                     {item.inviteeNickname}
-                    {emailId && item.inviteeNickname !== emailId && (
+                    {emailId && (
                       <span className="text-sm font-normal text-gray-500 ml-1">({emailId})</span>
                     )}
                     <span className="ml-1">님</span>

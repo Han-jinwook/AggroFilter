@@ -126,7 +126,8 @@ export default function RootLayout({ children }: TRootLayoutProps) {
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <HubProvider appId="AGGROFILTER">
+          <HubProvider appId="AggroFilter">
+            <HubNotifier />
             <Suspense fallback={null}>
               <ReferralTracker />
             </Suspense>
