@@ -69,8 +69,6 @@ export default function ResultClient() {
   const [userNickname, setUserNickname] = useState<string>("")
   const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const { trackShare } = useHubShare()
-  const { user } = useHub()
   const [isClient, setIsClient] = useState(false)
   const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
   const [playerTime, setPlayerTime] = useState(0)
