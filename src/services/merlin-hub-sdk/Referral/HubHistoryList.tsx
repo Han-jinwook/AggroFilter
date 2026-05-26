@@ -3,6 +3,7 @@ import React from 'react';
 interface HistoryItem {
   id: string;
   inviteeNickname: string;
+  inviteeEmail?: string;
   joinedAt: string;
   status: 'PENDING' | 'REWARDED';
 }
@@ -37,13 +38,21 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
         </div>
       ) : (
         <ul className="space-y-3">
-          {history.map(item => (
-            <li key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-              <div>
-                <p className="font-semibold text-gray-800">{item.inviteeNickname} 님</p>
-                <p className="text-xs text-gray-500">{item.joinedAt} 가입</p>
-              </div>
-              <div>
+          {history.map(item => {
+            const emailId = item.inviteeEmail ? item.inviteeEmail.split('@')[0] : '';
+            return (
+              <li key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {item.inviteeNickname}
+                    {emailId && item.inviteeNickname !== emailId && (
+                      <span className="text-sm font-normal text-gray-500 ml-1">({emailId})</span>
+                    )}
+                    <span className="ml-1">님</span>
+                  </p>
+                  <p className="text-xs text-gray-500">{item.joinedAt} 가입</p>
+                </div>
+                <div>
                 {item.status === 'REWARDED' ? (
                   <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
                     지급 완료
