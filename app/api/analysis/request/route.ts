@@ -8,7 +8,9 @@ import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
-import { getBalance, getPricing, processTransaction, chargeDynamic } from '@/src/services/merlin-hub-sdk';
+import { getBalance, getPricing, processTransaction, chargeDynamic, configureMerlinHub } from '@/src/services/merlin-hub-sdk';
+
+configureMerlinHub({ appId: 'AggroFilter' });
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
