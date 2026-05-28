@@ -1497,19 +1497,18 @@ export async function POST(request: Request) {
         );
         const groundingCount = Number(analysisResult.groundingQueries?.length || 0);
         
-        // [Billing Logic] 1 Search Query = 5C (10,000 tokens = 1C 기준 시 50,000 tokens)
-        const groundingTokens = groundingCount * 50000;
-        const totalRawTokens = speedTokens + fullTokens + groundingTokens;
-        
-        // 10,000 토큰당 1C 환율 적용 (허브가 1000:1을 사용하므로 여기서 10으로 나눔)
-        const finalRawCost = Math.max(1, totalRawTokens / 10);
-        
         const displayTitle = videoInfo?.title || speedResult?.title || analysisResult?.title || videoId;
         
+        // REFACTORED: 개별앱은 요금(환율, 검색가중치) 계산 공식을 직접 구현하지 않고,
+        // 순수 소모 메트릭(speedTokens, fullTokens, groundingCount)만 허브로 전송합니다.
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
           videoId,
-          rawCost: finalRawCost,
+          usageMetrics: {
+            speedTokens,
+            fullTokens,
+            groundingCount
+          },
           requestId: `fresh_${videoId}_${analysisId}`,
           displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
         });

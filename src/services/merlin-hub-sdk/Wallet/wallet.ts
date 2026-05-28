@@ -80,7 +80,13 @@ export async function processTransaction(params: {
 export async function chargeDynamic(params: {
   userId: string;
   videoId: string;
-  rawCost: number;
+  rawCost?: number;
+  usageMetrics?: {
+    speedTokens?: number;
+    fullTokens?: number;
+    groundingCount?: number;
+    [key: string]: any;
+  };
   requestId: string;
   displayText: string;
 }): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
@@ -96,6 +102,11 @@ export async function chargeDynamic(params: {
         app_id: appId,
         resource_id: params.videoId,
         raw_cost: params.rawCost,
+        usage_metrics: params.usageMetrics ? {
+          speed_tokens: params.usageMetrics.speedTokens,
+          full_tokens: params.usageMetrics.fullTokens,
+          grounding_count: params.usageMetrics.groundingCount
+        } : undefined,
         request_id: params.requestId,
         display_text: params.displayText
       }),
