@@ -1500,13 +1500,14 @@ export async function POST(request: Request) {
         const displayTitle = videoInfo?.title || speedResult?.title || analysisResult?.title || videoId;
         
         // REFACTORED: 개별앱은 요금(환율, 검색가중치) 계산 공식을 직접 구현하지 않고,
-        // 순수 소모 메트릭(speedTokens, fullTokens)만 허브로 전송합니다.
+        // 순수 소모 메트릭(gpt4oMiniTokens, gemini25FlashTokens, googleSearchCount)만 허브로 전송합니다.
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
           videoId,
           usageMetrics: {
-            speedTokens,
-            fullTokens
+            gpt4oMiniTokens: speedTokens,
+            gemini25FlashTokens: fullTokens,
+            googleSearchCount: groundingCount
           },
           requestId: `fresh_${videoId}_${analysisId}`,
           displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
@@ -1517,7 +1518,7 @@ export async function POST(request: Request) {
         estimatedPrice = dynamicRes.price || 30; // 30C fallback
 
         if (dynamicRes.success) {
-          console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, speed=${speedTokens}, full=${fullTokens}, search=${groundingCount} → totalRaw=${finalRawCost}, price=${estimatedPrice}`);
+          console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, gptTokens=${speedTokens}, geminiTokens=${fullTokens}, searchCount=${groundingCount} → price=${estimatedPrice}`);
           
           // 과금 성공 시 5분 광고 제거 타임패스 설정
           if (!isGuest) {

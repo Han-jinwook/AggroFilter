@@ -82,8 +82,11 @@ export async function chargeDynamic(params: {
   videoId: string;
   rawCost?: number;
   usageMetrics?: {
-    speedTokens?: number;
-    fullTokens?: number;
+    gpt4oMiniTokens?: number;
+    gemini25FlashTokens?: number;
+    googleSearchCount?: number;
+    speedTokens?: number; // 하위 호환
+    fullTokens?: number;  // 하위 호환
     [key: string]: any;
   };
   requestId: string;
@@ -102,8 +105,9 @@ export async function chargeDynamic(params: {
         resource_id: params.videoId,
         raw_cost: params.rawCost,
         usage_metrics: params.usageMetrics ? {
-          speed_tokens: params.usageMetrics.speedTokens,
-          full_tokens: params.usageMetrics.fullTokens
+          gpt_4o_mini_tokens: params.usageMetrics.gpt4oMiniTokens || params.usageMetrics.speedTokens,
+          gemini_2_5_flash_tokens: params.usageMetrics.gemini25FlashTokens || params.usageMetrics.fullTokens,
+          google_search_count: params.usageMetrics.googleSearchCount
         } : undefined,
         request_id: params.requestId,
         display_text: params.displayText
