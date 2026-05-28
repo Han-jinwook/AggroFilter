@@ -115,6 +115,10 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
   // /api/wallet/history — 이용 내역 (로컬 API가 이미 Hub 연동형으로 바뀌었으므로, 직접 호출 시에도 로컬 연동 유지)
   if (path.startsWith('/api/wallet/history')) {
     try {
+      const appId = getConfig().appId;
+      if (!appId) {
+        throw new Error('[MerlinHubSDK] appId is not configured. Run configureMerlinHub({ appId: "..." }) first.');
+      }
       const res = await fetch(`/api/user/credit-history?userId=${TEST_USER_ID}`, { cache: 'no-store' });
       const data = await res.json();
       return {
@@ -122,7 +126,7 @@ async function getTestSessionMock<T>(path: string, options: RequestInit): Promis
         status: 200,
         data: {
           history: data,
-          app_id: getConfig().appId || 'DEFAULT_APP'
+          app_id: appId
         } as T,
       };
     } catch {

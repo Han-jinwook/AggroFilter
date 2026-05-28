@@ -28,7 +28,11 @@ export async function getBalance(userId: string): Promise<{ success: boolean; ba
 export async function getPricing(videoId: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const config = getConfig();
-    const { ok, data } = await hubFetch<any>(`/api/wallet/pricing?app_id=${config.appId || 'DEFAULT_APP'}&action_type=ANALYSIS&resource_id=${videoId}`);
+    const appId = config.appId;
+    if (!appId) {
+      return { success: false, error: 'App ID가 설정되지 않았습니다. configureMerlinHub({ appId: "..." })를 호출해 주세요.' };
+    }
+    const { ok, data } = await hubFetch<any>(`/api/wallet/pricing?app_id=${appId}&action_type=ANALYSIS&resource_id=${videoId}`);
     if (!ok) return { success: false, error: data?.message || '단가 조회 실패' };
     return { success: true, data: data.data };
   } catch (err) {
@@ -47,6 +51,10 @@ export async function processTransaction(params: {
   displayText: string;
 }): Promise<{ success: boolean; balance?: number; error?: string }> {
   try {
+    const appId = getConfig().appId;
+    if (!appId) {
+      return { success: false, error: 'App ID가 설정되지 않았습니다. configureMerlinHub({ appId: "..." })를 호출해 주세요.' };
+    }
     const { ok, data } = await hubFetch<any>('/api/wallet/transaction', {
       method: 'POST',
       body: JSON.stringify({
@@ -55,7 +63,7 @@ export async function processTransaction(params: {
         request_id: params.requestId,
         transaction_type: params.amount < 0 ? 'SPEND' : 'CHARGE',
         display_text: params.displayText,
-        app_id: getConfig().appId || 'DEFAULT_APP'
+        app_id: appId
       }),
     });
     if (!ok) return { success: false, error: data?.message || '트랜잭션 처리 실패' };
@@ -77,11 +85,15 @@ export async function chargeDynamic(params: {
   displayText: string;
 }): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
   try {
+    const appId = getConfig().appId;
+    if (!appId) {
+      return { success: false, error: 'App ID가 설정되지 않았습니다. configureMerlinHub({ appId: "..." })를 호출해 주세요.' };
+    }
     const { ok, data } = await hubFetch<any>('/api/wallet/transaction/dynamic', {
       method: 'POST',
       body: JSON.stringify({
         userId: params.userId,
-        app_id: getConfig().appId || 'DEFAULT_APP',
+        app_id: appId,
         resource_id: params.videoId,
         raw_cost: params.rawCost,
         request_id: params.requestId,
@@ -132,13 +144,17 @@ export async function requestKcpPayment(params: {
 }): Promise<{ success: boolean; paymentData?: any; error?: string }> {
   try {
     const config = getConfig();
+    const appId = config.appId;
+    if (!appId) {
+      return { success: false, error: 'App ID가 설정되지 않았습니다. configureMerlinHub({ appId: "..." })를 호출해 주세요.' };
+    }
     const { ok, data } = await hubFetch<any>('/api/payment/prepare', {
       method: 'POST',
       body: JSON.stringify({
         amount: params.amount,
         coin_amount: params.coinAmount,
         pay_method_type: params.payMethodType,
-        app_id: config.appId || 'DEFAULT_APP',
+        app_id: appId,
         return_url: params.returnUrl
       }),
     });
