@@ -84,7 +84,6 @@ export async function chargeDynamic(params: {
   usageMetrics?: {
     speedTokens?: number;
     fullTokens?: number;
-    groundingCount?: number;
     [key: string]: any;
   };
   requestId: string;
@@ -104,8 +103,7 @@ export async function chargeDynamic(params: {
         raw_cost: params.rawCost,
         usage_metrics: params.usageMetrics ? {
           speed_tokens: params.usageMetrics.speedTokens,
-          full_tokens: params.usageMetrics.fullTokens,
-          grounding_count: params.usageMetrics.groundingCount
+          full_tokens: params.usageMetrics.fullTokens
         } : undefined,
         request_id: params.requestId,
         display_text: params.displayText

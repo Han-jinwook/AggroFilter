@@ -1500,14 +1500,13 @@ export async function POST(request: Request) {
         const displayTitle = videoInfo?.title || speedResult?.title || analysisResult?.title || videoId;
         
         // REFACTORED: 개별앱은 요금(환율, 검색가중치) 계산 공식을 직접 구현하지 않고,
-        // 순수 소모 메트릭(speedTokens, fullTokens, groundingCount)만 허브로 전송합니다.
+        // 순수 소모 메트릭(speedTokens, fullTokens)만 허브로 전송합니다.
         const dynamicRes = await chargeDynamic({
           userId: actualUserId,
           videoId,
           usageMetrics: {
             speedTokens,
-            fullTokens,
-            groundingCount
+            fullTokens
           },
           requestId: `fresh_${videoId}_${analysisId}`,
           displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
