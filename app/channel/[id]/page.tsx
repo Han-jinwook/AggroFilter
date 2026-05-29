@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from "react"
 import { ShareModal } from "@/components/c-share-modal"
 import { cn } from "@/lib/utils"
 import { AppHeader } from "@/components/c-app-header"
+import { useHub } from "@/src/services/merlin-hub-sdk/react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 // Type Definitions based on Naming Convention
@@ -108,7 +109,7 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   const [channelData, setChannelData] = useState<TChannelData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [channelId, setChannelId] = useState<string | null>(null)
-  const [credits, setCredits] = useState<number | null>(null)
+  const { balance: credits, refreshBalance } = useHub()
   const [isRecheckingVideoId, setIsRecheckingVideoId] = useState<string | null>(null)
   const [modalStep, setModalStep] = useState<null | 'intro' | 'mobile' | 'charge'>(null)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -149,16 +150,6 @@ export default function ChannelPage({ params }: TChannelPageProps) {
     if (!channelId) return
     try {
       localStorage.setItem('focusChannelId', channelId)
-      fetch('/api/credits', { cache: 'no-store' })
-        .then(async (res) => {
-          if (!res.ok) return
-          const data = await res.json()
-          const nextCredits = Number(data?.credits)
-          if (Number.isFinite(nextCredits)) setCredits(nextCredits)
-        })
-        .catch(() => {
-          // ignore
-        })
     } catch {
       // ignore
     }
@@ -376,7 +367,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
       const data = await res.json()
       if (typeof data?.analysisId === 'string' && data.analysisId.length > 0) {
         if (data?.creditDeducted === true) {
-          setCredits((prev) => (typeof prev === 'number' ? Math.max(0, prev - 30) : prev))
+          refreshBalance()
         }
         router.push(`/p-result?id=${encodeURIComponent(data.analysisId)}&returnTo=${encodeURIComponent(`/channel/${channelId}`)}`)
       } else {
