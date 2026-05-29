@@ -1525,15 +1525,6 @@ export async function POST(request: Request) {
             adFreeUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
             console.log(`[AdFree] userId=${actualUserId} adFreeUntil=${adFreeUntil}`);
           }
-
-          // DB에 과금 근거 데이터 영구 기록
-          await client.query(`
-            UPDATE t_analyses 
-            SET f_tokens_speed = $2,
-                f_tokens_full = $3,
-                f_grounding_count = $4
-            WHERE f_id = $1
-          `, [analysisId, speedTokens, fullTokens, groundingCount]);
         }
       }
 

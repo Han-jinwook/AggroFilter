@@ -49,6 +49,7 @@ export async function processTransaction(params: {
   amount: number;
   requestId: string;
   displayText: string;
+  usageMetadata?: any;
 }): Promise<{ success: boolean; balance?: number; error?: string }> {
   try {
     const appId = getConfig().appId;
@@ -63,7 +64,8 @@ export async function processTransaction(params: {
         request_id: params.requestId,
         transaction_type: params.amount < 0 ? 'SPEND' : 'CHARGE',
         display_text: params.displayText,
-        app_id: appId
+        app_id: appId,
+        usage_metadata: params.usageMetadata
       }),
     });
     if (!ok) return { success: false, error: data?.message || '트랜잭션 처리 실패' };
@@ -91,6 +93,7 @@ export async function chargeDynamic(params: {
   };
   requestId: string;
   displayText: string;
+  usageMetadata?: any;
 }): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
   try {
     const appId = getConfig().appId;
@@ -110,7 +113,8 @@ export async function chargeDynamic(params: {
           google_search_count: params.usageMetrics.googleSearchCount
         } : undefined,
         request_id: params.requestId,
-        display_text: params.displayText
+        display_text: params.displayText,
+        usage_metadata: params.usageMetadata
       }),
     });
     if (!ok) return { success: false, error: data?.message || '동적 과금 처리 실패' };
