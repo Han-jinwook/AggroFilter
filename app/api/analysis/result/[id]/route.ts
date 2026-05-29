@@ -163,116 +163,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         }, { status: 403 });
       }
 
-      const isInProgressStage =
-        analysis.f_processing_stage === 'pending' ||
-        analysis.f_processing_stage === 'speed_ready' ||
-        (!analysis.f_processing_stage && analysis.f_reliability_score === null);
-
-      if (isInProgressStage) {
-        return NextResponse.json({
-          analysisData: {
-            title: analysis.f_title,
-            videoTitle: analysis.f_title,
-            videoId: analysis.f_video_id,
-            id: analysis.f_id,
-            channelId: analysis.f_channel_id,
-            channelName: analysis.f_channel_name || analysis.f_channel_id,
-            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
-            channelHandle: null,
-            subscriberCount: analysis.f_subscriber_count,
-            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
-            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
-            url: analysis.f_video_url,
-            topic: analysis.f_topic,
-            scores: {
-              accuracy: null,
-              clickbait: null,
-              trust: null,
-            },
-            officialCategoryId: analysis.f_official_category_id,
-            channelLanguage: analysis.f_channel_language || 'korean',
-            summary: analysis.f_summary,
-            summarySubtitle: analysis.f_summary,
-            thumbnailSpoiler,
-            processingStage: analysis.f_processing_stage || 'pending',
-          },
-          comments: [],
-          interaction: {
-            likeCount: 0,
-            dislikeCount: 0,
-            userInteraction: null,
-          },
-          userPredictionStats: null,
-          videoPrediction: null,
-        });
-      }
-
-      if (isLiteMode) {
-        return NextResponse.json({
-          analysisData: {
-            title: analysis.f_title,
-            videoTitle: analysis.f_title,
-            videoId: analysis.f_video_id,
-            id: analysis.f_id,
-            channelId: analysis.f_channel_id,
-            channelName: analysis.f_channel_name || analysis.f_channel_id,
-            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
-            channelHandle: null,
-            subscriberCount: analysis.f_subscriber_count,
-            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
-            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
-            url: analysis.f_video_url,
-            topic: analysis.f_topic,
-            scores: {
-              accuracy: analysis.f_accuracy_score,
-              clickbait: analysis.f_clickbait_score,
-              trust: analysis.f_reliability_score,
-            },
-            officialCategoryId: analysis.f_official_category_id,
-            channelLanguage: analysis.f_channel_language || 'korean',
-            summary: analysis.f_summary,
-            summarySubtitle: analysis.f_summary,
-            thumbnailSpoiler,
-            processingStage: analysis.f_processing_stage || 'completed',
-          },
-          comments: [],
-          interaction: {
-            likeCount: 0,
-            dislikeCount: 0,
-            userInteraction: null,
-          },
-          userPredictionStats: null,
-          videoPrediction: null,
-        });
-      }
-
-      let recheckParentScores: { accuracy: number | null; clickbait: number | null; trust: number | null } | null = null;
-      const isRecheck = Boolean((analysis as any).f_is_recheck);
-      const parentAnalysisId = (analysis as any).f_recheck_parent_analysis_id as string | null;
-
-      if (isRecheck && parentAnalysisId) {
-        try {
-          const parentRes = await client.query(
-            `SELECT f_accuracy_score, f_clickbait_score, f_reliability_score
-             FROM t_analyses
-             WHERE f_id = $1
-             LIMIT 1`,
-            [parentAnalysisId]
-          );
-          if (parentRes.rows.length > 0) {
-            const p = parentRes.rows[0];
-            recheckParentScores = {
-              accuracy: p.f_accuracy_score !== null ? Number(p.f_accuracy_score) : null,
-              clickbait: p.f_clickbait_score !== null ? Number(p.f_clickbait_score) : null,
-              trust: p.f_reliability_score !== null ? Number(p.f_reliability_score) : null,
-            };
-          }
-        } catch (e) {
-          console.error('Error fetching recheck parent scores:', e);
-        }
-      }
-
-      // Fetch channel stats and ranking
+      // Fetch channel stats and ranking upfront so both lite and in-progress modes can use it
       let channelStats = {
         avgAccuracy: null as number | null,
         avgClickbait: null as number | null,
@@ -333,149 +224,129 @@ export async function GET(request: Request, { params }: { params: { id: string }
       } catch (statsError) {
         console.error('Error fetching channel stats:', statsError);
       }
+
+      const isInProgressStage =
+        analysis.f_processing_stage === 'pending' ||
+        analysis.f_processing_stage === 'speed_ready' ||
+        (!analysis.f_processing_stage && analysis.f_reliability_score === null);
+
+      if (isInProgressStage) {
+        return NextResponse.json({
+          analysisData: {
+            title: analysis.f_title,
+            videoTitle: analysis.f_title,
+            videoId: analysis.f_video_id,
+            id: analysis.f_id,
+            channelId: analysis.f_channel_id,
+            channelName: analysis.f_channel_name || analysis.f_channel_id,
+            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
+            channelHandle: null,
+            subscriberCount: analysis.f_subscriber_count,
+            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
+            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
+            url: analysis.f_video_url,
+            topic: analysis.f_topic,
+            scores: {
+              accuracy: null,
+              clickbait: null,
+              trust: null,
+            },
+            officialCategoryId: analysis.f_official_category_id,
+            channelLanguage: analysis.f_channel_language || 'korean',
+            channelStats: channelStats,
+            summary: analysis.f_summary,
+            summarySubtitle: analysis.f_summary,
+            thumbnailSpoiler,
+            processingStage: analysis.f_processing_stage || 'pending',
+          },
+          comments: [],
+          interaction: {
+            likeCount: 0,
+            dislikeCount: 0,
+            userInteraction: null,
+          },
+          userPredictionStats: null,
+          videoPrediction: null,
+        });
+      }
+
+      if (isLiteMode) {
+        return NextResponse.json({
+          analysisData: {
+            title: analysis.f_title,
+            videoTitle: analysis.f_title,
+            videoId: analysis.f_video_id,
+            id: analysis.f_id,
+            channelId: analysis.f_channel_id,
+            channelName: analysis.f_channel_name || analysis.f_channel_id,
+            channelImage: analysis.f_channel_thumbnail || '/images/channel-logo.png',
+            channelHandle: null,
+            subscriberCount: analysis.f_subscriber_count,
+            videoThumbnail: analysis.f_thumbnail_url || '/images/video-thumbnail.jpg',
+            date: new Date(analysis.f_created_at).toLocaleString('ko-KR'),
+            url: analysis.f_video_url,
+            topic: analysis.f_topic,
+            scores: {
+              accuracy: analysis.f_accuracy_score,
+              clickbait: analysis.f_clickbait_score,
+              trust: analysis.f_reliability_score,
+            },
+            officialCategoryId: analysis.f_official_category_id,
+            channelLanguage: analysis.f_channel_language || 'korean',
+            channelStats: channelStats,
+            summary: analysis.f_summary,
+            summarySubtitle: analysis.f_summary,
+            thumbnailSpoiler,
+            processingStage: analysis.f_processing_stage || 'completed',
+          },
+          comments: [],
+          interaction: {
+            likeCount: 0,
+            dislikeCount: 0,
+            userInteraction: null,
+          },
+          userPredictionStats: null,
+          videoPrediction: null,
+        });
+      }
+
+      let recheckParentScores: { accuracy: number | null; clickbait: number | null; trust: number | null } | null = null;
+      const isRecheck = Boolean((analysis as any).f_is_recheck);
+      const parentAnalysisId = (analysis as any).f_recheck_parent_analysis_id as string | null;
+
+      if (isRecheck && parentAnalysisId) {
+        try {
+          const parentRes = await client.query(
+            `SELECT f_accuracy_score, f_clickbait_score, f_reliability_score
+             FROM t_analyses
+             WHERE f_id = $1
+             LIMIT 1`,
+            [parentAnalysisId]
+          );
+          if (parentRes.rows.length > 0) {
+            const p = parentRes.rows[0];
+            recheckParentScores = {
+              accuracy: p.f_accuracy_score !== null ? Number(p.f_accuracy_score) : null,
+              clickbait: p.f_clickbait_score !== null ? Number(p.f_clickbait_score) : null,
+              trust: p.f_reliability_score !== null ? Number(p.f_reliability_score) : null,
+            };
+          }
+        } catch (e) {
+          console.error('Error fetching recheck parent scores:', e);
+        }
+      }
       
-      // Fetch comments
+      // Fetch comments (Social features removed)
       let formattedComments: any[] = [];
       let interaction = {
         likeCount: 0,
         dislikeCount: 0,
         userInteraction: null as 'like' | 'dislike' | null
       };
-      
-      const userIdFromQuery = searchParams.get('userId');
-      let userId = userIdFromQuery;
-      if (!userId) {
-        try {
-          const supabase = createClient();
-          const { data } = await supabase.auth.getUser();
-          userId = data?.user?.id ?? null;
-        } catch {
-        }
-      }
 
-      if (analysis.f_video_id) {
-        const commentsRes = await client.query(`
-          SELECT c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at,
-            COUNT(CASE WHEN ci.f_type = 'like' THEN 1 END)::int as like_count,
-            COUNT(CASE WHEN ci.f_type = 'dislike' THEN 1 END)::int as dislike_count
-          FROM t_comments c
-          LEFT JOIN t_comment_interactions ci ON ci.f_comment_id = c.f_id::text
-          WHERE c.f_analysis_id = $1
-          GROUP BY c.f_id, c.f_text, c.f_user_id, c.f_parent_id, c.f_created_at
-          ORDER BY c.f_created_at DESC
-        `, [id]);
-
-        const comments = commentsRes.rows;
-        const commentMap = new Map();
-
-        comments.forEach(c => {
-          const fallbackAuthor =
-            typeof c.f_user_id === 'string' && c.f_user_id.length > 0
-              ? `사용자-${c.f_user_id.slice(0, 6)}`
-              : '사용자';
-             const commentObj = {
-            id: c.f_id,
-            author: fallbackAuthor,
-            authorId: c.f_user_id,
-            authorEmail: null,
-            authorImage: null,
-            date: new Date(c.f_created_at).toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
-            time: new Date(c.f_created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }),
-            text: c.f_text,
-            likeCount: parseInt(c.like_count) || 0, 
-            dislikeCount: parseInt(c.dislike_count) || 0,
-            replies: [],
-            replyTo: null 
-          };
-          commentMap.set(c.f_id, commentObj);
-        });
-
-        comments.forEach(c => {
-           if (c.f_parent_id) {
-            const parent = commentMap.get(c.f_parent_id);
-            const child = commentMap.get(c.f_id);
-            if (parent && child) {
-               child.replyTo = parent.author; 
-               parent.replies.push(child);
-               parent.replies.sort((a: any, b: any) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime());
-            }
-          } else {
-            formattedComments.push(commentMap.get(c.f_id));
-          }
-        });
-      }
-
-      // Fetch interaction data using analysis ID
-      const analysisId = analysis.f_id ? String(analysis.f_id) : null;
-      if (analysisId) {
-        const likeCountRes = await client.query(
-          "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'like'",
-          [analysisId]
-        );
-        const dislikeCountRes = await client.query(
-          "SELECT COUNT(*) FROM t_interactions WHERE f_analysis_id = $1 AND f_type = 'dislike'",
-          [analysisId]
-        );
-        interaction.likeCount = parseInt(likeCountRes.rows[0].count, 10);
-        interaction.dislikeCount = parseInt(dislikeCountRes.rows[0].count, 10);
-
-        if (userId) {
-          const userInteractionRes = await client.query(
-            'SELECT f_type FROM t_interactions WHERE f_analysis_id = $1 AND f_user_id = $2',
-            [analysisId, userId]
-          );
-          if (userInteractionRes.rows.length > 0) {
-            interaction.userInteraction = userInteractionRes.rows[0].f_type;
-          }
-        }
-      }
-
-      // Fetch user's cumulative prediction stats + this video's prediction
+      // Prediction stats (Removed)
       let userPredictionStats = null;
       let videoPrediction = null;
-      if (userId) {
-        try {
-          const userStatsRes = await client.query(
-            `SELECT total_predictions, avg_gap, current_tier, current_tier_label, tier_emoji
-             FROM t_users WHERE f_id = $1`,
-            [userId]
-          );
-          if (userStatsRes.rows.length > 0) {
-            const u = userStatsRes.rows[0];
-            userPredictionStats = {
-              totalPredictions: Number(u.total_predictions) || 0,
-              avgGap: u.avg_gap !== null ? Number(u.avg_gap) : null,
-              currentTier: u.current_tier || null,
-              currentTierLabel: u.current_tier_label || null,
-              tierEmoji: u.tier_emoji || null,
-            };
-          }
-        } catch (e) {
-          console.error('Error fetching user prediction stats:', e);
-        }
-
-        // Fetch this video's prediction record from DB
-        try {
-          const vpRes = await client.query(
-            `SELECT predicted_reliability, actual_reliability, gap, tier, tier_label, tier_emoji
-             FROM t_prediction_quiz WHERE f_user_id = $1 AND analysis_id = $2`,
-            [userId, id]
-          );
-          if (vpRes.rows.length > 0) {
-            const vp = vpRes.rows[0];
-            videoPrediction = {
-              predictedReliability: Number(vp.predicted_reliability),
-              actualReliability: Number(vp.actual_reliability),
-              gap: Number(vp.gap),
-              tier: vp.tier,
-              tierLabel: vp.tier_label,
-              tierEmoji: vp.tier_emoji,
-            };
-          }
-        } catch (e) {
-          console.error('Error fetching video prediction:', e);
-        }
-      }
 
       const resultData = {
         analysisData: {

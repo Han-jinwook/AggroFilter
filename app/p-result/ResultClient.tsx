@@ -1208,16 +1208,20 @@ ${content}
                 <div className="flex gap-3">
                   <div className="text-center">
                     <div className="text-[10px] text-gray-500">정확성</div>
-                    <div className="text-sm font-bold text-purple-600">{analysisData.channelStats?.avgAccuracy !== null ? `${Math.round(analysisData.channelStats?.avgAccuracy)}%` : "-"}</div>
+                    <div className="text-sm font-bold text-purple-600">
+                      {typeof analysisData.channelStats?.avgAccuracy === 'number' ? `${Math.round(analysisData.channelStats.avgAccuracy)}%` : "-"}
+                    </div>
                   </div>
                   <div className="text-center">
                     <div className="text-[10px] text-gray-500">어그로</div>
-                    <div className="text-sm font-bold text-pink-500">{analysisData.channelStats?.avgClickbait !== null ? `${Math.round(analysisData.channelStats?.avgClickbait)}%` : "-"}</div>
+                    <div className="text-sm font-bold text-pink-500">
+                      {typeof analysisData.channelStats?.avgClickbait === 'number' ? `${Math.round(analysisData.channelStats.avgClickbait)}%` : "-"}
+                    </div>
                   </div>
                   <div className="text-center bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 scale-110 origin-right ml-1">
                     <div className="text-[10px] font-bold text-indigo-400">신뢰도</div>
                     <div className="text-base font-black text-indigo-700 leading-tight">
-                      {analysisData.channelStats?.avgReliability !== null ? `${Math.round(analysisData.channelStats?.avgReliability)}점` : "-"}
+                      {typeof analysisData.channelStats?.avgReliability === 'number' ? `${Math.round(analysisData.channelStats.avgReliability)}점` : "-"}
                     </div>
                   </div>
                 </div>
