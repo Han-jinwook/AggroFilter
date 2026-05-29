@@ -13,28 +13,9 @@ interface TScoreCardProps {
     before: { accuracy: number | null; clickbait: number | null; trust: number | null }
     after: { accuracy: number | null; clickbait: number | null; trust: number | null }
   }
-  prediction?: {
-    predictedReliability: number
-    gap: number
-    tier: string
-    tierLabel: string
-    tierEmoji: string
-    totalPredictions: number
-    avgGap: number
-    cumulativeTier?: string
-    cumulativeTierLabel?: string
-    cumulativeTierEmoji?: string
-  }
-  userPredictionStats?: {
-    totalPredictions: number
-    avgGap: number | null
-    currentTier: string | null
-    currentTierLabel: string | null
-    tierEmoji: string | null
-  } | null
 }
 
-export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta, prediction, userPredictionStats }: TScoreCardProps) {
+export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage, recheckDelta }: TScoreCardProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
 
   const accuracyText = typeof accuracy === "number" ? `${accuracy}%` : "-"
@@ -110,30 +91,6 @@ export function ScoreCard({ accuracy, clickbait, trust, topic, trafficLightImage
           </div>
 
 
-          {/* REFACTORED: 예측 등급 시스템 제거 예정 (주석 처리)
-          {prediction ? (
-            <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
-              <div className="flex items-center justify-center gap-1.5 text-sm flex-wrap">
-                <span className="font-medium text-gray-600">나의 신뢰도 촉은?</span>
-                <span className="text-lg font-bold text-purple-600">{prediction.predictedReliability}</span>
-                <span className="font-medium text-gray-600">AI와 오차</span>
-                <span className="text-lg font-bold text-orange-600">{prediction.gap}</span>
-                <span className="font-medium text-gray-600">로</span>
-                <span className="text-base font-bold text-yellow-600">{prediction.tierEmoji} {prediction.tierLabel}({prediction.tier}급)</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 bg-slate-50 rounded-lg py-1.5 px-2">
-                <span>◁</span>
-                <span>누적</span>
-                <span className="font-bold text-blue-600">{prediction.totalPredictions}개</span>
-                <span>영상 평균</span>
-                <span className="font-bold text-blue-600">{prediction.avgGap.toFixed(1)}</span>
-                <span>로</span>
-                <span className="font-bold text-gray-800">{prediction.cumulativeTierLabel || prediction.tierLabel}({prediction.cumulativeTier || prediction.tier}급)</span>
-                <span>▷</span>
-              </div>
-            </div>
-          ) : null}
-          */}
         </div>
       </div>
     </div>

@@ -9,13 +9,11 @@ import { HubAuthModal } from "@/src/services/merlin-hub-sdk/react"
 import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
-import { InteractionBar } from "@/app/p-result/c-result/interaction-bar"
 import { AnalysisGuide } from "@/app/p-result/c-result/analysis-guide"
 import { getCategoryName } from "@/lib/constants"
-import { calculateGap, calculateTier } from "@/lib/prediction-grading"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
 import { ShareModal } from "@/components/c-share-modal"
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, MoreVertical, ChevronLeft, Share2, Play, Pencil, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
 
 function extractVideoId(url: string): string {
   try {
@@ -51,26 +49,12 @@ export default function ResultClient() {
   const [showMore, setShowMore] = useState(true)
   const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>("summary")
   const [youthAge, setYouthAge] = useState("")
-  const [newComment, setNewComment] = useState("")
-  const [isCommentFocused, setIsCommentFocused] = useState(false)
-  const [comments, setComments] = useState<any[]>([])
-  const [liked, setLiked] = useState(false)
-  const [disliked, setDisliked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
-  const [dislikeCount, setDislikeCount] = useState(0)
-  const [showReplies, setShowReplies] = useState<{ [key: string]: boolean }>({})
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyText, setReplyText] = useState("")
-  const [editingComment, setEditingComment] = useState<string | null>(null)
-  const [editText, setEditText] = useState("")
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState("")
   const [userProfileImage, setUserProfileImage] = useState<string | null>(null)
   const [userNickname, setUserNickname] = useState<string>("")
-  const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
-  const [loginTrigger, setLoginTrigger] = useState<"like" | "comment" | null>(null)
   const [playerTime, setPlayerTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
   const captureRef = useRef<HTMLDivElement>(null);
@@ -81,12 +65,9 @@ export default function ResultClient() {
   const [showPhase2, setShowPhase2] = useState(false)
   const [showPhase3, setShowPhase3] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [predictionData, setPredictionData] = useState<any>(null)
-  const [userPredictionStats, setUserPredictionStats] = useState<any>(null)
   // [대기제로 3단계] 확장팩/URL 진입 시 썸네일 히어로
   const [pendingThumb, setPendingThumb] = useState<string | null>(null)
   const pendingStartedRef = useRef(false)
-  const hasSavedPrediction = useRef(false)
   const phase2TimerRef = useRef<number | null>(null)
   const phase3TimerRef = useRef<number | null>(null)
   const phase2ReadyRef = useRef(false)
@@ -122,7 +103,6 @@ export default function ResultClient() {
   }, [])
 
   useEffect(() => {
-    setPredictionData(null); // 이전 예측 데이터 초기화
     setIsRefining(false)
     setShowPhase2(false)
     setShowPhase3(false)
@@ -434,111 +414,12 @@ export default function ResultClient() {
               data = await fullRes.json()
               if (!isCancelled) {
                 setAnalysisData(data.analysisData)
-                setUserPredictionStats(data.userPredictionStats || null)
                 const anonAnalysisCount = typeof window !== 'undefined' ? parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) : 0;
                 if (isAnonymousUser() && anonAnalysisCount >= 1) {
                   import("@/src/services/merlin-hub-sdk/react").then(m => m.markFreeTrialCompleted())
                 }
               }
             }
-
-            /* REFACTORED: 예측 퀴즈 시스템 제거 예정 (주석 처리)
-            // Load prediction: sessionStorage (current session) or DB (past record)
-            let matched = false
-            try {
-              const storedPrediction = sessionStorage.getItem('prediction_quiz_v1')
-              if (storedPrediction) {
-                const parsed = JSON.parse(storedPrediction)
-                const videoUrl = data.analysisData?.url || ''
-                if (parsed.url && videoUrl && (parsed.url === videoUrl || extractVideoId(parsed.url) === extractVideoId(videoUrl))) {
-                  setPredictionData(parsed)
-                  matched = true
-                  // Save to DB if not already saved
-                  if (!hasSavedPrediction.current && !data.videoPrediction) {
-                    hasSavedPrediction.current = true
-                    const predUid = getUserId()
-                    const rawActualTrust = data.analysisData?.scores?.trust
-                    const hasActualTrust = typeof rawActualTrust === 'number' && Number.isFinite(rawActualTrust)
-                    const actualTrust = hasActualTrust ? rawActualTrust : NaN
-                    const canSubmitPrediction =
-                      predUid &&
-                      hasActualTrust &&
-                      parsed?.accuracy != null &&
-                      parsed?.clickbait != null
-
-                    if (canSubmitPrediction) {
-                      fetch('/api/prediction/submit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          analysisId: id,
-                          predictedAccuracy: parsed.accuracy,
-                          predictedClickbait: parsed.clickbait,
-                          actualReliability: actualTrust,
-                          userId: predUid,
-                        }),
-                      })
-                        .then(res => {
-                          if (res.ok) {
-                            // Re-fetch cumulative stats after successful save
-                            return fetch(`/api/prediction/stats?id=${encodeURIComponent(predUid)}`)
-                          }
-                          return null
-                        })
-                        .then(res => res?.ok ? res.json() : null)
-                        .then(stats => {
-                          if (stats) {
-                            setUserPredictionStats({
-                              totalPredictions: stats.totalPredictions || 0,
-                              avgGap: stats.avgGap ?? null,
-                              currentTier: stats.currentTier || null,
-                              currentTierLabel: stats.currentTierLabel || null,
-                              tierEmoji: stats.tierEmoji || null,
-                            })
-                          }
-                        })
-                        .catch(err => console.error('Failed to save prediction:', err))
-                    } else {
-                      console.warn('[prediction/submit] skipped: invalid payload', {
-                        hasUserId: Boolean(predUid),
-                        hasAccuracy: parsed?.accuracy != null,
-                        hasClickbait: parsed?.clickbait != null,
-                        hasActualReliability: hasActualTrust,
-                      })
-                    }
-                  }
-                }
-              }
-            } catch (e) {
-              console.error('Failed to load prediction data:', e)
-            }
-
-            // Fallback: use DB record for this video
-            if (!matched && data.videoPrediction) {
-              setPredictionData({
-                predictedReliability: data.videoPrediction.predictedReliability,
-                accuracy: 0,
-                clickbait: 0,
-              })
-            }
-            */
-          } else {
-            setUserPredictionStats(null)
-          }
-
-          setComments(data.comments || [])
-          setLikeCount(data.interaction?.likeCount || 0)
-          setDislikeCount(data.interaction?.dislikeCount || 0)
-          
-          if (data.interaction?.userInteraction === 'like') {
-              setLiked(true)
-              setDisliked(false)
-          } else if (data.interaction?.userInteraction === 'dislike') {
-              setLiked(false)
-              setDisliked(true)
-          } else {
-              setLiked(false)
-              setDisliked(false)
           }
 
           if (!hasCountedView.current) {
@@ -723,101 +604,6 @@ export default function ResultClient() {
     window.dispatchEvent(new CustomEvent("profileUpdated"))
 
     setShowLoginModal(false)
-
-    if (loginTrigger === "like") {
-      handleLikeClick()
-    } else if (loginTrigger === "comment") {
-      setIsCommentFocused(true)
-    }
-    setLoginTrigger(null)
-  }
-
-  const handleLikeClick = async () => {
-    if (!analysisData) return
-
-    const previousLiked = liked
-    const previousDisliked = disliked
-    const previousLikeCount = likeCount
-    const previousDislikeCount = dislikeCount
-
-    if (disliked) setDislikeCount(dislikeCount - 1)
-    setLiked(!liked)
-    setDisliked(false)
-    setLikeCount(liked ? likeCount - 1 : likeCount + 1)
-
-    try {
-        const response = await fetch('/api/interaction', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                analysisId: analysisData.id,
-                type: 'like',
-                email: getUserId()
-            })
-        })
-        const data = await response.json()
-        if (data.success) {
-            setLikeCount(data.likeCount)
-            setDislikeCount(data.dislikeCount)
-        } else {
-             setLiked(previousLiked)
-             setDisliked(previousDisliked)
-             setLikeCount(previousLikeCount)
-             setDislikeCount(previousDislikeCount)
-        }
-    } catch (e) {
-        console.error(e)
-        setLiked(previousLiked)
-        setDisliked(previousDisliked)
-        setLikeCount(previousLikeCount)
-        setDislikeCount(previousDislikeCount)
-    }
-  }
-
-  const handleDislikeClick = async () => {
-    if (!analysisData) return
-
-    const previousLiked = liked
-    const previousDisliked = disliked
-    const previousLikeCount = likeCount
-    const previousDislikeCount = dislikeCount
-
-    if (liked) setLikeCount(likeCount - 1)
-    setDisliked(!disliked)
-    setLiked(false)
-    setDislikeCount(disliked ? dislikeCount - 1 : dislikeCount + 1)
-
-    try {
-        const response = await fetch('/api/interaction', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                analysisId: analysisData.id,
-                type: 'dislike',
-                email: getUserId()
-            })
-        })
-        const data = await response.json()
-        if (data.success) {
-            setLikeCount(data.likeCount)
-            setDislikeCount(data.dislikeCount)
-        } else {
-             setLiked(previousLiked)
-             setDisliked(previousDisliked)
-             setLikeCount(previousLikeCount)
-             setDislikeCount(previousDislikeCount)
-        }
-    } catch (e) {
-        console.error(e)
-        setLiked(previousLiked)
-        setDisliked(previousDisliked)
-        setLikeCount(previousLikeCount)
-        setDislikeCount(previousDislikeCount)
-    }
-  }
-
-  const handleCommentFocus = () => {
-    requireLogin("comment", () => setIsCommentFocused(true))
   }
 
   const getTrafficLightImage = (score: number) => {
@@ -826,143 +612,7 @@ export default function ResultClient() {
     return "/images/traffic-light-red.png"
   }
 
-  const handleCommentSubmit = async () => {
-    if (!newComment.trim()) return
-    if (!analysisData) return
-    if (isAnonymousUser()) {
-      window.dispatchEvent(new CustomEvent('openLoginModal'))
-      return
-    }
-    const nickname = localStorage.getItem("userNickname") || '게스트'
-    const profileImg = localStorage.getItem("userProfileImage") || '🐾'
-    const tempId = `temp_${Date.now()}`
-    const optimisticComment = {
-      id: tempId,
-      text: newComment,
-      author: nickname,
-      profileImage: profileImg,
-      createdAt: new Date().toISOString(),
-      likeCount: 0,
-      dislikeCount: 0,
-      replies: [],
-    }
-    setComments([optimisticComment, ...comments]);
-    setNewComment("");
-    setIsCommentFocused(false);
-    try {
-      const response = await fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysisId: analysisData.id,
-          text: optimisticComment.text,
-          nickname,
-          userId: getUserId(),
-          profileImage: profileImg
-        })
-      });
-      if (!response.ok) throw new Error('Failed to post comment');
-      const data = await response.json();
-      if (data.success && data.comment) {
-        setComments(prev => prev.map(c => c.id === tempId ? data.comment : c));
-      }
-    } catch (error) {
-      console.error(error);
-      setComments(prev => prev.filter(c => c.id !== tempId));
-      alert('댓글 등록에 실패했습니다.');
-    }
-  }
 
-  const handleReplySubmit = async (commentId: string) => {
-    if (!replyText.trim()) return
-    if (!analysisData) return
-    if (isAnonymousUser()) {
-      window.dispatchEvent(new CustomEvent('openLoginModal'))
-      return
-    }
-    const nickname = localStorage.getItem("userNickname") || '게스트'
-    const profileImg = localStorage.getItem("userProfileImage") || '🐾'
-    try {
-      const response = await fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysisId: analysisData.id,
-          text: replyText,
-          nickname,
-          parentId: commentId,
-          userId: getUserId(),
-          profileImage: profileImg
-        })
-      });
-      if (!response.ok) throw new Error('Failed to post reply');
-      const data = await response.json();
-      if (data.success && data.comment) {
-        const updatedComments = comments.map((comment) => {
-          if (comment.id === commentId) {
-             return {
-               ...comment,
-               replies: [...(comment.replies || []), { ...data.comment, replyTo: comment.author }]
-             }
-          }
-          return comment
-        })
-        setComments(updatedComments)
-        setReplyText("")
-        setReplyingTo(null)
-        setShowReplies({ ...showReplies, [commentId]: true })
-      }
-    } catch (error) {
-      console.error(error);
-      alert('답글 등록에 실패했습니다.');
-    }
-  }
-
-  const handleCommentLike = async (commentId: string) => {
-    const uid = getUserId()
-    if (!uid) return
-    try {
-      const response = await fetch('/api/comments/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'like', userId: uid })
-      })
-      if (!response.ok) throw new Error('Failed to like comment')
-      const data = await response.json()
-      if (data.success) {
-        setComments(comments.map(c => 
-          c.id === commentId 
-            ? { ...c, likeCount: data.likeCount, dislikeCount: data.dislikeCount }
-            : c
-        ))
-      }
-    } catch (error) {
-      console.error('Comment like error:', error)
-    }
-  }
-
-  const handleCommentDislike = async (commentId: string) => {
-    const uid = getUserId()
-    if (!uid) return
-    try {
-      const response = await fetch('/api/comments/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId, type: 'dislike', userId: uid })
-      })
-      if (!response.ok) throw new Error('Failed to dislike comment')
-      const data = await response.json()
-      if (data.success) {
-        setComments(comments.map(c => 
-          c.id === commentId 
-            ? { ...c, likeCount: data.likeCount, dislikeCount: data.dislikeCount }
-            : c
-        ))
-      }
-    } catch (error) {
-      console.error('Comment dislike error:', error)
-    }
-  }
 
   const toggleTooltip = (tooltipId: string) => {
     setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)
@@ -1302,7 +952,7 @@ ${content}
           url={typeof window !== 'undefined' ? window.location.href : ''}
         />
       )}
-      <main className="pt-6 pb-24">
+      <main className="pt-6 pb-8">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
           <div className="bg-background pb-2 pt-2">
@@ -1464,23 +1114,6 @@ ${content}
                   trust: analysisData.scores.trust ?? null,
                 },
               } : undefined}
-              prediction={predictionData && analysisData.scores.trust ? (() => {
-                const gap = calculateGap(predictionData.predictedReliability, analysisData.scores.trust)
-                const tierInfo = calculateTier(gap)
-                return {
-                  predictedReliability: predictionData.predictedReliability,
-                  gap,
-                  tier: tierInfo.tier,
-                  tierLabel: tierInfo.label,
-                  tierEmoji: tierInfo.emoji,
-                  totalPredictions: userPredictionStats?.totalPredictions || 0,
-                  avgGap: userPredictionStats?.avgGap ?? gap,
-                  cumulativeTier: userPredictionStats?.currentTier || tierInfo.tier,
-                  cumulativeTierLabel: userPredictionStats?.currentTierLabel || tierInfo.label,
-                  cumulativeTierEmoji: userPredictionStats?.tierEmoji || tierInfo.emoji,
-                }
-              })() : undefined}
-              userPredictionStats={userPredictionStats}
             />
           <div className="relative rounded-3xl bg-blue-100 px-3 py-3">
             <div className="rounded-3xl border-4 border-blue-400 bg-white p-4">
@@ -1640,312 +1273,7 @@ ${content}
               </div>
             </div>
           </div>
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <p className="text-sm font-semibold text-blue-600">어그로필터 AI분석 결과</p>
-            <InteractionBar 
-              liked={liked} 
-              disliked={disliked} 
-              likeCount={likeCount} 
-              dislikeCount={dislikeCount} 
-              onLike={() => requireLogin("like", handleLikeClick)} 
-              onDislike={() => requireLogin("like", handleDislikeClick)} 
-            />
-          </div>
-          <div className="rounded-3xl border-4 border-gray-300 bg-white p-5">
-            <h3 className="mb-4 text-lg font-bold">{comments.length}개의 댓글</h3>
-            <div className="mb-6 flex items-start gap-3">
-              {userProfileImage && !userProfileImage.match(/^\p{Emoji}/u) ? (
-                <Image
-                  src={userProfileImage}
-                  alt="Profile"
-                  width={30}
-                  height={30}
-                  className="h-[30px] w-[30px] flex-shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-lg">
-                  {userProfileImage || (userNickname ? userNickname[0].toUpperCase() : 'U')}
-                </div>
-              )}
-              <div className="flex-1 flex items-end gap-2">
-                <textarea
-                  rows={1}
-                  value={newComment}
-                  onChange={(e) => {
-                    setNewComment(e.target.value)
-                    e.target.style.height = 'auto'
-                    e.target.style.height = e.target.scrollHeight + 'px'
-                  }}
-                  onFocus={handleCommentFocus}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      handleCommentSubmit()
-                    }
-                  }}
-                  placeholder="댓글 추가..."
-                  className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-2 text-sm focus:border-gray-900 focus:outline-none resize-none overflow-hidden"
-                />
-                {isCommentFocused && (
-                  <button
-                    onClick={handleCommentSubmit}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-semibold pb-2"
-                  >
-                    등록
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="space-y-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    {comment.authorImage && !comment.authorImage.match(/^\p{Emoji}/u) ? (
-                      <img
-                        src={comment.authorImage}
-                        alt={comment.author}
-                        className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-2xl">
-                        {comment.authorImage || comment.author[0]}
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-900">{comment.author}</span>
-                        <span className="text-xs text-gray-500">{comment.date} {comment.time}</span>
-                        {comment.authorId === getUserId() && (
-                          <>
-                            <button 
-                              onClick={() => {
-                                setEditingComment(comment.id)
-                                setEditText(comment.text)
-                              }}
-                              className="text-gray-500 hover:text-gray-700"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={async () => {
-                                if (confirm('정말 이 댓글을 삭제하시겠습니까?')) {
-                                  try {
-                                    const delUid = getUserId()
-                                    const response = await fetch('/api/comments/delete', {
-                                      method: 'DELETE',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ commentId: comment.id, userId: delUid })
-                                    })
-                                    if (response.ok) {
-                                      setComments(comments.filter(c => c.id !== comment.id))
-                                    } else {
-                                      alert('댓글 삭제에 실패했습니다.')
-                                    }
-                                  } catch (error) {
-                                    console.error('Delete error:', error)
-                                    alert('댓글 삭제에 실패했습니다.')
-                                  }
-                                }
-                              }}
-                              className="text-gray-500 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {editingComment === comment.id ? (
-                        <div className="mt-2 flex items-start gap-2">
-                          <input
-                            type="text"
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              setEditingComment(null)
-                              setEditText("")
-                            }}
-                            className="text-xs text-gray-600 hover:text-gray-800"
-                          >
-                            취소
-                          </button>
-                          <button
-                            onClick={() => {
-                              // TODO: Call update API
-                              setComments(comments.map(c => 
-                                c.id === comment.id ? { ...c, text: editText } : c
-                              ))
-                              setEditingComment(null)
-                              setEditText("")
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            저장
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.text}</p>
-                      )}
-                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                        <button 
-                          onClick={() => handleCommentLike(comment.id)}
-                          className="flex items-center gap-1 hover:text-blue-600"
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                          <span>{comment.likeCount || 0}</span>
-                        </button>
-                        <button 
-                          onClick={() => handleCommentDislike(comment.id)}
-                          className="flex items-center gap-1 hover:text-red-600"
-                        >
-                          <ThumbsDown className="h-3 w-3" />
-                          <span>{comment.dislikeCount || 0}</span>
-                        </button>
-                        <button 
-                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                          className="hover:text-blue-600"
-                        >
-                          답글
-                        </button>
-                      </div>
-                      {replyingTo === comment.id && (
-                        <div className="mt-3 flex items-start gap-2">
-                          <textarea
-                            rows={1}
-                            value={replyText}
-                            onChange={(e) => {
-                              setReplyText(e.target.value)
-                              e.target.style.height = 'auto'
-                              e.target.style.height = e.target.scrollHeight + 'px'
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault()
-                                handleReplySubmit(comment.id)
-                              }
-                            }}
-                            placeholder="답글 추가..."
-                            className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-sm focus:border-gray-900 focus:outline-none resize-none overflow-hidden"
-                          />
-                          <button
-                            onClick={() => handleReplySubmit(comment.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            등록
-                          </button>
-                        </div>
-                      )}
-                      {comment.replies && comment.replies.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {comment.replies.map((reply: any) => (
-                            <div key={reply.id} className="flex items-start gap-2 pl-4 border-l-2 border-gray-200">
-                              {reply.authorImage && !reply.authorImage.match(/^\p{Emoji}/u) ? (
-                                <img
-                                  src={reply.authorImage}
-                                  alt={reply.author}
-                                  className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 text-xl">
-                                  {reply.authorImage || reply.author[0]}
-                                </div>
-                              )}
-                              <div className="flex-1">
-                                <div className="mb-1 flex items-center gap-2">
-                                  <span className="text-xs font-semibold text-gray-900">{reply.author}</span>
-                                  <span className="text-xs text-gray-500">{reply.date} {reply.time}</span>
-                                  {reply.authorId === getUserId() && (
-                                    <>
-                                      <button 
-                                        onClick={() => {
-                                          setEditingComment(reply.id)
-                                          setEditText(reply.text)
-                                        }}
-                                        className="text-gray-500 hover:text-gray-700"
-                                      >
-                                        <Pencil className="h-3 w-3" />
-                                      </button>
-                                      <button 
-                                        onClick={async () => {
-                                          if (confirm('정말 이 답글을 삭제하시겠습니까?')) {
-                                            try {
-                                              const delReplyUid = getUserId()
-                                              const response = await fetch('/api/comments/delete', {
-                                                method: 'DELETE',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ commentId: reply.id, userId: delReplyUid })
-                                              })
-                                              if (response.ok) {
-                                                setComments(comments.map(c => ({
-                                                  ...c,
-                                                  replies: c.replies?.filter((r: any) => r.id !== reply.id)
-                                                })))
-                                              } else {
-                                                alert('답글 삭제에 실패했습니다.')
-                                              }
-                                            } catch (error) {
-                                              console.error('Delete error:', error)
-                                              alert('답글 삭제에 실패했습니다.')
-                                            }
-                                          }
-                                        }}
-                                        className="text-gray-500 hover:text-red-600"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                                {editingComment === reply.id ? (
-                                  <div className="mt-2 flex items-start gap-2">
-                                    <input
-                                      type="text"
-                                      value={editText}
-                                      onChange={(e) => setEditText(e.target.value)}
-                                      className="flex-1 border-b-2 border-gray-300 bg-transparent px-1 py-1 text-xs focus:border-gray-900 focus:outline-none"
-                                    />
-                                    <button
-                                      onClick={() => {
-                                        setEditingComment(null)
-                                        setEditText("")
-                                      }}
-                                      className="text-xs text-gray-600 hover:text-gray-800"
-                                    >
-                                      취소
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        // TODO: Call update API
-                                        setComments(comments.map(c => ({
-                                          ...c,
-                                          replies: c.replies?.map((r: any) => 
-                                            r.id === reply.id ? { ...r, text: editText } : r
-                                          )
-                                        })))
-                                        setEditingComment(null)
-                                        setEditText("")
-                                      }}
-                                      className="text-xs text-blue-600 hover:text-blue-800"
-                                    >
-                                      저장
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{reply.text}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
           </>
           )}
         </div>
