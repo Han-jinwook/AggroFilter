@@ -151,9 +151,9 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
   const options = useMemo(
     () => [
-      { credits: 1000, price: 1000, discount: 0, imgSrc: '/hub_assets/card_1000.jpg' },
+      { credits: 1000, price: 1000, discount: 0, imgSrc: '/hub_assets/card_1000.png' },
       { credits: 5000, price: 4750, discount: 5, imgSrc: '/hub_assets/card_5000.png' },
-      { credits: 10000, price: 9000, discount: 10, imgSrc: '/hub_assets/card_10000.jpg' },
+      { credits: 10000, price: 9000, discount: 10, imgSrc: '/hub_assets/card_10000.png' },
     ],
     []
   );
