@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/c-app-header"
-import { HubAuthModal, HubRegisterNudge, useHub } from "@/src/services/merlin-hub-sdk/react"
+import { HubRegisterNudge, useHub } from "@/src/services/merlin-hub-sdk/react"
 import { HeroSection } from "@/app/c-home/hero-section"
 import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
@@ -21,7 +21,6 @@ export default function MainPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [autoStarted, setAutoStarted] = useState(false)
 
   // [대기제로 1단계] 확장팩 진입 시 홈 UI(찌꺼기) 즉시 숨김
@@ -38,7 +37,7 @@ export default function MainPage() {
     if (ref) {
       localStorage.setItem('pendingReferralCode', ref)
       console.log('Referral code captured from URL:', ref)
-      setShowLoginModal(true)
+      window.dispatchEvent(new CustomEvent('openLoginModal'))
     }
   }, [])
 
@@ -293,7 +292,7 @@ export default function MainPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+      <AppHeader />
 
       <main className="flex-1 py-8">
         {isExtensionEntry ? (
@@ -323,17 +322,6 @@ export default function MainPage() {
         )}
       </main>
 
-      <HubAuthModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-        onSuccess={(email) => {
-          handleLoginSuccess(email, '')
-          setShowLoginModal(false)
-        }} 
-        appName="어그로필터" 
-        appLogoUrl="/images/character-logo-ko.png" 
-        subtitleActionText="분석에" 
-      />
     </div>
   )
 }

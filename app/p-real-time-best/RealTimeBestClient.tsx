@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/c-app-header'
 import { Search, X, ChevronDown, Filter, TrendingUp } from 'lucide-react'
 import Image from 'next/image'
-import { HubAuthModal } from '@/src/services/merlin-hub-sdk/react'
 import Link from 'next/link'
 
 interface TRealtimeVideo {
@@ -188,7 +187,6 @@ export default function RealTimeBestClient() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null)
 
   const longPressTimerRef = useRef<NodeJS.Timeout>()
@@ -198,12 +196,6 @@ export default function RealTimeBestClient() {
 
   useEffect(() => {
     setIsMounted(true)
-    const handleOpenLoginModal = () => setShowLoginModal(true)
-    window.addEventListener('openLoginModal', handleOpenLoginModal)
-    
-    return () => {
-      window.removeEventListener('openLoginModal', handleOpenLoginModal)
-    }
   }, [])
 
   useEffect(() => {
@@ -294,24 +286,7 @@ export default function RealTimeBestClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50">
-      <AppHeader onLoginClick={() => setShowLoginModal(true)} />
-
-      <HubAuthModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onSuccess={(email?: string) => {
-          if (email) {
-            const nickname = email.split('@')[0]
-            localStorage.setItem('userEmail', email)
-            localStorage.setItem('userNickname', nickname)
-            window.dispatchEvent(new CustomEvent('profileUpdated'))
-          }
-          setShowLoginModal(false)
-        }}
-        appName="어그로필터"
-        appLogoUrl="/images/character-logo-ko.png"
-        subtitleActionText="분석에"
-      />
+      <AppHeader />
 
       <main className="container mx-auto max-w-[var(--app-max-width)] px-4 py-3">
         {/* 원데이 핫이슈 섹션 (마이페이지와 동일하게 최상단 배치) */}

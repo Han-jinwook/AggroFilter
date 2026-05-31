@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/c-app-header'
-import { HubAuthModal } from '@/src/services/merlin-hub-sdk/react'
 import { isAnonymousUser } from '@/lib/anon'
 import { Settings, Bell, TrendingUp, Award, AlertTriangle, CheckCheck } from 'lucide-react'
 
@@ -40,7 +39,6 @@ export default function Page() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<TNotification[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showLoginModal, setShowLoginModal] = useState(false)
 
   const isAnon = typeof window !== 'undefined' ? isAnonymousUser() : true
   // REFACTORED_BY_MERLIN_HUB: userId(UUID) 키
@@ -48,7 +46,7 @@ export default function Page() {
 
   // 익명 사용자가 알림 페이지 접근 시 로그인 모달 표시
   useEffect(() => {
-    if (isAnon) setShowLoginModal(true)
+    if (isAnon) window.dispatchEvent(new CustomEvent('openLoginModal'))
   }, [isAnon])
 
   const fetchNotifications = useCallback(async () => {
@@ -92,14 +90,7 @@ export default function Page() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  // REFACTORED_BY_MERLIN_HUB: SDK가 merlin_user_id 자동 저장
-  const handleLoginSuccess = async (loginEmail: string, _userId: string) => {
-    localStorage.setItem('userEmail', loginEmail)
-    localStorage.setItem('userNickname', loginEmail.split('@')[0])
-    window.dispatchEvent(new CustomEvent('profileUpdated'))
-    setShowLoginModal(false)
-    window.location.reload()
-  }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,14 +175,6 @@ export default function Page() {
         )}
       </main>
 
-      <HubAuthModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-        onSuccess={handleLoginSuccess} 
-        appName="어그로필터" 
-        appLogoUrl="/images/character-logo-ko.png" 
-        subtitleActionText="분석에" 
-      />
     </div>
   )
 }

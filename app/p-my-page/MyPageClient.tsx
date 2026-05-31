@@ -6,7 +6,6 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, TrendingUp, AlertTriangle, Star, Search, X, Copy, Gift, Check } from "lucide-react"
 import { AppHeader } from "@/components/c-app-header"
-import { HubAuthModal } from "@/src/services/merlin-hub-sdk/react"
 import { getUserId } from "@/lib/anon"
 
 interface TAnalysisVideo {
@@ -119,7 +118,6 @@ export default function MyPageClient() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [guideCount, setGuideCount] = useState(0)
   const [isManageMode, setIsManageMode] = useState(false)
@@ -343,29 +341,6 @@ export default function MyPageClient() {
     }
   }, [activeTab])
 
-  const handleLoginSuccess = async (email: string, userId: string) => {
-    localStorage.setItem("userEmail", email)
-    if (userId) {
-      localStorage.setItem("userId", userId)
-      localStorage.setItem("merlin_user_id", userId)
-      localStorage.setItem("merlin_family_uid", userId)
-    }
-
-    // LoginModal에서 이미 저장했을 수 있으므로 확인 후 폴백
-    const existingNickname = localStorage.getItem("userNickname")
-    if (!existingNickname || existingNickname === email.split("@")[0]) {
-       const nickname = email.split("@")[0]
-       localStorage.setItem("userNickname", nickname)
-    }
-    
-    // 세션 동기화를 강제 실행하기 위해 이벤트를 발생시킴
-    window.dispatchEvent(new CustomEvent("profileUpdated"))
-    setShowLoginModal(false)
-    
-    // 전체 페이지 데이터 재로딩
-    fetchVideos()
-    fetchChannels()
-  }
 
   const handleCloseGuide = () => {
     const newCount = guideCount + 1
@@ -479,7 +454,7 @@ export default function MyPageClient() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
-      <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+      <AppHeader />
 
       <main className="mx-auto max-w-[var(--app-max-width)] px-2 sm:px-4 py-4 sm:py-8 md:px-6">
         {/* Invitation & Referral Section 삭제됨 (우측 사이드윙 HubShareSquare로 통합) */}
@@ -1045,14 +1020,6 @@ export default function MyPageClient() {
         </div>
       </main>
 
-      <HubAuthModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-        onSuccess={handleLoginSuccess} 
-        appName="어그로필터" 
-        appLogoUrl="/images/character-logo-ko.png" 
-        subtitleActionText="분석에" 
-      />
     </div>
   )
 }

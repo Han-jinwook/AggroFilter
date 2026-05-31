@@ -5,7 +5,6 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/c-button"
 import { AppHeader, checkLoginStatus } from "@/components/c-app-header"
-import { HubAuthModal } from "@/src/services/merlin-hub-sdk/react"
 import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
@@ -53,7 +52,6 @@ export default function ResultClient() {
   const [currentUser, setCurrentUser] = useState("")
   const [userProfileImage, setUserProfileImage] = useState<string | null>(null)
   const [userNickname, setUserNickname] = useState<string>("")
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [playerTime, setPlayerTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
@@ -545,15 +543,7 @@ export default function ResultClient() {
     }
   }, [])
 
-  useEffect(() => {
-    const handleOpenLoginModal = () => {
-      setShowLoginModal(true)
-    }
-    window.addEventListener("openLoginModal", handleOpenLoginModal)
-    return () => {
-      window.removeEventListener("openLoginModal", handleOpenLoginModal)
-    }
-  }, [])
+
 
   const requireLogin = (action: "like" | "comment", callback: () => void) => {
     if (isAnonymousUser()) {
@@ -564,47 +554,7 @@ export default function ResultClient() {
     return true
   }
 
-  const handleLoginSuccess = async (email: string, userId: string) => {
-    localStorage.setItem("userEmail", email)
-    if (userId) localStorage.setItem("userId", userId)
 
-    // DB에서 프로필 정보 fetch (source of truth)
-    try {
-      const res = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data?.user) {
-          const dbNickname = data.user.nickname || email.split("@")[0]
-          const dbImage = data.user.image || ""
-          localStorage.setItem("userNickname", dbNickname)
-          localStorage.setItem("userProfileImage", dbImage)
-          setUserNickname(dbNickname)
-          setUserProfileImage(dbImage)
-        } else {
-          const nickname = email.split("@")[0]
-          localStorage.setItem("userNickname", nickname)
-          localStorage.setItem("userProfileImage", "")
-          setUserNickname(nickname)
-          setUserProfileImage("")
-          await fetch('/api/user/profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, nickname, profileImage: null })
-          })
-        }
-      }
-    } catch (error) {
-      const nickname = email.split("@")[0]
-      localStorage.setItem("userNickname", nickname)
-      localStorage.setItem("userProfileImage", "")
-      setUserNickname(nickname)
-      setUserProfileImage("")
-    }
-
-    window.dispatchEvent(new CustomEvent("profileUpdated"))
-
-    setShowLoginModal(false)
-  }
 
   const getTrafficLightImage = (score: number) => {
     if (score >= 70) return "/images/traffic-light-green.png"
@@ -849,7 +799,7 @@ ${content}
     if (pendingThumb) {
       return (
         <div className="flex min-h-screen flex-col bg-background">
-          <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+          <AppHeader />
           <main className="flex-1 py-4">
             <div className="mx-auto max-w-[var(--app-max-width)] space-y-3 px-4">
               <div className="hero-fade-up hero-scan-wrap border border-slate-900/40 shadow-2xl">
@@ -871,14 +821,6 @@ ${content}
               <AnalysisGuide />
             </div>
           </main>
-          <HubAuthModal 
-            isOpen={showLoginModal} 
-            onClose={() => setShowLoginModal(false)} 
-            onSuccess={handleLoginSuccess} 
-            appName="어그로필터" 
-            appLogoUrl="/images/character-logo-ko.png" 
-            subtitleActionText="분석에" 
-          />
         </div>
       )
     }
@@ -895,7 +837,7 @@ ${content}
   if (error || !analysisData) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <AppHeader onLoginClick={() => setShowLoginModal(true)} />
+        <AppHeader />
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
           <div className="mb-6 rounded-full bg-red-50 p-6">
             <span className="text-5xl">⚠️</span>
@@ -933,15 +875,7 @@ ${content}
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AppHeader onLoginClick={() => setShowLoginModal(true)} />
-      <HubAuthModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-        onSuccess={handleLoginSuccess} 
-        appName="어그로필터" 
-        appLogoUrl="/images/character-logo-ko.png" 
-        subtitleActionText="분석에" 
-      />
+      <AppHeader />
 
       {analysisData && (
         <ShareModal
