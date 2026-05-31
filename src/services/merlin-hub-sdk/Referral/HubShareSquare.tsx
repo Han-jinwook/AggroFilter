@@ -111,7 +111,7 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
   }
 
   return (
-    <div className={`w-full bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 rounded-2xl p-5 text-white relative overflow-hidden shadow-lg ${className}`}>
+    <div className={`w-full max-w-[320px] mx-auto bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 rounded-2xl p-5 text-white relative overflow-hidden shadow-lg ${className}`}>
       {/* 3D 느낌의 꾸밈 요소 */}
       <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 blur-xl"></div>
       <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-indigo-900/20 blur-xl"></div>
