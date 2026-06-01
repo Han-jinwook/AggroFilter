@@ -288,7 +288,7 @@ export default function RealTimeBestClient() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-purple-50">
       <AppHeader />
 
-      <main className="container mx-auto max-w-[var(--app-max-width)] px-4 py-3">
+      <main className="container mx-auto max-w-[var(--app-max-width)] px-4 pt-4 pb-3">
         {/* 원데이 핫이슈 섹션 (마이페이지와 동일하게 최상단 배치) */}
         <section className="mb-3">
           <div className="flex items-end justify-between mb-2">

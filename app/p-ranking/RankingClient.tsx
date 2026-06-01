@@ -360,7 +360,7 @@ export default function RankingClient() {
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
 
-      <main className="py-6 pt-6">
+      <main className="pt-4 pb-6">
         <div className="mx-auto max-w-[var(--app-max-width)] px-4">
             <div className="relative rounded-3xl bg-blue-100 px-4 py-3">
             <div className="mb-2 flex items-center gap-2">

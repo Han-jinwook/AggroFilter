@@ -415,7 +415,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader />
-      <main className="w-full px-3 sm:px-4 py-4 sm:py-6 md:px-8">
+      <main className="w-full px-4 pt-4 pb-4 sm:pb-6">
         {/* Tab Navigation */}
         <div className="mb-4 flex gap-2 p-1 bg-white rounded-2xl border border-gray-200 shadow-sm">
           <button

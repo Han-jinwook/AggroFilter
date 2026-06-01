@@ -332,7 +332,7 @@ export default function PlazaPage() {
     <div className="min-h-screen bg-[#F8F9FC]">
       <AppHeader onLoginClick={() => {}} />
 
-      <main className="container mx-auto max-w-[var(--app-max-width)] px-3 sm:px-4 py-4 sm:py-6 md:px-6">
+      <main className="container mx-auto max-w-[var(--app-max-width)] px-4 pt-4 pb-4 sm:pb-6">
         {/* 1. 탭에 따라 변경되는 상단 섹션 */}
         {activeTab === 'video' ? (
           <div className="mb-3 sm:mb-4 rounded-2xl sm:rounded-[2rem] bg-white p-3 sm:p-4 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.12)] border border-slate-100 relative overflow-hidden">

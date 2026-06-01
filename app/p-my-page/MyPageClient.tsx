@@ -456,7 +456,7 @@ export default function MyPageClient() {
     <div className="min-h-screen bg-[#F8F9FC]">
       <AppHeader />
 
-      <main className="mx-auto max-w-[var(--app-max-width)] px-2 sm:px-4 py-4 sm:py-8 md:px-6">
+      <main className="mx-auto max-w-[var(--app-max-width)] px-4 pt-4 pb-4 sm:pb-8">
         {/* Invitation & Referral Section 삭제됨 (우측 사이드윙 HubShareSquare로 통합) */}
 
         {/* My Trend Insights Section */}

@@ -21,7 +21,7 @@ export default function ExtensionGuidePage() {
   return (
     <div className="min-h-screen bg-slate-50/50">
       <AppHeader />
-      <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 pt-6 pb-12">
+      <main className="mx-auto w-full max-w-[var(--app-max-width)] px-4 pt-4 pb-12">
         <div className="space-y-8">
           {/* 상단 네비게이션 */}
           <div className="flex items-center justify-start">

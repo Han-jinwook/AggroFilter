@@ -294,7 +294,7 @@ export default function MainPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 pt-4 pb-8">
         {isExtensionEntry ? (
           <div className="mx-auto max-w-[var(--app-max-width)] px-4" />
         ) : (

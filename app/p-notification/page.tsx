@@ -96,7 +96,7 @@ export default function Page() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-6 max-w-[var(--app-max-width)]">
+      <main className="container mx-auto px-4 pt-4 pb-6 max-w-[var(--app-max-width)]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">알림</h1>

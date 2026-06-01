@@ -886,7 +886,7 @@ ${content}
           url={typeof window !== 'undefined' ? window.location.href : ''}
         />
       )}
-      <main className="pt-6 pb-8">
+      <main className="pt-4 pb-8">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
           <div className="bg-background pb-2 pt-2">
