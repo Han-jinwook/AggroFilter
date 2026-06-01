@@ -41,29 +41,29 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
           {history.map(item => {
             const emailId = item.inviteeEmail ? item.inviteeEmail.split('@')[0] : '';
             return (
-              <li key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div>
-                  <p className="font-semibold text-gray-800">
+              <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-800 break-all">
                     {item.inviteeNickname}
                     {emailId && (
                       <span className="text-sm font-normal text-gray-500 ml-1">({emailId})</span>
                     )}
                     <span className="ml-1">님</span>
                   </p>
-                  <p className="text-xs text-gray-500">{item.joinedAt} 가입</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{item.joinedAt} 가입</p>
                 </div>
-                <div>
-                {item.status === 'REWARDED' ? (
-                  <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                    지급 완료
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded-full">
-                    대기 중 (조건 미달성)
-                  </span>
-                )}
-              </div>
-            </li>
+                <div className="flex-shrink-0 pt-0.5">
+                  {item.status === 'REWARDED' ? (
+                    <span className="inline-block px-2.5 py-1 bg-green-100 text-green-700 text-[11px] font-black rounded-full whitespace-nowrap">
+                      지급 완료
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2.5 py-1 bg-gray-200 text-gray-600 text-[11px] font-black rounded-full whitespace-nowrap">
+                      대기 중 (조건 미달성)
+                    </span>
+                  )}
+                </div>
+              </li>
             );
           })}
         </ul>
