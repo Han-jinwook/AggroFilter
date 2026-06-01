@@ -41,27 +41,29 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
           {history.map(item => {
             const emailId = item.inviteeEmail ? item.inviteeEmail.split('@')[0] : '';
             return (
-              <li key={item.id} className="flex flex-col gap-2 p-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-800 break-all leading-normal">
-                    {item.inviteeNickname}
-                    {emailId && (
-                      <span className="text-sm font-normal text-gray-500 ml-1">({emailId})</span>
-                    )}
-                    <span className="ml-1">님</span>
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">{item.joinedAt} 가입</p>
-                </div>
-                <div className="mt-1">
-                  {item.status === 'REWARDED' ? (
-                    <span className="inline-flex px-2.5 py-1 bg-green-100 text-green-700 text-[11px] font-black rounded-full whitespace-nowrap">
-                      지급 완료
-                    </span>
-                  ) : (
-                    <span className="inline-flex px-2.5 py-1 bg-gray-200 text-gray-600 text-[11px] font-black rounded-full whitespace-nowrap">
-                      대기 중 (조건 미달성)
-                    </span>
+              <li key={item.id} className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors flex flex-col justify-center">
+                {/* 1st Row: User Name & Email */}
+                <p className="font-semibold text-gray-800 break-all leading-snug">
+                  {item.inviteeNickname}
+                  {emailId && (
+                    <span className="text-sm font-normal text-gray-500 ml-1">({emailId})</span>
                   )}
+                  <span className="ml-1">님</span>
+                </p>
+                {/* 2nd Row: Joined Date (Left) & Reward Status Badge (Right) */}
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-xs text-gray-500">{item.joinedAt} 가입</span>
+                  <div className="flex-shrink-0">
+                    {item.status === 'REWARDED' ? (
+                      <span className="inline-flex px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-black rounded-full whitespace-nowrap">
+                        지급 완료
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] font-black rounded-full whitespace-nowrap">
+                        대기 중 (조건 미달성)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             );
