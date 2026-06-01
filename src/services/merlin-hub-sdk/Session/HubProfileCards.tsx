@@ -160,9 +160,9 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
       </div>
 
       <div className="space-y-6">
-        {/* 프로필 이미지 */}
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        {/* 프로필 이미지 및 닉네임 */}
+        <div className="flex items-center gap-6">
+          <div className="relative flex-shrink-0">
             <HubAvatar 
               isLoggedIn={isLoggedIn}
               avatarUrl={getDisplayImage()}
@@ -182,50 +182,9 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
               </label>
             )}
           </div>
-          <div>
-            <p className="text-sm font-bold text-slate-700">프로필 사진</p>
-            {isEditing && (
-              <p className="text-xs font-medium text-slate-500 mt-1">
-                클릭하여 이미지 변경
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* 이메일 & 닉네임 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* 이메일 */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-bold text-slate-500 mb-2">
-              <Mail className="h-4 w-4" />
-              이메일
-            </label>
-            {!isLoggedIn ? (
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                className="w-full rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-colors cursor-pointer overflow-hidden group h-[46px]"
-              >
-                <div className="flex items-center gap-3 px-4 h-full">
-                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600 group-hover:scale-110 transition-transform">
-                    <Mail className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="text-left flex-1 flex items-center justify-between">
-                    <p className="text-sm font-bold text-blue-800">이메일 등록/로그인 👋</p>
-                  </div>
-                </div>
-              </button>
-            ) : (
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm font-medium h-[46px]"
-              />
-            )}
-          </div>
-
+          
           {/* 닉네임 */}
-          <div>
+          <div className="flex-1">
             <label className="flex items-center gap-2 text-sm font-bold text-slate-500 mb-2">
               <User className="h-4 w-4" />
               닉네임
@@ -242,6 +201,36 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
               }`}
             />
           </div>
+        </div>
+
+        {/* 이메일 */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-bold text-slate-500 mb-2">
+            <Mail className="h-4 w-4" />
+            이메일
+          </label>
+          {!isLoggedIn ? (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+              className="w-full rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-colors cursor-pointer overflow-hidden group h-[46px]"
+            >
+              <div className="flex items-center gap-3 px-4 h-full">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600 group-hover:scale-110 transition-transform">
+                  <Mail className="h-3.5 w-3.5" />
+                </div>
+                <div className="text-left flex-1 flex items-center justify-between">
+                  <p className="text-sm font-bold text-blue-800">이메일 등록/로그인 👋</p>
+                </div>
+              </div>
+            </button>
+          ) : (
+            <input
+              type="email"
+              value={email}
+              disabled
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm font-medium h-[46px]"
+            />
+          )}
         </div>
 
         {/* 편집 모드 버튼들 */}
