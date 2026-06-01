@@ -34,8 +34,11 @@ export function SideWingAds() {
   return (
     <>
       <div
-        className="fixed top-28 z-40 hidden min-[1120px]:flex flex-col gap-4 w-[var(--app-wing-width)]"
-        style={{ left: 'calc(50% + (var(--app-max-width) * 0.5 + var(--app-wing-gutter)))' }}
+        className="fixed z-40 hidden min-[1120px]:flex flex-col gap-4 w-[var(--app-wing-width)]"
+        style={{ 
+          left: 'calc(50% + (var(--app-max-width) * 0.5 + var(--app-wing-gutter)))',
+          top: 'calc(var(--app-header-height, 80px) + 16px)'
+        }}
         aria-label="우측 사이드 윙"
       >
         {/* 공유 스퀘어 (광고 유무 상관없이 항상 노출) */}

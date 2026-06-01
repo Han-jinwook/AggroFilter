@@ -72,7 +72,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8 max-w-[var(--app-max-width)]">
+      <main className="container mx-auto px-4 pt-4 pb-8 max-w-[var(--app-max-width)]">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* 왼쪽: 초대 실적 (로그인 유저만 노출) */}

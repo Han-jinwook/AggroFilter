@@ -48,6 +48,7 @@
     --ring: hsl(222.2 84% 4.9%);
     --radius: 0.5rem;
     --app-max-width: 800px;
+    --app-header-height: 80px;
     --app-wing-width: 160px;
     --app-wing-gutter: 6px;
   }
