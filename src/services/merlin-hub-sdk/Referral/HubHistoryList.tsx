@@ -1,3 +1,7 @@
+/**
+ * Version: v1.1.0
+ * Last Updated: 2026-06-02
+ */
 import React from 'react';
 
 interface HistoryItem {
@@ -29,7 +33,7 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
 
   return (
     <div className={`w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 ${className}`}>
-      <h3 className="text-lg font-bold text-gray-900 mb-4">초대 실적 현황</h3>
+      <h3 className="text-lg font-bold text-gray-900 mb-4">앱 초대 List</h3>
       
       {history.length === 0 ? (
         <div className="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl">
