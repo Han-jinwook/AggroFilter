@@ -295,6 +295,33 @@ export class MerlinHubClient {
     return { success: true };
   }
 
+  async getNotifications(page?: number, limit?: number) {
+    const query = new URLSearchParams();
+    if (page) query.append('page', String(page));
+    if (limit) query.append('limit', String(limit));
+    const res = await hubFetch<{ success: boolean; notifications: any[] }>(`/api/notification/list?${query.toString()}`);
+    if (res.ok && res.data.success) {
+      return res.data.notifications;
+    }
+    return [];
+  }
+
+  async readNotifications(ids: string[]) {
+    const res = await hubFetch<{ success: boolean }>(`/api/notification/list`, {
+      method: 'PUT',
+      body: JSON.stringify({ ids })
+    });
+    return res.ok && res.data.success;
+  }
+
+  async getUnreadNotificationCount() {
+    const res = await hubFetch<{ success: boolean; unreadCount: number }>('/api/notification/unread-count');
+    if (res.ok && res.data.success) {
+      return res.data.unreadCount;
+    }
+    return 0;
+  }
+
   async updateProfile(params: any) {
     const { updateProfile } = await import('../Auth/auth');
     return updateProfile(params);

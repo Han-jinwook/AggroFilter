@@ -10,13 +10,15 @@ import {
   HubLogoutCard,
   HubHistoryList, 
   useHubReferral,
-  useHub
+  useHub,
+  useHubNotifier
 } from '@/src/services/merlin-hub-sdk/react'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { isLoggedIn, user } = useHub()
+  const { isLoggedIn, user, refreshSession } = useHub()
   const { getReferralHistory } = useHubReferral()
+  const { updateSettings } = useHubNotifier()
   
   const [referralHistory, setReferralHistory] = useState<any[]>([])
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
@@ -27,9 +29,6 @@ export default function SettingsPage() {
   useEffect(() => {
     // 알림 설정 및 초대 실적은 로그인한 사용자에게만 로드
     if (isLoggedIn && user) {
-      const uid = getUserId()
-      if (!uid) return
-
       // 1. 초대 실적 목록 조회
       setIsHistoryLoading(true)
       getReferralHistory()
@@ -39,34 +38,31 @@ export default function SettingsPage() {
         .catch(err => console.error('Failed to load referrals:', err))
         .finally(() => setIsHistoryLoading(false))
 
-      // 2. 단일 스마트 알림 설정 조회
-      fetch(`/api/subscription/notifications?id=${encodeURIComponent(uid)}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            setSmartNotification(data.f_smart_notification ?? true)
-          }
-        })
-        .catch(() => {})
+      // 2. 단일 스마트 알림 설정 조회 (허브 user 세션에서 꺼내옴)
+      const settings = user.notification_settings || {}
+      setSmartNotification(settings.smart_notification !== false)
     } else {
       // 로그아웃 상태면 리스트 초기화
       setReferralHistory([])
     }
   }, [isLoggedIn, user])
 
-  const handleToggleSmartNotification = (newValue: boolean) => {
-    const uid = getUserId()
-    if (!uid) return
-
+  const handleToggleSmartNotification = async (newValue: boolean) => {
     setSmartNotification(newValue)
-
-    fetch('/api/subscription/notifications', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: uid, enabled: newValue })
-    }).catch(() => {
+    try {
+      const success = await updateSettings({
+        email: newValue,
+        smart_notification: newValue
+      } as any)
+      if (success) {
+        // 허브 프로필 동기화
+        refreshSession()
+      } else {
+        setSmartNotification(!newValue)
+      }
+    } catch {
       setSmartNotification(!newValue)
-    })
+    }
   }
 
   return (
