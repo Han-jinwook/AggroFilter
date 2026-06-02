@@ -290,9 +290,29 @@ export class MerlinHubClient {
     return requestKcpPayment(params);
   }
 
-  async sendNotification(params: any) {
-    console.log('[MerlinHubClient] Notification requested:', params);
-    return { success: true };
+  async sendNotification(params: {
+    userId: string;
+    title: string;
+    content: string;
+    link?: string;
+    channels?: string[];
+  }) {
+    const config = getConfig();
+    const res = await hubFetch<{ success: boolean; push?: boolean; email?: boolean }>('/api/notification/send', {
+      method: 'POST',
+      headers: {
+        'x-app-secret': config.clientSecret
+      },
+      body: JSON.stringify({
+        userId: params.userId,
+        app_id: config.appId,
+        title: params.title,
+        content: params.content,
+        link: params.link,
+        channels: params.channels || ['push']
+      })
+    });
+    return res.ok && res.data ? res.data : { success: false };
   }
 
   async getNotifications(page?: number, limit?: number) {
