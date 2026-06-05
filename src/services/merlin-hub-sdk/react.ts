@@ -36,7 +36,6 @@ export { HubRegisterNudge } from './UI/HubRegisterNudge';
 export { HubPaymentTrigger } from './Wallet/HubPaymentTrigger';
 export { HubPurchaseWidget } from './Wallet/HubPurchaseWidget';
 export { HubNotifier, showToast } from './Notification/HubNotifier';
-export { HubNotificationDropdown } from './Notification/HubNotificationDropdown';
 export { HubReferralWidget } from './Referral/HubReferralWidget';
 export { HubHistoryList } from './Referral/HubHistoryList';
 export { HubShareButton } from './Referral/HubShareButton';

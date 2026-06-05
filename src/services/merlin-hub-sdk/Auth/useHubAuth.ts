@@ -1,6 +1,6 @@
 /**
- * Version: v1.1.0
- * Last Updated: 2026-05-16
+ * Version: v1.1.1
+ * Last Updated: 2026-05-31
  */
 import { useState, useEffect, useCallback } from 'react';
 import { MerlinHubClient } from '../CoreLogic/client';
@@ -48,7 +48,7 @@ export function useHubAuth() {
         setStatus('sent');
         setTimer(180); // 3분 타이머 시작
       } else {
-        throw new Error(result.message || 'OTP 발송에 실패했습니다.');
+        throw new Error(result.message || result.error || 'OTP 발송에 실패했습니다.');
       }
     } catch (err: any) {
       setStatus('error');
@@ -74,7 +74,7 @@ export function useHubAuth() {
         // 인증 성공 시 세션 동기화를 위해 약간의 지연 후 성공 처리
         return true;
       } else {
-        throw new Error(result.message || '인증 코드가 일치하지 않습니다.');
+        throw new Error(result.message || result.error || '인증 코드가 일치하지 않습니다.');
       }
     } catch (err: any) {
       setStatus('error');

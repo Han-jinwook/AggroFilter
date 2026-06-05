@@ -271,8 +271,8 @@ export interface HubNotificationCardProps {
 
 export const HubNotificationCard: React.FC<HubNotificationCardProps> = ({
   title = '알림 설정',
-  toggleLabel = '🔔 스마트 알림',
-  description = '허브 서비스의 새로운 기능과 혜택 알림을 관리합니다.',
+  toggleLabel = '📧 이메일 알림 수신',
+  description = '허브 서비스의 점검, 중요 공지 및 혜택 알림 이메일을 수신합니다.',
   enabled,
   onChange,
   className = '',

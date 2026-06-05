@@ -87,8 +87,8 @@ export default function SettingsPage() {
             {/* 2. 중단: 스마트 알림 카드 */}
             <HubNotificationCard
               title="알림 설정"
-              toggleLabel="🔔 스마트 알림"
-              description="관심 채널의 신뢰도 등급(안전/주의/위험) 변동 시 알려드립니다."
+              toggleLabel="📧 이메일 알림 수신"
+              description="관심 채널의 신뢰도 등급(안전/주의/위험) 변동 시 이메일로 중요 소식을 보내드립니다."
               enabled={smartNotification}
               onChange={handleToggleSmartNotification}
             />

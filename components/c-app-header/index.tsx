@@ -5,10 +5,10 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Bell, FileText, TrendingUp, User, Shield } from "lucide-react"
+import { FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
-import { useHub, HubProfileWidget, HubNotificationDropdown } from "@/src/services/merlin-hub-sdk/react"
+import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -27,8 +27,8 @@ interface TAppHeaderProps {
 export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, isLoggedIn, balance: credits, isLoading, unreadCount } = useHub()
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const { user, isLoggedIn, balance: credits, isLoading } = useHub()
+  
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendingFee, setPendingFee] = useState<number | null>(null)
 
@@ -168,50 +168,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
             <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
-
-            {/* 알림 종 — 로그인 상태에선 알림 페이지, 익명이면 로그인 모달 */}
-            {isLoggedIn ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
-                >
-                  <div className="relative">
-                    <div
-                      className={
-                        "p-2 rounded-xl transition-colors " +
-                        (isDropdownOpen
-                          ? 'bg-slate-900 text-white'
-                          : 'group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white')
-                      }
-                    >
-                      <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
-                    </div>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors">
-                    알림
-                  </span>
-                </button>
-                {isDropdownOpen && (
-                  <HubNotificationDropdown onClose={() => setIsDropdownOpen(false)} />
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
-              >
-                <div className="p-2 rounded-xl group-hover:bg-slate-100 transition-colors">
-                  <Bell className="h-5 w-5 text-slate-400 transition-transform group-hover:scale-110" />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500">알림</span>
-              </button>
-            )}
 
             {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
             {(isLoggedIn || pendingFee !== null) && (

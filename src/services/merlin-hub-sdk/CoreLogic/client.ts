@@ -297,8 +297,9 @@ export class MerlinHubClient {
     link?: string;
     channels?: string[];
   }) {
+    const { getConfig } = await import('./config');
     const config = getConfig();
-    const res = await hubFetch<{ success: boolean; push?: boolean; email?: boolean }>('/api/notification/send', {
+    const res = await hubFetch<{ success: boolean; email?: boolean }>('/api/notification/send', {
       method: 'POST',
       headers: {
         'x-app-secret': config.clientSecret
@@ -309,36 +310,21 @@ export class MerlinHubClient {
         title: params.title,
         content: params.content,
         link: params.link,
-        channels: params.channels || ['push']
+        channels: ['email'] // 이메일 채널 강제 고정
       })
     });
     return res.ok && res.data ? res.data : { success: false };
   }
 
-  async getNotifications(page?: number, limit?: number) {
-    const query = new URLSearchParams();
-    if (page) query.append('page', String(page));
-    if (limit) query.append('limit', String(limit));
-    const res = await hubFetch<{ success: boolean; notifications: any[] }>(`/api/notification/list?${query.toString()}`);
-    if (res.ok && res.data.success) {
-      return res.data.notifications;
-    }
+  async getNotifications() {
     return [];
   }
 
-  async readNotifications(ids: string[]) {
-    const res = await hubFetch<{ success: boolean }>(`/api/notification/list`, {
-      method: 'PUT',
-      body: JSON.stringify({ ids })
-    });
-    return res.ok && res.data.success;
+  async readNotifications() {
+    return true;
   }
 
   async getUnreadNotificationCount() {
-    const res = await hubFetch<{ success: boolean; unreadCount: number }>('/api/notification/unread-count');
-    if (res.ok && res.data.success) {
-      return res.data.unreadCount;
-    }
     return 0;
   }
 

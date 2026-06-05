@@ -20,33 +20,13 @@ export function useHubNotifier() {
   const sendEmail = useCallback(async (templateId: string, data: any) => {
     try {
       const result = await client.sendNotification({
-        userId: '', // 이메일 템플릿은 목적에 맞게 세팅 필요
-        title: templateId,
-        content: JSON.stringify(data),
-        channels: ['email']
+        type: 'email',
+        templateId,
+        data,
       });
       return result.success;
     } catch (err) {
       console.error('이메일 발송 실패:', err);
-      return false;
-    }
-  }, []);
-
-  /**
-   * 허브 알림 발송 요청 (인앱 푸시 및 이메일링 통합 트리거)
-   */
-  const triggerNotification = useCallback(async (params: {
-    userId: string;
-    title: string;
-    content: string;
-    link?: string;
-    channels?: string[];
-  }) => {
-    try {
-      const result = await client.sendNotification(params);
-      return result.success;
-    } catch (err) {
-      console.error('알림 트리거 실패:', err);
       return false;
     }
   }, []);
@@ -68,7 +48,6 @@ export function useHubNotifier() {
 
   return {
     sendEmail,
-    triggerNotification,
     updateSettings,
   };
 }
