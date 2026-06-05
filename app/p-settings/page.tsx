@@ -10,15 +10,13 @@ import {
   HubLogoutCard,
   HubHistoryList, 
   useHubReferral,
-  useHub,
-  useHubNotifier
+  useHub
 } from '@/src/services/merlin-hub-sdk/react'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { isLoggedIn, user, refreshSession } = useHub()
+  const { isLoggedIn, user, refreshSession, updateNotificationSettings } = useHub()
   const { getReferralHistory } = useHubReferral()
-  const { updateSettings } = useHubNotifier()
   
   const [referralHistory, setReferralHistory] = useState<any[]>([])
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
@@ -50,10 +48,10 @@ export default function SettingsPage() {
   const handleToggleSmartNotification = async (newValue: boolean) => {
     setSmartNotification(newValue)
     try {
-      const success = await updateSettings({
+      const success = await updateNotificationSettings({
         email: newValue,
         smart_notification: newValue
-      } as any)
+      })
       if (success) {
         // 허브 프로필 동기화
         refreshSession()

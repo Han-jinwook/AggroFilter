@@ -295,7 +295,6 @@ export class MerlinHubClient {
     title: string;
     content: string;
     link?: string;
-    channels?: string[];
   }) {
     const { getConfig } = await import('./config');
     const config = getConfig();
@@ -310,22 +309,10 @@ export class MerlinHubClient {
         title: params.title,
         content: params.content,
         link: params.link,
-        channels: ['email'] // 이메일 채널 강제 고정
+        channels: ['email'] // 이메일 단독 발송
       })
     });
     return res.ok && res.data ? res.data : { success: false };
-  }
-
-  async getNotifications() {
-    return [];
-  }
-
-  async readNotifications() {
-    return true;
-  }
-
-  async getUnreadNotificationCount() {
-    return 0;
   }
 
   async updateProfile(params: any) {

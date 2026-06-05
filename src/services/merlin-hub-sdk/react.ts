@@ -12,7 +12,6 @@ export { HubProvider, useHub } from './HubProvider';
 export { useHubSession } from './Session/useHubSession';
 export { useHubAuth } from './Auth/useHubAuth';
 export { useHubPayment } from './Wallet/useHubPayment';
-export { useHubNotifier } from './Notification/useHubNotifier';
 export { useHubReferral } from './Referral/useHubReferral';
 
 // 2. Core 로직 (클라이언트에서도 자주 쓰는 함수들)
@@ -35,7 +34,7 @@ export { HubAuthModal } from './Auth/HubAuthModal';
 export { HubRegisterNudge } from './UI/HubRegisterNudge';
 export { HubPaymentTrigger } from './Wallet/HubPaymentTrigger';
 export { HubPurchaseWidget } from './Wallet/HubPurchaseWidget';
-export { HubNotifier, showToast } from './Notification/HubNotifier';
+export { HubNotifier, showToast } from './CoreLogic/HubNotifier';
 export { HubReferralWidget } from './Referral/HubReferralWidget';
 export { HubHistoryList } from './Referral/HubHistoryList';
 export { HubShareButton } from './Referral/HubShareButton';

@@ -19,6 +19,7 @@ interface HubContextType {
   balance: number | null;
   refreshSession: () => Promise<void>;
   refreshBalance: () => Promise<void>;
+  updateNotificationSettings: (settings: { email: boolean; smart_notification?: boolean }) => Promise<boolean>;
 }
 
 const HubContext = createContext<HubContextType | undefined>(undefined);
@@ -78,6 +79,24 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
     }
   }, [refreshBalance]);
 
+  const updateNotificationSettings = useCallback(async (settings: { email: boolean; smart_notification?: boolean }) => {
+    try {
+      const { MerlinHubClient } = await import('./CoreLogic/client');
+      const client = new MerlinHubClient();
+      const result = await client.updateProfile({
+        notification_settings: settings,
+      });
+      if (result) {
+        await refreshSession();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[HubProvider] Failed to update notification settings:', err);
+      return false;
+    }
+  }, [refreshSession]);
+
   // 초기 로드 및 이벤트 리스너
   useEffect(() => {
     refreshSession();
@@ -109,7 +128,8 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       isLoading, 
       balance, 
       refreshSession, 
-      refreshBalance 
+      refreshBalance,
+      updateNotificationSettings
     }}>
       {children}
     </HubContext.Provider>
