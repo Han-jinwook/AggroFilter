@@ -159,7 +159,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           </Link>
 
           {/* 중앙 네비게이션 메뉴 영역 (적당한 간격으로 중앙 정렬) */}
-          <div className="flex-1 flex items-center justify-center gap-4 sm:gap-6 px-4">
+          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-10 px-4">
             <MenuItem
               icon={FileText}
               label="My Page"
@@ -170,6 +170,15 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
             <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
 
+            {isAdmin && isLoggedIn && (
+              <div className="hidden lg:flex">
+                <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
+              </div>
+            )}
+          </div>
+
+          {/* 우측 프로필 및 자산(코인) 영역 */}
+          <div className="flex items-center justify-end shrink-0 gap-3 sm:gap-4 min-w-[120px]">
             {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
             {(isLoggedIn || pendingFee !== null) && (
               <Link
@@ -180,9 +189,9 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                     window.dispatchEvent(new CustomEvent('openLoginModal'))
                   }
                 }}
-                className="flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline"
+                className="flex flex-col items-center gap-1 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
               >
-                <div className={`px-2.5 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
+                <div className={`px-2 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
                   !isLoggedIn && pendingFee !== null 
                     ? "bg-red-50 text-red-600 group-hover:bg-red-100 animate-bounce" 
                     : "bg-amber-50 text-amber-600 group-hover:bg-amber-100"
@@ -200,15 +209,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </Link>
             )}
 
-            {isAdmin && isLoggedIn && (
-              <div className="hidden lg:flex">
-                <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
-              </div>
-            )}
-          </div>
-
-          {/* 우측 프로필 영역 */}
-          <div className="flex items-center justify-end shrink-0 min-w-[50px]">
             <HubProfileWidget 
               onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
               onProfileClick={() => router.push('/p-settings')}

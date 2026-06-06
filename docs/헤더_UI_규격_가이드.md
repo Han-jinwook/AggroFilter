@@ -40,11 +40,11 @@ Last Updated: 2026-06-06
 * 메인 로고 이미지와 서비스 대분류 명칭을 `shrink-0`으로 감싸 좌측에 단단히 고정시킨다.
 
 ### 2) 중앙: 네비게이션 메뉴 (Navigation Items)
-* **`flex-1 flex items-center justify-center gap-4 sm:gap-6`**을 부여한다.
-* 이를 통해 좌측 로고와 우측 프로필 위젯 사이의 잔여 영역(Flex-1) 전체를 활용해, 메뉴 항목들(My Page, 분석 Plaza, 코인 잔액 등)이 정확히 브라우저 중앙에 배치되도록 정렬한다.
+* **`flex-1 flex items-center justify-center gap-6 sm:gap-10`**을 부여한다.
+* 이를 통해 좌측 로고와 우측 자산/프로필 위젯 사이의 잔여 영역(Flex-1) 전체를 활용해, 핵심 메뉴 항목들(My Page, 분석 Plaza 등)이 정확히 브라우저 중앙에 배치되도록 정렬한다.
 
 ### 3) 우측: 유저 상태 및 트랜잭션 영역 (Widget Area)
-* Merlin HubAvatar 표준 프로필 위젯을 `shrink-0 min-w-[50px] flex justify-end` 구조로 묶어 우측 끝에 고정시킨다.
+* 코인 잔액 위젯과 Merlin HubAvatar 표준 프로필 위젯을 `shrink-0 gap-3 sm:gap-4 flex items-center justify-end min-w-[120px]` 구조로 묶어 우측 끝에 고정시킨다.
 
 ---
 
