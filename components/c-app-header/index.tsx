@@ -140,8 +140,9 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center py-0">
-        <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-6 md:px-8 py-0">
-          <Link href="/" className="flex items-center gap-3 cursor-pointer group no-underline py-0">
+        <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4 py-0">
+          {/* 좌측 로고 영역 */}
+          <Link href="/" className="flex items-center gap-1.5 cursor-pointer group no-underline py-0 shrink-0">
             <Image
               src="/images/character-logo.png"
               alt="AggroFilter"
@@ -157,7 +158,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </div>
           </Link>
 
-          <div className="flex items-center gap-3 sm:gap-6">
+          {/* 중앙 네비게이션 메뉴 영역 (적당한 간격으로 중앙 정렬) */}
+          <div className="flex-1 flex items-center justify-center gap-4 sm:gap-6 px-4">
             <MenuItem
               icon={FileText}
               label="My Page"
@@ -167,7 +169,6 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             />
 
             <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
-
 
             {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
             {(isLoggedIn || pendingFee !== null) && (
@@ -199,19 +200,19 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </Link>
             )}
 
-            {/* REFACTORED_BY_MERLIN_HUB: 표준 프로필 위젯 적용 (클릭 시 페이지 이동) */}
-            <div className="flex items-center justify-center h-16 min-w-[50px]">
-              <HubProfileWidget 
-                onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                onProfileClick={() => router.push('/p-settings')}
-              />
-            </div>
-
             {isAdmin && isLoggedIn && (
               <div className="hidden lg:flex">
                 <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
               </div>
             )}
+          </div>
+
+          {/* 우측 프로필 영역 */}
+          <div className="flex items-center justify-end shrink-0 min-w-[50px]">
+            <HubProfileWidget 
+              onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+              onProfileClick={() => router.push('/p-settings')}
+            />
           </div>
         </div>
       </header>
