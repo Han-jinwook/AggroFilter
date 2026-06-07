@@ -698,10 +698,64 @@ export async function analyzeContent(
     3. 신뢰도 총평 (XX점 / 🟢🟡🔴): ...
     `;
 
-  // [v4.0] 단일 호출 구조
-  // - 0단계(청크 사전 요약) 제거: 스피드 분석이 GPT로 이미 분리됨
-  // - 그라운딩 2차 재시도 제거: 1차 호출에서 isPostNov2024 여부에 따라 검색 on/off로 단일화
-  // - 자막 최대 8,000자 (앞부터 순서대로): 분석 품질 확보
+  // [v4.1] 자막 압축 구조
+  // 8,000자 초과 시 flash-lite 로 팩트 보존 압축 → 본 분석에 투입
+  // 8,000자 이하는 원본 그대로 직행 (압축 호출 없음)
+  const MAX_TRANSCRIPT_CHARS = 8000;
+
+  const compressTranscript = async (rawTranscript: string): Promise<string> => {
+    const compressPrompt = `아래는 유튜브 영상의 전체 자막이다.
+팩트체크 목적으로 사용할 수 있도록 다음 규칙에 따라 압축하라.
+
+[보존 대상 — 반드시 원문 유지]
+- 인명, 직책, 기관명, 단체명
+- 수치, 날짜, 연도, 금액, 통계
+- 주장, 논거, 사건 서술 문장
+- 인용문, 발언 내용
+- 타임스탬프 (있다면 보존)
+
+[제거 대상]
+- 추임새, 감탄사 ("네~", "맞아요", "정말요", "와~" 등)
+- 반복된 동일 내용
+- 단순 전환 멘트 ("다음으로", "자 그럼", "이제" 등 단독 문장)
+- 군더더기 인사말
+
+[출력 규칙]
+- 총 글자 수 8,000자 이내
+- 원문 순서 유지
+- 요약·재해석 금지 (원문 문장 그대로 남기거나 제거만)
+- 타임스탬프가 있다면 형식 그대로 유지
+- 다른 텍스트 없이 압축된 자막만 출력
+
+[원본 자막]
+${rawTranscript}`;
+
+    try {
+      const compressAi = new GoogleGenAI({ apiKey });
+      const result = await compressAi.models.generateContent({
+        model: 'gemini-2.5-flash-lite',
+        contents: compressPrompt,
+        config: { thinkingConfig: { thinkingBudget: 0 } },
+      });
+      const compressed = (result.text || '').trim();
+      if (compressed && compressed.length > 100) {
+        console.log(`자막 압축 완료: ${rawTranscript.length}자 → ${compressed.length}자`);
+        return compressed;
+      }
+      // 압축 결과 이상 시 앞 8,000자 폴백
+      console.warn('자막 압축 결과 이상, 앞 8,000자 폴백 사용');
+      return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
+    } catch (e) {
+      console.error('자막 압축 호출 실패, 앞 8,000자 폴백 사용:', e);
+      return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
+    }
+  };
+
+  // 자막 준비: 8,000자 초과 시 압축 호출, 이하는 원본 직행
+  const finalTranscript = (transcript && transcript.length > MAX_TRANSCRIPT_CHARS)
+    ? await compressTranscript(transcript)
+    : transcript;
+
   const tryModel = async (modelName: string) => {
     console.log(`Initializing Gemini model: ${modelName}`);
 
@@ -711,12 +765,6 @@ export async function analyzeContent(
       { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
       { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
     ];
-
-    // 자막 앞부터 8,000자까지 원본 그대로 사용 (분석 품질 우선)
-    const MAX_TRANSCRIPT_CHARS = 8000;
-    const trimmedTranscript = transcript && transcript.length > MAX_TRANSCRIPT_CHARS
-      ? transcript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)'
-      : transcript;
 
     // 최신 영상(2024년 11월 이후)일 때만 구글 검색 강제 지시문 추가
     const searchInstruction = isPostNov2024
@@ -731,7 +779,7 @@ export async function analyzeContent(
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${trimmedTranscript}
+      ${finalTranscript}
     `;
 
     const contents: any[] = [finalPrompt];
