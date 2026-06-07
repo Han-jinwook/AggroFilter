@@ -707,9 +707,12 @@ export async function analyzeContent(
     아래 키워드가 제목 또는 자막에 하나라도 포함되면 반드시 Google Search를 실행한 후 사실 판단하라.
     - 정치/선거/시사 관련 키워드 (대선, 총선, 사퇴, 탄핵, 속보, 구속 등)
     - 시간 표현 (현재, 최근, 올해, 2025 등)
-    
     ### 🚫 "없다/아니다" 주장 금지 규칙
     - "X는 사실이 아니다"와 같은 부정 판단을 내리기 전에 반드시 Google Search로 확인하라.
+
+    ### 🚨 [CRITICAL: DO NOT SIMULATE SEARCH]
+    - 절대 머릿속으로 검색 결과를 지어내거나(Simulate) 환각(Hallucinate)하지 마라.
+    - 검색 툴(googleSearch)을 실제로 호출(Invoke)하지 않았다면 "검색 결과와 일치합니다"라는 말을 절대 쓰지 마라.
     ` : '';
 
     const finalPrompt = `
