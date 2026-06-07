@@ -101,7 +101,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
   // Extract language information from YouTube API metadata
   const defaultLanguage = snippet.defaultLanguage || snippet.defaultAudioLanguage;
   let language: string | undefined;
-  let languageSource: 'youtube_api' | 'transcript' | 'user' = 'youtube_api';
+  let languageSource: 'api' | 'unknown' = 'api';
 
   if (defaultLanguage) {
     const code = defaultLanguage.toLowerCase().split('-')[0];
@@ -118,7 +118,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
       it: 'italian',
     };
     language = langMap[code] || 'english';
-    languageSource = 'youtube_api';
+    languageSource = 'api';
   }
 
   // 2. 채널 정보 가져오기 (프로필 이미지, 핸들, 구독자 수)

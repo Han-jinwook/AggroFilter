@@ -408,6 +408,62 @@ ${chunk.text}`;
   }
 }
 
+interface GroundingDecision {
+  needs_grounding: boolean;
+  search_queries: string[];
+}
+
+async function checkNeedsGrounding(
+  ai: any,
+  channelName: string,
+  title: string,
+  transcript: string
+): Promise<GroundingDecision> {
+  const prompt = `
+유튜브 영상의 팩트체크 필요성 여부와 구글 검색 키워드를 추출하는 봇입니다.
+아래 영상 제목, 채널명, 그리고 영상의 자막 일부를 보고 객관적인 웹 검색(Google Search)을 통한 사실 대조(팩트체크)가 필요한지 판정하십시오.
+
+[판단 대상 정보]
+채널명: ${channelName}
+제목: ${title}
+자막 일부:
+${transcript.substring(0, 5000)}
+
+[판단 기준]
+1. 최신 시사/이슈, 특정 인물, 폭로, 정치, 정책, 기술/제품/시장 현황, 최신 제품 출시 정보, 주식/재테크 등 실시간/객관적 사실 확인(팩트체크)이 필요한 주제인가? -> needs_grounding: true
+2. 유튜버의 단순 개인 일상(브이로그), 주관적인 감상/리뷰(예: 영화 해석, 게임 플레이 소감), 보편적 상식(검색이 불필요한 역사/과학 이론 강의), 유머 등 팩트체크가 무의미한가? -> needs_grounding: false
+3. 만약 needs_grounding이 true라면, 사실 확인에 가장 효과적인 검색 키워드(Queries)를 1~3개 선정하십시오. (예: "엔비디아 시가총액", "삼성전자 배당금 인상", "누구누구 사건 해명")
+
+반드시 아래 JSON 형식으로만 응답하십시오. 다른 텍스트는 포함하지 마십시오.
+{
+  "needs_grounding": boolean,
+  "search_queries": string[]
+}
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    });
+
+    const text = (response.text || '').trim();
+    const cleanJson = text.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
+    const data = JSON.parse(cleanJson);
+    console.log(`[checkNeedsGrounding] Result: needs_grounding=${data.needs_grounding}, queries=${JSON.stringify(data.search_queries)}`);
+    return {
+      needs_grounding: !!data.needs_grounding,
+      search_queries: Array.isArray(data.search_queries) ? data.search_queries : []
+    };
+  } catch (e) {
+    console.error("1차 팩트체크 필요성 판정 실패 (fallback: false):", e);
+    return { needs_grounding: false, search_queries: [] };
+  }
+}
 
 export async function analyzeContent(
 
@@ -692,14 +748,23 @@ export async function analyzeContent(
       { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
     ];
 
-    // 최신 영상(2024년 11월 이후)일 때만 구글 검색 강제 지시문 추가
-    const searchInstruction = isPostNov2024
+    // 1단계: 팩트체크 필요성 및 검색어 판정
+    console.log("Starting Step 1: Check if grounding is needed...");
+    const { needs_grounding, search_queries } = await checkNeedsGrounding(ai, channelName, title, transcript);
+
+    // 2단계: 본 분석
+    console.log(`Starting Step 2: Final analysis with needs_grounding=${needs_grounding}`);
+
+    const searchInstruction = needs_grounding
       ? `
     ⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]
-    이 영상은 2024년 11월 1일 이후 최신 영상입니다. 반드시 Google Search 도구를 활용하여 필요한 사실 관계를 확인하십시오.
+    이 영상은 팩트체크가 필요한 것으로 판단되었습니다. 반드시 Google Search 도구를 활용하여 사실 관계를 확인하십시오.
+    
+    ## 검색어 추천 키워드 (참고용)
+    - ${search_queries.join(', ')}
     
     ## 검색 도구 활용 가이드 (Google Search) — ⚠️ 최우선 규칙
-    - **자율적 검색 적극 수행**: 특정 시사/정치 키워드에 국한되지 않고, 날짜 조건(2024년 11월 1일 이후)을 만족하는 모든 사안에서 팩트체크가 필요하거나 정보 검증이 필요한 경우 Google Search를 적극적으로 실행하여 사실을 대조하고 판단하십시오. (인물의 현재 직위, 최신 사건, 정책, 최신 기술/제품/시장 현황 등 검증이 필요한 모든 것에 적용)
+    - **자율적 검색 적극 수행**: 제시된 추천 키워드 외에도 팩트체크가 필요하거나 정보 검증이 필요한 경우 Google Search를 적극적으로 실행하여 사실을 대조하고 판단하십시오. (인물의 현재 직위, 최신 사건, 정책, 최신 기술/제품/시장 현황 등 검증이 필요한 모든 것에 적용)
     - **검색 결과 절대 우선**: 검색 결과와 너의 학습 데이터(2024년 10월)가 충돌하면 무조건 검색 결과를 따르라.
     - **정확성 판단**: 영상의 주장과 검색 결과를 비교하여 일치하면 정확, 불일치하면 부정확으로 판단하라.
     
@@ -727,8 +792,8 @@ export async function analyzeContent(
       contents.push(thumbnailPart);
     }
 
-    // 검색 여부: 최신 영상만 구글 검색 on, 나머지는 off (비용/시간 절감)
-    const tools = isPostNov2024 ? [{ googleSearch: {} }] : [];
+    // 1단계 결과에 따라 구글 검색 툴을 동적으로 활성화합니다.
+    const tools = needs_grounding ? [{ googleSearch: {} }] : [];
 
     const response = await generateContentWithRetry(ai, {
       model: modelName,
@@ -741,7 +806,7 @@ export async function analyzeContent(
         ...(tools.length > 0 ? { tools } : {}),
       },
     }, {
-      timeoutMs: 53000,  // 1차 시도에 53초를 몰아주어 생성 속도 보장
+      timeoutMs: 45000,  // 1차 Lite 호출에 걸린 시간을 제외한 약 45초의 넉넉한 타임아웃
       maxRetries: 0,     // 서버리스 강제 종료를 막기 위해 1차 실패 시 즉시 종료 (재시도 안 함)
       baseDelayMs: analysisProfile.baseDelayMs,
     });

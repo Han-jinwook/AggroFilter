@@ -646,7 +646,7 @@ export async function POST(request: Request) {
           transcript = items.map((it) => it.text).join(' ');
         }
 
-        hasTranscript = transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다');
+        hasTranscript = !!(transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다'));
         console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '자막 없음');
       } catch (e) {
         console.error('자막 추출 중 에러:', e);
@@ -662,7 +662,7 @@ export async function POST(request: Request) {
     
     // [v3.1 Global Ranking] 3단계 언어 감지 Fallback
     let finalLanguage = videoInfo.language; // Step 1: YouTube API
-    let languageSource = videoInfo.languageSource || 'unknown';
+    let languageSource: string = videoInfo.languageSource || 'unknown';
     
     // Step 2: 자막 기반 언어 감지 (Plan B - 핵심 무기)
     if (!finalLanguage && hasTranscript && transcriptItems.length > 0) {
