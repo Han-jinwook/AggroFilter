@@ -187,6 +187,7 @@ async function generateContentWithRetry(
 
   const timeoutMs = options?.timeoutMs ?? 18000;
   const maxRetries = options?.maxRetries ?? 1;
+  const totalAttempts = maxRetries + 1;
   const baseDelayMs = options?.baseDelayMs ?? 1000;
 
   const isTransientError = (err: any) => {
@@ -209,7 +210,7 @@ async function generateContentWithRetry(
     return status === 429 || msg.includes('429') || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('resource exhausted');
   };
 
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < totalAttempts; i++) {
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`Gemini API timeout (${Math.round(timeoutMs / 1000)}s)`)), timeoutMs)
@@ -223,10 +224,10 @@ async function generateContentWithRetry(
         throw error;
       }
 
-      if (isTransientError(error) && i < maxRetries - 1) {
+      if (isTransientError(error) && i < totalAttempts - 1) {
         const delay = baseDelayMs * Math.pow(2, i);
         console.warn(
-          `⚠️ Gemini transient error. Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`,
+          `⚠️ Gemini transient error. Retrying in ${delay}ms... (Attempt ${i + 1}/${totalAttempts})`,
           { message: error?.message }
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -831,7 +832,7 @@ export async function analyzeContent(
         if (result) break; // 단 1회 호출로 완료
       } catch (error: any) {
         lastError = error;
-        console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
+        console.warn(`⚠️ Model ${modelName} failed: ${error?.message || error}`);
 
         // If quota is exhausted, don't try other models; they share the same quota.
         const status = Number(error?.status);
