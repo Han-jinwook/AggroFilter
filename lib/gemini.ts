@@ -893,10 +893,6 @@ export async function analyzeContent(
       }
     }
 
-    if (subtitleSummaryOverride) {
-      analysisData.subtitleSummary = subtitleSummaryOverride;
-    }
-
     // [Post-processing] evaluationReason에 3번(신뢰도 총평)이 누락된 경우 자동 보완
     if (analysisData.evaluationReason && typeof analysisData.evaluationReason === 'string') {
       const hasSection3 = /3\.\s*신뢰도\s*총평/.test(analysisData.evaluationReason);
