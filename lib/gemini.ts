@@ -723,8 +723,10 @@ export async function analyzeContent(
     3. 신뢰도 총평 (XX점 / 🟢🟡🔴): ...
     `;
 
+  const startTime = Date.now();
+
   // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
-  const tryModel = async (modelName: string, extraInstructions?: string, disableThinking?: boolean) => {
+  const tryModel = async (modelName: string, extraInstructions?: string, disableThinking?: boolean, customTimeoutMs?: number) => {
     console.log(`Initializing Gemini model: ${modelName}`);
     
     // Allow controversial content for analysis purposes (Analysis tool need to see the bad stuff to rate it)
@@ -770,6 +772,12 @@ export async function analyzeContent(
         contents.push(thumbnailPart);
     }
     
+    // 서버리스 한도를 초과하지 않도록 타임아웃 상한 설정 (최대 50초)
+    let apiTimeout = disableThinking ? 50000 : analysisProfile.timeoutMs;
+    if (customTimeoutMs) {
+      apiTimeout = customTimeoutMs;
+    }
+    
     const response = await generateContentWithRetry(ai, {
       model: modelName,
       contents,
@@ -781,7 +789,7 @@ export async function analyzeContent(
         tools: [{ googleSearch: {} }],
       },
     }, {
-      timeoutMs: disableThinking ? 180000 : analysisProfile.timeoutMs,
+      timeoutMs: apiTimeout,
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
@@ -809,7 +817,8 @@ export async function analyzeContent(
     for (const modelName of modelsToTry) {
       try {
         console.log(`Attempting analysis with model: ${modelName}`);
-        result = await tryModel(modelName, undefined, isPostNov2024);
+        // 1차 호출 타임아웃은 최대 45초로 제한
+        result = await tryModel(modelName, undefined, isPostNov2024, 45000);
         
         if (result) {
           // [grounding 검증 및 강제 재시도]
@@ -838,24 +847,34 @@ export async function analyzeContent(
           }
           
           if (isPostNov2024 && isValidTarget && !groundingUsed) {
-            console.warn(`🚨 [GROUNDING RETRY] 2024년 11월 1일 이후 영상이면서 팩트체크 대상인데 Google Search 미사용 감지! 재시도를 시작합니다. 제목: "${title}"`);
+            const elapsed = Date.now() - startTime;
             
-            const extraWarning = `
-              ⚠️ [경고: 절대 준수 규칙]
-              이 영상은 너의 학습 데이터 종료 시점(2024년 10월) 이후인 최신 시점(${uploadDateStr || '2024년 11월 1일 이후'})에 업로드된 영상입니다.
-              따라서 영상 속 인물, 직위, 사건, 정권 상황 등 모든 팩트는 너의 기존 지식에 존재하지 않거나 현재 시점과 완전히 다를 가능성이 매우 높습니다.
-              반드시 googleSearch 도구(구글 검색)를 명시적으로 실행하여 해당 사실을 인터넷 뉴스 검색으로 대조 확인한 후, 그 팩트만을 기반으로 채점하십시오.
-              절대 기존 학습 지식에만 의존하여 "사실이 아니다" 혹은 "존재하지 않는다"라고 성급히 단정 짓지 마십시오.
-            `;
-            
-            // 검색 강제 프롬프트를 얹어서 다시 시도
-            const retryResult = await tryModel(modelName, extraWarning, true).catch((retryErr) => {
-              console.error("Google Search 강제 재시도 중 오류 발생, 1차 결과를 유지합니다:", retryErr.message);
-              return null;
-            });
-            
-            if (retryResult) {
-              result = retryResult;
+            // 경과 시간이 이미 25초를 초과한 경우 재시도를 하지 않고 1차 결과를 그대로 반환하여 타임아웃 방지
+            if (elapsed > 25000) {
+              console.warn(`⚠️ [GROUNDING SKIP] 이미 ${Math.round(elapsed / 1000)}초 경과하여 타임아웃 우려로 인해 구글 검색 강제 재시도를 스킵하고 1차 결과를 반환합니다. 제목: "${title}"`);
+            } else {
+              console.warn(`🚨 [GROUNDING RETRY] 2024년 11월 1일 이후 영상이면서 팩트체크 대상인데 Google Search 미사용 감지! 재시도를 시작합니다. 제목: "${title}"`);
+              
+              const extraWarning = `
+                ⚠️ [경고: 절대 준수 규칙]
+                이 영상은 너의 학습 데이터 종료 시점(2024년 10월) 이후인 최신 시점(${uploadDateStr || '2024년 11월 1일 이후'})에 업로드된 영상입니다.
+                따라서 영상 속 인물, 직위, 사건, 정권 상황 등 모든 팩트는 너의 기존 지식에 존재하지 않거나 현재 시점과 완전히 다를 가능성이 매우 높습니다.
+                반드시 googleSearch 도구(구글 검색)를 명시적으로 실행하여 해당 사실을 인터넷 뉴스 검색으로 대조 확인한 후, 그 팩트만을 기반으로 채점하십시오.
+                절대 기존 학습 지식에만 의존하여 "사실이 아니다" 혹은 "존재하지 않는다"라고 성급히 단정 짓지 마십시오.
+              `;
+              
+              // 60초 서버리스 한도를 넘기지 않기 위해 남은 시간 만큼만 타임아웃을 할당 (최소 15초 ~ 남은 시간)
+              const remainingTimeout = Math.max(15000, 50000 - elapsed);
+              
+              // 검색 강제 프롬프트를 얹어서 다시 시도
+              const retryResult = await tryModel(modelName, extraWarning, true, remainingTimeout).catch((retryErr) => {
+                console.error("Google Search 강제 재시도 중 오류 발생, 1차 결과를 유지합니다:", retryErr.message);
+                return null;
+              });
+              
+              if (retryResult) {
+                result = retryResult;
+              }
             }
           }
           break; // Success
