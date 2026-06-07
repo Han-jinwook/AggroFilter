@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET: 사용자의 알림 설정 조회 (스마트 알림 단일 상태)

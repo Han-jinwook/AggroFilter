@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 // REFACTORED_BY_MERLIN_HUB: t_users 결제 콜백 → Hub wallet 이관 예정
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
