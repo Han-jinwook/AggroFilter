@@ -15,41 +15,54 @@ async function thumbnailUrlToDataUrl(url?: string): Promise<string | null> {
 }
 
 function chunkTranscriptItems(items: { text: string; start: number; duration: number }[]) {
-  const minChunkSeconds = 45;
-  const maxChunkSeconds = 120;
+  const minChunkSeconds = 180; // 3분
+  const maxChunkSeconds = 360; // 6분
+  const silenceGapSeconds = 1.2;
+  const forceSplitGapSeconds = 4.0;
+  
+  if (!items || items.length === 0) return [];
+  
   const chunks: { text: string; start: number }[] = [];
   
-  let currentText = '';
-  let currentStart = items[0]?.start || 0;
+  let currentStart = items[0].start;
+  let currentEnd = items[0].start + items[0].duration;
+  let currentTextParts: string[] = [];
   
-  for (const item of items) {
-    currentText += item.text + ' ';
-    if (item.start + item.duration - currentStart > maxChunkSeconds) {
-      chunks.push({ text: currentText.trim(), start: currentStart });
-      currentText = '';
-      currentStart = item.start;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const itemStart = item.start;
+    const itemEnd = item.start + item.duration;
+    const next = i + 1 < items.length ? items[i + 1] : null;
+    
+    currentTextParts.push(item.text);
+    currentEnd = Math.max(currentEnd, itemEnd);
+    
+    const chunkDuration = currentEnd - currentStart;
+    const gapToNext = next ? next.start - itemEnd : 0;
+    
+    const shouldSplitBySilence = next ? gapToNext >= silenceGapSeconds : true;
+    const shouldForceSplit = next ? gapToNext >= forceSplitGapSeconds : false;
+    const shouldSplitByMax = chunkDuration >= maxChunkSeconds;
+    const canSplitNow = chunkDuration >= minChunkSeconds;
+    
+    if (next && (shouldSplitByMax || shouldForceSplit || (shouldSplitBySilence && canSplitNow))) {
+      chunks.push({
+        text: currentTextParts.join(' ').trim(),
+        start: currentStart
+      });
+      currentStart = next.start;
+      currentEnd = next.start + next.duration;
+      currentTextParts = [];
+    }
+    
+    if (!next) {
+      const finalText = currentTextParts.join(' ').trim();
+      if (finalText) {
+        chunks.push({ text: finalText, start: currentStart });
+      }
     }
   }
-  if (currentText) {
-    chunks.push({ text: currentText.trim(), start: currentStart });
-  }
   return chunks;
-}
-
-function coalesceChunks(chunks: { text: string; start: number }[], maxChunks: number) {
-  if (chunks.length <= maxChunks) {
-    return chunks.map(c => ({ text: c.text, startTime: formatSecondsToTimestamp(c.start) }));
-  }
-  const factor = Math.ceil(chunks.length / maxChunks);
-  const result = [];
-  for (let i = 0; i < chunks.length; i += factor) {
-    const slice = chunks.slice(i, i + factor);
-    result.push({
-      text: slice.map(s => s.text).join(' '),
-      startTime: formatSecondsToTimestamp(slice[0].start)
-    });
-  }
-  return result;
 }
 
 export async function analyzeContentSpeed(
@@ -67,11 +80,52 @@ export async function analyzeContentSpeed(
 
   const client = new OpenAI({ apiKey });
 
-  // 1. 자막 해상도 대폭 강화 (자막 원본 직투입)
-  // 스피드 트랙에서도 굳이 청크 분할 과정을 거칠 필요 없이, 온전한 자막 전체(최대 35,000자)를 1개 덩어리로 던집니다.
-  const quickSummary = transcript ? transcript.substring(0, 35000) : '';
+  // 1. 자막 해상도 대폭 강화 (3~6분 단위 맥락 청킹 전처리)
+  const chunks = transcriptItems && transcriptItems.length > 0
+    ? chunkTranscriptItems(transcriptItems)
+    : [];
+
+  const quickSummary = chunks.length > 0
+    ? chunks.map((c) => `[${formatSecondsToTimestamp(c.start)}] ${c.text}`).join('\n')
+    : transcript.substring(0, 35000);
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
+
+  const fewShotExample = userLanguage === 'korean'
+    ? `[가상의 낚시 영상 분석 예시]
+🚨경고: 아래 예시의 타임스탬프(04:15 등)와 내용을 절대 그대로 베끼지 마라! 반드시 '실제 자막'의 진짜 시간과 흐름에 맞춰 작성하라.
+{
+  "subtitleSummary": "00:00 - 은퇴 후 투자 실패의 뼈아픈 교훈\\n노후 자금으로 고정 수익을 노리고 상가 분양에 뛰어든 사람들의 실패 사례를 소개합니다. 안정적으로 보였던 월세 수입이 어떻게 큰 손실로 이어지는지 구체적인 데이터를 통해 분석합니다.\\n\\n04:15 - 상가 투자의 숨겨진 함정과 위험성\\n신도시 상가의 높은 공실률과 대출 이자 부담으로 인한 파산 위험을 경고합니다. 특히 분양 대행사의 과장 광고에 속아 노후 자금을 모두 잃게 되는 과정을 상세히 설명합니다.\\n\\n09:30 - 노후 자금을 지키는 안전한 대안 투자법\\n위험한 상가 투자 대신 '미국 배당 성장 ETF(SCHD)'와 같은 안전한 대안을 제시합니다. 장기적인 관점에서 배당 수익과 자본 차익을 동시에 얻을 수 있는 전략을 강조합니다.",
+  "thumbnail_spoiler": [
+    {
+      "topic": "최악의 투자 1위: 신도시 상가 분양",
+      "text": "[출처: 유튜버의 주장] 영상에서 꼽은 최악의 투자는 '신도시 상가 분양'으로 지목함.",
+      "ts": "04:15"
+    },
+    {
+      "topic": "대안 투자법: SCHD ETF·국채",
+      "text": "[출처: 유튜버의 주장] 상가 투자 대신 '미국 배당 성장 ETF(SCHD)'를 대안으로 제시함.",
+      "ts": "09:30"
+    }
+  ]
+}`
+    : `[Fictional Clickbait Video Analysis Example]
+🚨WARNING: DO NOT copy the timestamps (e.g., 04:15) or the exact content from this example. You MUST extract real timestamps and logical flow from the actual provided subtitles.
+{
+  "subtitleSummary": "00:00 - Painful Lessons of Retirement Investment Failures\\nIntroduces failure cases of people who invested in commercial real estate aiming for fixed income. Analyzes through specific data how seemingly stable monthly rent income leads to massive losses.\\n\\n04:15 - Hidden Traps and Risks of Commercial Real Estate\\nWarns of bankruptcy risks due to high vacancy rates and loan interest burdens in new city commercial areas. Details the process of losing retirement funds due to exaggerated advertising.\\n\\n09:30 - Safe Alternative Investments to Protect Retirement Funds\\nSuggests 'US Dividend Growth ETF (SCHD)' as a safe alternative to risky commercial real estate. Emphasizes strategies to gain dividend income from a long-term perspective.",
+  "thumbnail_spoiler": [
+    {
+      "topic": "#1 Worst Investment: New City Commercial Real Estate",
+      "text": "[Source: YouTuber's Claim] The video specifically identifies 'new city commercial real estate' as the worst investment.",
+      "ts": "04:15"
+    },
+    {
+      "topic": "Alternative Investments: SCHD ETF & Government Bonds",
+      "text": "[Source: YouTuber's Claim] The video suggests 'US Dividend Growth ETF (SCHD)' as a safe alternative.",
+      "ts": "09:30"
+    }
+  ]
+}`;
 
   const prompt = `
 ## 1. Role
@@ -83,7 +137,7 @@ export async function analyzeContentSpeed(
 - **종료 시점 일치**: 요약의 마지막 타임스탬프는 반드시 제공된 영상의 전체 길이 또는 자막의 마지막 시점과 일치해야 한다. (영상 중간이나 4분, 5분대에서 갑자기 요약을 끝내고 도망가는 행위는 매우 심각한 오류다. 영상이 30분짜리면 마지막 요약은 반드시 30분 근처여야 한다.)
 - **중간 생략 금지**: 영상 중간에서 요약을 멈추지 마라. 전체 내용을 균등하게 배분하여 요약하라.
 - **팩트 추출**: '어떤 종목', '특정 인물'처럼 모호하게 얼버무리지 마라. 영상에 등장한 [실제 종목명/인물명/구체적 행동]을 반드시 명시하라.
-- **요약의 기준**: 기계적인 시간 단위 분할을 금지한다. 영상의 '논리적 흐름(도입 → 문제 제기 → 해결책 → 결론)'이 바뀔 때마다 타임스탬프를 분할하라.
+- **요약의 기준**: 기계적인 시간 단위 분할을 금지한다. 자막의 각 대괄호 타임스탬프(\`[MM:SS]\`)와 문맥 흐름을 참고하여 **대략 3분~6분 단위의 맥락적 화제 전환 지점**을 포착하고 고르게 요약하라.
 - **타임라인 요약 규칙**: 소제목 아래에 들어가는 요약 내용은 절대 단어나 한 줄(단답형)로 요약하지 마라. 반드시 해당 구간에서 유튜버가 무슨 논리로 설명했는지 구체적인 맥락을 포함하여 '2~3문장 분량으로 상세하고 풍성하게' 작성하라.
 
 ## 3. Thumbnail Spoiler Rules
@@ -98,13 +152,7 @@ export async function analyzeContentSpeed(
 반드시 아래 JSON 형식으로만 응답하라. 다른 텍스트는 포함하지 말 것.
 **중요**: 모든 텍스트 필드(subtitleSummary, thumbnail_spoiler 등)는 반드시 ${userLanguage === 'korean' ? '한국어' : 'English'}로 작성하라.
 
-{
-  "subtitleSummary": "0:00 - 소주제: 요약내용\\n...",
-  "thumbnail_spoiler": [
-    { "topic": "소주제1 (제목/썸네일에서 추출한 떡밥 키워드)", "text": "[출처: ...] 해당 소주제에 대한 영상 속 팩트 인용", "ts": "02:15" },
-    { "topic": "소주제2", "text": "[출처: ...] 팩트 인용", "ts": "07:42" }
-  ]
-}
+${fewShotExample}
 
 [실제 분석 대상 데이터]
 채널명: ${channelName}

@@ -83,7 +83,7 @@ function getGeminiAnalysisProfile(params: {
   return {
     isShortForm,
     timeoutMs: isShortForm ? 50000 : 55000,
-    retries: 1,
+    retries: 0,
     baseDelayMs: 800,
     thinkingBudget: 0, // isShortForm ? 1024 : 2048 (임시로 0으로 설정)
   };
@@ -741,8 +741,8 @@ export async function analyzeContent(
         ...(tools.length > 0 ? { tools } : {}),
       },
     }, {
-      timeoutMs: 50000,  // 압축 제거로 확보한 시간 반영 (60초 서버리스 한도 내 안전)
-      maxRetries: analysisProfile.retries,
+      timeoutMs: 53000,  // 1차 시도에 53초를 몰아주어 생성 속도 보장
+      maxRetries: 0,     // 서버리스 강제 종료를 막기 위해 1차 실패 시 즉시 종료 (재시도 안 함)
       baseDelayMs: analysisProfile.baseDelayMs,
     });
 
