@@ -891,6 +891,12 @@ export async function analyzeContent(
       }
     }
 
+    // grounding 사용 여부 감지
+    const groundingMetadata = result.groundingMetadata;
+    const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
+    const groundingUsed = groundingQueries.length > 0;
+    console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`);
+
     // [Post-processing] evaluationReason에 3번(신뢰도 총평)이 누락된 경우 자동 보완
     if (analysisData.evaluationReason && typeof analysisData.evaluationReason === 'string') {
       const hasSection3 = /3\.\s*신뢰도\s*총평/.test(analysisData.evaluationReason);
@@ -902,17 +908,18 @@ export async function analyzeContent(
         analysisData.evaluationReason = analysisData.evaluationReason.trimEnd() + section3;
         console.log('[Post-processing] evaluationReason에 누락된 3번(신뢰도 총평) 자동 보완');
       }
+
+      // [Post-processing] 환각(Hallucination) 강제 교정: 검색 안 했는데 검색했다고 뻥치는 경우 서버단에서 강제 치환
+      if (!groundingUsed && analysisData.evaluationReason.includes('구글 검색')) {
+        console.warn('🚨 [Post-processing] grounding 미사용 상태에서 "구글 검색" 단어 감지됨. 서버단에서 강제 치환합니다.');
+        analysisData.evaluationReason = analysisData.evaluationReason.replace(/[0-9]{4}년 상반기 구글 검색 결과와 일치하며,?/g, '자체 학습 데이터와 일치하며,');
+        analysisData.evaluationReason = analysisData.evaluationReason.replace(/구글 검색( 결과)?/g, '자체 데이터');
+      }
     }
 
     // [Final Safety Check] 삭제
     // standardizeTopic 호출 및 관련 로직 제거
     // -----------------------------------
-
-    // grounding 사용 여부 감지
-    const groundingMetadata = result.groundingMetadata;
-    const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
-    const groundingUsed = groundingQueries.length > 0;
-    console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`);
 
     // ⚠️ 정치/시사 키워드가 있는데 grounding 미사용 시 경고
     const POLITICAL_KEYWORDS = /선거|경선|투표|대선|총선|보궐|지방선거|당선|낙선|출마|사퇴|탄핵|임명|해임|국회|여당|야당|민주당|국민의힘|대통령|지사|시장|의원|속보|긴급|수사|체포|구속|판결|기소/;
