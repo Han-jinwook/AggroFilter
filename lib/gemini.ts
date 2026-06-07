@@ -696,17 +696,13 @@ export async function analyzeContent(
     const searchInstruction = isPostNov2024
       ? `
     ⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]
-    이 영상은 2024년 11월 1일 이후 최신 영상입니다. 반드시 Google Search 도구를 실행하여 최신 사실을 확인하십시오.
+    이 영상은 2024년 11월 1일 이후 최신 영상입니다. 반드시 Google Search 도구를 활용하여 필요한 사실 관계를 확인하십시오.
     
     ## 검색 도구 활용 가이드 (Google Search) — ⚠️ 최우선 규칙
-    - **필수 검색 대상**: 인물의 현재 직책/직위, 최신 기술/제품, 2024년 11월 이후 사건·정책·논란
+    - **자율적 검색 적극 수행**: 특정 시사/정치 키워드에 국한되지 않고, 날짜 조건(2024년 11월 1일 이후)을 만족하는 모든 사안에서 팩트체크가 필요하거나 정보 검증이 필요한 경우 Google Search를 적극적으로 실행하여 사실을 대조하고 판단하십시오. (인물의 현재 직위, 최신 사건, 정책, 최신 기술/제품/시장 현황 등 검증이 필요한 모든 것에 적용)
     - **검색 결과 절대 우선**: 검색 결과와 너의 학습 데이터(2024년 10월)가 충돌하면 무조건 검색 결과를 따르라.
     - **정확성 판단**: 영상의 주장과 검색 결과를 비교하여 일치하면 정확, 불일치하면 부정확으로 판단하라.
     
-    ### ⚠️ 필수 검색 트리거
-    아래 키워드가 제목 또는 자막에 하나라도 포함되면 반드시 Google Search를 실행한 후 사실 판단하라.
-    - 정치/선거/시사 관련 키워드 (대선, 총선, 사퇴, 탄핵, 속보, 구속 등)
-    - 시간 표현 (현재, 최근, 올해, 2025 등)
     ### 🚫 "없다/아니다" 주장 금지 규칙
     - "X는 사실이 아니다"와 같은 부정 판단을 내리기 전에 반드시 Google Search로 확인하라.
 
@@ -920,13 +916,6 @@ export async function analyzeContent(
     // [Final Safety Check] 삭제
     // standardizeTopic 호출 및 관련 로직 제거
     // -----------------------------------
-
-    // ⚠️ 정치/시사 키워드가 있는데 grounding 미사용 시 경고
-    const POLITICAL_KEYWORDS = /선거|경선|투표|대선|총선|보궐|지방선거|당선|낙선|출마|사퇴|탄핵|임명|해임|국회|여당|야당|민주당|국민의힘|대통령|지사|시장|의원|속보|긴급|수사|체포|구속|판결|기소/;
-    const hasPoliticalKeyword = POLITICAL_KEYWORDS.test(title) || POLITICAL_KEYWORDS.test(transcript?.substring(0, 2000) || '');
-    if (hasPoliticalKeyword && !groundingUsed) {
-      console.error(`🚨 [GROUNDING MISS] 정치/시사 콘텐츠인데 Google Search 미사용! 제목: "${title}" — 분석 결과가 부정확할 수 있음`);
-    }
 
     return { ...analysisData, groundingUsed, groundingQueries, usageMetadata: result.usageMetadata };
 

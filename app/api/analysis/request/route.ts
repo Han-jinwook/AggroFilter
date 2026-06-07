@@ -704,8 +704,8 @@ export async function POST(request: Request) {
     console.log('AI 분석 시작...');
     const analysisId = uuidv4();
     const cleanChannelId = videoInfo.channelId?.trim();
-    let speedResult: { subtitleSummary?: string; thumbnail_spoiler?: any[] } = {};
-    let analysisResult;
+    let speedResult: { subtitleSummary?: string; thumbnail_spoiler?: any[]; usage?: any; title?: string } = {};
+    let analysisResult: any;
     let isValidTarget = true;
     let needsReview = false;
     let reviewReason: string | null = null;

@@ -13,6 +13,7 @@ import { getCategoryName } from "@/lib/constants"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
 import { ShareModal } from "@/components/c-share-modal"
 import { ChevronDown, ChevronUp, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
+import { useHub } from "@/src/services/merlin-hub-sdk/react"
 
 function extractVideoId(url: string): string {
   try {
@@ -44,6 +45,7 @@ function TypewriterText({ text, perChar = 55, startDelay = 100 }: { text: string
 export default function ResultClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, isLoggedIn, isLoading } = useHub()
   const hasCountedView = useRef(false)
   const [showMore, setShowMore] = useState(true)
   const [activeSubtitle, setActiveSubtitle] = useState<"summary" | null>("summary")
@@ -72,8 +74,10 @@ export default function ResultClient() {
   const completedWaitingPhase3Ref = useRef(false)
 
   useEffect(() => {
-    const email = localStorage.getItem('userEmail')
-    if (email && !isAnonymousUser()) {
+    if (isLoading) return;
+
+    if (isLoggedIn && user?.email) {
+      const email = user.email;
       // DB에서 프로필 정보 fetch (source of truth)
       fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
         .then(res => res.ok ? res.json() : null)
@@ -86,19 +90,19 @@ export default function ResultClient() {
             localStorage.setItem('userNickname', dbNickname)
             localStorage.setItem('userProfileImage', dbImage)
           } else {
-            setUserNickname(localStorage.getItem('userNickname') || '')
-            setUserProfileImage(localStorage.getItem('userProfileImage'))
+            setUserNickname(user.nickname || email.split('@')[0])
+            setUserProfileImage(user.avatar_url || '')
           }
         })
         .catch(() => {
-          setUserNickname(localStorage.getItem('userNickname') || '')
-          setUserProfileImage(localStorage.getItem('userProfileImage'))
+          setUserNickname(user.nickname || email.split('@')[0])
+          setUserProfileImage(user.avatar_url || '')
         })
     } else {
-      setUserNickname(localStorage.getItem('userNickname') || '게스트')
-      setUserProfileImage(localStorage.getItem('userProfileImage') || '🐾')
+      setUserNickname('게스트')
+      setUserProfileImage('🐾')
     }
-  }, [])
+  }, [isLoading, isLoggedIn, user])
 
   useEffect(() => {
     setIsRefining(false)
@@ -168,11 +172,13 @@ export default function ResultClient() {
       }
 
       // 2) 사용자 식별 / 1회 체험 제한
-      const currentEmail = localStorage.getItem('userEmail')
-      let analysisUserId: string
+      const currentEmail = user?.email || localStorage.getItem('userEmail')
+      let analysisUserId: string | null = null
       if (currentEmail) {
         analysisUserId = getUserId()
-      } else {
+      }
+      
+      if (!analysisUserId) {
         const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
         if (trialCount >= 1) {
           window.dispatchEvent(new CustomEvent('openLoginModal'))
@@ -474,6 +480,8 @@ export default function ResultClient() {
 
     // [대기제로 3단계] id가 없고 url만 있는 경우: pending 플로우로 id 확보 후 fetch 진행
     const bootstrap = async () => {
+      if (isLoading) return;
+
       if (!id && urlParam) {
         if (pendingStartedRef.current) return
         pendingStartedRef.current = true
@@ -527,7 +535,7 @@ export default function ResultClient() {
         phase3TimerRef.current = null
       }
     };
-  }, [searchParams])
+  }, [searchParams, isLoading])
 
   useEffect(() => {
     const nickname = localStorage.getItem("userNickname")
