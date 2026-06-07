@@ -1514,14 +1514,31 @@ export async function POST(request: Request) {
         });
 
         const isGuest = actualUserId.startsWith('anon_') || actualUserId.startsWith('trial_');
-        creditDeducted = !isGuest && dynamicRes.success;
         estimatedPrice = dynamicRes.price || 30; // 30C fallback
 
         if (dynamicRes.success) {
           console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, gptTokens=${speedTokens}, geminiTokens=${fullTokens}, searchCount=${groundingCount} → price=${estimatedPrice}`);
           
-          // 과금 성공 시 5분 광고 제거 타임패스 설정
-          if (!isGuest) {
+          if (isGuest) {
+            // GUEST는 허브 연동이 안 되므로 로컬 DB(t_credit_history)에서 차감
+            await ensureCreditHistoryTable(client);
+            const currentBalance = await getLatestCreditBalance(client, actualUserId);
+            if (!Number.isFinite(currentBalance) || currentBalance < estimatedPrice) {
+              const err: any = new Error('코인이 부족합니다.');
+              err.statusCode = 402;
+              throw err;
+            }
+            await appendCreditHistory(client, {
+              userId: actualUserId,
+              amount: -estimatedPrice,
+              description: `영상 전문 분석`,
+              type: 'analysis',
+            });
+            creditDeducted = true;
+          } else {
+            // 회원인 경우 이미 허브에서 차감 완료됨
+            creditDeducted = true;
+            // 과금 성공 시 5분 광고 제거 타임패스 설정
             adFreeUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
             console.log(`[AdFree] userId=${actualUserId} adFreeUntil=${adFreeUntil}`);
           }
