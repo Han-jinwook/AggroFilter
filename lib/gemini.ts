@@ -698,71 +698,9 @@ export async function analyzeContent(
     3. 신뢰도 총평 (XX점 / 🟢🟡🔴): ...
     `;
 
-  // [v4.1] 자막 압축 구조
-  // 8,000자 초과 시 flash-lite 로 팩트 보존 압축 → 본 분석에 투입
-  // 8,000자 이하는 원본 그대로 직행 (압축 호출 없음)
-  const MAX_TRANSCRIPT_CHARS = 8000;
-
-  const compressTranscript = async (rawTranscript: string): Promise<string> => {
-    const compressPrompt = `아래는 유튜브 영상의 전체 자막이다.
-팩트체크 목적으로 사용할 수 있도록 다음 규칙에 따라 압축하라.
-
-[보존 대상 — 반드시 원문 유지]
-- 인명, 직책, 기관명, 단체명
-- 수치, 날짜, 연도, 금액, 통계
-- 주장, 논거, 사건 서술 문장
-- 인용문, 발언 내용
-- 타임스탬프 (있다면 보존)
-
-[제거 대상]
-- 추임새, 감탄사 ("네~", "맞아요", "정말요", "와~" 등)
-- 반복된 동일 내용
-- 단순 전환 멘트 ("다음으로", "자 그럼", "이제" 등 단독 문장)
-- 군더더기 인사말
-
-[출력 규칙]
-- 총 글자 수 8,000자 이내
-- 원문 순서 유지
-- 요약·재해석 금지 (원문 문장 그대로 남기거나 제거만)
-- 타임스탬프가 있다면 형식 그대로 유지
-- 다른 텍스트 없이 압축된 자막만 출력
-
-[원본 자막]
-${rawTranscript}`;
-
-    try {
-      const compressAi = new GoogleGenAI({ apiKey });
-
-      // 압축 호출은 최대 12초 — 초과 시 앞 8,000자 폴백 (본 분석 타임아웃 예산 보호)
-      const compressTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('compress timeout')), 12000)
-      );
-      const result = await Promise.race([
-        compressAi.models.generateContent({
-          model: 'gemini-2.5-flash-lite',
-          contents: compressPrompt,
-          config: { thinkingConfig: { thinkingBudget: 0 } },
-        }),
-        compressTimeout,
-      ]);
-      const compressed = (result.text || '').trim();
-      if (compressed && compressed.length > 100) {
-        console.log(`자막 압축 완료: ${rawTranscript.length}자 → ${compressed.length}자`);
-        return compressed;
-      }
-      // 압축 결과 이상 시 앞 8,000자 폴백
-      console.warn('자막 압축 결과 이상, 앞 8,000자 폴백 사용');
-      return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
-    } catch (e) {
-      console.error('자막 압축 호출 실패 또는 타임아웃, 앞 8,000자 폴백 사용:', e);
-      return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
-    }
-  };
-
-  // 자막 준비: 8,000자 초과 시 압축 호출, 이하는 원본 직행
-  const finalTranscript = (transcript && transcript.length > MAX_TRANSCRIPT_CHARS)
-    ? await compressTranscript(transcript)
-    : transcript;
+  // [v4.2] 자막 전문 직투입
+  // 압축 호출 제거 — 압축에 쓰는 시간(12초)이 오히려 낭비.
+  // 자막 전문을 본 분석에 그대로 투입하고, 실제 로그로 타임 이슈 여부를 검증한다.
 
   const tryModel = async (modelName: string) => {
     console.log(`Initializing Gemini model: ${modelName}`);
@@ -787,7 +725,7 @@ ${rawTranscript}`;
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${finalTranscript}
+      ${transcript}
     `;
 
     const contents: any[] = [finalPrompt];
@@ -809,7 +747,7 @@ ${rawTranscript}`;
         ...(tools.length > 0 ? { tools } : {}),
       },
     }, {
-      timeoutMs: 40000,  // 압축(최대 12초) + 본 분석(40초) = 최대 52초 → 60초 서버리스 한도 내 안전
+      timeoutMs: 50000,  // 압축 제거로 확보한 시간 반영 (60초 서버리스 한도 내 안전)
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
