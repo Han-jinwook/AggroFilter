@@ -459,32 +459,7 @@ export async function analyzeContent(
       thumbnailPart = await urlToGenerativePart(thumbnailUrl);
   }
 
-  let subtitleSummaryOverride: string | null = null;
-  try {
-    const skipSmartSummary = shouldSkipSmartSummary({
-      durationIso: duration,
-      transcript,
-      transcriptItems,
-    });
-
-    if (!skipSmartSummary) {
-      const rawChunks = (transcriptItems && transcriptItems.length > 0)
-        ? chunkTranscriptItems(transcriptItems)
-        : (transcript && transcript.trim() ? chunkTranscript(transcript) : []);
-
-      const chunks = coalesceChunks(rawChunks, 10);
-
-      if (chunks.length > 0) {
-        const summaries = await Promise.all(
-          chunks.map(chunk => summarizeChunk(chunk, apiKey))
-        );
-        subtitleSummaryOverride = summaries.join("\n");
-      }
-    }
-  } catch (e) {
-    console.error("Smart chunk subtitle summary failed:", e);
-    subtitleSummaryOverride = null;
-  }
+  // [v4.0] 청크 사전 요약 제거 — 스피드 분석이 GPT로 분리된 이후 불필요. 자막 원본을 그대로 메인 분석에 투입.
 
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
   const uploadDateStr = publishedAt
@@ -723,61 +698,50 @@ export async function analyzeContent(
     3. 신뢰도 총평 (XX점 / 🟢🟡🔴): ...
     `;
 
-  const startTime = Date.now();
-
-  // Strategy: Try Primary Model (2.5) -> Retry -> Fallback Model (1.5) -> Retry
-  const tryModel = async (modelName: string, extraInstructions?: string, disableThinking?: boolean, customTimeoutMs?: number) => {
+  // [v4.0] 단일 호출 구조
+  // - 0단계(청크 사전 요약) 제거: 스피드 분석이 GPT로 이미 분리됨
+  // - 그라운딩 2차 재시도 제거: 1차 호출에서 isPostNov2024 여부에 따라 검색 on/off로 단일화
+  // - 자막 최대 8,000자 (앞부터 순서대로): 분석 품질 확보
+  const tryModel = async (modelName: string) => {
     console.log(`Initializing Gemini model: ${modelName}`);
-    
-    // Allow controversial content for analysis purposes (Analysis tool need to see the bad stuff to rate it)
+
     const safetySettings = [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
     ];
 
-    // Construct inputs: text prompt + thumbnail image (if available)
-    // 긴 자막은 앞/중간/끝 균등 샘플링으로 타임아웃 방지
-    const MAX_TRANSCRIPT_CHARS = 2000;
-    const trimmedTranscript = (() => {
-      if (!transcript || transcript.length <= MAX_TRANSCRIPT_CHARS) return transcript;
-      const s1 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.4); // 앞 40%
-      const s2 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.2); // 중간1 20%
-      const s3 = Math.floor(MAX_TRANSCRIPT_CHARS * 0.2); // 중간2 20%
-      const s4 = MAX_TRANSCRIPT_CHARS - s1 - s2 - s3;    // 끝 20%
-      const len = transcript.length;
-      const start = transcript.substring(0, s1);
-      const mid1 = transcript.substring(Math.floor(len * 0.33), Math.floor(len * 0.33) + s2);
-      const mid2 = transcript.substring(Math.floor(len * 0.66), Math.floor(len * 0.66) + s3);
-      const end = transcript.substring(len - s4);
-      return `${start}\n...(중략)...\n${mid1}\n...(중략)...\n${mid2}\n...(중략)...\n${end}`;
-    })();
+    // 자막 앞부터 8,000자까지 원본 그대로 사용 (분석 품질 우선)
+    const MAX_TRANSCRIPT_CHARS = 8000;
+    const trimmedTranscript = transcript && transcript.length > MAX_TRANSCRIPT_CHARS
+      ? transcript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)'
+      : transcript;
+
+    // 최신 영상(2024년 11월 이후)일 때만 구글 검색 강제 지시문 추가
+    const searchInstruction = isPostNov2024
+      ? `⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]\n이 영상은 2024년 11월 1일 이후 최신 영상입니다. 반드시 Google Search 도구를 실행하여 인물 직책, 사건, 정책 등을 확인한 후 채점하십시오.\n`
+      : '';
 
     const finalPrompt = `
       ${systemPrompt}
-      
-      ${extraInstructions ? `[추가 지시사항 및 경고]\n${extraInstructions}\n` : ''}
-      ${disableThinking ? `⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]\n이 영상은 2024년 11월 1일 이후 최신 영상이거나 팩트체크가 매우 중요합니다. 반드시 Google Search 도구를 활용해 최근 관련 사실을 확인하여 정확성 점수를 매기세요.\n` : ''}
 
+      ${searchInstruction}
       [분석 대상 데이터]
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
-      ${subtitleSummaryOverride ? subtitleSummaryOverride : trimmedTranscript}
+      ${trimmedTranscript}
     `;
 
     const contents: any[] = [finalPrompt];
     if (thumbnailPart) {
-        contents.push(thumbnailPart);
+      contents.push(thumbnailPart);
     }
-    
-    // 서버리스 한도를 초과하지 않도록 타임아웃 상한 설정 (최대 50초)
-    let apiTimeout = disableThinking ? 50000 : analysisProfile.timeoutMs;
-    if (customTimeoutMs) {
-      apiTimeout = customTimeoutMs;
-    }
-    
+
+    // 검색 여부: 최신 영상만 구글 검색 on, 나머지는 off (비용/시간 절감)
+    const tools = isPostNov2024 ? [{ googleSearch: {} }] : [];
+
     const response = await generateContentWithRetry(ai, {
       model: modelName,
       contents,
@@ -785,100 +749,33 @@ export async function analyzeContent(
         temperature: 0.2,
         topP: 0.85,
         safetySettings,
-        ...(disableThinking ? {} : { thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget } }),
-        tools: [{ googleSearch: {} }],
+        thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget },
+        ...(tools.length > 0 ? { tools } : {}),
       },
     }, {
-      timeoutMs: apiTimeout,
+      timeoutMs: 45000,
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
-    
-    // Validate response immediately to trigger fallback if blocked/empty
+
     const text = response.text;
     const usageMetadata = response.usageMetadata || response.response?.usageMetadata;
     const groundingMetadata = response.response?.candidates?.[0]?.groundingMetadata;
     const candidates = response.response?.candidates;
 
-    return {
-      text,
-      usageMetadata,
-      groundingMetadata,
-      candidates
-    };
+    return { text, usageMetadata, groundingMetadata, candidates };
   };
 
   try {
     let result: any = null;
-    // Strategy: Primary model + safe fallback
     const modelsToTry = ["gemini-2.5-flash"];
-    
+
     let lastError;
     for (const modelName of modelsToTry) {
       try {
         console.log(`Attempting analysis with model: ${modelName}`);
-        // 1차 호출 타임아웃은 최대 45초로 제한
-        result = await tryModel(modelName, undefined, isPostNov2024, 45000);
-        
-        if (result) {
-          // [grounding 검증 및 강제 재시도]
-          // 2024년 11월 1일 이후 영상인데 구글 검색을 돌리지 않은 경우
-          const groundingMetadata = result.groundingMetadata;
-          const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
-          const groundingUsed = groundingQueries.length > 0;
-
-          // 임시로 is_valid_target 여부 추출 시도
-          let isValidTarget = true; // 기본값은 true (보수적으로 팩트체크 대상이라 가정)
-          if (result.text) {
-            try {
-              let jsonString = result.text.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
-              const firstBrace = jsonString.indexOf('{');
-              const lastBrace = jsonString.lastIndexOf('}');
-              if (firstBrace !== -1 && lastBrace !== -1) {
-                  jsonString = jsonString.substring(firstBrace, lastBrace + 1);
-              }
-              const tempObj = JSON.parse(jsonString);
-              if (tempObj && typeof tempObj.is_valid_target === 'boolean') {
-                isValidTarget = tempObj.is_valid_target;
-              }
-            } catch {
-              // 파싱 실패시에는 보수적으로 true로 설정하여 팩트체크를 시도하도록 함
-            }
-          }
-          
-          if (isPostNov2024 && isValidTarget && !groundingUsed) {
-            const elapsed = Date.now() - startTime;
-            
-            // 경과 시간이 이미 25초를 초과한 경우 재시도를 하지 않고 1차 결과를 그대로 반환하여 타임아웃 방지
-            if (elapsed > 25000) {
-              console.warn(`⚠️ [GROUNDING SKIP] 이미 ${Math.round(elapsed / 1000)}초 경과하여 타임아웃 우려로 인해 구글 검색 강제 재시도를 스킵하고 1차 결과를 반환합니다. 제목: "${title}"`);
-            } else {
-              console.warn(`🚨 [GROUNDING RETRY] 2024년 11월 1일 이후 영상이면서 팩트체크 대상인데 Google Search 미사용 감지! 재시도를 시작합니다. 제목: "${title}"`);
-              
-              const extraWarning = `
-                ⚠️ [경고: 절대 준수 규칙]
-                이 영상은 너의 학습 데이터 종료 시점(2024년 10월) 이후인 최신 시점(${uploadDateStr || '2024년 11월 1일 이후'})에 업로드된 영상입니다.
-                따라서 영상 속 인물, 직위, 사건, 정권 상황 등 모든 팩트는 너의 기존 지식에 존재하지 않거나 현재 시점과 완전히 다를 가능성이 매우 높습니다.
-                반드시 googleSearch 도구(구글 검색)를 명시적으로 실행하여 해당 사실을 인터넷 뉴스 검색으로 대조 확인한 후, 그 팩트만을 기반으로 채점하십시오.
-                절대 기존 학습 지식에만 의존하여 "사실이 아니다" 혹은 "존재하지 않는다"라고 성급히 단정 짓지 마십시오.
-              `;
-              
-              // 60초 서버리스 한도를 넘기지 않기 위해 남은 시간 만큼만 타임아웃을 할당 (최소 15초 ~ 남은 시간)
-              const remainingTimeout = Math.max(15000, 50000 - elapsed);
-              
-              // 검색 강제 프롬프트를 얹어서 다시 시도
-              const retryResult = await tryModel(modelName, extraWarning, true, remainingTimeout).catch((retryErr) => {
-                console.error("Google Search 강제 재시도 중 오류 발생, 1차 결과를 유지합니다:", retryErr.message);
-                return null;
-              });
-              
-              if (retryResult) {
-                result = retryResult;
-              }
-            }
-          }
-          break; // Success
-        }
+        result = await tryModel(modelName);
+        if (result) break; // 단 1회 호출로 완료
       } catch (error: any) {
         lastError = error;
         console.warn(`⚠️ Model ${modelName} failed: ${error.message}`);
