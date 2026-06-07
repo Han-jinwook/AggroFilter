@@ -179,18 +179,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           {/* 우측 프로필 및 자산(코인) 영역 */}
           <div className="flex items-center justify-end shrink-0 gap-3 sm:gap-4 min-w-[120px]">
-            {/* 로딩 중 스켈레톤 — 자리 유지용 */}
-            {isLoading && (
-              <>
-                <div className="flex flex-col items-center gap-1 px-1">
-                  <div className="h-9 w-14 rounded-xl bg-slate-100 animate-pulse" />
-                  <div className="h-2.5 w-8 rounded bg-slate-100 animate-pulse" />
-                </div>
-                <div className="h-9 w-9 rounded-full bg-slate-100 animate-pulse" />
-              </>
-            )}
             {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
-            {!isLoading && (isLoggedIn || pendingFee !== null) && (
+            {(isLoggedIn || pendingFee !== null) && (
               <Link
                 href={isLoggedIn ? "/payment/purchase" : "#"}
                 onClick={(e) => {
@@ -219,12 +209,10 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </Link>
             )}
 
-            {!isLoading && (
-              <HubProfileWidget
-                onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-                onProfileClick={() => router.push('/p-settings')}
-              />
-            )}
+            <HubProfileWidget 
+              onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+              onProfileClick={() => router.push('/p-settings')}
+            />
           </div>
         </div>
       </header>
