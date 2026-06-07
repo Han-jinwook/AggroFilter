@@ -759,13 +759,13 @@ export async function analyzeContent(
     const searchInstruction = needs_grounding
       ? `
     ⚠️ [MANDATORY GOOGLE SEARCH REQUIRED]
-    이 영상은 팩트체크가 필요한 것으로 판단되었습니다. 반드시 Google Search 도구를 활용하여 사실 관계를 확인하십시오.
+    이 영상은 팩트체크가 매우 시급한 것으로 판단되었습니다. 따라서 분석의 신뢰성을 위해 반드시 아래 구글 검색 키워드로 실시간 정보를 먼저 찾아보십시오.
     
-    ## 검색어 추천 키워드 (참고용)
+    ## 검색어 추천 키워드 (실제 Google Search 도구에 입력하십시오)
     - ${search_queries.join(', ')}
     
     ## 검색 도구 활용 가이드 (Google Search) — ⚠️ 최우선 규칙
-    - **자율적 검색 적극 수행**: 제시된 추천 키워드 외에도 팩트체크가 필요하거나 정보 검증이 필요한 경우 Google Search를 적극적으로 실행하여 사실을 대조하고 판단하십시오. (인물의 현재 직위, 최신 사건, 정책, 최신 기술/제품/시장 현황 등 검증이 필요한 모든 것에 적용)
+    - **실제 도구 호출 강제**: 단순히 학습 지식으로만 답하지 마십시오. 제공된 'googleSearch' 도구를 호출해 팩트체크를 직접 수행해야 합니다.
     - **검색 결과 절대 우선**: 검색 결과와 너의 학습 데이터(2024년 10월)가 충돌하면 무조건 검색 결과를 따르라.
     - **정확성 판단**: 영상의 주장과 검색 결과를 비교하여 일치하면 정확, 불일치하면 부정확으로 판단하라.
     
@@ -777,15 +777,24 @@ export async function analyzeContent(
     - 검색 툴(googleSearch)을 실제로 호출(Invoke)하지 않았다면 "검색 결과와 일치합니다"라는 말을 절대 쓰지 마라.
     ` : '';
 
-    const finalPrompt = `
+    const systemInstruction = `
       ${systemPrompt}
 
       ${searchInstruction}
+    `;
+
+    const finalPrompt = `
       [분석 대상 데이터]
       채널명: ${channelName}
       제목: ${title}
       자막 내용:
       ${transcript}
+
+      ${needs_grounding ? `
+      ⚠️ [CRITICAL INSTRUCTION: RUN GOOGLE SEARCH NOW]
+      분석을 시작하기 전, 반드시 제공된 'googleSearch' 도구를 사용하여 위에 명시된 팩트체크용 추천 키워드로 실시간 검색을 수행하십시오. 
+      실제 구글 검색 도구 호출 없이 분석을 끝마치는 것은 중대한 지침 위반입니다.
+      ` : ''}
     `;
 
     const contents: any[] = [finalPrompt];
@@ -803,6 +812,7 @@ export async function analyzeContent(
         temperature: 0.2,
         topP: 0.85,
         safetySettings,
+        systemInstruction,
         thinkingConfig: { thinkingBudget: analysisProfile.thinkingBudget },
         ...(tools.length > 0 ? { tools } : {}),
       },
@@ -814,8 +824,8 @@ export async function analyzeContent(
 
     const text = response.text;
     const usageMetadata = response.usageMetadata || response.response?.usageMetadata;
-    const groundingMetadata = response.response?.candidates?.[0]?.groundingMetadata;
-    const candidates = response.response?.candidates;
+    const groundingMetadata = response.candidates?.[0]?.groundingMetadata || response.response?.candidates?.[0]?.groundingMetadata;
+    const candidates = response.candidates || response.response?.candidates;
 
     return { text, usageMetadata, groundingMetadata, candidates };
   };

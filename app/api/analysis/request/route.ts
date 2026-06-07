@@ -313,12 +313,12 @@ export async function POST(request: Request) {
                 );
               }
 
-              // 3. 트랜잭션 요청
+              const displayTitle = row.f_title || videoInfo?.title || videoId;
               const txRes = await processTransaction({
                 userId,
                 amount: -fixedPrice,
                 requestId: `cached_${videoId}_${Date.now()}`,
-                displayText: `영상 분석 (열람) - ${fixedPrice}C`
+                displayText: `어그로필터 - 영상 분석 (열람) - ${displayTitle}`
               });
               cachedCreditDeducted = txRes.success;
               if (cachedCreditDeducted) {
