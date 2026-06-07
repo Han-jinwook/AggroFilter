@@ -732,11 +732,19 @@ ${rawTranscript}`;
 
     try {
       const compressAi = new GoogleGenAI({ apiKey });
-      const result = await compressAi.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
-        contents: compressPrompt,
-        config: { thinkingConfig: { thinkingBudget: 0 } },
-      });
+
+      // 압축 호출은 최대 12초 — 초과 시 앞 8,000자 폴백 (본 분석 타임아웃 예산 보호)
+      const compressTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('compress timeout')), 12000)
+      );
+      const result = await Promise.race([
+        compressAi.models.generateContent({
+          model: 'gemini-2.5-flash-lite',
+          contents: compressPrompt,
+          config: { thinkingConfig: { thinkingBudget: 0 } },
+        }),
+        compressTimeout,
+      ]);
       const compressed = (result.text || '').trim();
       if (compressed && compressed.length > 100) {
         console.log(`자막 압축 완료: ${rawTranscript.length}자 → ${compressed.length}자`);
@@ -746,7 +754,7 @@ ${rawTranscript}`;
       console.warn('자막 압축 결과 이상, 앞 8,000자 폴백 사용');
       return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
     } catch (e) {
-      console.error('자막 압축 호출 실패, 앞 8,000자 폴백 사용:', e);
+      console.error('자막 압축 호출 실패 또는 타임아웃, 앞 8,000자 폴백 사용:', e);
       return rawTranscript.substring(0, MAX_TRANSCRIPT_CHARS) + '\n...(이후 생략)';
     }
   };
@@ -801,7 +809,7 @@ ${rawTranscript}`;
         ...(tools.length > 0 ? { tools } : {}),
       },
     }, {
-      timeoutMs: 45000,
+      timeoutMs: 40000,  // 압축(최대 12초) + 본 분석(40초) = 최대 52초 → 60초 서버리스 한도 내 안전
       maxRetries: analysisProfile.retries,
       baseDelayMs: analysisProfile.baseDelayMs,
     });
