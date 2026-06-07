@@ -45,6 +45,7 @@ interface TChannelData {
   profileImage: string;
   trustScore: number;
   trustGrade: string;
+  handle?: string;
   stats: {
     accuracy: number;
     aggro: string;
@@ -640,7 +641,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
                     <div className="flex items-center gap-3">
                       {topic.rank && (
                         <Link
-                          href={`/p-ranking?category=${topic.categoryId}&channel=${params.id}`}
+                          href={`/p-ranking?category=${topic.categoryId}&channel=${channelId}`}
                           onClick={(e) => e.stopPropagation()}
                           className="group/rank hover:opacity-80 active:scale-95 transition-all flex items-center gap-2"
                         >

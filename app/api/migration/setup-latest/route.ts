@@ -45,7 +45,7 @@ export async function GET() {
       updatedRows: updateResult.rowCount 
     });
 
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK');
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {

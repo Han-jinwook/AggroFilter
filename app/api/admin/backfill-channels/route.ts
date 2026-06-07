@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     for (let i = 0; i < channelIds.length; i += 50) {
       const batch = channelIds.slice(i, i + 50);
       const ytChannels = await fetchYouTubeChannels(batch, apiKey);
-      const foundSet = new Set(ytChannels.map((c) => c.channelId));
+      const foundSet = new Set(ytChannels.map((c: any) => c.channelId));
 
       for (const id of batch) {
         if (!foundSet.has(id)) notFoundOnYouTube.push(id);

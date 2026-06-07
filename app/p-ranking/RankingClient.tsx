@@ -27,6 +27,7 @@ interface TRankingApiResponse {
     name: string
     avatar: string
     score: number
+    clickbaitScore?: number
     categoryId: number
     analysisCount?: number
   }>
@@ -69,7 +70,7 @@ export default function RankingClient() {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false)
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
-  const [availableCategories, setAvailableCategories] = useState<{id: number, count: number}[]>([])
+  const [availableCategories, setAvailableCategories] = useState<{id: number, count: number, name: string}[]>([])
   
   // 언어 관련 상태 (URL 파라미터 우선)
   const [currentLanguage, setCurrentLanguage] = useState<string>(urlLang || 'korean')

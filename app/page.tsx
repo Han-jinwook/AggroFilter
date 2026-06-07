@@ -193,6 +193,8 @@ export default function MainPage() {
         console.log(`[AdFree] 타임패스 저장: ${result.adFreeUntil}`);
       }
 
+      const readyAnalysisId = result.analysisId;
+
       // 익명 사용자 분석 횟수 추적 (모달은 결과 페이지에서 표시)
       if (isAnonymousUser()) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
@@ -208,7 +210,6 @@ export default function MainPage() {
 
 
       // Analysis is saved in DB with user_id, no localStorage needed
-      const readyAnalysisId = result.analysisId;
       setAnalysisId(readyAnalysisId);
       router.replace(`/p-result?id=${readyAnalysisId}`);
       return;

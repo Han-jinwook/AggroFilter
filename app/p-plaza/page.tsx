@@ -38,6 +38,7 @@ interface TVideoData {
   channel: string
   views: string
   score: number
+  clickbait: number
   color: "green" | "red"
   topic?: string
   channelIcon?: string
@@ -50,6 +51,7 @@ interface TAnalyzedChannelData {
   channelIcon?: string
   topic: string
   count: number
+  avgClickbait: number
   score: number
   color: "green" | "red"
 }
@@ -455,8 +457,6 @@ export default function PlazaPage() {
                       key={item.id} 
                       item={{ ...item, color }} 
                       type={hotFilter === 'trust' ? 'trust' : 'aggro'}
-                      label={hotFilter === 'aggro' ? '어그로' : undefined}
-                      onClick={() => router.push(`/p-result?id=${item.id}`)}
                     />
                   )
                 })
