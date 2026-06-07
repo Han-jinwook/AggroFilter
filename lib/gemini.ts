@@ -85,7 +85,7 @@ function getGeminiAnalysisProfile(params: {
     timeoutMs: isShortForm ? 50000 : 55000,
     retries: 1,
     baseDelayMs: 800,
-    thinkingBudget: isShortForm ? 1024 : 2048,
+    thinkingBudget: 0, // isShortForm ? 1024 : 2048 (임시로 0으로 설정)
   };
 }
 
