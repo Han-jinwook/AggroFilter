@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 
 // REFACTORED_BY_MERLIN_HUB: t_users 통계 → Hub family_users 이관 예정
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function isAdminEmail(email: string | null | undefined) {
   if (!email) return false;

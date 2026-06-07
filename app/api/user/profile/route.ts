@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 // Supabase Admin Client for Hub DB (wwopcuitvjldixkyzpzi)
 // 래퍼 함수로 만들어 빌드 타임에 실행되지 않도록 방지합니다.
 const getSupabase = () => {
