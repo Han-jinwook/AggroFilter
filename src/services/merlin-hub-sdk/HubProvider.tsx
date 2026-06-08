@@ -129,7 +129,23 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
         try {
           parsedUser = JSON.parse(cachedUser);
         } catch {}
+      } else {
+        // 백업용 fallback: 기존 어플리케이션 전역에서 쓰고 있는 userNickname/userProfileImage 사용
+        const backupNickname = localStorage.getItem('userNickname');
+        const backupEmail = localStorage.getItem('userEmail') || '';
+        const backupAvatar = localStorage.getItem('userProfileImage') || '';
+        const backupUserId = localStorage.getItem('merlin_user_id') || '';
+        if (backupNickname) {
+          parsedUser = {
+            id: backupUserId,
+            email: backupEmail,
+            nickname: backupNickname,
+            avatar_url: backupAvatar,
+            notification_settings: {}
+          };
+        }
       }
+
       if (cachedBalance) {
         parsedBalance = parseInt(cachedBalance, 10);
       }
