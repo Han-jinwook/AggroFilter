@@ -28,9 +28,25 @@ export async function analyzeContentSpeed(
 
   const client = new OpenAI({ apiKey });
 
-  // 1. 자막 해상도 대폭 강화 (자막 원본 직투입)
-  // 스피드 트랙에서도 굳이 청크 분할 과정을 거칠 필요 없이, 온전한 자막 전체(최대 35,000자)를 1개 덩어리로 던집니다.
-  const quickSummary = transcript ? transcript.substring(0, 35000) : '';
+  // 1. 자막 해상도 대폭 강화 (자막 원본 직투입 + 1분 단위 타임스탬프 부여)
+  let quickSummary = '';
+  if (transcriptItems && transcriptItems.length > 0) {
+    let currentMinute = -1;
+    for (const item of transcriptItems) {
+      const minute = Math.floor(item.start / 60);
+      if (minute !== currentMinute) {
+        const minStr = String(minute).padStart(2, '0');
+        const secStr = String(Math.floor(item.start % 60)).padStart(2, '0');
+        quickSummary += `\\n[${minStr}:${secStr}] `;
+        currentMinute = minute;
+      }
+      quickSummary += item.text + ' ';
+      if (quickSummary.length > 35000) break;
+    }
+    quickSummary = quickSummary.trim();
+  } else {
+    quickSummary = transcript ? transcript.substring(0, 35000) : '';
+  }
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
 
