@@ -61,6 +61,10 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
       if (urlFromQuery) {
         setRedirectUrlParam(urlFromQuery);
       }
+      const tabFromQuery = params.get('tab');
+      if (tabFromQuery === 'charge' || tabFromQuery === 'history') {
+        setTab(tabFromQuery as 'charge' | 'history');
+      }
     }
   }, []);
 
@@ -69,7 +73,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
 
 
   const [selectedOption, setSelectedOption] = useState<number>(1000);
-  const [tab, setTab] = useState<'charge' | 'history'>('charge');
+  const [tab, setTab] = useState<'charge' | 'history'>('history');
   const [method, setMethod] = useState<'card' | 'phone' | 'bank'>('card');
   const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
@@ -185,12 +189,12 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
         </div>
 
         {/* 탭 전환 영역 */}
-        <div className="bg-slate-200/60 p-1.5 border border-slate-300 rounded-2xl flex gap-1">
+        <div className="bg-slate-200/50 p-1.5 border border-slate-300/70 rounded-2xl flex gap-1 shadow-inner">
           <button
             onClick={() => setTab('charge')}
             className={tab === 'charge'
-              ? "flex-1 rounded-xl py-2.5 text-sm font-bold bg-white text-indigo-600 shadow-md border border-slate-200/50"
-              : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/40 transition-colors"
+              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-all scale-[1.01]"
+              : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-300/40 transition-all active:scale-[0.98]"
             }
           >
             충전하기
@@ -198,8 +202,8 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
           <button
             onClick={() => setTab('history')}
             className={tab === 'history'
-              ? "flex-1 rounded-xl py-2.5 text-sm font-bold bg-white text-indigo-600 shadow-md border border-slate-200/50"
-              : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-white/40 transition-colors"
+              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-all scale-[1.01]"
+              : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-300/40 transition-all active:scale-[0.98]"
             }
           >
             이용 내역
