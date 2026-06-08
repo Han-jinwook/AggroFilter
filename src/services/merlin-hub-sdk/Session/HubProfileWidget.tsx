@@ -5,7 +5,7 @@
  * Last Updated: 2026-05-17
  * Description: 3D 곰발바닥 테마 글로벌 통합 및 HubAvatar 분리형 아바타 컴포넌트 추가
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHub } from '../HubProvider';
 
 interface HubAvatarProps {
@@ -91,9 +91,14 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   showNickname = true,
 }) => {
   const { isLoggedIn, isLoading, user } = useHub();
+  const [mounted, setMounted] = useState(false);
 
-  // 로딩 상태 (스켈레톤)
-  if (isLoading) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 로딩 상태 및 마운트 완료 전 스켈레톤 (Hydration Mismatch 완전 예방)
+  if (!mounted || isLoading) {
     return (
       <div className={`flex flex-col items-center gap-1.5 animate-pulse ${className}`}>
         <div className="w-10 h-10 rounded-2xl bg-slate-100" />

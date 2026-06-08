@@ -29,8 +29,13 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const pathname = usePathname()
   const { user, isLoggedIn, balance: credits, isLoading } = useHub()
   
+  const [mounted, setMounted] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [pendingFee, setPendingFee] = useState<number | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 비로그인 가불금 실시간 감지
   useEffect(() => {
@@ -179,8 +184,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
           {/* 우측 프로필 및 자산(코인) 영역 */}
           <div className="flex items-center justify-end shrink-0 gap-3 sm:gap-4 min-w-[120px]">
-            {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 */}
-            {(isLoggedIn || pendingFee !== null) && (
+            {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 (Hydration mismatch 예방을 위해 마운트 후에만) */}
+            {mounted && (isLoggedIn || pendingFee !== null) && (
               <Link
                 href={isLoggedIn ? "/payment/purchase" : "#"}
                 onClick={(e) => {
