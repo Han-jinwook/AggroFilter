@@ -30,7 +30,14 @@ export async function analyzeContentSpeed(
 
   // 1. 자막 해상도 대폭 강화 (자막 원본 직투입 + 자연스러운 15초 단위 타임스탬프 부여)
   let quickSummary = '';
+  let videoDurationStr = '알 수 없음';
   if (transcriptItems && transcriptItems.length > 0) {
+    const lastItem = transcriptItems[transcriptItems.length - 1];
+    const finalSeconds = lastItem.start + lastItem.duration;
+    const finalMin = Math.floor(finalSeconds / 60);
+    const finalSec = Math.floor(finalSeconds % 60);
+    videoDurationStr = `${finalMin}분 ${finalSec}초`;
+
     let lastStamp = -999;
     for (const item of transcriptItems) {
       if (item.start - lastStamp >= 15) { // 15초 이상 차이날 때만 타임스탬프 찍기 (기계적인 1분 단위 탈피)
@@ -97,7 +104,7 @@ export async function analyzeContentSpeed(
 
 ## 2. Analysis Instructions
 - **자막 전수 분석**: 입력된 자막 데이터의 처음부터 끝까지 단 한 줄도 빠짐없이 읽고 분석하라.
-- **종료 시점 일치 (매우 중요)**: 요약의 마지막 타임스탬프는 반드시 제공된 자막의 맨 마지막 시점과 일치해야 한다. (영상 중간이나 8분대에서 요약을 끝내고 멈추는 행위는 치명적인 오류다. 영상이 32분짜리면 마지막 요약 챕터는 반드시 30~32분 근처여야 한다!)
+- **종료 시점 일치 (매우 중요)**: 제공된 영상 자막의 전체 길이는 약 **${videoDurationStr}** 이다. 요약의 마지막 챕터 타임스탬프는 반드시 이 마지막 시간대(${videoDurationStr} 근처)와 일치해야 한다! 영상 중간이나 8분, 10분대에서 요약을 끝내고 도망가는 행위는 치명적인 오류다. 무조건 영상 끝까지 촘촘하게 요약하라.
 - **중간 생략 금지**: 영상 중간에서 요약을 멈추지 마라. 전체 내용을 균등하게 배분하여 요약하라.
 - **팩트 추출**: '어떤 종목', '특정 인물'처럼 모호하게 얼버무리지 마라. 영상에 등장한 [실제 종목명/인물명/구체적 행동]을 반드시 명시하라.
 - **챕터 개수 유동성 (매우 중요)**: 예시 데이터가 3개의 챕터라고 해서 무조건 3개로 고정하여 쪼개지 마라! 영상의 길이가 길고 내용이 방대하다면 5개, 10개, 15개 등 내용의 흐름이 전환될 때마다 필요한 만큼 충분히 많은 챕터로 분할하라.
