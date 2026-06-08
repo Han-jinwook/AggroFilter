@@ -28,24 +28,25 @@ export async function analyzeContentSpeed(
 
   const client = new OpenAI({ apiKey });
 
-  // 1. 자막 해상도 대폭 강화 (자막 원본 직투입 + 1분 단위 타임스탬프 부여)
+  // 1. 자막 해상도 대폭 강화 (자막 원본 직투입 + 자연스러운 15초 단위 타임스탬프 부여)
   let quickSummary = '';
   if (transcriptItems && transcriptItems.length > 0) {
-    let currentMinute = -1;
+    let lastStamp = -999;
     for (const item of transcriptItems) {
-      const minute = Math.floor(item.start / 60);
-      if (minute !== currentMinute) {
+      if (item.start - lastStamp >= 15) { // 15초 이상 차이날 때만 타임스탬프 찍기 (기계적인 1분 단위 탈피)
+        const minute = Math.floor(item.start / 60);
         const minStr = String(minute).padStart(2, '0');
         const secStr = String(Math.floor(item.start % 60)).padStart(2, '0');
-        quickSummary += `\\n[${minStr}:${secStr}] `;
-        currentMinute = minute;
+        quickSummary += `\n[${minStr}:${secStr}] `;
+        lastStamp = item.start;
       }
       quickSummary += item.text + ' ';
-      if (quickSummary.length > 35000) break;
+      // 32분짜리 긴 영상도 다 들어갈 수 있도록 제한 대폭 증가 (gpt-4o-mini는 128k 컨텍스트 지원)
+      if (quickSummary.length > 80000) break;
     }
     quickSummary = quickSummary.trim();
   } else {
-    quickSummary = transcript ? transcript.substring(0, 35000) : '';
+    quickSummary = transcript ? transcript.substring(0, 80000) : '';
   }
 
   const thumbnailDataUrl = await thumbnailUrlToDataUrl(thumbnailUrl);
@@ -96,11 +97,11 @@ export async function analyzeContentSpeed(
 
 ## 2. Analysis Instructions
 - **자막 전수 분석**: 입력된 자막 데이터의 처음부터 끝까지 단 한 줄도 빠짐없이 읽고 분석하라.
-- **종료 시점 일치**: 요약의 마지막 타임스탬프는 반드시 제공된 영상의 전체 길이 또는 자막의 마지막 시점과 일치해야 한다. (영상 중간이나 4분, 5분대에서 갑자기 요약을 끝내고 도망가는 행위는 매우 심각한 오류다. 영상이 30분짜리면 마지막 요약은 반드시 30분 근처여야 한다.)
+- **종료 시점 일치 (매우 중요)**: 요약의 마지막 타임스탬프는 반드시 제공된 자막의 맨 마지막 시점과 일치해야 한다. (영상 중간이나 8분대에서 요약을 끝내고 멈추는 행위는 치명적인 오류다. 영상이 32분짜리면 마지막 요약 챕터는 반드시 30~32분 근처여야 한다!)
 - **중간 생략 금지**: 영상 중간에서 요약을 멈추지 마라. 전체 내용을 균등하게 배분하여 요약하라.
 - **팩트 추출**: '어떤 종목', '특정 인물'처럼 모호하게 얼버무리지 마라. 영상에 등장한 [실제 종목명/인물명/구체적 행동]을 반드시 명시하라.
 - **챕터 개수 유동성 (매우 중요)**: 예시 데이터가 3개의 챕터라고 해서 무조건 3개로 고정하여 쪼개지 마라! 영상의 길이가 길고 내용이 방대하다면 5개, 10개, 15개 등 내용의 흐름이 전환될 때마다 필요한 만큼 충분히 많은 챕터로 분할하라.
-- **요약의 기준**: 기계적인 시간 단위 분할을 금지한다. 영상의 '논리적 흐름(도입 → 문제 제기 → 해결책 → 결론)'이 바뀔 때마다 타임스탬프를 분할하라.
+- **요약의 기준**: 기계적인 2분/4분/6분 단위 쪼개기를 엄격히 금지한다. 영상의 '논리적 흐름(도입 → 문제 제기 → 해결책 → 결론)'이 바뀔 때마다 타임스탬프를 분할하라.
 - **타임라인 요약 규칙 (매우 중요)**: 소제목 아래에 들어가는 요약 내용은 절대 단어나 한 줄(단답형)로 요약하지 마라. 반드시 해당 구간에서 유튜버가 무슨 논리로 설명했는지 구체적인 맥락을 포함하여 '2~3문장 분량으로 상세하고 풍성하게' 작성하라.
 
 ## 3. Thumbnail Spoiler Rules
