@@ -19,19 +19,46 @@ export default function SettingsPage() {
   const { getReferralHistory } = useHubReferral()
   
   const [referralHistory, setReferralHistory] = useState<any[]>([])
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   // 단일화된 스마트 알림 상태
   const [smartNotification, setSmartNotification] = useState(true)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     // 알림 설정 및 초대 실적은 로그인한 사용자에게만 로드
     if (isLoggedIn && user) {
-      // 1. 초대 실적 목록 조회
-      setIsHistoryLoading(true)
+      // 1. SWR 로컬 캐시 즉시 복원
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('merlin_cached_referral_history')
+        if (cached) {
+          try {
+            setReferralHistory(JSON.parse(cached))
+          } catch {}
+        }
+      }
+
+      // 캐시가 존재할 때는 로딩 스피너를 보여주지 않아 UI 즉각 노출
+      setIsHistoryLoading(prev => {
+        if (typeof window !== 'undefined') {
+          return !localStorage.getItem('merlin_cached_referral_history')
+        }
+        return prev
+      })
+
+      // 백그라운드 갱신 조회
       getReferralHistory()
         .then(res => {
-          if (res) setReferralHistory(res)
+          if (res) {
+            setReferralHistory(res)
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('merlin_cached_referral_history', JSON.stringify(res))
+            }
+          }
         })
         .catch(err => console.error('Failed to load referrals:', err))
         .finally(() => setIsHistoryLoading(false))
@@ -40,10 +67,13 @@ export default function SettingsPage() {
       const settings = user.notification_settings || {}
       setSmartNotification(settings.smart_notification !== false)
     } else {
-      // 로그아웃 상태면 리스트 초기화
+      // 로그아웃 상태면 리스트 초기화 및 캐시 파괴
       setReferralHistory([])
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('merlin_cached_referral_history')
+      }
     }
-  }, [isLoggedIn, user])
+  }, [isLoggedIn, user, getReferralHistory])
 
   const handleToggleSmartNotification = async (newValue: boolean) => {
     setSmartNotification(newValue)
@@ -61,6 +91,17 @@ export default function SettingsPage() {
     } catch {
       setSmartNotification(!newValue)
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      </div>
+    )
   }
 
   return (
