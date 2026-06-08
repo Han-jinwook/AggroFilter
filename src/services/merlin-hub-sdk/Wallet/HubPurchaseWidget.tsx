@@ -193,7 +193,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
           <button
             onClick={() => setTab('charge')}
             className={tab === 'charge'
-              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-all scale-[1.01]"
+              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-slate-900 text-white shadow-sm transition-all"
               : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-300/40 transition-all active:scale-[0.98]"
             }
           >
@@ -202,7 +202,7 @@ export const HubPurchaseWidget: React.FC<HubPurchaseWidgetProps> = ({
           <button
             onClick={() => setTab('history')}
             className={tab === 'history'
-              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition-all scale-[1.01]"
+              ? "flex-1 rounded-xl py-2.5 text-sm font-black bg-slate-900 text-white shadow-sm transition-all"
               : "flex-1 rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-300/40 transition-all active:scale-[0.98]"
             }
           >
