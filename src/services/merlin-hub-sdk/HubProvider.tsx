@@ -45,6 +45,9 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       const result = await getBalance(userId);
       if (result.success && typeof result.balance === 'number') {
         setBalance(result.balance);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('merlin_cached_balance', String(result.balance));
+        }
       }
     } catch (err) {
       console.error('[HubProvider] Failed to fetch balance:', err);
@@ -53,24 +56,38 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
 
   const refreshSession = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // 캐시가 존재할 때는 UI 깜빡임 방지를 위해 로딩 스켈레톤을 띄우지 않고 백그라운드 갱신합니다.
+      setIsLoading(prev => {
+        if (typeof window !== 'undefined') {
+          return !localStorage.getItem('merlin_cached_user');
+        }
+        return prev;
+      });
       const session = await checkSession();
       
       if (session.valid && session.email) {
-        setUser({
+        const freshUser = {
           id: session.userId || '',
           email: session.email,
           nickname: session.nickname,
           avatar_url: session.avatar_url,
           notification_settings: (session as any).notification_settings || {},
-        });
+        };
+        setUser(freshUser);
         setIsLoggedIn(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('merlin_cached_user', JSON.stringify(freshUser));
+        }
         // 세션 확인 성공 시 잔액도 업데이트
         refreshBalance();
       } else {
         setUser(null);
         setIsLoggedIn(false);
         setBalance(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('merlin_cached_user');
+          localStorage.removeItem('merlin_cached_balance');
+        }
       }
     } catch (err) {
       console.error('[HubProvider] Failed to sync session:', err);
@@ -99,6 +116,38 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
 
   // 초기 로드 및 이벤트 리스너
   useEffect(() => {
+    // 1. SSR Hydration 이후 즉시 로컬 스토리지의 캐시 데이터를 읽어 UI 지연을 최소화 (SWR)
+    const token = localStorage.getItem('merlin_session_token');
+    if (token) {
+      const cachedUser = localStorage.getItem('merlin_cached_user');
+      const cachedBalance = localStorage.getItem('merlin_cached_balance');
+      
+      let parsedUser = null;
+      let parsedBalance = null;
+      
+      if (cachedUser) {
+        try {
+          parsedUser = JSON.parse(cachedUser);
+        } catch {}
+      }
+      if (cachedBalance) {
+        parsedBalance = parseInt(cachedBalance, 10);
+      }
+
+      if (parsedUser) {
+        setUser(parsedUser);
+        setIsLoggedIn(true);
+        setIsLoading(false); // 캐시가 있다면 우선 로딩 스켈레톤 제거
+      }
+      if (parsedBalance !== null) {
+        setBalance(parsedBalance);
+      }
+    } else {
+      // 비로그인 사용자는 로딩 상태 즉시 해제 (게스트로 렌더링)
+      setIsLoading(false);
+    }
+
+    // 2. 백그라운드 갱신 실행 (서버의 최신 상태와 동기화)
     refreshSession();
 
     // 외부 이벤트 대응 (로그인 성공, 세션 만료, 잔액 변동 등)
@@ -108,6 +157,8 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       setUser(null);
       setIsLoggedIn(false);
       setBalance(null);
+      localStorage.removeItem('merlin_cached_user');
+      localStorage.removeItem('merlin_cached_balance');
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
