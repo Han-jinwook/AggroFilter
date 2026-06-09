@@ -754,6 +754,11 @@ export default function ResultClient() {
     });
   };
 
+  const renderSpoilerText = (text: string) => {
+    if (!text) return null;
+    return <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{text.replace(/\[스포(?:일러)?\]/g, '[진짜 정답]')}</p>;
+  };
+
   const handleYouthService = () => {
     const age = Number.parseInt(youthAge)
     if (isNaN(age) || age < 8 || age > 18) {
@@ -969,7 +974,7 @@ ${content}
                               {item.topic && (
                                 <p className="mb-1 text-base font-bold text-amber-600">📌 {item.topic}</p>
                               )}
-                              <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{item.text}</p>
+                              {renderSpoilerText(item.text)}
                               {item.ts && (
                                 <button
                                   onClick={() => handleTimestampClick(item.ts!)}
@@ -986,7 +991,7 @@ ${content}
                     </div>
                   ) : (
                     <div className="rounded-2xl border-2 border-amber-200 bg-white px-4 py-3">
-                      <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{analysisData.thumbnailSpoiler}</p>
+                      {renderSpoilerText(analysisData.thumbnailSpoiler)}
                       {analysisData.thumbnailSpoilerTs && (
                         <button
                           onClick={() => handleTimestampClick(analysisData.thumbnailSpoilerTs!)}
