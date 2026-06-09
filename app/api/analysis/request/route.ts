@@ -1582,14 +1582,6 @@ export async function POST(request: Request) {
       client.release();
     }
 
-    // Release advisory lock after DB save
-    if (lockClient && lockedVideoId) {
-      await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockedVideoId]).catch(() => {});
-      lockClient.release();
-      lockClient = null;
-      lockedVideoId = null;
-    }
-
     const finalAnalysisId = shouldKeepParentOnDecrease && recheckParentAnalysisId ? recheckParentAnalysisId : analysisId;
 
     return NextResponse.json({ 
@@ -1603,16 +1595,17 @@ export async function POST(request: Request) {
     }, { headers: corsHeaders });
 
   } catch (error) {
+    console.error('분석 요청 오류:', error);
+    const statusCode = typeof (error as any)?.statusCode === 'number' ? (error as any).statusCode : 500;
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : '분석 중 오류가 발생했습니다.' 
+    }, { status: statusCode, headers: corsHeaders });
+  } finally {
     if (lockClient && lockedVideoId) {
       await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockedVideoId]).catch(() => {});
       lockClient.release();
       lockClient = null;
       lockedVideoId = null;
     }
-    console.error('분석 요청 오류:', error);
-    const statusCode = typeof (error as any)?.statusCode === 'number' ? (error as any).statusCode : 500;
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : '분석 중 오류가 발생했습니다.' 
-    }, { status: statusCode, headers: corsHeaders });
   }
 }
