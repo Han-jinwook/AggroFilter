@@ -24,28 +24,37 @@
     window.postMessage({ type: 'AGGRO_TRANSCRIPT_DATA', data: transcriptPayload }, '*');
   }
 
-  // background에서 자막 데이터 가져오기
-  chrome.runtime.sendMessage({ type: 'GET_TRANSCRIPT_DATA' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('[어그로필터 확장팩] 메시지 오류:', chrome.runtime.lastError);
-      transcriptPayload = null;
-    } else if (response && response.success && response.data) {
-      console.log('[어그로필터 확장팩] 자막 데이터 수신:', response.data.transcript?.length || 0, '자');
-      transcriptPayload = response.data;
-    } else {
-      console.log('[어그로필터 확장팩] 자막 데이터 없음');
-      transcriptPayload = null;
-    }
+  // background에서 자막 데이터 가져오기 (Service Worker Cold Start 대비 재시도 로직 추가)
+  function fetchTranscriptData(retries = 3) {
+    chrome.runtime.sendMessage({ type: 'GET_TRANSCRIPT_DATA' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[어그로필터 확장팩] 메시지 오류:', chrome.runtime.lastError);
+        if (retries > 0) {
+          console.log(`[어그로필터 확장팩] Service Worker 깨우는 중... 재시도 (${retries}회 남음)`);
+          setTimeout(() => fetchTranscriptData(retries - 1), 1000);
+          return;
+        }
+        transcriptPayload = null;
+      } else if (response && response.success && response.data) {
+        console.log('[어그로필터 확장팩] 자막 데이터 수신:', response.data.transcript?.length || 0, '자');
+        transcriptPayload = response.data;
+      } else {
+        console.log('[어그로필터 확장팩] 자막 데이터 없음');
+        transcriptPayload = null;
+      }
 
-    // 즉시 1회 전송 + 500ms 간격으로 반복 전송 (최대 15초)
-    broadcastData();
-    const interval = setInterval(() => {
-      if (delivered) { clearInterval(interval); return; }
+      // 즉시 1회 전송 + 500ms 간격으로 반복 전송 (최대 15초)
       broadcastData();
-    }, 500);
+      const interval = setInterval(() => {
+        if (delivered) { clearInterval(interval); return; }
+        broadcastData();
+      }, 500);
 
-    setTimeout(() => {
-      clearInterval(interval);
-    }, 15000);
-  });
+      setTimeout(() => {
+        clearInterval(interval);
+      }, 15000);
+    });
+  }
+
+  fetchTranscriptData();
 })();
