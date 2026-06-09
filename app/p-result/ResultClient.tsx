@@ -756,7 +756,7 @@ export default function ResultClient() {
 
   const renderSpoilerText = (text: string) => {
     if (!text) return null;
-    return <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{text.replace(/\[스포(?:일러)?\]\s*/g, '')}</p>;
+    return <p className="text-sm md:text-base font-normal leading-relaxed text-gray-800">{text.replace(/\[(?:진짜 정답|스포(?:일러)?)\]\s*(.*)/g, '$1')}</p>;
   };
 
   const handleYouthService = () => {
