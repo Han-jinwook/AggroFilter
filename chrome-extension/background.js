@@ -40,8 +40,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (pendingAnalysisData) {
       const data = pendingAnalysisData;
-      pendingAnalysisData = null;
-      chrome.storage.local.remove(PENDING_KEY);
+      // 삭제 방지: 새로고침 시에도 데이터가 유지되도록 지우지 않음
+      // pendingAnalysisData = null;
+      // chrome.storage.local.remove(PENDING_KEY);
       sendResponse({ success: true, data });
       return false;
     }
@@ -50,14 +51,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const wrapped = result?.[PENDING_KEY];
       const data = wrapped?.data || null;
 
-      // 2분 이상 지난 데이터는 폐기
-      if (wrapped?.savedAt && Date.now() - wrapped.savedAt > 2 * 60 * 1000) {
+      // 10분 이상 지난 데이터만 폐기 (새로고침, 탭 닫기 대응을 위해 10분으로 보존시간 연장)
+      if (wrapped?.savedAt && Date.now() - wrapped.savedAt > 10 * 60 * 1000) {
         chrome.storage.local.remove(PENDING_KEY);
         sendResponse({ success: true, data: null });
         return;
       }
 
-      chrome.storage.local.remove(PENDING_KEY);
+      // 삭제 방지: chrome.storage.local.remove(PENDING_KEY);
       sendResponse({ success: true, data });
     });
 
