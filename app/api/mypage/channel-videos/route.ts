@@ -18,34 +18,16 @@ export async function POST(request: Request) {
 
     const client = await pool.connect();
     try {
-      // userId가 있으면 내 구독 영상만 + 내 구독일로 표시
-      // userId가 없으면 기존 방식 (채널 최신 분석)
-      const query = resolvedUserId
-        ? `
+      // 채널 리스트에 표시되는 비디오 개수(global count)와 일치하도록, 
+      // 개별 유저의 구독 영상이 아닌 해당 채널의 최신 분석 영상을 전체 반환합니다.
+      const query = `
           SELECT
             a.f_id as id,
             COALESCE(a.f_title, v.f_title, '제목 없음') as title,
             COALESCE(a.f_reliability_score, 0) as score,
-            vs.f_subscribed_at as subscribed_at
-          FROM t_video_subscriptions vs
-          LEFT JOIN LATERAL (
-            SELECT * FROM t_analyses a2
-            WHERE a2.f_video_id = vs.f_video_id
-            ORDER BY a2.f_created_at DESC
-            LIMIT 1
-          ) a ON true
-          LEFT JOIN t_videos v ON v.f_video_id = vs.f_video_id
-          WHERE vs.f_user_id = $3 AND vs.f_channel_id = $1
-          ORDER BY vs.f_subscribed_at DESC
-          LIMIT $2
-        `
-        : `
-          SELECT
-            a.f_id as id,
-            a.f_title as title,
-            a.f_reliability_score as score,
             a.f_created_at as subscribed_at
           FROM t_analyses a
+          LEFT JOIN t_videos v ON v.f_video_id = a.f_video_id
           WHERE a.f_channel_id = $1
             AND a.f_is_latest = TRUE
             AND COALESCE(a.f_not_analyzable, FALSE) = FALSE
@@ -53,9 +35,7 @@ export async function POST(request: Request) {
           LIMIT $2
         `;
 
-      const params = resolvedUserId
-        ? [channelId, safeLimit, resolvedUserId]
-        : [channelId, safeLimit];
+      const params = [channelId, safeLimit];
 
       const res = await client.query(query, params);
 
