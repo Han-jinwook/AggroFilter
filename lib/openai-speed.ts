@@ -78,8 +78,8 @@ export async function analyzeContentSpeed(
   "subtitleSummary": "00:00 - 은퇴 후 투자 실패의 뼈아픈 교훈\\n노후 자금으로 고정 수익을 노리고 상가 분양에 뛰어든 사람들의 실패 사례를 소개합니다. 안정적으로 보였던 월세 수입이 어떻게 큰 손실로 이어지는지 구체적인 데이터를 통해 분석합니다.\\n\\n04:15 - 상가 투자의 숨겨진 함정과 위험성\\n신도시 상가의 높은 공실률과 대출 이자 부담으로 인한 파산 위험을 경고합니다. 특히 분양 대행사의 과장 광고에 속아 노후 자금을 모두 잃게 되는 과정을 상세히 설명합니다.",
   "thumbnail_spoiler": [
     {
-      "topic": "최악의 투자 1위: 신도시 상가 분양",
-      "text": "[출처: 유튜버의 주장] 영상에서 꼽은 최악의 투자는 '신도시 상가 분양'으로 지목함.",
+      "topic": "은퇴 후 절대 하면 안 되는 최악의 투자 1위가 대체 어디야?",
+      "text": "영상에서는 은퇴 자금을 노리는 상가 분양 사기의 실태를 분석합니다. 고정 수익을 미끼로 한 과장 광고에 속아 퇴직금을 날리는 사례가 급증하고 있다고 경고합니다. [스포] 신도시 상가 분양",
       "ts": "04:15"
     }
   ]
@@ -90,8 +90,8 @@ export async function analyzeContentSpeed(
   "subtitleSummary": "00:00 - Painful Lessons of Retirement Investment Failures\\nIntroduces failure cases of people who invested in commercial real estate aiming for fixed income. Analyzes through specific data how seemingly stable monthly rent income leads to massive losses.\\n\\n04:15 - Hidden Traps and Risks of Commercial Real Estate\\nWarns of bankruptcy risks due to high vacancy rates and loan interest burdens in new city commercial areas. Details the process of losing retirement funds due to exaggerated advertising.",
   "thumbnail_spoiler": [
     {
-      "topic": "#1 Worst Investment: New City Commercial Real Estate",
-      "text": "[Source: YouTuber's Claim] The video specifically identifies 'new city commercial real estate' as the worst investment.",
+      "topic": "What exactly is the #1 worst investment you should never make after retirement?",
+      "text": "The video analyzes the reality of commercial real estate sales fraud targeting retirement funds. It warns of a surge in cases where people lose their severance pay due to exaggerated advertising that uses fixed income as bait. [Spoiler] New city commercial real estate",
       "ts": "04:15"
     }
   ]
@@ -104,8 +104,7 @@ export async function analyzeContentSpeed(
 
 ## 2. Analysis Instructions
 - **자막 전수 분석**: 입력된 자막 데이터의 처음부터 끝까지 단 한 줄도 빠짐없이 읽고 분석하라.
-- **끝까지 요약 (매우 중요)**: 제공된 영상 자막의 전체 길이는 약 **${videoDurationStr}** 이다. 영상 중간(예: 8분, 10분대)에서 요약을 멈추는 행위는 치명적인 오류다. 반드시 영상 끝(${videoDurationStr})부분의 내용까지 빠짐없이 촘촘하게 요약하라. (주의: 타임스탬프는 반드시 해당 내용이 '시작되는 시간'을 적어야 하며, 영상이 끝나는 종료 시간을 적지 마라)
-- **중간 생략 금지**: 영상 중간에서 요약을 멈추지 마라. 기계적으로 시간을 등분(예: 5분 간격)하지 말고, 반드시 실제 대화의 문맥과 화제가 전환되는 시점을 기준으로 챕터를 나누어 끝까지 요약하라.
+- **끝까지 요약 (매우 중요)**: 제공된 영상 자막의 전체 길이는 약 **${videoDurationStr}** 이다. 영상 중간(예: 8분, 10분대)에서 요약을 멈추는 행위는 치명적인 오류다. 기계적으로 시간을 등분하지 말고, 실제 문맥 전환을 기준으로 끝(${videoDurationStr})부분까지 빠짐없이 촘촘하게 챕터를 나누어 요약하라. (주의: 타임스탬프는 해당 챕터 내용의 '시작 시간'이며, 영상 종료 시간이 아니다)
 - **팩트 추출**: '어떤 종목', '특정 인물'처럼 모호하게 얼버무리지 마라. 영상에 등장한 [실제 종목명/인물명/구체적 행동]을 반드시 명시하라.
 - **챕터 개수 유동성 (매우 중요)**: 예시 데이터가 3개의 챕터라고 해서 무조건 3개로 고정하여 쪼개지 마라! 영상의 길이가 길고 내용이 방대하다면 5개, 10개, 15개 등 내용의 흐름이 전환될 때마다 필요한 만큼 충분히 많은 챕터로 분할하라.
 - **요약의 기준**: 기계적인 2분/4분/6분 단위 쪼개기를 엄격히 금지한다. 영상의 '논리적 흐름(도입 → 문제 제기 → 해결책 → 결론)'이 바뀔 때마다 타임스탬프를 분할하라.
