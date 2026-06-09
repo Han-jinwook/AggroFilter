@@ -79,7 +79,7 @@ export async function analyzeContentSpeed(
   "thumbnail_spoiler": [
     {
       "topic": "은퇴 후 절대 하면 안 되는 최악의 투자 1위가 대체 어디야?",
-      "text": "영상에서는 은퇴 자금을 노리는 상가 분양 사기의 실태를 분석합니다. 고정 수익을 미끼로 한 과장 광고에 속아 퇴직금을 날리는 사례가 급증하고 있다고 경고합니다. [스포] 신도시 상가 분양",
+      "text": "영상에서는 은퇴 자금을 노리는 상가 분양 사기의 실태를 분석합니다. 고정 수익을 미끼로 한 과장 광고에 속아 퇴직금을 날리는 사례가 급증하고 있다고 경고하며, 그 중 가장 위험한 최악의 투자로 '신도시 상가 분양'을 지목합니다.",
       "ts": "04:15"
     }
   ]
@@ -91,7 +91,7 @@ export async function analyzeContentSpeed(
   "thumbnail_spoiler": [
     {
       "topic": "What exactly is the #1 worst investment you should never make after retirement?",
-      "text": "The video analyzes the reality of commercial real estate sales fraud targeting retirement funds. It warns of a surge in cases where people lose their severance pay due to exaggerated advertising that uses fixed income as bait. [Spoiler] New city commercial real estate",
+      "text": "The video analyzes the reality of commercial real estate sales fraud targeting retirement funds. It warns of a surge in cases where people lose their severance pay due to exaggerated advertising, specifically pointing out 'New city commercial real estate' as the most dangerous trap.",
       "ts": "04:15"
     }
   ]
@@ -112,7 +112,7 @@ export async function analyzeContentSpeed(
 
 ## 3. Thumbnail Spoiler Rules
 - 'topic' 작성 규칙: 건조한 명사구(예: "외국인 자금 이동")로 적지 마라. 시청자에게 질문을 던지는 것이 아니라, 시청자가 제목과 썸네일(어그로)을 보고 **마음속으로 떠올릴 법한 본능적인 궁금증(질문)**을 그대로 적어라. (예: "그래서 외국인이 향하는 '여기'가 대체 어딘데?", "이번 주 터진다는 무시무시한 일이 뭐지?")
-- 'text' 작성 규칙: 질문형 topic에 대한 해답(배경 설명)을 2~3문장 분량의 설명글로 자연스럽게 녹여내고, 마지막에 반드시 "[스포] XXX" 형식으로 질문에 대한 '진짜 정답(핵심 이유, 인물명, 장소, 명확한 결론 등)'을 돌직구로 밝혀라. (주의: "외국인이 매도한 이유는?" 이라는 질문에 "[스포] 외국인 매도" 처럼 질문을 앵무새처럼 반복하면 절대 안 된다. 반드시 그 '이유'가 무엇인지 구체적으로 적어라)
+- 'text' 작성 규칙: 질문형 topic에 대한 해답(배경 설명과 진짜 정답)을 2~4문장 분량의 자연스러운 설명글로 완성하라. 단답형이나 "[스포] XXX" 같은 꼬리표를 뒤에 덧붙이지 말고, 문맥 속에 '핵심 이유, 인물명, 장소, 명확한 결론' 등 구체적인 진짜 정답이 자연스럽게 포함되도록 문장을 구성하라.
 - 정답 핀셋 추출 규칙 (매우 중요): 스포일러의 'text' 부분에 정답을 적을 때, 절대 '특정 정치인', '어느 지역', '특정 제품'처럼 대분류로 뭉뚱그려 요약하지 마라. 영상에 등장한 '정확한 고유 명사(예: 이재용, 일론 머스크, 테슬라, 강남역 등)'나 '구체적인 원인'을 무조건 텍스트에 꽂아 넣어라.
 - 개수 제한 (매우 중요): 썸네일 스포일러는 영상의 전체 목차를 나열하는 곳이 절대 아니다. 타임라인(챕터) 개수와 무관하게, 오직 제목/썸네일의 어그로(미끼)에 대한 핵심 정답만 1~2개(최대 3개)로 압축해서 생성하라. 모든 챕터마다 기계적으로 스포일러를 만들면 심각한 오류다.
 - 모든 떡밥 회수 (매우 중요): 제목과 썸네일에 서로 다른 궁금증(어그로)이 2개 이상 던져졌다면(예: ~한 이유? + 내일은 하락 베팅?), 절대 하나만 적고 넘어가지 말고 각각 독립된 스포일러 항목(topic)으로 분리해서 빠짐없이 떡밥을 회수하라.
