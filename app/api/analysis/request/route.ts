@@ -8,7 +8,7 @@ import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
-import { getBalance, getPricing, processTransaction, chargeDynamic, configureMerlinHub } from '@/src/services/merlin-hub-sdk';
+import { getBalance, getPricing, processTransaction, chargeDynamic, configureMerlinHub, MerlinHubClient } from '@/src/services/merlin-hub-sdk';
 
 configureMerlinHub({ appId: 'AggroFilter' });
 
@@ -194,6 +194,7 @@ export async function POST(request: Request) {
     }
 
     console.log('분석 요청 URL:', url);
+    console.log('clientTranscript 수신 여부:', !!clientTranscript, '길이:', clientTranscript ? clientTranscript.length : 0);
 
     // 1. YouTube 영상 ID 추출
     const videoId = extractVideoId(url)?.trim();
@@ -1569,6 +1570,25 @@ export async function POST(request: Request) {
 
       await client.query('COMMIT');
       console.log('DB 저장 완료:', analysisId);
+
+      // --- [NEW] 분석 완료 이메일 알림 ---
+      if (actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
+        try {
+          const hubClient = new MerlinHubClient();
+          const videoTitle = videoInfo.title || speedResult?.title || analysisResult?.title || '영상';
+          // 전체 요청이 지연되지 않도록 비동기(.catch)로 백그라운드 발송
+          hubClient.sendNotification({
+            userId: actualUserId,
+            title: `[어그로필터] 분석 완료: ${videoTitle}`,
+            content: '요청하신 영상 분석이 성공적으로 완료되었습니다. 지금 바로 결과를 확인해 보세요!',
+            link: `https://aggrofilter.sundreamer.app/result/${analysisId}`
+          }).catch(err => console.error('[Email Notification] 발송 실패:', err));
+          console.log('[Email Notification] 발송 요청 완료:', actualUserId);
+        } catch (emailErr) {
+          console.error('[Email Notification] 처리 중 에러:', emailErr);
+        }
+      }
+      // --------------------------------
 
       await refreshRankingCache(videoInfo.officialCategoryId)
         .catch(err => {
