@@ -1574,6 +1574,7 @@ export async function POST(request: Request) {
       // --- [NEW] 분석 완료 이메일 알림 ---
       if (actualUserId && !actualUserId.startsWith('anon_') && !actualUserId.startsWith('trial_')) {
         try {
+          configureMerlinHub({ appId: 'AggroFilter' });
           const hubClient = new MerlinHubClient();
           const videoTitle = videoInfo.title || speedResult?.title || analysisResult?.title || '영상';
           // 전체 요청이 지연되지 않도록 비동기(.catch)로 백그라운드 발송

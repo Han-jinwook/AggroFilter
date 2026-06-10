@@ -28,17 +28,29 @@ export interface TranscriptItem {
 export async function getTranscriptItems(videoId: string): Promise<TranscriptItem[]> {
   console.log('자막 가져오기 시작:', videoId);
 
-  // 1회 시도: 언어 지정 없이 (사용 가능한 자막 자동 선택)
+  // 1회 시도: youtube-transcript-plus (최신 유튜브 패치 대응 v2.0.0)
   try {
     const transcript = await fetchTranscript(videoId);
     if (transcript && transcript.length > 0) {
-      console.log('자막 성공:', transcript.length, '줄');
+      console.log('자막 성공 (youtube-transcript-plus):', transcript.length, '줄');
       return transcript as TranscriptItem[];
     }
   } catch (e: any) {
-    // 자막이 없는 영상은 정상 케이스
     const isNoTranscript = e.message?.includes('No transcripts are available');
-    console.log(isNoTranscript ? '자막 없는 영상' : `자막 추출 실패: ${e.message?.substring(0, 100)}`);
+    console.log(isNoTranscript ? '자막 없는 영상 (youtube-transcript-plus)' : `youtube-transcript-plus 실패: ${e.message?.substring(0, 100)}`);
+  }
+
+  // 2회 시도: youtube-transcript (구형 Fallback)
+  try {
+    const { YoutubeTranscript } = await import('youtube-transcript');
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    if (transcript && transcript.length > 0) {
+      console.log('자막 성공 (youtube-transcript fallback):', transcript.length, '줄');
+      return transcript as TranscriptItem[];
+    }
+  } catch (e: any) {
+    const isNoTranscript = e.message?.includes('No transcripts are available') || e.message?.includes('Could not find transcripts');
+    console.log(isNoTranscript ? '자막 없는 영상 (youtube-transcript)' : `youtube-transcript 실패: ${e.message?.substring(0, 100)}`);
   }
 
   return [];

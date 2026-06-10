@@ -198,8 +198,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       youtube-transcript-plus:
-        specifier: ^1.1.1
-        version: 1.1.1
+        specifier: ^2.0.0
+        version: 2.0.0
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -3474,9 +3474,9 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==, tarball: https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
 
-  youtube-transcript-plus@1.1.1:
-    resolution: {integrity: sha512-KmAcn7eBPMgSnPJosCaaRp6/eqOAXk9p5f5ExBf+aD0M74Hud5RzbwHVoFpR5wOS++QqrrFaFhq9eiaWqWDlXg==, tarball: https://registry.npmjs.org/youtube-transcript-plus/-/youtube-transcript-plus-1.1.1.tgz}
-    engines: {node: '>=18.0.0'}
+  youtube-transcript-plus@2.0.0:
+    resolution: {integrity: sha512-n4nnGVV3ZABnvk/sSF+W51c/+P6I23kLwwhOiYeKLeHOGfpjwCUthhoKgQk9dldJEgHCkbyJpuD3vkbBxWqDHA==, tarball: https://registry.npmjs.org/youtube-transcript-plus/-/youtube-transcript-plus-2.0.0.tgz}
+    engines: {node: '>=20.0.0'}
 
   youtube-transcript@1.2.1:
     resolution: {integrity: sha512-TvEGkBaajKw+B6y91ziLuBLsa5cawgowou+Bk0ciGpjELDfAzSzTGXaZmeSSkUeknCPpEr/WGApOHDwV7V+Y9Q==, tarball: https://registry.npmjs.org/youtube-transcript/-/youtube-transcript-1.2.1.tgz}
@@ -6914,7 +6914,7 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  youtube-transcript-plus@1.1.1: {}
+  youtube-transcript-plus@2.0.0: {}
 
   youtube-transcript@1.2.1: {}
 
