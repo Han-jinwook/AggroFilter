@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Camera, Mail, User, Edit2, Save, X, LogOut, Bell } from 'lucide-react';
+import { Camera, Mail, User, Edit2, Save, UserX, LogOut, Bell } from 'lucide-react';
 import { MerlinHub } from '../index';
 import { HubAvatar } from './HubProfileWidget';
 import { useHub } from '../HubProvider';
@@ -462,7 +462,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
           onClick={handleWithdraw}
           className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-sm mt-2 cursor-pointer"
         >
-          <X className="h-4 w-4" />
+          <UserX className="h-4 w-4" />
           앱 탈퇴하기
         </button>
       </div>
