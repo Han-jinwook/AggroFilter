@@ -116,7 +116,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
       >
         <HubAvatar isLoggedIn={false} className="group-hover:scale-105 transition-transform" />
         {showNickname && (
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 group-hover:text-blue-600 transition-colors">게스트</span>
+          <span className="hidden sm:block text-[10px] sm:text-xs font-bold text-slate-400 group-hover:text-blue-600 transition-colors">게스트</span>
         )}
       </button>
     );
@@ -139,7 +139,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
         className="group-hover:scale-105 transition-transform" 
       />
       {showNickname && (
-        <span className="text-[10px] sm:text-xs font-semibold text-gray-700 group-hover:text-blue-600">
+        <span className="hidden sm:block text-[10px] sm:text-xs font-semibold text-gray-700 group-hover:text-blue-600">
           {displayId}
         </span>
       )}

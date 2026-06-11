@@ -106,7 +106,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     const content = (
       <>
         <div
-          className={`p-2 rounded-xl transition-colors ${
+          className={`hidden sm:flex p-2 rounded-xl transition-colors ${
             active
               ? "bg-slate-900 text-white"
               : "group-hover:bg-slate-100 group-active:bg-slate-900 group-active:text-white"
@@ -196,7 +196,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                 }}
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
               >
-                <div className={`px-2 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
+                <div className={`hidden sm:flex px-2 h-9 min-w-[40px] rounded-xl transition-colors items-center justify-center ${
                   !isLoggedIn && pendingFee !== null 
                     ? "bg-red-50 text-red-600 group-hover:bg-red-100 animate-bounce" 
                     : "bg-amber-50 text-amber-600 group-hover:bg-amber-100"
