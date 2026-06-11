@@ -50,6 +50,7 @@ export async function processTransaction(params: {
   requestId: string;
   displayText: string;
   usageMetadata?: any;
+  skipReceiptEmail?: boolean;
 }): Promise<{ success: boolean; balance?: number; error?: string }> {
   try {
     const appId = getConfig().appId;
@@ -65,7 +66,8 @@ export async function processTransaction(params: {
         transaction_type: params.amount < 0 ? 'SPEND' : 'CHARGE',
         display_text: params.displayText,
         app_id: appId,
-        usage_metadata: params.usageMetadata
+        usage_metadata: params.usageMetadata,
+        skip_receipt_email: params.skipReceiptEmail
       }),
     });
     if (!ok) return { success: false, error: data?.message || '트랜잭션 처리 실패' };
@@ -94,6 +96,7 @@ export async function chargeDynamic(params: {
   requestId: string;
   displayText: string;
   usageMetadata?: any;
+  skipReceiptEmail?: boolean;
 }): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
   try {
     const appId = getConfig().appId;
@@ -114,7 +117,8 @@ export async function chargeDynamic(params: {
         } : undefined,
         request_id: params.requestId,
         display_text: params.displayText,
-        usage_metadata: params.usageMetadata
+        usage_metadata: params.usageMetadata,
+        skip_receipt_email: params.skipReceiptEmail
       }),
     });
     if (!ok) return { success: false, error: data?.message || '동적 과금 처리 실패' };
@@ -190,6 +194,7 @@ export async function useCredit(params: {
   amount: number;
   displayText: string;
   requestId: string;
+  skipReceiptEmail?: boolean;
 }) {
   const userId = getUserId();
   if (!userId) return { success: false, error: '로그인이 필요합니다.' };
@@ -198,7 +203,8 @@ export async function useCredit(params: {
     userId,
     amount: -Math.abs(params.amount),
     requestId: params.requestId,
-    displayText: params.displayText
+    displayText: params.displayText,
+    skipReceiptEmail: params.skipReceiptEmail
   });
 }
 

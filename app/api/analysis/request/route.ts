@@ -1511,7 +1511,8 @@ export async function POST(request: Request) {
             googleSearchCount: groundingCount
           },
           requestId: `fresh_${videoId}_${analysisId}`,
-          displayText: `어그로필터 - 영상 분석 - ${displayTitle}`
+          displayText: `어그로필터 - 영상 분석 - ${displayTitle}`,
+          skipReceiptEmail: true
         });
 
         const isGuest = actualUserId.startsWith('anon_') || actualUserId.startsWith('trial_');
@@ -1577,12 +1578,35 @@ export async function POST(request: Request) {
           configureMerlinHub({ appId: 'AggroFilter' });
           const hubClient = new MerlinHubClient();
           const videoTitle = videoInfo.title || speedResult?.title || analysisResult?.title || '영상';
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || 'http://localhost:3000';
+          const coinStr = estimatedPrice ? `-${estimatedPrice.toLocaleString()} C` : '-0 C';
+          const receiptHtml = `
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 10px 0; font-size: 13px; color: #64748b; font-weight: bold;">이용 내역</td>
+                  <td style="padding: 10px 0; font-size: 14px; color: #1e293b; text-align: right; font-weight: 800;">어그로필터 - 영상 분석 - ${videoTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0 0 0; font-size: 13px; color: #64748b; font-weight: bold;">사용 코인</td>
+                  <td style="padding: 12px 0 0 0; font-size: 18px; color: #ef4444; text-align: right; font-weight: 900;">
+                    ${coinStr}
+                  </td>
+                </tr>
+              </table>
+            </div>
+          `;
+
           // 전체 요청이 지연되지 않도록 비동기(.catch)로 백그라운드 발송
           hubClient.sendNotification({
             userId: actualUserId,
             title: `[어그로필터] 분석 완료: ${videoTitle}`,
             content: '요청하신 영상 분석이 성공적으로 완료되었습니다. 지금 바로 결과를 확인해 보세요!',
-            link: `https://aggrofilter.sundreamer.app/result/${analysisId}`
+            sub_content_html: receiptHtml,
+            link: `${baseUrl}/p-result/${analysisId}`, // 실제 결과 페이지 라우트 이름은 환경에 따라 다를 수 있으나 현재 /p-result/ 또는 /result/
+            link_text: '자세히 보기',
+            link2: `${baseUrl}/payment/purchase?tab=history`,
+            link2_text: '이용 내역 확인하기'
           }).catch(err => console.error('[Email Notification] 발송 실패:', err));
           console.log('[Email Notification] 발송 요청 완료:', actualUserId);
         } catch (emailErr) {

@@ -295,6 +295,10 @@ export class MerlinHubClient {
     title: string;
     content: string;
     link?: string;
+    link_text?: string;
+    link2?: string;
+    link2_text?: string;
+    sub_content_html?: string;
   }) {
     const { getConfig } = await import('./config');
     const config = getConfig();
@@ -309,6 +313,10 @@ export class MerlinHubClient {
         title: params.title,
         content: params.content,
         link: params.link,
+        link_text: params.link_text,
+        link2: params.link2,
+        link2_text: params.link2_text,
+        sub_content_html: params.sub_content_html,
         channels: ['email'] // 이메일 단독 발송
       })
     });
