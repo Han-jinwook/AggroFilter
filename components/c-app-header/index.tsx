@@ -115,7 +115,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <Icon className={`h-5 w-5 transition-transform ${active ? "" : "group-hover:scale-110"}`} />
         </div>
         <span
-          className={`text-[10px] font-bold transition-colors ${
+          className={`text-[10px] sm:text-xs font-bold transition-colors ${
             active ? "text-slate-900" : "text-slate-500 group-hover:text-slate-900"
           }`}
         >
@@ -125,7 +125,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
     )
 
     const className =
-      "flex flex-col items-center gap-1 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
+      "flex flex-col sm:flex-row items-center gap-1 sm:gap-2 transition-colors group px-2 active:scale-95 cursor-pointer no-underline bg-transparent border-none"
 
     if (href) {
       return (
@@ -194,7 +194,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                     window.dispatchEvent(new CustomEvent('openLoginModal'))
                   }
                 }}
-                className="flex flex-col items-center gap-1 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
               >
                 <div className={`px-2 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
                   !isLoggedIn && pendingFee !== null 
