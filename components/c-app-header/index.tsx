@@ -186,33 +186,32 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <div className="flex items-center justify-end shrink-0 gap-3 sm:gap-4 min-w-[120px]">
             {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 (Hydration mismatch 예방을 위해 마운트 후에만) */}
             {mounted && (isLoggedIn || pendingFee !== null) && (
-              <div
+              <Link
+                href={isLoggedIn ? "/payment/purchase" : "#"}
                 onClick={(e) => {
                   if (!isLoggedIn) {
                     e.preventDefault()
                     window.dispatchEvent(new CustomEvent('openLoginModal'))
-                  } else {
-                    router.push("/payment/purchase")
                   }
                 }}
                 className="flex flex-col items-center gap-1 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
               >
-                <div className={`px-2 h-7 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
+                <div className={`px-2 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
                   !isLoggedIn && pendingFee !== null 
                     ? "bg-red-50 text-red-600 group-hover:bg-red-100 animate-bounce" 
                     : "bg-amber-50 text-amber-600 group-hover:bg-amber-100"
                 }`}>
-                  <span className="text-xs font-black tabular-nums">
+                  <span className="text-sm font-black tabular-nums">
                     {isLoggedIn 
                       ? (credits !== null ? `${credits.toLocaleString()} C` : '…')
                       : `-${pendingFee} C`
                     }
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 transition-colors">
-                  코인
-                </span>
-              </div>
+                <span className={`text-[10px] font-bold ${
+                  !isLoggedIn && pendingFee !== null ? "text-red-600 font-black" : "text-amber-600"
+                }`}>코인</span>
+              </Link>
             )}
 
             <HubProfileWidget 
