@@ -160,7 +160,7 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
         {!isEditing && (
           <button
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors mt-0.5"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors mt-0.5 cursor-pointer"
           >
             <Edit2 className="h-3.5 w-3.5" />
             수정하기
@@ -247,13 +247,13 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
           <div className="flex gap-3 pt-4 border-t border-slate-100 mt-6">
             <button
               onClick={handleCancel}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
             >
               취소
             </button>
             <button
               onClick={handleSave}
-              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
+              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200 cursor-pointer"
             >
               <Save className="h-4 w-4" />
               저장하기
@@ -341,7 +341,7 @@ export const HubNotificationCard: React.FC<HubNotificationCardProps> = ({
               disabled={!isLoggedIn}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                 !isLoggedIn ? 'bg-slate-200 cursor-not-allowed opacity-50' :
-                isToggled ? 'bg-blue-600' : 'bg-slate-200'
+                isToggled ? 'bg-blue-600 cursor-pointer' : 'bg-slate-200 cursor-pointer'
               }`}
             >
               <span
@@ -452,7 +452,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
 
         <button
           onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm cursor-pointer"
         >
           <LogOut className="h-4 w-4" />
           로그아웃
@@ -460,7 +460,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
 
         <button
           onClick={handleWithdraw}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-sm mt-2"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-sm mt-2 cursor-pointer"
         >
           <X className="h-4 w-4" />
           앱 탈퇴하기

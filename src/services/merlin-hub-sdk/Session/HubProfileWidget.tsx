@@ -112,7 +112,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
     return (
       <button
         onClick={onLoginClick}
-        className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
+        className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all cursor-pointer ${className}`}
       >
         <HubAvatar isLoggedIn={false} className="group-hover:scale-105 transition-transform" />
         {showNickname && (
@@ -130,7 +130,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   return (
     <button
       onClick={onProfileClick}
-      className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
+      className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all cursor-pointer ${className}`}
     >
       <HubAvatar 
         isLoggedIn={true} 
