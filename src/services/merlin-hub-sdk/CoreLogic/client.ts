@@ -249,7 +249,7 @@ export class MerlinHubClient {
     let pendingUsageFee = undefined;
     let pendingVideoId = undefined;
     if (typeof window !== 'undefined') {
-      referralCode = localStorage.getItem('userReferralCode') || undefined;
+      referralCode = localStorage.getItem('pendingReferralCode') || undefined;
       const pendingUsageFeeStr = localStorage.getItem('pending_usage_fee');
       pendingUsageFee = pendingUsageFeeStr ? parseInt(pendingUsageFeeStr, 10) : undefined;
       pendingVideoId = localStorage.getItem('pending_video_id') || undefined;

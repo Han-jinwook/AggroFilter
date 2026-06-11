@@ -116,6 +116,16 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
 
   // 초기 로드 및 이벤트 리스너
   useEffect(() => {
+    // URL에서 ref(추천인 코드) 파라미터 파싱하여 로컬 스토리지에 저장
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      if (refCode) {
+        localStorage.setItem('pendingReferralCode', refCode);
+        console.log('[HubProvider] Detected and saved pending referral code:', refCode);
+      }
+    }
+
     // 1. SSR Hydration 이후 즉시 로컬 스토리지의 캐시 데이터를 읽어 UI 지연을 최소화 (SWR)
     const token = localStorage.getItem('merlin_session_token');
     if (token) {

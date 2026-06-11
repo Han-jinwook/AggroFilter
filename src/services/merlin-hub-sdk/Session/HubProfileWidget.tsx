@@ -112,7 +112,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
     return (
       <button
         onClick={onLoginClick}
-        className={`flex flex-col items-center gap-1 group hover:opacity-80 cursor-pointer transition-all ${className}`}
+        className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
       >
         <HubAvatar isLoggedIn={false} className="group-hover:scale-105 transition-transform" />
         {showNickname && (
@@ -123,12 +123,14 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   }
 
   // 로그인 상태 (회원 프로필)
-  const displayId = user?.nickname || user?.email?.split('@')[0] || '회원';
+  const displayId = (user?.nickname && user?.nickname !== '회원' && user?.nickname !== '가족회원') 
+    ? user.nickname 
+    : (user?.email?.split('@')[0] || '회원');
 
   return (
     <button
       onClick={onProfileClick}
-      className={`flex flex-col items-center gap-1 group hover:opacity-80 cursor-pointer transition-all ${className}`}
+      className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
     >
       <HubAvatar 
         isLoggedIn={true} 

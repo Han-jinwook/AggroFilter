@@ -29,17 +29,26 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
     const storedNickname = localStorage.getItem('userNickname');
     const storedProfileImage = localStorage.getItem('userProfileImage');
 
-    setNickname(storedNickname || '게스트');
+    const currentEmail = user?.email || storedEmail || '';
+    const emailId = currentEmail ? currentEmail.split('@')[0] : '회원';
+    
+    // 로컬스토리지의 닉네임이 '회원' 또는 '가족회원'이면 이메일 ID로 즉시 보정하여 UI 깜빡임 방지
+    const initNickname = (storedNickname && storedNickname !== '회원' && storedNickname !== '가족회원')
+      ? storedNickname
+      : (emailId !== '회원' ? emailId : '게스트');
+
+    setNickname(initNickname);
     setProfileImage(storedProfileImage || '');
-    // isLoggedIn 상태이거나 user.email이 있거나 storedEmail이 있으면 세팅
-    setEmail(user?.email || storedEmail || '');
+    setEmail(currentEmail);
 
     if (isLoggedIn) {
       // 서버에서 최신 프로필 정보 갱신
       MerlinHub.auth.getProfile()
         .then(result => {
           if (result.success) {
-            const dbNickname = result.nickname || storedEmail?.split('@')[0] || '회원';
+            const dbNickname = (result.nickname && result.nickname !== '회원' && result.nickname !== '가족회원') 
+              ? result.nickname 
+              : emailId;
             const dbImage = result.avatar_url || '';
             setNickname(dbNickname);
             setProfileImage(dbImage);
@@ -356,7 +365,7 @@ export const HubNotificationCard: React.FC<HubNotificationCardProps> = ({
 
 
 // -----------------------------------------
-// 3. HubLogoutCard (하단 섹션: 로그아웃)
+// 3. HubLogoutCard (하단 섹션: 로그아웃 및 회원탈퇴)
 // -----------------------------------------
 export interface HubLogoutCardProps {
   onLogout?: () => void;
@@ -376,21 +385,85 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
       });
   };
 
+  const handleWithdraw = async () => {
+    const configModule = await import('../CoreLogic/config');
+    const appId = configModule.getConfig().appId;
+
+    if (!appId) {
+      alert('앱 ID가 설정되지 않았습니다.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('hubToken');
+      const checkRes = await fetch(`/api/auth/withdraw/check?appId=${appId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const checkData = await checkRes.json();
+
+      if (!checkData.success) {
+        alert(checkData.message || '탈퇴 상태 점검에 실패했습니다.');
+        return;
+      }
+
+      let confirmMsg = `정말 이 앱에서 탈퇴하시겠습니까?\n(다른 허브 앱 데이터는 유지됩니다.)`;
+      
+      if (checkData.isLastCoinApp && checkData.refundableBalance > 0) {
+        alert(`고객님, 환불 가능한 유료 코인 ${checkData.refundableBalance}C가 남아있습니다.\n코인 정산을 위해 우측 하단 고객센터로 먼저 문의해주세요.\n(정산 전에는 탈퇴하실 수 없습니다.)`);
+        return;
+      } else if (checkData.isLastCoinApp) {
+        confirmMsg = `이 앱은 회원님의 마지막 코인 연동 앱입니다.\n잔여 무료 코인은 모두 소멸됩니다. 정말 탈퇴하시겠습니까?`;
+      } else if (checkData.isFinalWithdrawal) {
+        confirmMsg = `이 앱을 탈퇴하시면 등록된 모든 앱에서 탈퇴됩니다.\n계정은 30일간 보관 후 영구 삭제됩니다. 정말 탈퇴하시겠습니까?`;
+      }
+
+      if (window.confirm(confirmMsg)) {
+        const res = await fetch('/api/auth/withdraw', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ appId })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          alert('정상적으로 탈퇴 처리되었습니다.');
+          handleLogout();
+        } else {
+          alert(data.message || '탈퇴에 실패했습니다.');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('오류가 발생했습니다.');
+    }
+  };
+
   if (!isLoggedIn) return null;
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden ${className}`}>
-      <div className="p-6 sm:p-8">
-        <p className="text-sm text-slate-500 mb-4">
-          로그아웃하면 메인 페이지로 이동합니다.
+    <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden ${className}`}>
+      <div className="p-6 sm:p-8 flex flex-col gap-4">
+        <p className="text-sm text-slate-500 text-center mb-2">
+          계정 관리에 대한 상세 작업입니다.
         </p>
 
         <button
           onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm"
         >
           <LogOut className="h-4 w-4" />
           로그아웃
+        </button>
+
+        <button
+          onClick={handleWithdraw}
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-rose-50 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-sm mt-2"
+        >
+          <X className="h-4 w-4" />
+          앱 탈퇴하기
         </button>
       </div>
     </div>

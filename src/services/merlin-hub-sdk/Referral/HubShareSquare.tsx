@@ -1,9 +1,10 @@
 /**
- * Version: v1.0.0
- * Last Updated: 2026-05-23
+ * Version: v1.0.6
+ * Last Updated: 2026-06-11
  */
 import React, { useState, useEffect } from 'react';
 import { useHubReferral } from './useHubReferral';
+import { useHub } from '../HubProvider';
 
 interface HubShareSquareProps {
   className?: string;
@@ -24,7 +25,13 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
 }) => {
   const [pathname, setPathname] = useState('');
   const { getMyReferralInfo, isLoading } = useHubReferral();
-  const [inviteCode, setInviteCode] = useState('');
+  const { isLoggedIn, isLoading: isSessionLoading } = useHub();
+  const [inviteCode, setInviteCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('userReferralCode') || '';
+    }
+    return '';
+  });
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
@@ -42,17 +49,28 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
 
   useEffect(() => {
     const fetchInfo = async () => {
-      if (typeof window !== 'undefined') {
-        const localCode = localStorage.getItem('userReferralCode');
-        if (localCode) setInviteCode(localCode);
-      }
       const info = await getMyReferralInfo();
       if (info?.code) {
         setInviteCode(info.code);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userReferralCode', info.code);
+        }
       }
     };
-    fetchInfo();
-  }, [getMyReferralInfo]);
+
+    // 토큰 존재 여부 확인 (로컬스토리지 안전 장치)
+    const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('merlin_session_token');
+
+    if (isLoggedIn) {
+      fetchInfo();
+    } else if (!isSessionLoading && !hasToken) {
+      // 세션 로딩이 완전히 종료되었고, 세션 토큰도 없는 명백한 비로그인 상태일 때만 지운다.
+      setInviteCode('');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('userReferralCode');
+      }
+    }
+  }, [getMyReferralInfo, isLoggedIn, isSessionLoading]);
 
   // 페이지 이동(또는 customUrl 변경) 시 복사 완료 상태 초기화
   useEffect(() => {
@@ -69,6 +87,9 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
       const urlObj = new URL(base);
       // Private/internal pages shouldn't be shared. Redirect invitees to the root onboarding page.
       const privatePaths = [
+        '/profile',
+        '/whateat/profile',
+        '/admin7878',
         '/p-settings',
         '/p-my-page',
         '/p-notification',
@@ -128,7 +149,7 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
 
         <button
           onClick={handleCopy}
-          className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold transition-all shadow-sm active:scale-[0.98] ${
+          className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold cursor-pointer transition-all shadow-sm active:scale-[0.98] ${
             isCopied 
               ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
               : 'bg-white text-blue-600 hover:bg-blue-50 shadow-white/10'
