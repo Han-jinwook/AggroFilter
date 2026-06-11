@@ -144,7 +144,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-xl h-20 flex items-center py-0">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/70 backdrop-blur-md h-20 flex items-center py-0">
         <div className="mx-auto flex w-full max-w-[var(--app-max-width)] items-center justify-between px-4 py-0">
           {/* 좌측 로고 영역 */}
           <Link href="/" className="flex items-center gap-1.5 cursor-pointer group no-underline py-0 shrink-0">
@@ -167,17 +167,17 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
           <div className="flex-1 flex items-center justify-center gap-6 sm:gap-10 px-4">
             <MenuItem
               icon={FileText}
-              label="My Page"
+              label="마이페이지"
               href="/p-my-page?tab=analysis"
               active={isActive("/p-my-page")}
               onClick={handleMyPageClick}
             />
 
-            <MenuItem icon={TrendingUp} label="분석 Plaza" href="/p-plaza" active={isActive("/p-plaza")} />
+            <MenuItem icon={TrendingUp} label="분석 플라자" href="/p-plaza" active={isActive("/p-plaza")} />
 
             {isAdmin && isLoggedIn && (
               <div className="hidden lg:flex">
-                <MenuItem icon={Shield} label="Admin" href="/p-admin" active={isActive("/p-admin")} />
+                <MenuItem icon={Shield} label="관리자" href="/p-admin" active={isActive("/p-admin")} />
               </div>
             )}
           </div>
