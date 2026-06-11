@@ -100,7 +100,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   // 로딩 상태 및 마운트 완료 전 스켈레톤 (Hydration Mismatch 완전 예방)
   if (!mounted || isLoading) {
     return (
-      <div className={`flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 animate-pulse ${className}`}>
+      <div className={`flex flex-col items-center gap-1.5 animate-pulse ${className}`}>
         <div className="w-10 h-10 rounded-2xl bg-slate-100" />
         {showNickname && <div className="w-10 h-2 bg-slate-50 rounded-full hidden sm:block" />}
       </div>
@@ -112,7 +112,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
     return (
       <button
         onClick={onLoginClick}
-        className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 group hover:opacity-80 transition-all ${className}`}
+        className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
       >
         <HubAvatar isLoggedIn={false} className="group-hover:scale-105 transition-transform" />
         {showNickname && (
@@ -130,7 +130,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   return (
     <button
       onClick={onProfileClick}
-      className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 group hover:opacity-80 transition-all ${className}`}
+      className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all ${className}`}
     >
       <HubAvatar 
         isLoggedIn={true} 
