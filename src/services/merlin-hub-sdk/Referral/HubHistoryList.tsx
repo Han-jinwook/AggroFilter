@@ -16,16 +16,20 @@ interface HubHistoryListProps {
   className?: string;
   history?: HistoryItem[];
   isLoading?: boolean;
+  rewardedBadgeText?: string;
+  pendingBadgeText?: string;
 }
 
 /**
  * [Referral] 초대 실적 리스트
- * 내가 초대한 친구들의 목록을 보여주는 컴포넌트입니다. (보상 코인 기능 미지원 앱 대응)
+ * 내가 초대한 친구들의 목록을 보여주는 컴포넌트입니다.
  */
 export const HubHistoryList: React.FC<HubHistoryListProps> = ({ 
   className = '', 
   history = [], 
-  isLoading = false 
+  isLoading = false,
+  rewardedBadgeText = '초대 성공',
+  pendingBadgeText = '대기 중 (조건 미달성)'
 }) => {
   if (isLoading) {
     return <div className="w-full h-40 bg-gray-50 animate-pulse rounded-2xl" />;
@@ -60,11 +64,11 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
                   <div className="flex-shrink-0">
                     {item.status === 'REWARDED' ? (
                       <span className="inline-flex px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-black rounded-full whitespace-nowrap">
-                        초대 성공
+                        {rewardedBadgeText}
                       </span>
                     ) : (
                       <span className="inline-flex px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] font-black rounded-full whitespace-nowrap">
-                        대기 중 (조건 미달성)
+                        {pendingBadgeText}
                       </span>
                     )}
                   </div>

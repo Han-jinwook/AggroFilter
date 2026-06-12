@@ -113,7 +113,11 @@ export default function SettingsPage() {
           {/* 왼쪽: 초대 실적 (로그인 유저만 노출) */}
           {isLoggedIn && (
             <div className="w-full flex flex-col gap-6">
-              <HubHistoryList history={referralHistory} isLoading={isHistoryLoading} />
+              <HubHistoryList 
+                history={referralHistory} 
+                isLoading={isHistoryLoading} 
+                rewardedBadgeText="+5,000 C 지급 완료"
+              />
             </div>
           )}
 
