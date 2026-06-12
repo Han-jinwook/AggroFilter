@@ -387,6 +387,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
 
   const handleWithdraw = async () => {
     const configModule = await import('../CoreLogic/config');
+    const { hubFetch } = await import('../CoreLogic/client');
     const appId = configModule.getConfig().appId;
 
     if (!appId) {
@@ -395,16 +396,12 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
     }
 
     try {
-      const token = localStorage.getItem('hubToken');
-      const checkRes = await fetch(`/api/auth/withdraw/check?appId=${appId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const checkData = await checkRes.json();
-
-      if (!checkData.success) {
-        alert(checkData.message || '탈퇴 상태 점검에 실패했습니다.');
+      const checkRes = await hubFetch(`/api/auth/withdraw/check?appId=${appId}`);
+      if (!checkRes.ok || !checkRes.data?.success) {
+        alert(checkRes.data?.message || '탈퇴 상태 점검에 실패했습니다.');
         return;
       }
+      const checkData = checkRes.data;
 
       let confirmMsg = `정말 이 앱에서 탈퇴하시겠습니까?\n(다른 허브 앱 데이터는 유지됩니다.)`;
       
@@ -418,21 +415,16 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
       }
 
       if (window.confirm(confirmMsg)) {
-        const res = await fetch('/api/auth/withdraw', {
+        const res = await hubFetch('/api/auth/withdraw', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({ appId })
         });
-        const data = await res.json();
         
-        if (data.success) {
+        if (res.ok && res.data?.success) {
           alert('정상적으로 탈퇴 처리되었습니다.');
           handleLogout();
         } else {
-          alert(data.message || '탈퇴에 실패했습니다.');
+          alert(res.data?.message || '탈퇴에 실패했습니다.');
         }
       }
     } catch (err) {

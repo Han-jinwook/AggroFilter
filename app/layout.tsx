@@ -1,7 +1,7 @@
 import React, { Suspense } from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import { Analytics } from "@vercel/analytics/react"
+
 import { ThemeProvider } from "@/components/c-theme-provider"
 import "./globals.css"
 import { BottomBanner } from "@/components/c-bottom-banner"
@@ -141,7 +141,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
             <HubNotifier />
             <SideWingAds />
             <BottomBanner />
-            <Analytics />
+
           </HubProvider>
         </ThemeProvider>
       </body>
