@@ -116,7 +116,7 @@ export default function SettingsPage() {
               <HubHistoryList 
                 history={referralHistory} 
                 isLoading={isHistoryLoading} 
-                rewardedBadgeText="+5,000 C 지급 완료"
+                rewardedBadgeText="지급 완료"
               />
             </div>
           )}
