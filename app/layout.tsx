@@ -10,6 +10,7 @@ import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
 import { HubNotifier, HubProvider } from "@/src/services/merlin-hub-sdk/react"
 import { Footer } from "@/components/c-footer"
+import PWAInstallPrompt from "@/components/PWAInstallPrompt"
 
 import { ReferralTracker } from "@/components/ReferralTracker"
 
@@ -141,6 +142,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
             <HubNotifier />
             <SideWingAds />
             <BottomBanner />
+            <PWAInstallPrompt />
 
           </HubProvider>
         </ThemeProvider>
