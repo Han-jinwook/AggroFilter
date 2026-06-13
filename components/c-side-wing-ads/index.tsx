@@ -41,7 +41,7 @@ export function SideWingAds() {
       }}
       aria-label="우측 사이드 윙"
     >
-      <div className="flex flex-col gap-4 w-full overflow-y-auto h-full pr-2 pb-4">
+      <div className="flex flex-col gap-4 w-full overflow-y-auto overflow-x-hidden h-full pb-4">
         {/* 공유 스퀘어 (광고 유무 상관없이 항상 노출) */}
         <HubShareSquare customTitle={customTitle} />
 
