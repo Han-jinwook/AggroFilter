@@ -2,15 +2,14 @@
 
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { HubBottomBanner } from "@/src/services/merlin-hub-sdk/react"
+import { HubResponsiveWing } from "@/src/services/merlin-hub-sdk/react"
 
-export function AggroBottomBanner() {
+export function AggroResponsiveWing() {
   const pathname = usePathname()
   const [adFree, setAdFree] = useState(false)
 
   useEffect(() => {
     const checkAdFree = () => {
-      // 확장팩 과금 분석 후 저장된 타임패스를 localStorage에서 직접 확인
       const until = localStorage.getItem('ad_free_until');
       if (until && new Date(until) > new Date()) {
         setAdFree(true)
@@ -26,11 +25,26 @@ export function AggroBottomBanner() {
   if (pathname?.startsWith('/p-admin')) return null;
   if (pathname?.startsWith('/payment') || pathname?.startsWith('/api/payment')) return null;
 
+  let customTitle = "어그로필터 - 가짜 유튜브 영상 분석기";
+  if (pathname?.startsWith('/p-result/')) {
+    customTitle = "[어그로필터] 충격적인 이 영상의 신뢰도 점수는?";
+  }
+
+  // TODO: 실제 구글 애드센스 계정 세팅 시 ID를 교체하세요.
+  const googleAdClient = "ca-pub-xxxxxxxxxxxx"
+  const sideAdSlot = "1111111111"
+  const bottomAdSlot = "2222222222"
+
   return (
-    <HubBottomBanner
-      bannerId="aggrofilter_v1"
+    <HubResponsiveWing
+      bannerId="aggrofilter_v2"
       hide={adFree}
-      actionButton={
+      shareTitle={customTitle}
+      shareDescription="공유 링크에는 내 추천인 코드가 포함되어 전달됩니다."
+      adClient={googleAdClient}
+      sideAdSlot={sideAdSlot}
+      bottomAdSlot={bottomAdSlot}
+      bottomActionButton={
         <button
           type="button"
           className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-white hover:bg-white/15 active:scale-[0.99] transition"
@@ -38,9 +52,6 @@ export function AggroBottomBanner() {
           자세히
         </button>
       }
-    >
-      <div className="text-[10px] font-black tracking-widest text-white/70">AD</div>
-      <div className="truncate text-sm font-bold text-white">광고 영역</div>
-    </HubBottomBanner>
+    />
   )
 }

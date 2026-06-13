@@ -4,8 +4,7 @@ import { Inter } from "next/font/google"
 
 import { ThemeProvider } from "@/components/c-theme-provider"
 import "./globals.css"
-import { AggroBottomBanner } from "@/components/c-bottom-banner"
-import { SideWingAds } from "@/components/c-side-wing-ads"
+import { AggroResponsiveWing } from "@/components/AggroResponsiveWing"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
 import { HubNotifier, HubProvider } from "@/src/services/merlin-hub-sdk/react"
@@ -140,8 +139,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
             </div>
             <GlobalLoginModal />
             <HubNotifier />
-            <SideWingAds />
-            <AggroBottomBanner />
+            <AggroResponsiveWing />
             <PWAInstallPrompt />
 
           </HubProvider>

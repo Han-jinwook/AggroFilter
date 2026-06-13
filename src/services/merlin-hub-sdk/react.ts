@@ -40,6 +40,7 @@ export { HubHistoryList } from './Referral/HubHistoryList';
 export { HubShareButton } from './Referral/HubShareButton';
 export { HubShareSquare } from './Referral/HubShareSquare';
 export { HubWelcomeNudge } from './UI/HubWelcomeNudge';
-export { HubBottomBanner } from './UI/HubBottomBanner';
+export { HubResponsiveWing } from './Ads/HubResponsiveWing';
+export { HubGoogleAd } from './Ads/HubGoogleAd';
 export * from './Auth/HubBenefitModal';
 export { markFreeTrialCompleted, useBenefitTrigger } from './Auth/useBenefitTrigger';
