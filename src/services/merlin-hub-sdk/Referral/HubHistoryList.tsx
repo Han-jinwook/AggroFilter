@@ -9,15 +9,12 @@ interface HistoryItem {
   inviteeNickname: string;
   inviteeEmail?: string;
   joinedAt: string;
-  status: 'PENDING' | 'REWARDED';
 }
 
 interface HubHistoryListProps {
   className?: string;
   history?: HistoryItem[];
   isLoading?: boolean;
-  rewardedBadgeText?: string;
-  pendingBadgeText?: string;
 }
 
 /**
@@ -27,9 +24,7 @@ interface HubHistoryListProps {
 export const HubHistoryList: React.FC<HubHistoryListProps> = ({ 
   className = '', 
   history = [], 
-  isLoading = false,
-  rewardedBadgeText = '초대 성공',
-  pendingBadgeText = '대기 중 (조건 미달성)'
+  isLoading = false
 }) => {
   if (isLoading) {
     return <div className="w-full h-40 bg-gray-50 animate-pulse rounded-2xl" />;
@@ -58,20 +53,9 @@ export const HubHistoryList: React.FC<HubHistoryListProps> = ({
                   )}
                   <span className="ml-1">님</span>
                 </p>
-                {/* 2nd Row: Joined Date (Left) & Reward Status Badge (Right) */}
+                {/* 2nd Row: Joined Date */}
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-xs text-gray-500">{item.joinedAt} 가입</span>
-                  <div className="flex-shrink-0">
-                    {item.status === 'REWARDED' ? (
-                      <span className="inline-flex px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-black rounded-full whitespace-nowrap">
-                        {rewardedBadgeText}
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] font-black rounded-full whitespace-nowrap">
-                        {pendingBadgeText}
-                      </span>
-                    )}
-                  </div>
                 </div>
               </li>
             );
