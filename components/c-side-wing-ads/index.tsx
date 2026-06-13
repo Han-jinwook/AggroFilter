@@ -33,15 +33,15 @@ export function SideWingAds() {
 
   return (
     <aside
-      className="absolute hidden min-[1120px]:block w-[var(--app-wing-width)]"
+      className="fixed hidden min-[1120px]:block w-[var(--app-wing-width)]"
       style={{ 
         left: 'calc(50% + (var(--app-max-width) * 0.5 + var(--app-wing-gutter)))',
         top: 'calc(var(--app-header-height, 80px) + 16px)',
-        bottom: 0
+        bottom: 16
       }}
       aria-label="우측 사이드 윙"
     >
-      <div className="sticky flex flex-col gap-4 w-full" style={{ top: 'calc(var(--app-header-height, 80px) + 16px)' }}>
+      <div className="flex flex-col gap-4 w-full overflow-y-auto h-full pr-2 pb-4">
         {/* 공유 스퀘어 (광고 유무 상관없이 항상 노출) */}
         <HubShareSquare customTitle={customTitle} />
 
