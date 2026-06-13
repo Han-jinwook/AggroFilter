@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 
 import { ThemeProvider } from "@/components/c-theme-provider"
 import "./globals.css"
-import { BottomBanner } from "@/components/c-bottom-banner"
+import { AggroBottomBanner } from "@/components/c-bottom-banner"
 import { SideWingAds } from "@/components/c-side-wing-ads"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
@@ -141,7 +141,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
             <GlobalLoginModal />
             <HubNotifier />
             <SideWingAds />
-            <BottomBanner />
+            <AggroBottomBanner />
             <PWAInstallPrompt />
 
           </HubProvider>
