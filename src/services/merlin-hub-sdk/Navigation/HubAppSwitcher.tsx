@@ -1,7 +1,25 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { IS_FAMILY_FEATURE_LIVE, FAMILY_APPS_CATALOG } from './family-apps.config';
+import { getConfig } from '../CoreLogic/config';
+import { hubFetch } from '../CoreLogic/client';
+
+export interface FamilyApp {
+  id: string;
+  name: string;
+  url: string;
+  icon: React.ReactNode;
+  description: string;
+  isActive: boolean;
+  openSchedule?: string;
+  sortOrder: number;
+  isJoined?: boolean;
+}
+
+export interface FamilyConfig {
+  isFeatureLive: boolean;
+  apps: FamilyApp[];
+}
 
 export interface HubAppSwitcherProps {
   currentAppId?: string; // 현재 실행중인 앱의 ID (예: 'aggrofilter')
@@ -25,7 +43,23 @@ const GridIcon = () => (
 
 export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [config, setConfig] = useState<FamilyConfig | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 중앙 통제 설정 불러오기
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const res = await hubFetch<{ isFeatureLive: boolean; apps: FamilyApp[] }>('/api/family/config');
+        if (res.ok && res.data) {
+          setConfig(res.data);
+        }
+      } catch (err) {
+        console.error('[HubAppSwitcher] Failed to load config', err);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // 외부 클릭 시 닫기
   useEffect(() => {
@@ -38,13 +72,15 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🚀 런칭 스위치가 꺼져있으면 렌더링하지 않음
-  if (!IS_FAMILY_FEATURE_LIVE) {
+  // 🚀 설정이 로드되지 않았거나, 중앙 스위치가 꺼져있으면 렌더링하지 않음
+  if (!config || !config.isFeatureLive) {
     return null;
   }
 
-  // 런칭 완료된 앱만 필터링 (현재 접속중인 앱도 포함해서 보여주거나 뺄 수 있음, 여기서는 모두 표시)
-  const launchedApps = FAMILY_APPS_CATALOG.filter(app => app.isLaunched);
+  // 활성화된 앱만 정렬하여 필터링
+  const launchedApps = config.apps
+    .filter(app => app.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // 가입 상태 매핑
   const appsWithStatus = launchedApps.map(app => ({
@@ -57,97 +93,84 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
-      {/* 스위처 토글 버튼 */}
+      {/* 트리거 버튼 */}
       <button
-        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="group flex items-center justify-center gap-2 p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-slate-100 active:scale-[0.95] transition-all"
-        title="멀린 패밀리 앱"
+        className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-colors group"
+        aria-label="패밀리 앱 열기"
       >
-        <div className="w-8 h-8 sm:w-auto sm:h-auto flex items-center justify-center">
-          <GridIcon />
-        </div>
-        <span className="hidden sm:inline text-sm font-bold text-slate-700 group-hover:text-slate-900">
-          패밀리앱
-        </span>
+        <GridIcon />
       </button>
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-[320px] origin-top-right rounded-3xl bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-black/5 focus:outline-none z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="p-4 flex flex-col gap-1 max-h-[80vh] overflow-y-auto custom-scrollbar">
-            
-            {/* 1. 가입완료 앱 리스트 */}
-            {joinedApps.length > 0 && (
-              <div className="mb-2">
-                <div className="px-3 pb-2 text-xs font-black text-slate-400 tracking-wider">
-                  내 패밀리 앱
-                </div>
-                <div className="flex flex-col gap-1">
-                  {joinedApps.map(app => (
-                    <a
-                      key={app.id}
-                      href={app.url}
-                      className="group flex items-center gap-3 rounded-2xl p-3 hover:bg-slate-50 active:scale-[0.98] transition-all"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl shadow-sm border border-slate-200/50 group-hover:bg-white group-hover:shadow-md transition-all">
-                        {app.icon}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                          {app.name}
-                        </span>
-                        <span className="text-xs text-slate-500 line-clamp-1">
-                          {app.description}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 구분선 */}
-            {joinedApps.length > 0 && unjoinedApps.length > 0 && (
-              <div className="h-px w-full bg-slate-100 my-2" />
-            )}
-
-            {/* 2. 미가입 앱 리스트 */}
-            {unjoinedApps.length > 0 && (
-              <div>
-                <div className="px-3 pb-2 pt-2 text-xs font-black text-slate-400 tracking-wider">
-                  새로운 발견
-                </div>
-                <div className="flex flex-col gap-1">
-                  {unjoinedApps.map(app => (
-                    <a
-                      key={app.id}
-                      href={app.url}
-                      className="group flex items-center gap-3 rounded-2xl p-3 hover:bg-slate-50 active:scale-[0.98] transition-all"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl opacity-60 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all shadow-sm border border-slate-200/50">
-                        {app.icon}
-                      </div>
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
-                            {app.name}
-                          </span>
-                          <span className="rounded-md bg-slate-200 px-1.5 py-0.5 text-[9px] font-black text-slate-500">
-                            미가입
-                          </span>
-                        </div>
-                        <span className="text-xs font-medium text-indigo-500/80 group-hover:text-indigo-600 transition-colors line-clamp-1 mt-0.5">
-                          {app.description}
-                        </span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            
+        <div className="absolute right-0 mt-2 w-80 bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+          
+          {/* My Apps (가입된 앱) */}
+          <div className="mb-4">
+            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">My Apps</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {joinedApps.map((app) => (
+                <a 
+                  key={app.id}
+                  href={app.id === currentAppId ? '#' : app.url} 
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300
+                    ${app.id === currentAppId 
+                      ? 'bg-indigo-50/80 ring-1 ring-indigo-100/50 cursor-default shadow-sm' 
+                      : 'hover:bg-slate-50 hover:shadow-sm cursor-pointer active:scale-95'
+                    }`}
+                >
+                  <div className={`text-3xl mb-2 transition-transform duration-300 ${app.id !== currentAppId && 'hover:scale-110'}`}>
+                    {app.icon}
+                  </div>
+                  <span className={`text-xs font-bold whitespace-nowrap
+                    ${app.id === currentAppId ? 'text-indigo-700' : 'text-slate-700'}
+                  `}>
+                    {app.name}
+                  </span>
+                </a>
+              ))}
+            </div>
           </div>
+
+          {/* Discovery (미가입 앱) */}
+          {unjoinedApps.length > 0 && (
+            <div className="pt-4 border-t border-slate-100/60">
+              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2 flex items-center gap-2">
+                Discovery <span className="bg-rose-100 text-rose-600 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
+              </h3>
+              <div className="space-y-1">
+                {unjoinedApps.map((app) => (
+                  <a 
+                    key={app.id}
+                    href={app.url} 
+                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
+                  >
+                    <div className="text-3xl bg-white w-12 h-12 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      {app.icon}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-800 truncate">{app.name}</span>
+                        {app.openSchedule && (
+                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                            {app.openSchedule}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-slate-500 truncate mt-0.5">
+                        {app.description}
+                      </span>
+                    </div>
+                    <div className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      둘러보기
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>
