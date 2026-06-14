@@ -14,6 +14,8 @@ export interface HubResponsiveWingProps {
   shareTitle?: string;
   /** 공유 카드 렌더링용: 설명 */
   shareDescription?: string;
+  /** 모바일 플로팅 버튼(FAB) 노출 지연 시간 (밀리초). 기본값: 60000 (1분) */
+  mobileShareDelayMs?: number;
 
   /** 우측 사이드 윙에 들어갈 추가 컨텐츠 (구글 광고 슬롯 등) */
   sideContent?: React.ReactNode;
@@ -36,6 +38,7 @@ export function HubResponsiveWing({
   hide = false,
   shareTitle,
   shareDescription,
+  mobileShareDelayMs = 60000,
   sideContent,
   adClient,
   sideAdSlot,
@@ -44,6 +47,8 @@ export function HubResponsiveWing({
   bottomContent
 }: HubResponsiveWingProps) {
   const [isClosed, setIsClosed] = useState(false);
+  const [showFab, setShowFab] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const storageKey = `hub_bottom_banner_closed_${bannerId}`;
 
   useEffect(() => {
@@ -54,13 +59,33 @@ export function HubResponsiveWing({
     } catch {}
   }, [storageKey]);
 
+  useEffect(() => {
+    // 모바일 FAB 지연 노출 로직 (Time-based Nudge)
+    if (shareTitle && mobileShareDelayMs > 0) {
+      const timer = setTimeout(() => setShowFab(true), mobileShareDelayMs);
+      return () => clearTimeout(timer);
+    } else if (shareTitle && mobileShareDelayMs === 0) {
+      setShowFab(true);
+    }
+  }, [shareTitle, mobileShareDelayMs]);
+
+  // 바텀 시트 스크롤 방지
+  useEffect(() => {
+    if (isShareSheetOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isShareSheetOpen]);
+
   if (hide) return null;
 
   return (
     <>
       {/* 1. PC 데스크톱용 우측 사이드 윙 (1120px 이상에서만 노출) */}
       <aside
-        className="fixed hidden min-[1120px]:block w-[var(--app-wing-width,160px)] z-40"
+        className="fixed hidden min-[1120px]:block w-[var(--app-wing-width,160px)] z-40 select-none"
         style={{ 
           left: 'calc(50% + (var(--app-max-width,800px) * 0.5 + var(--app-wing-gutter,8px)))',
           top: 'calc(var(--app-header-height, 62px) + 16px)',
@@ -95,13 +120,51 @@ export function HubResponsiveWing({
         </div>
       </aside>
 
-      {/* 2. 모바일/축소화면용 하단 고정 배너 (1120px 미만에서만 노출) */}
-      {!isClosed && (
-        <>
-          <div className="h-14 min-[1120px]:hidden" aria-hidden />
-          <div className="fixed bottom-0 left-0 right-0 z-50 min-[1120px]:hidden">
-            <div className="h-14 bg-[#1A1A1A]/80 backdrop-blur-md border-t border-white/10">
-              <div className="mx-auto flex h-full max-w-[var(--app-max-width,800px)] items-center justify-between px-3 sm:px-4">
+      {/* 2. 모바일/축소화면용 하단 고정 배너 및 모바일 공유 기능 (1120px 미만에서만 노출) */}
+      <div className="min-[1120px]:hidden select-none">
+        {/* 우측 하단 플로팅 액션 버튼 (FAB) - 지연 노출 */}
+        {shareTitle && showFab && !isShareSheetOpen && (
+          <button
+            onClick={() => setIsShareSheetOpen(true)}
+            className="fixed z-[60] flex items-center justify-center w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 active:scale-[0.95] transition-all cursor-pointer animate-[bounce_1s_ease-in-out_3]"
+            style={{ 
+              bottom: isClosed ? 'calc(16px + env(safe-area-inset-bottom))' : 'calc(56px + 16px + env(safe-area-inset-bottom))', 
+              right: '16px' 
+            }}
+            aria-label="초대하기"
+          >
+            <span className="text-2xl">🎁</span>
+          </button>
+        )}
+
+        {/* 바텀 시트 (초대 모달) */}
+        {shareTitle && isShareSheetOpen && (
+          <div className="fixed inset-0 z-[70] flex flex-col justify-end">
+            {/* 뒷배경 딤 처리 */}
+            <div 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in" 
+              onClick={() => setIsShareSheetOpen(false)}
+            />
+            {/* 시트 컨텐츠 */}
+            <div className="relative bg-slate-50 w-full rounded-t-3xl shadow-2xl p-4 pb-[calc(16px+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom-full duration-300">
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6" />
+              <div className="max-w-md mx-auto w-full">
+                <HubShareSquare customTitle={shareTitle} description={shareDescription} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 스티키 하단 광고 배너 */}
+        {!isClosed && (
+          <>
+            {/* 배너가 차지하는 공간 확보용 더미 (safe-area 포함) */}
+            <div style={{ height: 'calc(56px + env(safe-area-inset-bottom))' }} aria-hidden />
+            <div 
+              className="fixed bottom-0 left-0 right-0 z-50 bg-[#1A1A1A]/80 backdrop-blur-md border-t border-white/10"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+              <div className="h-14 mx-auto flex max-w-[var(--app-max-width,800px)] items-center justify-between px-3 sm:px-4">
                 
                 {/* 하단 광고 컨텐츠 */}
                 <div className="min-w-0 flex-1 flex items-center gap-2">
@@ -138,9 +201,9 @@ export function HubResponsiveWing({
                 </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </>
   );
 }
