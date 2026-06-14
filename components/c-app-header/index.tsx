@@ -221,24 +221,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             />
 
             {/* 패밀리 앱 스위처 (우측 최상단) */}
-            <HubAppSwitcher apps={[
-              {
-                id: 'aggrofilter',
-                name: '어그로필터',
-                url: '/',
-                icon: '🕵️‍♂️',
-                description: '유튜브 가짜뉴스 판독기',
-                isJoined: true
-              },
-              {
-                id: 'whateat',
-                name: '뭐먹지?',
-                url: 'https://whateat.app',
-                icon: '🍔',
-                description: '결정장애 맛집 룰렛',
-                isJoined: false
-              }
-            ]} />
+            <HubAppSwitcher currentAppId="aggrofilter" joinedAppIds={[]} />
           </div>
         </div>
       </header>

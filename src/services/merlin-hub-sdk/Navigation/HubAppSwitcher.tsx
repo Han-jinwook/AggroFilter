@@ -1,18 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-
-export interface FamilyApp {
-  id: string;
-  name: string;
-  url: string;
-  icon: React.ReactNode;
-  description: string;
-  isJoined: boolean;
-}
+import { IS_FAMILY_FEATURE_LIVE, FAMILY_APPS_CATALOG } from './family-apps.config';
 
 export interface HubAppSwitcherProps {
-  apps: FamilyApp[];
+  currentAppId?: string; // 현재 실행중인 앱의 ID (예: 'aggrofilter')
+  joinedAppIds?: string[]; // 유저가 찐사(가입)한 패밀리 앱 ID 목록
 }
 
 // 9점 그리드 아이콘 (구글 스타일 앱 런처 아이콘)
@@ -30,7 +23,7 @@ const GridIcon = () => (
   </svg>
 );
 
-export function HubAppSwitcher({ apps }: HubAppSwitcherProps) {
+export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -45,8 +38,22 @@ export function HubAppSwitcher({ apps }: HubAppSwitcherProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const joinedApps = apps.filter(app => app.isJoined);
-  const unjoinedApps = apps.filter(app => !app.isJoined);
+  // 🚀 런칭 스위치가 꺼져있으면 렌더링하지 않음
+  if (!IS_FAMILY_FEATURE_LIVE) {
+    return null;
+  }
+
+  // 런칭 완료된 앱만 필터링 (현재 접속중인 앱도 포함해서 보여주거나 뺄 수 있음, 여기서는 모두 표시)
+  const launchedApps = FAMILY_APPS_CATALOG.filter(app => app.isLaunched);
+
+  // 가입 상태 매핑
+  const appsWithStatus = launchedApps.map(app => ({
+    ...app,
+    isJoined: joinedAppIds.includes(app.id) || app.id === currentAppId
+  }));
+
+  const joinedApps = appsWithStatus.filter(app => app.isJoined);
+  const unjoinedApps = appsWithStatus.filter(app => !app.isJoined);
 
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
