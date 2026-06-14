@@ -9,6 +9,7 @@ import { FileText, TrendingUp, User, Shield } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
 import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
+import { HubAppSwitcher } from "@/src/services/merlin-hub-sdk/Navigation/HubAppSwitcher"
 
 export function checkLoginStatus(): boolean {
   if (typeof window === "undefined") return false
@@ -218,6 +219,26 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
               onProfileClick={() => router.push('/p-settings')}
             />
+
+            {/* 패밀리 앱 스위처 (우측 최상단) */}
+            <HubAppSwitcher apps={[
+              {
+                id: 'aggrofilter',
+                name: '어그로필터',
+                url: '/',
+                icon: '🕵️‍♂️',
+                description: '가짜뉴스 & 어그로 타파',
+                isJoined: true
+              },
+              {
+                id: 'whateat',
+                name: '뭐먹지?',
+                url: 'https://whateat.app',
+                icon: '🍔',
+                description: '결정장애를 위한 맛집 룰렛',
+                isJoined: false
+              }
+            ]} />
           </div>
         </div>
       </header>

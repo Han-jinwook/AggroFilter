@@ -87,6 +87,48 @@ function normalizeChannel(item: any): TSubscribedChannel {
   }
 }
 
+const DUMMY_VIDEOS: TAnalysisVideo[] = [
+  {
+    id: "sample1",
+    date: "2024.03.14",
+    title: "[단독] 일론 머스크, 테슬라 지분 전량 매각 선언?",
+    channel: "사이다경제",
+    channelId: "sample_ch1",
+    channelIcon: "/placeholder.svg",
+    score: 12,
+    rank: "-",
+    totalRank: "-",
+    category: "경제/투자",
+    categoryId: 1,
+  },
+  {
+    id: "sample2",
+    date: "2024.03.13",
+    title: "애플 비전프로 2세대 유출 디자인 총정리",
+    channel: "테크몽",
+    channelId: "sample_ch2",
+    channelIcon: "/placeholder.svg",
+    score: 85,
+    rank: 12,
+    totalRank: 500,
+    category: "IT/기술",
+    categoryId: 2,
+  },
+  {
+    id: "sample3",
+    date: "2024.03.12",
+    title: "충격! 먹기만 해도 -10kg 빠지는 기적의 과일",
+    channel: "건강요정",
+    channelId: "sample_ch3",
+    channelIcon: "/placeholder.svg",
+    score: 5,
+    rank: "-",
+    totalRank: "-",
+    category: "건강/의학",
+    categoryId: 3,
+  }
+];
+
 export default function MyPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -741,12 +783,64 @@ export default function MyPageClient() {
                     <p>분석 기록을 불러오는 중...</p>
                 </div>
             ) : analyzedVideos.length === 0 ? (
-                <div className="col-span-full py-20 text-center text-slate-400">
-                    <p>아직 분석한 영상이 없습니다.</p>
-                    <Link href="/" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
-                        첫 영상 분석하러 가기
+                <>
+                  <div className="col-span-full mb-2 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="text-2xl sm:text-3xl">💡</div>
+                      <div>
+                        <h4 className="font-black text-indigo-900 text-sm sm:text-base">어그로필터 샘플 데이터입니다</h4>
+                        <p className="text-xs sm:text-sm text-indigo-700/80 mt-1 font-medium">실제 유튜브 링크를 분석하시면, 이 샘플 데이터는 마법처럼 사라집니다!</p>
+                      </div>
+                    </div>
+                    <Link href="/" className="shrink-0 w-full sm:w-auto text-center px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-md active:scale-95">
+                      첫 영상 분석하러 가기
                     </Link>
-                </div>
+                  </div>
+                  {DUMMY_VIDEOS.map((video) => (
+                    <Link
+                      href="/"
+                      key={video.id}
+                      className="group relative flex flex-col overflow-hidden rounded-3xl bg-white transition-all duration-200 border border-slate-200 p-6 opacity-80"
+                    >
+                      {/* SAMPLE 글래스모피즘 리본 (A안) */}
+                      <div className="absolute top-0 right-0 z-10 w-24 h-24 overflow-hidden pointer-events-none">
+                        <div className="absolute top-5 -right-7 w-32 bg-white/40 backdrop-blur-md border border-white/50 text-indigo-600 text-[10px] font-black tracking-widest text-center py-1.5 rotate-45 shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
+                          SAMPLE
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mb-3 opacity-60">
+                        <span className="text-xs font-medium text-slate-400">{video.date}</span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                          {video.category || "기타"}
+                        </span>
+                      </div>
+                      <h3 className="mb-4 text-lg font-bold leading-snug text-slate-900 line-clamp-2 opacity-60">
+                        {video.title}
+                      </h3>
+                      <div className="flex items-end justify-between opacity-60">
+                        <div className="flex items-center gap-2">
+                          <div className="relative h-6 w-6 overflow-hidden rounded-full bg-slate-100">
+                            <div className="flex h-full w-full items-center justify-center bg-slate-200 text-[10px] font-bold text-slate-500">
+                                {(video.channel || '?').substring(0, 1)}
+                            </div>
+                          </div>
+                          <span className="text-sm text-slate-500 font-medium truncate max-w-[100px]">{video.channel}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-bold text-slate-900 flex items-center gap-1">
+                            <span className="text-xs font-medium text-slate-400">신뢰도 점수</span>
+                            <span className={`px-2 py-0.5 rounded-md font-bold ${
+                              video.score >= 70 ? 'text-emerald-500 bg-emerald-50' : 
+                              video.score >= 50 ? 'text-amber-500 bg-amber-50' : 
+                              'text-rose-500 bg-rose-50'
+                            }`}>{video.score}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </>
             ) : (
             sortedVideos.map((video) => (
               <Link
