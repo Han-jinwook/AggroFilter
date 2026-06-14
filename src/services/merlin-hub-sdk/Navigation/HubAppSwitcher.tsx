@@ -26,20 +26,6 @@ export interface HubAppSwitcherProps {
   joinedAppIds?: string[]; // 유저가 찐사(가입)한 패밀리 앱 ID 목록
 }
 
-// 9점 그리드 아이콘 (구글 스타일 앱 런처 아이콘)
-const GridIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-slate-600 group-hover:text-slate-900 transition-colors">
-    <circle cx="4" cy="4" r="2" />
-    <circle cx="12" cy="4" r="2" />
-    <circle cx="20" cy="4" r="2" />
-    <circle cx="4" cy="12" r="2" />
-    <circle cx="12" cy="12" r="2" />
-    <circle cx="20" cy="12" r="2" />
-    <circle cx="4" cy="20" r="2" />
-    <circle cx="12" cy="20" r="2" />
-    <circle cx="20" cy="20" r="2" />
-  </svg>
-);
 
 export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -101,10 +87,14 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
       {/* 트리거 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-colors group"
+        className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-all duration-300 group hover:scale-105 active:scale-95"
         aria-label="패밀리 앱 열기"
       >
-        <GridIcon />
+        <img 
+          src={`${getConfig().hubUrl}/family-icon.png`} 
+          alt="Family Apps" 
+          className="w-7 h-7 object-contain opacity-80 group-hover:opacity-100 drop-shadow-sm transition-all"
+        />
       </button>
 
       {/* 드롭다운 메뉴 */}
