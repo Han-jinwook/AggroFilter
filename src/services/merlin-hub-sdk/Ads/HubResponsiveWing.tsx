@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { HubShareSquare } from '../Referral/HubShareSquare';
 import { HubGoogleAd } from './HubGoogleAd';
 
+import { usePathname } from 'next/navigation';
+
 export interface HubResponsiveWingProps {
   /** 하단 배너 고유 ID (닫기 상태 저장용) */
   bannerId: string;
@@ -49,6 +51,7 @@ export function HubResponsiveWing({
   const [isClosed, setIsClosed] = useState(false);
   const [showFab, setShowFab] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const pathname = usePathname();
   const storageKey = `hub_bottom_banner_closed_${bannerId}`;
 
   useEffect(() => {
@@ -60,6 +63,9 @@ export function HubResponsiveWing({
   }, [storageKey]);
 
   useEffect(() => {
+    // 페이지 이동 시 FAB 숨김 처리 후 타이머 재시작 (페이지당 1분)
+    setShowFab(false);
+
     // 모바일 FAB 지연 노출 로직 (Time-based Nudge)
     if (shareTitle && mobileShareDelayMs > 0) {
       const timer = setTimeout(() => setShowFab(true), mobileShareDelayMs);
@@ -67,7 +73,7 @@ export function HubResponsiveWing({
     } else if (shareTitle && mobileShareDelayMs === 0) {
       setShowFab(true);
     }
-  }, [shareTitle, mobileShareDelayMs]);
+  }, [shareTitle, mobileShareDelayMs, pathname]);
 
   // 바텀 시트 스크롤 방지
   useEffect(() => {
