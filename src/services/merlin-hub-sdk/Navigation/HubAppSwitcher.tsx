@@ -168,7 +168,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                   >
                     <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden">
                       {LOCAL_LOGOS[app.id] ? (
-                        <img src={LOCAL_LOGOS[app.id]} alt={app.name} className="w-full h-full object-cover" />
+                        <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
                         <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
                       ) : (
