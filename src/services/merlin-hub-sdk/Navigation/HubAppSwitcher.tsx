@@ -77,19 +77,24 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
     return null;
   }
 
-  // 활성화된 앱만 정렬하여 필터링
+  // 활성화된 앱만 정렬하여 필터링 (현재 접속중인 앱은 목록에서 아예 제외)
   const launchedApps = config.apps
-    .filter(app => app.isActive)
+    .filter(app => app.isActive && app.id !== currentAppId)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // 가입 상태 매핑
   const appsWithStatus = launchedApps.map(app => ({
     ...app,
-    isJoined: joinedAppIds.includes(app.id) || app.id === currentAppId
+    isJoined: joinedAppIds.includes(app.id)
   }));
 
   const joinedApps = appsWithStatus.filter(app => app.isJoined);
   const unjoinedApps = appsWithStatus.filter(app => !app.isJoined);
+
+  // 현재 접속중인 앱 하나만 있거나 가입/미가입 앱이 모두 없으면 스위처를 그리지 않음
+  if (joinedApps.length === 0 && unjoinedApps.length === 0) {
+    return null;
+  }
 
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
@@ -107,31 +112,27 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
         <div className="absolute right-0 mt-2 w-80 bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
           
           {/* My Apps (가입된 앱) */}
-          <div className="mb-4">
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">My Apps</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {joinedApps.map((app) => (
-                <a 
-                  key={app.id}
-                  href={app.id === currentAppId ? '#' : app.url} 
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300
-                    ${app.id === currentAppId 
-                      ? 'bg-indigo-50/80 ring-1 ring-indigo-100/50 cursor-default shadow-sm' 
-                      : 'hover:bg-slate-50 hover:shadow-sm cursor-pointer active:scale-95'
-                    }`}
-                >
-                  <div className={`text-3xl mb-2 transition-transform duration-300 ${app.id !== currentAppId && 'hover:scale-110'}`}>
-                    {app.icon}
-                  </div>
-                  <span className={`text-xs font-bold whitespace-nowrap
-                    ${app.id === currentAppId ? 'text-indigo-700' : 'text-slate-700'}
-                  `}>
-                    {app.name}
-                  </span>
-                </a>
-              ))}
+          {joinedApps.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">My Apps</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {joinedApps.map((app) => (
+                  <a 
+                    key={app.id}
+                    href={app.url} 
+                    className="flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 hover:bg-slate-50 hover:shadow-sm cursor-pointer active:scale-95"
+                  >
+                    <div className="text-3xl mb-2 transition-transform duration-300 hover:scale-110">
+                      {app.icon}
+                    </div>
+                    <span className="text-xs font-bold whitespace-nowrap text-slate-700">
+                      {app.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Discovery (미가입 앱) */}
           {unjoinedApps.length > 0 && (
