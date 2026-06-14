@@ -150,8 +150,12 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     href={app.url} 
                     className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
                   >
-                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      {app.icon}
+                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                      {app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
+                        <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+                      ) : (
+                        app.icon
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center gap-2">
