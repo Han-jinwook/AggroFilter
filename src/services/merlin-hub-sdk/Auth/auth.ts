@@ -131,11 +131,20 @@ export async function checkSession(): Promise<SessionResult> {
 
   try {
     const timestamp = Date.now();
-    const { ok, data } = await hubFetch<{ success: boolean; user: any }>(`/api/auth/me?t=${timestamp}`);
-    if (!ok || !data.success) {
+    const { ok, status, data } = await hubFetch<{ success: boolean; user: any }>(`/api/auth/me?t=${timestamp}`);
+    
+    if (!ok) {
+      if (status === 401 || status === 403) {
+        clearSessionToken();
+      }
+      return { valid: false };
+    }
+
+    if (!data?.success) {
       clearSessionToken();
       return { valid: false };
     }
+    
     const u = data.user;
     
     // UI 동기화를 위해 추천 코드 저장
