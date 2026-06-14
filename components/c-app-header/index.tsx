@@ -227,7 +227,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                 name: '어그로필터',
                 url: '/',
                 icon: '🕵️‍♂️',
-                description: '가짜뉴스 & 어그로 타파',
+                description: '유튜브 가짜뉴스 판독기',
                 isJoined: true
               },
               {
@@ -235,7 +235,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                 name: '뭐먹지?',
                 url: 'https://whateat.app',
                 icon: '🍔',
-                description: '결정장애를 위한 맛집 룰렛',
+                description: '결정장애 맛집 룰렛',
                 isJoined: false
               }
             ]} />

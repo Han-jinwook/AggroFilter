@@ -130,7 +130,7 @@ export function HubAppSwitcher({ apps }: HubAppSwitcherProps) {
                             미가입
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400 line-clamp-1">
+                        <span className="text-xs font-medium text-indigo-500/80 group-hover:text-indigo-600 transition-colors line-clamp-1 mt-0.5">
                           {app.description}
                         </span>
                       </div>
