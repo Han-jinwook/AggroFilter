@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getConfig } from '../CoreLogic/config';
 import { hubFetch } from '../CoreLogic/client';
 
+import { useHub } from '../react';
+
 export interface FamilyApp {
   id: string;
   name: string;
@@ -23,7 +25,7 @@ export interface FamilyConfig {
 
 export interface HubAppSwitcherProps {
   currentAppId?: string; // 현재 실행중인 앱의 ID (예: 'aggrofilter')
-  joinedAppIds?: string[]; // 유저가 찐사(가입)한 패밀리 앱 ID 목록
+  joinedAppIds?: string[]; // 유저가 찐사(가입)한 패밀리 앱 ID 목록 (명시적 전달용)
 }
 
 
@@ -31,6 +33,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<FamilyConfig | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { user } = useHub();
 
   // 중앙 통제 설정 불러오기
   useEffect(() => {
@@ -74,10 +77,14 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
     .filter(app => app.isActive && app.id !== currentAppId)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  // 명시적으로 전달된 joinedAppIds가 없으면 현재 로그인된 유저의 정보 사용
+  const effectiveJoinedIds = joinedAppIds.length > 0 ? joinedAppIds : (user?.registered_apps || []);
+  const lowercaseJoinedIds = effectiveJoinedIds.map(id => id.toLowerCase());
+
   // 가입 상태 매핑
   const appsWithStatus = launchedApps.map(app => ({
     ...app,
-    isJoined: joinedAppIds.includes(app.id)
+    isJoined: lowercaseJoinedIds.includes(app.id.toLowerCase())
   }));
 
   const joinedApps = appsWithStatus.filter(app => app.isJoined);

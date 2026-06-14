@@ -10,6 +10,7 @@ interface HubUser {
   nickname?: string;
   avatar_url?: string;
   notification_settings?: any;
+  registered_apps?: string[];
 }
 
 interface HubContextType {
@@ -72,6 +73,7 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
           nickname: session.nickname,
           avatar_url: session.avatar_url,
           notification_settings: (session as any).notification_settings || {},
+          registered_apps: (session as any).registered_apps || [],
         };
         setUser(freshUser);
         setIsLoggedIn(true);

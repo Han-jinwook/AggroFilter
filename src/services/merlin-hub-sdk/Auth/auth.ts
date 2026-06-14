@@ -120,6 +120,7 @@ export interface SessionResult {
   nickname?: string;
   avatar_url?: string;
   referral_code?: string;
+  registered_apps?: string[];
 }
 
 /**
@@ -148,7 +149,7 @@ export async function checkSession(): Promise<SessionResult> {
     const u = data.user;
     
     // UI 동기화를 위해 추천 코드 저장
-    if (u.referral_code && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && u.referral_code) {
       localStorage.setItem('userReferralCode', u.referral_code);
     }
 
@@ -158,7 +159,8 @@ export async function checkSession(): Promise<SessionResult> {
       userId: u.userId || u.id,
       nickname: u.nickname,
       avatar_url: u.avatar_url,
-      referral_code: u.referral_code
+      referral_code: u.referral_code,
+      registered_apps: u.registered_apps || []
     };
   } catch {
     return { valid: false };
