@@ -109,23 +109,23 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+        <div className="absolute right-0 mt-2 w-80 bg-[#1e1e24] border border-white/10 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.2)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
           
           {/* My Apps (가입된 앱) */}
           {joinedApps.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">My Apps</h3>
+              <h3 className="text-[11px] font-black text-slate-400/80 uppercase tracking-widest mb-3 px-2">My Apps</h3>
               <div className="grid grid-cols-3 gap-2">
                 {joinedApps.map((app) => (
                   <a 
                     key={app.id}
                     href={app.url} 
-                    className="flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 hover:bg-slate-50 hover:shadow-sm cursor-pointer active:scale-95"
+                    className="flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 hover:bg-white/10 hover:shadow-sm cursor-pointer active:scale-95"
                   >
                     <div className="text-3xl mb-2 transition-transform duration-300 hover:scale-110">
                       {app.icon}
                     </div>
-                    <span className="text-xs font-bold whitespace-nowrap text-slate-700">
+                    <span className="text-xs font-bold whitespace-nowrap text-slate-200">
                       {app.name}
                     </span>
                   </a>
@@ -136,34 +136,34 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
           {/* Discovery (미가입 앱) */}
           {unjoinedApps.length > 0 && (
-            <div className="pt-4 border-t border-slate-100/60">
-              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2 flex items-center gap-2">
-                Discovery <span className="bg-rose-100 text-rose-600 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
+            <div className={`pt-4 ${joinedApps.length > 0 ? 'border-t border-white/10' : ''}`}>
+              <h3 className="text-[11px] font-black text-slate-400/80 uppercase tracking-widest mb-3 px-2 flex items-center gap-2">
+                Discovery <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
               </h3>
               <div className="space-y-1">
                 {unjoinedApps.map((app) => (
                   <a 
                     key={app.id}
                     href={app.url} 
-                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
+                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
                   >
-                    <div className="text-3xl bg-white w-12 h-12 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       {app.icon}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-slate-800 truncate">{app.name}</span>
+                        <span className="text-sm font-black text-slate-100 truncate">{app.name}</span>
                         {app.openSchedule && (
-                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                             {app.openSchedule}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs font-medium text-slate-500 truncate mt-0.5">
+                      <span className="text-xs font-medium text-slate-400 truncate mt-0.5">
                         {app.description}
                       </span>
                     </div>
-                    <div className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="text-xs font-black text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
                       둘러보기
                     </div>
                   </a>
