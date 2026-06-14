@@ -63,6 +63,12 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
     return null;
   }
 
+  // 현재 내 앱(currentAppId)이 대시보드에서 '활성(isActive)' 상태가 아니라면 스위처를 아예 감춤
+  const currentAppConfig = config.apps.find(app => app.id === currentAppId);
+  if (currentAppConfig && !currentAppConfig.isActive) {
+    return null;
+  }
+
   // 활성화된 앱만 정렬하여 필터링 (현재 접속중인 앱은 목록에서 아예 제외)
   const launchedApps = config.apps
     .filter(app => app.isActive && app.id !== currentAppId)
