@@ -189,7 +189,7 @@ export default function AnalysisListClient() {
         <div className="mb-6 flex items-center gap-3">
           <button
             onClick={() => setActiveTab('analysis')}
-            className={`flex-1 rounded-3xl text-xl font-bold transition-all ${
+            className={`flex-1 rounded-3xl text-xl font-bold transition-all cursor-pointer active:scale-[0.98] active:bg-opacity-80 select-none ${
               activeTab === 'analysis'
                 ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-pink-400 shadow-lg'
                 : 'bg-gradient-to-r from-purple-200 to-blue-200 text-slate-600'
@@ -210,7 +210,7 @@ export default function AnalysisListClient() {
           {!isSearchExpanded ? (
             <button 
               onClick={() => setIsSearchExpanded(true)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-md hover:shadow-lg transition-shadow cursor-pointer active:scale-[0.98] active:bg-opacity-80"
             >
               <Search className="h-6 w-6 text-slate-600" />
             </button>
@@ -236,7 +236,7 @@ export default function AnalysisListClient() {
                     setSearchQuery('')
                     setIsSearchExpanded(false)
                   }}
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 cursor-pointer active:scale-[0.90]"
                 >
                   <X className="h-5 w-5 text-slate-400" />
                 </button>
@@ -246,7 +246,7 @@ export default function AnalysisListClient() {
           
           <button
             onClick={() => setActiveTab('subscribed')}
-            className={`flex-1 rounded-3xl text-xl font-bold transition-all ${
+            className={`flex-1 rounded-3xl text-xl font-bold transition-all cursor-pointer active:scale-[0.98] active:bg-opacity-80 select-none ${
               activeTab === 'subscribed'
                 ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-pink-400 shadow-lg'
                 : 'bg-gradient-to-r from-purple-200 to-blue-200 text-slate-600'
@@ -271,12 +271,17 @@ export default function AnalysisListClient() {
             {videos.map((video) => (
               <div
                 key={video.id}
-                className="relative rounded-2xl border-4 border-slate-600 bg-white p-4 shadow-md"
+                className="relative rounded-2xl border-4 border-slate-600 bg-white p-4 shadow-md overflow-hidden"
               >
+                {/* Sample Ribbon */}
+                <div className="absolute top-0 right-0 z-10 w-24 h-6 transform translate-x-[25%] translate-y-[50%] rotate-45 bg-slate-800/80 text-white text-[10px] font-bold flex items-center justify-center shadow-sm backdrop-blur-sm pointer-events-none">
+                  💡 SAMPLE
+                </div>
+
                 {/* Remove Button */}
                 <button
                   onClick={() => handleRemoveVideo(video.id)}
-                  className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                  className="absolute -right-2 -top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors cursor-pointer active:scale-[0.90]"
                 >
                   <X className="h-4 w-4 text-gray-600" />
                 </button>
@@ -335,7 +340,7 @@ export default function AnalysisListClient() {
             <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-3 text-sm font-medium text-slate-600">
               <button
                 onClick={() => handleSort('date')}
-                className="flex items-center gap-1 hover:text-slate-800"
+                className="flex items-center gap-1 hover:text-slate-800 cursor-pointer select-none active:bg-slate-100 rounded px-1 transition-colors"
               >
                 날짜 순
                 {sortBy === 'date' && (
@@ -344,7 +349,7 @@ export default function AnalysisListClient() {
               </button>
               <button
                 onClick={() => handleSort('name')}
-                className="flex items-center gap-1 hover:text-slate-800"
+                className="flex items-center gap-1 hover:text-slate-800 cursor-pointer select-none active:bg-slate-100 rounded px-1 transition-colors"
               >
                 채널명 순
                 {sortBy === 'name' && (
@@ -363,9 +368,14 @@ export default function AnalysisListClient() {
               {sortedChannels.map((channel) => (
                 <div
                   key={channel.id}
-                  className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 p-3 text-white"
+                  className="relative rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 p-3 text-white overflow-hidden"
                 >
-                  <div className="flex items-center gap-3">
+                  {/* Sample Ribbon */}
+                  <div className="absolute top-0 right-0 z-10 w-24 h-6 transform translate-x-[25%] translate-y-[10%] rotate-45 bg-white/20 text-white text-[10px] font-bold flex items-center justify-center shadow-sm backdrop-blur-md pointer-events-none">
+                    💡 SAMPLE
+                  </div>
+
+                  <div className="flex items-center gap-3 relative z-20">
                     {/* Date */}
                     <div className="flex flex-col text-center text-xs">
                       <div>{channel.date.split('.')[1]}.</div>
