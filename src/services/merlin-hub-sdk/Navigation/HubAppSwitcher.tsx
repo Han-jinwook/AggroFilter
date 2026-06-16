@@ -127,7 +127,6 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
           {/* My Apps (가입된 앱) */}
           {joinedApps.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-[11px] font-black text-slate-400/80 uppercase tracking-widest mb-3 px-2">My Apps</h3>
               <div className="grid grid-cols-3 gap-2">
                 {joinedApps.map((app) => (
                   <a 
@@ -157,7 +156,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
           {unjoinedApps.length > 0 && (
             <div className={`pt-4 ${joinedApps.length > 0 ? 'border-t border-white/10' : ''}`}>
               <h3 className="text-[11px] font-black text-slate-400/80 tracking-widest mb-3 px-2 flex items-center gap-2">
-                새로운 앱 발견 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
+                멀린 패밀리 앱 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
               </h3>
               <div className="space-y-1">
                 {unjoinedApps.map((app) => (
