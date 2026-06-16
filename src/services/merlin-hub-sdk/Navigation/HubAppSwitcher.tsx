@@ -106,6 +106,20 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
     return null;
   }
 
+  // SSO 토큰 파라미터가 포함된 URL 생성 유틸 (다른 서브도메인 앱으로 넘어갈 때 로그인 상태 유지)
+  const getSsoUrl = (url: string) => {
+    if (typeof window === 'undefined') return url;
+    const token = localStorage.getItem('merlin_session_token');
+    if (!token) return url;
+    try {
+      const urlObj = new URL(url);
+      urlObj.searchParams.set('token', token);
+      return urlObj.toString();
+    } catch {
+      return `${url}${url.includes('?') ? '&' : '?'}token=${token}`;
+    }
+  };
+
   return (
     <div className="relative inline-block text-left" ref={containerRef}>
       {/* 트리거 버튼 */}
@@ -134,7 +148,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                   return (
                   <Wrapper 
                     key={app.id}
-                    href={app.isLinkActive !== false ? app.url : undefined} 
+                    href={app.isLinkActive !== false ? getSsoUrl(app.url) : undefined} 
+                    target={app.isLinkActive !== false ? '_blank' : undefined}
+                    rel={app.isLinkActive !== false ? 'noopener noreferrer' : undefined}
                     className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 ${app.isLinkActive !== false ? 'hover:bg-white/10 hover:shadow-sm cursor-pointer active:scale-95' : 'opacity-80 cursor-default'}`}
                   >
                     <div className={`text-3xl mb-2 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl ${app.isLinkActive !== false ? 'transition-transform duration-300 hover:scale-110' : ''}`}>
@@ -168,7 +184,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                   return (
                   <Wrapper 
                     key={app.id}
-                    href={app.isLinkActive !== false ? app.url : undefined} 
+                    href={app.isLinkActive !== false ? getSsoUrl(app.url) : undefined} 
+                    target={app.isLinkActive !== false ? '_blank' : undefined}
+                    rel={app.isLinkActive !== false ? 'noopener noreferrer' : undefined}
                     className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 group ${app.isLinkActive !== false ? 'hover:bg-white/5 cursor-pointer active:scale-[0.98]' : 'opacity-80 cursor-default'}`}
                   >
                     <div className={`text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center overflow-hidden shrink-0 ${app.isLinkActive !== false ? 'group-hover:scale-110 transition-transform duration-300' : ''}`}>

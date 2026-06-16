@@ -126,6 +126,19 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
         localStorage.setItem('pendingReferralCode', refCode);
         console.log('[HubProvider] Detected and saved pending referral code:', refCode);
       }
+
+      // SSO (Single Sign-On) 토큰 파싱: F 아이콘 앱 스위처를 통해 넘어올 때 로그인 상태 유지
+      const ssoToken = urlParams.get('token');
+      if (ssoToken) {
+        localStorage.setItem('merlin_session_token', ssoToken);
+        console.log('[HubProvider] Detected SSO token, saving to session');
+        
+        // 보안 및 깔끔한 URL을 위해 주소창에서 token 파라미터 제거
+        urlParams.delete('token');
+        const searchStr = urlParams.toString();
+        const newUrl = window.location.pathname + (searchStr ? '?' + searchStr : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+      }
     }
 
     // 1. SSR Hydration 이후 즉시 로컬 스토리지의 캐시 데이터를 읽어 UI 지연을 최소화 (SWR)
