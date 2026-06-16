@@ -23,6 +23,7 @@ export interface FamilyApp {
   icon: React.ReactNode;
   description: string;
   isActive: boolean;
+  isLinkActive?: boolean;
   openSchedule?: string;
   sortOrder: number;
   isJoined?: boolean;
@@ -128,13 +129,15 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
           {joinedApps.length > 0 && (
             <div className="mb-4">
               <div className="grid grid-cols-3 gap-2">
-                {joinedApps.map((app) => (
-                  <a 
+                {joinedApps.map((app) => {
+                  const Wrapper = app.isLinkActive !== false ? 'a' : 'div';
+                  return (
+                  <Wrapper 
                     key={app.id}
-                    href={app.url} 
-                    className="flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 hover:bg-white/10 hover:shadow-sm cursor-pointer active:scale-95"
+                    href={app.isLinkActive !== false ? app.url : undefined} 
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 ${app.isLinkActive !== false ? 'hover:bg-white/10 hover:shadow-sm cursor-pointer active:scale-95' : 'opacity-80 cursor-default'}`}
                   >
-                    <div className="text-3xl mb-2 transition-transform duration-300 hover:scale-110 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl">
+                    <div className={`text-3xl mb-2 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl ${app.isLinkActive !== false ? 'transition-transform duration-300 hover:scale-110' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
@@ -146,8 +149,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     <span className="text-xs font-bold whitespace-nowrap text-slate-200">
                       {app.name}
                     </span>
-                  </a>
-                ))}
+                  </Wrapper>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -159,13 +163,15 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                 멀린 패밀리 앱 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
               </h3>
               <div className="space-y-1">
-                {unjoinedApps.map((app) => (
-                  <a 
+                {unjoinedApps.map((app) => {
+                  const Wrapper = app.isLinkActive !== false ? 'a' : 'div';
+                  return (
+                  <Wrapper 
                     key={app.id}
-                    href={app.url} 
-                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
+                    href={app.isLinkActive !== false ? app.url : undefined} 
+                    className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 group ${app.isLinkActive !== false ? 'hover:bg-white/5 cursor-pointer active:scale-[0.98]' : 'opacity-80 cursor-default'}`}
                   >
-                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden shrink-0">
+                    <div className={`text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center overflow-hidden shrink-0 ${app.isLinkActive !== false ? 'group-hover:scale-110 transition-transform duration-300' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
@@ -187,8 +193,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                         {app.description}
                       </span>
                     </div>
-                  </a>
-                ))}
+                  </Wrapper>
+                  );
+                })}
               </div>
             </div>
           )}
