@@ -164,8 +164,8 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </div>
           </Link>
 
-          {/* 중앙 네비게이션 메뉴 영역 (수평 스크롤 가능하게 변경) */}
-          <div className="flex-1 overflow-x-auto no-scrollbar mx-4">
+          {/* 중앙 네비게이션 메뉴 영역 (수평 스크롤 가능, 세로 스크롤 방지) */}
+          <div className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar mx-4">
             <div className="flex items-center gap-6 sm:gap-10 min-w-max px-2">
               <MenuItem
                 icon={FileText}
