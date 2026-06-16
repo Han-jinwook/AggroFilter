@@ -156,8 +156,8 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
           {/* Discovery (미가입 앱) */}
           {unjoinedApps.length > 0 && (
             <div className={`pt-4 ${joinedApps.length > 0 ? 'border-t border-white/10' : ''}`}>
-              <h3 className="text-[11px] font-black text-slate-400/80 uppercase tracking-widest mb-3 px-2 flex items-center gap-2">
-                Discovery <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
+              <h3 className="text-[11px] font-black text-slate-400/80 tracking-widest mb-3 px-2 flex items-center gap-2">
+                새로운 앱 발견 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
               </h3>
               <div className="space-y-1">
                 {unjoinedApps.map((app) => (
@@ -166,7 +166,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     href={app.url} 
                     className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all duration-300 cursor-pointer group active:scale-[0.98]"
                   >
-                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                    <div className="text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden shrink-0">
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
@@ -175,21 +175,18 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                         app.icon
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-slate-100 truncate">{app.name}</span>
+                    <div className="flex-1 flex flex-col justify-center min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-slate-100 whitespace-normal break-keep">{app.name}</span>
                         {app.openSchedule && (
-                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0">
                             {app.openSchedule}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs font-medium text-slate-400 truncate mt-0.5">
+                      <span className="text-xs font-medium text-slate-400 mt-0.5 whitespace-normal break-keep">
                         {app.description}
                       </span>
-                    </div>
-                    <div className="text-xs font-black text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      둘러보기
                     </div>
                   </a>
                 ))}
