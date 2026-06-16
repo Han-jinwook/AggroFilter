@@ -218,14 +218,14 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             )}
 
             {/* 프로필과 패밀리 앱 스위처(F)를 바짝 붙인 그룹 */}
-            <div className="flex items-center bg-slate-50/50 rounded-2xl p-0.5 border border-slate-100/50">
+            <div className="flex items-center bg-slate-50/50 rounded-2xl p-1 border border-slate-100/50">
               <HubProfileWidget 
                 onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
                 onProfileClick={() => router.push('/p-settings')}
               />
 
               {/* 패밀리 앱 스위처 (우측 최상단) */}
-              <div className="ml-1 sm:ml-2">
+              <div className="ml-2">
                 <HubAppSwitcher currentAppId="aggrofilter" joinedAppIds={[]} />
               </div>
             </div>
