@@ -164,28 +164,30 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
             </div>
           </Link>
 
-          {/* 중앙 네비게이션 메뉴 영역 (적당한 간격으로 중앙 정렬) */}
-          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-10 px-4">
-            <MenuItem
-              icon={FileText}
-              label="마이페이지"
-              href="/p-my-page?tab=analysis"
-              active={isActive("/p-my-page")}
-              onClick={handleMyPageClick}
-            />
+          {/* 중앙 네비게이션 메뉴 영역 (수평 스크롤 가능하게 변경) */}
+          <div className="flex-1 overflow-x-auto no-scrollbar mx-4">
+            <div className="flex items-center gap-6 sm:gap-10 min-w-max px-2">
+              <MenuItem
+                icon={FileText}
+                label="마이페이지"
+                href="/p-my-page?tab=analysis"
+                active={isActive("/p-my-page")}
+                onClick={handleMyPageClick}
+              />
 
-            <MenuItem icon={TrendingUp} label="분석 플라자" href="/p-plaza" active={isActive("/p-plaza")} />
+              <MenuItem icon={TrendingUp} label="분석 플라자" href="/p-plaza" active={isActive("/p-plaza")} />
 
-            {isAdmin && isLoggedIn && (
-              <div className="hidden lg:flex">
-                <MenuItem icon={Shield} label="관리자" href="/p-admin" active={isActive("/p-admin")} />
-              </div>
-            )}
+              {isAdmin && isLoggedIn && (
+                <div className="hidden lg:flex">
+                  <MenuItem icon={Shield} label="관리자" href="/p-admin" active={isActive("/p-admin")} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 우측 프로필 및 자산(코인) 영역 */}
-          <div className="flex items-center justify-end shrink-0 gap-3 sm:gap-4 min-w-[120px]">
-            {/* 코인 잔액 — 로그인 상태거나 비로그인 가불 잔액이 있는 경우 (Hydration mismatch 예방을 위해 마운트 후에만) */}
+          <div className="flex items-center justify-end shrink-0 gap-1.5 sm:gap-4">
+            {/* 코인 잔액 — 모바일 숨김 (sm:flex로 변경) */}
             {mounted && (isLoggedIn || pendingFee !== null) && (
               <Link
                 href={isLoggedIn ? "/payment/purchase" : "#"}
@@ -195,7 +197,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                     window.dispatchEvent(new CustomEvent('openLoginModal'))
                   }
                 }}
-                className="flex flex-col items-center gap-1 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
+                className="hidden sm:flex flex-col items-center gap-1 transition-colors group px-1 active:scale-95 cursor-pointer no-underline"
               >
                 <div className={`px-2 h-9 min-w-[40px] rounded-xl transition-colors flex items-center justify-center ${
                   !isLoggedIn && pendingFee !== null 
@@ -215,13 +217,18 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               </Link>
             )}
 
-            <HubProfileWidget 
-              onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
-              onProfileClick={() => router.push('/p-settings')}
-            />
+            {/* 프로필과 패밀리 앱 스위처(F)를 바짝 붙인 그룹 */}
+            <div className="flex items-center bg-slate-50/50 rounded-2xl p-0.5 border border-slate-100/50">
+              <HubProfileWidget 
+                onLoginClick={() => window.dispatchEvent(new CustomEvent('openLoginModal'))}
+                onProfileClick={() => router.push('/p-settings')}
+              />
 
-            {/* 패밀리 앱 스위처 (우측 최상단) */}
-            <HubAppSwitcher currentAppId="aggrofilter" joinedAppIds={[]} />
+              {/* 패밀리 앱 스위처 (우측 최상단) */}
+              <div className="ml-1 sm:ml-2">
+                <HubAppSwitcher currentAppId="aggrofilter" joinedAppIds={[]} />
+              </div>
+            </div>
           </div>
         </div>
       </header>

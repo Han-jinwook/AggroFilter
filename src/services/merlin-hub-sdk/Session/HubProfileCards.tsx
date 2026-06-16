@@ -15,7 +15,7 @@ export interface HubProfileCardProps {
 }
 
 export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, className = '' }) => {
-  const { user, isLoggedIn } = useHub();
+  const { user, isLoggedIn, balance } = useHub();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [profileImage, setProfileImage] = useState('');
@@ -155,6 +155,30 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 ${className}`}>
+      
+      {/* 🚀 상단 코인 배너 (모바일 등에서 헤더 코인 UI를 대체/보완) */}
+      {isLoggedIn && (
+        <a 
+          href="/payment/purchase"
+          className="flex items-center justify-between p-4 mb-8 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer no-underline"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-amber-100 group-hover:scale-110 transition-transform">
+              <span className="text-amber-500 font-black text-xl">C</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-amber-600/80 mb-1">내 잔여 코인</span>
+              <span className="text-xl font-black text-amber-600 leading-none tracking-tight">
+                {balance !== null ? balance.toLocaleString() : '...'} 코인
+              </span>
+            </div>
+          </div>
+          <div className="text-amber-600 font-bold text-sm flex items-center gap-1 bg-white/60 px-3 py-1.5 rounded-full border border-amber-200/50 group-hover:bg-white transition-colors">
+            충전·내역 <span className="text-lg leading-none mb-0.5">›</span>
+          </div>
+        </a>
+      )}
+
       <div className="flex items-start justify-between mb-6">
         <h2 className="text-xl font-bold text-slate-900">프로필 정보</h2>
         {!isEditing && (
