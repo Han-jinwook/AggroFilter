@@ -137,7 +137,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-[#1e1e24] border border-white/10 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.2)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+        <div className="absolute right-0 mt-2 w-80 bg-white/85 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.08)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
           
           {/* My Apps (가입된 앱) */}
           {joinedApps.length > 0 && (
@@ -151,9 +151,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     href={app.isLinkActive !== false ? getSsoUrl(app.url) : undefined} 
                     target={app.isLinkActive !== false ? '_blank' : undefined}
                     rel={app.isLinkActive !== false ? 'noopener noreferrer' : undefined}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 ${app.isLinkActive !== false ? 'hover:bg-white/10 hover:shadow-sm cursor-pointer active:scale-95' : 'opacity-80 cursor-default'}`}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-300 ${app.isLinkActive !== false ? 'hover:bg-slate-100/60 hover:shadow-sm cursor-pointer active:scale-95' : 'opacity-80 cursor-default'}`}
                   >
-                    <div className={`text-3xl mb-2 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl ${app.isLinkActive !== false ? 'transition-transform duration-300 hover:scale-110' : ''}`}>
+                    <div className={`text-3xl mb-2 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100 ${app.isLinkActive !== false ? 'transition-transform duration-300 hover:scale-110' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
@@ -162,7 +162,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                         app.icon
                       )}
                     </div>
-                    <span className="text-xs font-bold whitespace-nowrap text-slate-200">
+                    <span className="text-xs font-bold whitespace-nowrap text-slate-800">
                       {app.name}
                     </span>
                   </Wrapper>
@@ -174,9 +174,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
           {/* Discovery (미가입 앱) */}
           {unjoinedApps.length > 0 && (
-            <div className={`pt-4 ${joinedApps.length > 0 ? 'border-t border-white/10' : ''}`}>
-              <h3 className="text-[11px] font-black text-slate-400/80 tracking-widest mb-3 px-2 flex items-center gap-2">
-                멀린 패밀리 앱 <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[9px] px-1.5 py-0.5 rounded-full">New</span>
+            <div className={`pt-4 ${joinedApps.length > 0 ? 'border-t border-slate-200/60' : ''}`}>
+              <h3 className="text-[11px] font-black text-indigo-600/90 tracking-widest mb-3 px-2 flex items-center gap-2">
+                멀린 패밀리 앱 <span className="bg-rose-50 text-rose-600 border border-rose-200 text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">New</span>
               </h3>
               <div className="space-y-1">
                 {unjoinedApps.map((app) => {
@@ -187,9 +187,9 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     href={app.isLinkActive !== false ? getSsoUrl(app.url) : undefined} 
                     target={app.isLinkActive !== false ? '_blank' : undefined}
                     rel={app.isLinkActive !== false ? 'noopener noreferrer' : undefined}
-                    className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 group ${app.isLinkActive !== false ? 'hover:bg-white/5 cursor-pointer active:scale-[0.98]' : 'opacity-80 cursor-default'}`}
+                    className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 group ${app.isLinkActive !== false ? 'hover:bg-slate-100/60 cursor-pointer active:scale-[0.98]' : 'opacity-80 cursor-default'}`}
                   >
-                    <div className={`text-3xl bg-white/10 w-12 h-12 rounded-xl shadow-sm border border-white/5 flex items-center justify-center overflow-hidden shrink-0 ${app.isLinkActive !== false ? 'group-hover:scale-110 transition-transform duration-300' : ''}`}>
+                    <div className={`text-3xl bg-white w-12 h-12 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 ${app.isLinkActive !== false ? 'group-hover:scale-110 transition-transform duration-300' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
                       ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
@@ -200,14 +200,14 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     </div>
                     <div className="flex-1 flex flex-col justify-center min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-black text-slate-100 whitespace-normal break-keep">{app.name}</span>
+                        <span className="text-sm font-black text-slate-900 whitespace-normal break-keep">{app.name}</span>
                         {app.openSchedule && (
-                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0">
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 shadow-sm">
                             {app.openSchedule}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs font-medium text-slate-400 mt-0.5 whitespace-normal break-keep">
+                      <span className="text-xs font-medium text-slate-500 mt-0.5 whitespace-normal break-keep">
                         {app.description}
                       </span>
                     </div>
