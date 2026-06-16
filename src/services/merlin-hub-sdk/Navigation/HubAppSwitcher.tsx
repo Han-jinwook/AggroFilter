@@ -137,7 +137,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
 
       {/* 드롭다운 메뉴 */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white/85 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.08)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+        <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-3xl shadow-[0_20px_50px_rgba(15,23,42,0.12)] p-4 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
           
           {/* My Apps (가입된 앱) */}
           {joinedApps.length > 0 && (
