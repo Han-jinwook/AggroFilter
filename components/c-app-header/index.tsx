@@ -225,7 +225,7 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
               />
 
               {/* 패밀리 앱 스위처 (우측 최상단) */}
-              <div className="ml-2">
+              <div className="ml-2 shrink-0">
                 <HubAppSwitcher currentAppId="aggrofilter" joinedAppIds={[]} />
               </div>
             </div>
