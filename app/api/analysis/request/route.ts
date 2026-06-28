@@ -426,7 +426,7 @@ export async function POST(request: Request) {
     // 0. 카테고리 화이트리스트 기반 즉시 차단 (AI 분석 이전 — 비용 절감 및 빠른 거절)
     // AutoMarketer와 동일한 핵심 7개 카테고리만 허용: 22,24,25,26,27,28,29
     const officialCategoryId = videoInfo.officialCategoryId?.toString();
-    const allowedCategoryIds = new Set(['22', '24', '25', '26', '27', '28', '29']);
+    const allowedCategoryIds = new Set(['1', '17', '20', '22', '24', '25', '26', '27', '28', '29']);
     const blockedCategoryMessages: Record<string, string> = {
       '10': '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·비평 영상은 정상 분석됩니다.',
       '1': '영화/애니메이션 재생 영상은 분석 대상이 아닙니다.\n영화 리뷰·비평 영상은 정상 분석됩니다.',
