@@ -9,7 +9,7 @@ import { AnalysisHeader } from "@/app/p-result/c-result/analysis-header"
 import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { AnalysisGuide } from "@/app/p-result/c-result/analysis-guide"
-import { getCategoryName } from "@/lib/constants"
+import { getCategoryName, getRankingCategoryId } from "@/lib/constants"
 import { getUserId, isAnonymousUser } from "@/lib/anon"
 import { ShareModal } from "@/components/c-share-modal"
 import { ChevronDown, ChevronUp, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
@@ -910,7 +910,7 @@ ${content}
               videoUrl={analysisData.url}
               date={analysisData.date}
               onBack={handleBack}
-              onChannelClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
+              onChannelClick={() => router.push(`/p-ranking?category=${getRankingCategoryId(analysisData.officialCategoryId)}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
               onHeaderClick={() => setShowPlayer(!showPlayer)}
               channelLanguage={analysisData.channelLanguage}
             />
@@ -1092,7 +1092,7 @@ ${content}
             </div>
           )}
           <div
-            onClick={() => router.push(`/p-ranking?category=${analysisData.officialCategoryId}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
+            onClick={() => router.push(`/p-ranking?category=${getRankingCategoryId(analysisData.officialCategoryId)}&channel=${analysisData.channelId}&lang=${analysisData.channelLanguage || 'korean'}`)}
             className="rounded-3xl border-4 border-indigo-300 bg-indigo-50 px-3 py-3 cursor-pointer hover:border-indigo-400 hover:bg-indigo-100 transition-colors"
           >
             <div className="mb-2 flex items-center justify-between">

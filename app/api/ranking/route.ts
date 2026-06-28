@@ -16,7 +16,8 @@ export async function GET(request: Request) {
   const safeOffset = Number.isFinite(offset) ? Math.max(offset, 0) : 0;
   
   // Ranking Key 생성: lang_categoryId 또는 언어 전체
-  const hasCategory = categoryId && categoryId !== '' && categoryId !== 'all';
+  const isEtcCategory = categoryId === '100';
+  const hasCategory = categoryId && categoryId !== '' && categoryId !== 'all' && !isEtcCategory;
   const rankingKey = hasCategory ? `${lang}_${categoryId}` : null;
 
   try {
@@ -26,7 +27,55 @@ export async function GET(request: Request) {
       let query: string;
       let queryParams: any[];
       
-      if (rankingKey) {
+      if (isEtcCategory) {
+        // 기타 카테고리 조회 (22, 24, 25, 26, 27, 28, 29 제외한 모든 카테고리 통합 랭킹)
+        query = `
+          WITH Ranked AS (
+            SELECT DISTINCT ON (rc.f_channel_id)
+              rc.f_channel_id,
+              c.f_title,
+              c.f_thumbnail_url,
+              cs.f_avg_reliability,
+              cs.f_avg_clickbait,
+              rc.f_language
+            FROM t_rankings_cache rc
+            JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
+            LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
+            WHERE rc.f_language = $1
+              AND rc.f_category_id NOT IN (22, 24, 25, 26, 27, 28, 29)
+            ORDER BY rc.f_channel_id, cs.f_avg_reliability DESC NULLS LAST
+          ),
+          RankedByLanguage AS (
+            SELECT 
+              f_channel_id,
+              f_title,
+              f_thumbnail_url,
+              f_avg_reliability,
+              f_avg_clickbait,
+              ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC NULLS LAST) as overall_rank,
+              COUNT(*) OVER () as total_count
+            FROM Ranked
+          )
+          SELECT 
+            f_channel_id as id,
+            overall_rank as rank,
+            f_title as name,
+            f_thumbnail_url as avatar,
+            f_avg_reliability as score,
+            f_avg_clickbait as clickbait_score,
+            total_count,
+            ROUND((overall_rank::decimal / total_count::decimal) * 100, 2) as top_percentile,
+            (
+              SELECT COUNT(*)::int FROM t_analyses a
+              WHERE a.f_channel_id = RankedByLanguage.f_channel_id
+                AND a.f_is_latest = TRUE
+            ) as analysis_count
+          FROM RankedByLanguage
+          ORDER BY overall_rank ASC
+          LIMIT $2 OFFSET $3
+        `;
+        queryParams = [lang, safeLimit, safeOffset];
+      } else if (rankingKey) {
         // 특정 카테고리만 조회
         query = `
           SELECT 
@@ -123,7 +172,41 @@ export async function GET(request: Request) {
           let focusQuery: string;
           let focusParams: any[];
           
-          if (rankingKey) {
+          if (isEtcCategory) {
+            focusQuery = `
+              WITH Ranked AS (
+                SELECT DISTINCT ON (rc.f_channel_id)
+                  rc.f_channel_id,
+                  cs.f_avg_reliability
+                FROM t_rankings_cache rc
+                LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
+                WHERE rc.f_language = $2
+                  AND rc.f_category_id NOT IN (22, 24, 25, 26, 27, 28, 29)
+                ORDER BY rc.f_channel_id, cs.f_avg_reliability DESC NULLS LAST
+              ),
+              RankedByLanguage AS (
+                SELECT 
+                  f_channel_id,
+                  ROW_NUMBER() OVER (ORDER BY f_avg_reliability DESC NULLS LAST) as overall_rank,
+                  COUNT(*) OVER () as total_count
+                FROM Ranked
+              )
+              SELECT 
+                rbl.f_channel_id as id,
+                rbl.overall_rank as rank,
+                c.f_title as name,
+                c.f_thumbnail_url as avatar,
+                cs.f_avg_reliability as score,
+                rbl.total_count as total_count,
+                ROUND((rbl.overall_rank::decimal / rbl.total_count::decimal) * 100, 2) as top_percentile
+              FROM RankedByLanguage rbl
+              JOIN t_channels c ON rbl.f_channel_id = c.f_channel_id
+              LEFT JOIN t_channel_stats cs ON rbl.f_channel_id = cs.f_channel_id AND cs.f_language = $2 AND cs.f_official_category_id NOT IN (22, 24, 25, 26, 27, 28, 29)
+              WHERE rbl.f_channel_id = $1
+              LIMIT 1
+            `;
+            focusParams = [focusChannelId, lang];
+          } else if (rankingKey) {
             focusQuery = `
               SELECT 
                 rc.f_channel_id as id,
