@@ -45,7 +45,7 @@ export async function GET(request: Request) {
             ) as analysis_count
           FROM t_rankings_cache rc
           JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
-          LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+          LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
           WHERE rc.f_ranking_key = $1
           ORDER BY rc.f_rank ASC
           LIMIT $2 OFFSET $3
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
               rc.f_language
             FROM t_rankings_cache rc
             JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
-            LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+            LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
             WHERE rc.f_language = $1
             ORDER BY rc.f_channel_id, cs.f_avg_reliability DESC NULLS LAST
           ),
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
                 rc.f_top_percentile as top_percentile
               FROM t_rankings_cache rc
               JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
-              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
               WHERE rc.f_channel_id = $1 AND rc.f_ranking_key = $2
               LIMIT 1
             `;
@@ -152,7 +152,7 @@ export async function GET(request: Request) {
                 rc.f_top_percentile as top_percentile
               FROM t_rankings_cache rc
               JOIN t_channels c ON rc.f_channel_id = c.f_channel_id
-              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id
+              LEFT JOIN t_channel_stats cs ON rc.f_channel_id = cs.f_channel_id AND cs.f_official_category_id = rc.f_category_id AND cs.f_language = rc.f_language
               WHERE rc.f_channel_id = $1 AND rc.f_language = $2
               ORDER BY rc.f_rank ASC
               LIMIT 1

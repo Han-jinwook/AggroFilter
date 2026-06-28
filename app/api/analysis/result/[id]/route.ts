@@ -187,9 +187,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
               RANK() OVER (ORDER BY cs.f_avg_reliability DESC) as rank,
               COUNT(*) OVER () as total_count
             FROM t_channel_stats cs
-            JOIN t_channels c ON cs.f_channel_id = c.f_channel_id
             WHERE cs.f_official_category_id = $2
-              AND c.f_language = $3
+              AND cs.f_language = $3
           )
           SELECT rank, total_count,
             ROUND((rank::numeric / total_count) * 100) as top_percentile
@@ -207,8 +206,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
         const statsRes = await client.query(`
           SELECT f_avg_accuracy, f_avg_clickbait, f_avg_reliability 
           FROM t_channel_stats
-          WHERE f_channel_id = $1 AND f_official_category_id = $2
-        `, [analysis.f_channel_id, analysis.f_official_category_id]);
+          WHERE f_channel_id = $1 AND f_official_category_id = $2 AND f_language = $3
+        `, [analysis.f_channel_id, analysis.f_official_category_id, channelLanguage]);
 
         if (statsRes.rows.length > 0) {
           const stats = statsRes.rows[0];
