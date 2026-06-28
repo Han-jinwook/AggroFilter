@@ -129,8 +129,8 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
       pt: 'portuguese',
       it: 'italian',
     };
-    language = langMap[code] || 'english';
-    languageSource = 'api';
+    language = langMap[code];
+    languageSource = language ? 'api' : 'unknown';
   }
 
   // 2. 채널 정보 가져오기 (프로필 이미지, 핸들, 구독자 수)

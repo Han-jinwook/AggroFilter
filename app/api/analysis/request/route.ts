@@ -675,9 +675,18 @@ export async function POST(request: Request) {
     
     // Step 3: 기본값 (Plan C)
     if (!finalLanguage) {
-      finalLanguage = 'ko'; // 기본값
+      finalLanguage = 'korean'; // 기본값
       languageSource = 'user';
       console.log(`[Language Detection] Step 3 (Default): ${finalLanguage}`);
+    }
+    
+    // [수정] API나 자막에서 타 언어로 감지했더라도, 제목이나 자막에 한글이 포함되어 있다면 한국어('korean')로 강제 지정합니다.
+    const hasKoreanInTitle = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(videoInfo.title || '');
+    const hasKoreanInTranscript = hasTranscript && /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(transcript);
+    if (finalLanguage !== 'korean' && (hasKoreanInTitle || hasKoreanInTranscript)) {
+      finalLanguage = 'korean';
+      languageSource = 'text_override';
+      console.log(`[Language Detection] Overridden to korean due to Korean characters in title/transcript`);
     }
     
     console.log(`[Language Detection] Final: ${finalLanguage} (source: ${languageSource})`);
