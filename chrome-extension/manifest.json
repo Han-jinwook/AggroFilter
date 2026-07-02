@@ -10,7 +10,7 @@
     "https://www.youtube.com/*",
     "https://m.youtube.com/*",
     "https://youtu.be/*",
-    "https://aggro.sundreamer.app/*"
+    "https://aggrofilter.sundreamer.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -36,7 +36,7 @@
     },
     {
       "matches": [
-        "https://aggro.sundreamer.app/*",
+        "https://aggrofilter.sundreamer.app/*",
         "http://localhost:3000/*"
       ],
       "js": ["inject-transcript.js"],
@@ -65,7 +65,7 @@
   },
   "externally_connectable": {
     "matches": [
-      "https://aggro.sundreamer.app/*"
+      "https://aggrofilter.sundreamer.app/*"
     ]
   },
   "icons": {
@@ -74,4 +74,5 @@
     "128": "icons/icon128.png"
   }
 }
+
 

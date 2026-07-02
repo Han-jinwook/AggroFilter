@@ -24,7 +24,7 @@ function getSafeMetadataBase(): URL {
     process.env.NEXT_PUBLIC_BASE_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.URL,
-    'https://aggro.sundreamer.app',
+    'https://aggrofilter.sundreamer.app',
   ]
 
   for (const raw of candidates) {
@@ -42,7 +42,7 @@ function getSafeMetadataBase(): URL {
     }
   }
 
-  return new URL('https://aggro.sundreamer.app')
+  return new URL('https://aggrofilter.sundreamer.app')
 }
 
 export const metadata: Metadata = {
@@ -148,4 +148,5 @@ export default function RootLayout({ children }: TRootLayoutProps) {
     </html>
   )
 }
+
 

@@ -1,5 +1,5 @@
 ﻿export async function GET(): Promise<Response> {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || 'https://aggro.sundreamer.app').replace(/\/$/, '')
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || 'https://aggrofilter.sundreamer.app').replace(/\/$/, '')
   const body = `User-agent: *\nAllow: /\n\nSitemap: ${baseUrl}/sitemap.xml\n`
 
   return new Response(body, {
@@ -9,4 +9,5 @@
     },
   })
 }
+
 

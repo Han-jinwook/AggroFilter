@@ -38,7 +38,7 @@ copy .env.example .env
 | 변수 | 설명 |
 |------|------|
 | `YOUTUBE_API_KEY` | Google Cloud Console에서 발급한 YouTube Data API v3 키 |
-| `MAIN_APP_URL` | 메인 앱 URL (기본값: `https://aggro.sundreamer.app`) |
+| `MAIN_APP_URL` | 메인 앱 URL (기본값: `https://aggrofilter.sundreamer.app`) |
 | `DATABASE_URL` | 메인 앱과 동일한 PostgreSQL 연결 문자열 |
 | `ANALYSIS_DELAY_MS` | 분석 요청 간 딜레이 ms (기본값: 5000) |
 | `MAX_VIDEOS_PER_CATEGORY` | 카테고리별 최대 수집 수 (기본값: 5) |
@@ -101,4 +101,5 @@ SELECT * FROM t_analyses WHERE f_user_id = 'bot' ORDER BY f_created_at DESC;
 -- 봇 제외 실제 유저 분석만 조회
 SELECT * FROM t_analyses WHERE f_user_id != 'bot' OR f_user_id IS NULL;
 ```
+
 
