@@ -148,9 +148,16 @@ export async function checkSession(): Promise<SessionResult> {
     
     const u = data.user;
     
-    // UI 동기화를 위해 추천 코드 저장
-    if (typeof window !== 'undefined' && u.referral_code) {
-      localStorage.setItem('userReferralCode', u.referral_code);
+    // UI 동기화를 위해 추천 코드 및 사용자 ID 저장 (SSO 자동 로그인 시 localStorage 동기화)
+    if (typeof window !== 'undefined') {
+      if (u.referral_code) {
+        localStorage.setItem('userReferralCode', u.referral_code);
+      }
+      const resolvedUserId = u.userId || u.id;
+      if (resolvedUserId) {
+        localStorage.setItem('merlin_user_id', resolvedUserId);
+        localStorage.setItem('merlin_family_uid', resolvedUserId);
+      }
     }
 
     return { 
