@@ -12,9 +12,10 @@ import { useHub } from '../HubProvider';
 export interface HubProfileCardProps {
   onSuccess?: (nickname: string, avatarUrl: string) => void;
   className?: string;
+  hideCoinSection?: boolean;
 }
 
-export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, className = '' }) => {
+export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, className = '', hideCoinSection = false }) => {
   const { user, isLoggedIn, balance } = useHub();
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState('');
@@ -157,10 +158,10 @@ export const HubProfileCard: React.FC<HubProfileCardProps> = ({ onSuccess, class
     <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 ${className}`}>
       
       {/* 🚀 상단 코인 배너 (모바일 등에서 헤더 코인 UI를 대체/보완) */}
-      {isLoggedIn && (
+      {!hideCoinSection && isLoggedIn && (
         <a 
           href="/payment/purchase"
-          className="flex items-center justify-between p-4 mb-8 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer no-underline"
+          className="flex md:hidden items-center justify-between p-4 mb-8 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl border border-amber-100 hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer no-underline"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-amber-100 group-hover:scale-110 transition-transform">
