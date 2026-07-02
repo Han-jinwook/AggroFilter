@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
  * 하위 호환용 리다이렉트 stub.
  */
 export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://aggrofilter.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://aggro.sundreamer.app';
   return NextResponse.redirect(`${baseUrl}/?login_error=deprecated_magic_link`);
 }
+

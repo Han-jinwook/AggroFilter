@@ -1,4 +1,4 @@
-// 어그로필터 크롬 확장팩 - Popup Script
+﻿// 어그로필터 크롬 확장팩 - Popup Script
 
 document.addEventListener('DOMContentLoaded', async () => {
   const loginSection = document.getElementById('login-section');
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       // 서버에서 사용자 존재 여부 확인
       const response = await fetch(
-        `https://aggrofilter.com/api/user/profile?email=${encodeURIComponent(email)}`
+        `https://aggro.sundreamer.app/api/user/profile?email=${encodeURIComponent(email)}`
       );
 
       if (response.ok) {
@@ -89,3 +89,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 초기 로그인 상태 확인
   await checkLogin();
 });
+

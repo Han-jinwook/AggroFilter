@@ -1,4 +1,4 @@
-{
+﻿{
   "manifest_version": 3,
   "name": "어그로필터 - 유튜브 썸네일 스포일러 & 팩트체크",
   "version": "1.0.4",
@@ -10,7 +10,7 @@
     "https://www.youtube.com/*",
     "https://m.youtube.com/*",
     "https://youtu.be/*",
-    "https://aggrofilter.com/*"
+    "https://aggro.sundreamer.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -36,7 +36,7 @@
     },
     {
       "matches": [
-        "https://aggrofilter.com/*",
+        "https://aggro.sundreamer.app/*",
         "http://localhost:3000/*"
       ],
       "js": ["inject-transcript.js"],
@@ -65,7 +65,7 @@
   },
   "externally_connectable": {
     "matches": [
-      "https://aggrofilter.com/*"
+      "https://aggro.sundreamer.app/*"
     ]
   },
   "icons": {
@@ -74,3 +74,4 @@
     "128": "icons/icon128.png"
   }
 }
+

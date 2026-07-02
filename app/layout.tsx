@@ -1,4 +1,4 @@
-import React, { Suspense } from "react"
+﻿import React, { Suspense } from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 
@@ -24,7 +24,7 @@ function getSafeMetadataBase(): URL {
     process.env.NEXT_PUBLIC_BASE_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.URL,
-    'https://aggrofilter.com',
+    'https://aggro.sundreamer.app',
   ]
 
   for (const raw of candidates) {
@@ -42,7 +42,7 @@ function getSafeMetadataBase(): URL {
     }
   }
 
-  return new URL('https://aggrofilter.com')
+  return new URL('https://aggro.sundreamer.app')
 }
 
 export const metadata: Metadata = {
@@ -148,3 +148,4 @@ export default function RootLayout({ children }: TRootLayoutProps) {
     </html>
   )
 }
+

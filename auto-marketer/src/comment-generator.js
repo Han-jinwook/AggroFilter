@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 섹션2: 댓글 텍스트 생성기
  * - 유튜브 영상 분석 결과 기반: 점수별 고정 템플릿 (Gemini 불필요)
  * - 에펨코리아 게시글 기반: Gemini로 문맥 맞춤 댓글 생성
@@ -51,7 +51,7 @@ async function generateCommunityComment(post) {
     throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
   }
 
-  const prompt = `당신은 "어그로필터(aggrofilter.com)" 서비스를 홍보하는 마케터입니다.
+  const prompt = `당신은 "어그로필터(aggro.sundreamer.app)" 서비스를 홍보하는 마케터입니다.
 어그로필터는 유튜브 영상의 신뢰도/어그로 지수를 AI로 분석해주는 팩트체크 서비스입니다.
 
 아래 커뮤니티 게시글을 읽고, 본문 내용에 자연스럽게 공감하면서 어그로필터 앱 사용을 추천하는 댓글을 작성하세요.
@@ -59,7 +59,7 @@ async function generateCommunityComment(post) {
 [규칙]
 - 영업 티가 나지 않게, 자연스럽게 공감하는 말투로 시작하세요
 - 본문 맥락과 연결하여 유튜브 어그로/가짜뉴스 문제를 언급하세요
-- 마지막에 어그로필터 링크를 자연스럽게 추천하세요: https://aggrofilter.com
+- 마지막에 어그로필터 링크를 자연스럽게 추천하세요: https://aggro.sundreamer.app
 - 총 길이: 3~5문장
 - 이모지 1~2개 사용
 - 한국어로 작성
@@ -84,3 +84,4 @@ async function generateCommunityComment(post) {
 }
 
 module.exports = { generateYoutubeComment, generateCommunityComment, getGrade };
+

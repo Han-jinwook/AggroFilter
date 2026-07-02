@@ -1,8 +1,8 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 
 module.exports = {
   youtubeApiKey: process.env.YOUTUBE_API_KEY,
-  mainAppUrl: process.env.MAIN_APP_URL || 'https://aggrofilter.com',
+  mainAppUrl: process.env.MAIN_APP_URL || 'https://aggro.sundreamer.app',
   botSecret: process.env.BOT_SECRET || '',
   databaseUrl: process.env.DATABASE_URL,
   analysisDelayMs: parseInt(process.env.ANALYSIS_DELAY_MS || '5000', 10),
@@ -64,7 +64,7 @@ module.exports = {
   commentDelayMinMs: parseInt(process.env.COMMENT_DELAY_MIN_MS || '60000', 10),
   commentDelayMaxMs: parseInt(process.env.COMMENT_DELAY_MAX_MS || '120000', 10),
   // 유튜브 결과 페이지 URL 패턴
-  resultUrlBase: (process.env.MAIN_APP_URL || 'https://aggrofilter.com') + '/result/',
+  resultUrlBase: (process.env.MAIN_APP_URL || 'https://aggro.sundreamer.app') + '/result/',
 
   // 수집 화이트리스트 (7개 핵심 카테고리)
   targetCategories: [
@@ -79,3 +79,4 @@ module.exports = {
   // [참고] 수집기는 화이트리스트 방식으로 동작 (targetCategories에 없는 카테고리는 전부 자동 차단)
   // 본진 앱(route.ts)은 블랙리스트 방식으로 명시적 차단: 1,2,10,15,17,19,20,23,43(Shows)
 };
+

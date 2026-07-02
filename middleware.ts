@@ -2,16 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  // 기존 단독 도메인(aggrofilter.com)으로 접근 시 패밀리 도메인으로 강제 리다이렉트
-  const host = request.headers.get('host');
-  if (host === 'aggrofilter.com' || host === 'www.aggrofilter.com') {
-    const url = request.nextUrl.clone();
-    url.host = 'aggro.sundreamer.app';
-    // 포트가 붙어있을 경우를 대비해 port 초기화 (기본 포트 사용)
-    url.port = '';
-    return NextResponse.redirect(url, 301);
-  }
-
   const response = NextResponse.next({
     request: {
       headers: request.headers,

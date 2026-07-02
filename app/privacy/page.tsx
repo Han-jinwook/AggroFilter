@@ -1,4 +1,4 @@
-export const metadata = {
+﻿export const metadata = {
   title: '개인정보처리방침 | 어그로필터',
   description: '어그로필터 개인정보처리방침',
 }
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
         <ul style={{ paddingLeft: 24, marginTop: 8 }}>
           <li>YouTube 영상 페이지에서 <strong>분석 버튼 클릭 시에만</strong> 자막·메타데이터를 서버로 전송합니다.</li>
           <li>시청 기록, 검색 기록, 로그인 정보 등은 일절 수집하지 않습니다.</li>
-          <li>확장프로그램은 YouTube 및 aggrofilter.com 도메인에서만 동작합니다.</li>
+          <li>확장프로그램은 YouTube 및 aggro.sundreamer.app 도메인에서만 동작합니다.</li>
         </ul>
       </section>
 
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
           <li><strong>서비스명</strong>: 어그로필터 (AggroFilter)</li>
           <li><strong>대표자/책임자</strong>: 한진욱</li>
           <li><strong>문의 이메일</strong>: beakes@naver.com</li>
-          <li><strong>웹사이트</strong>: https://aggrofilter.com</li>
+          <li><strong>웹사이트</strong>: https://aggro.sundreamer.app</li>
         </ul>
       </section>
 
@@ -86,3 +86,4 @@ export default function PrivacyPage() {
     </main>
   )
 }
+

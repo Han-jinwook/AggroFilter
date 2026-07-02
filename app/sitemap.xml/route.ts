@@ -1,4 +1,4 @@
-function escapeXml(value: string): string {
+﻿function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -8,7 +8,7 @@ function escapeXml(value: string): string {
 }
 
 export async function GET(): Promise<Response> {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || 'https://aggrofilter.com').replace(/\/$/, '')
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || 'https://aggro.sundreamer.app').replace(/\/$/, '')
   const now = new Date().toISOString()
 
   const routes = [
@@ -37,3 +37,4 @@ export async function GET(): Promise<Response> {
     },
   })
 }
+

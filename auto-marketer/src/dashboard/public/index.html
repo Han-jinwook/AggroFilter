@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -416,7 +416,7 @@
         </tbody>
       </table>
       <ul style="margin-top:10px">
-        <li>댓글에 삽입되는 링크: <code>https://aggrofilter.com/result/{videoId}</code></li>
+        <li>댓글에 삽입되는 링크: <code>https://aggro.sundreamer.app/result/{videoId}</code></li>
         <li>댓글 사이 딜레이: <strong>1~2분 랜덤</strong> (스팸 방지)</li>
       </ul>
 
@@ -1345,7 +1345,7 @@
 
       // 성공 행
       const rows = (items || []).map(item => {
-        const resultUrl  = `https://aggrofilter.com/p-result?id=${item.f_id}`;
+        const resultUrl  = `https://aggro.sundreamer.app/p-result?id=${item.f_id}`;
         const chId  = item.f_channel_id || '';
         const chUrl = chId ? `https://www.youtube.com/channel/${chId}` : '#';
         const chName = escHtml(item.f_channel_name || chId.substring(0,14) || '—');
@@ -2200,3 +2200,4 @@
 </script>
 </body>
 </html>
+
