@@ -7,15 +7,19 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export default function PWAInstallPrompt() {
+export function HubPWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // 모바일 기기 여부 확인 (PC/데스크톱에서는 설치 권장 안내를 띄우지 않음)
+    // 1차 차단: 모바일 기기 여부 확인 (PC/데스크톱에서는 설치 권장 안내를 띄우지 않음)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (!isMobile) {
+    
+    // 2차 강력 차단: UserAgent가 변조되었더라도 화면 가로폭이 768px 초과(PC/태블릿 가로)면 절대 띄우지 않음
+    const isDesktopScreen = window.innerWidth > 768;
+    
+    if (!isMobile || isDesktopScreen) {
       return;
     }
 
@@ -95,7 +99,7 @@ export default function PWAInstallPrompt() {
       
       setDeferredPrompt(null);
       setShowInstallPrompt(false);
-    } else if (isIOSSafari) {
+    } else if (typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream) {
       // iOS Safari의 경우 수동 안내
       alert('홈 화면에 아이콘을 추가하려면:\n\n1. 하단의 공유 버튼(📤) 터치\n2. "홈 화면에 추가" 선택\n3. "추가" 버튼 터치');
       setShowInstallPrompt(false);
@@ -122,27 +126,27 @@ export default function PWAInstallPrompt() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+    <div className="fixed bottom-4 left-4 right-4 z-[9999] mx-auto max-w-sm">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-bottom-5">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
               <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-bold text-gray-900 tracking-tight">
               앱 아이콘을 홈 화면에 추가하세요
             </p>
-            <p className="text-sm text-gray-500">
-              앱처럼 편하게 사용할 수 있어요!
+            <p className="text-sm text-gray-500 font-medium mt-0.5">
+              앱처럼 훨씬 빠르고 편하게 쓸 수 있어요!
             </p>
           </div>
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-500"
+            className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -152,13 +156,13 @@ export default function PWAInstallPrompt() {
         <div className="mt-4 flex space-x-2">
           <button
             onClick={handleInstallClick}
-            className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 bg-indigo-600 text-white text-sm font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            {isIOSSafari ? '방법 보기' : '추가하기'}
+            {isIOSSafari ? '설치 방법 보기 👈' : '지금 바로 추가하기 ⚡'}
           </button>
           <button
             onClick={handleDismiss}
-            className="flex-1 bg-gray-100 text-gray-700 text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="flex-1 bg-gray-100 text-gray-700 text-sm font-bold py-2.5 px-4 rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-gray-500"
           >
             나중에
           </button>

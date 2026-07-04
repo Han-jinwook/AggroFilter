@@ -1,4 +1,4 @@
-﻿import React, { Suspense } from "react"
+import React, { Suspense } from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 
@@ -7,9 +7,8 @@ import "./globals.css"
 import { AggroResponsiveWing } from "@/components/AggroResponsiveWing"
 import { GlobalLoginModal } from "@/components/c-global-login-modal"
 import { ToastContainer } from "@/components/c-toast"
-import { HubNotifier, HubProvider } from "@/src/services/merlin-hub-sdk/react"
+import { HubNotifier, HubProvider, HubPWAInstallPrompt } from "@/src/services/merlin-hub-sdk/react"
 import { Footer } from "@/components/c-footer"
-import PWAInstallPrompt from "@/components/PWAInstallPrompt"
 
 import { ReferralTracker } from "@/components/ReferralTracker"
 
@@ -140,7 +139,7 @@ export default function RootLayout({ children }: TRootLayoutProps) {
             <GlobalLoginModal />
             <HubNotifier />
             <AggroResponsiveWing />
-            <PWAInstallPrompt />
+            <HubPWAInstallPrompt />
 
           </HubProvider>
         </ThemeProvider>
