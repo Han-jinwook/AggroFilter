@@ -10,7 +10,7 @@ import { SubtitleButtons } from "@/app/p-result/c-result/subtitle-buttons"
 import { ScoreCard } from "@/app/p-result/c-result/score-card"
 import { AnalysisGuide } from "@/app/p-result/c-result/analysis-guide"
 import { getCategoryName, getRankingCategoryId } from "@/lib/constants"
-import { getUserId, isAnonymousUser } from "@/lib/anon"
+import { getUserId } from "@/lib/anon" // claim/track API용 (레거시 호환)
 import { ShareModal } from "@/components/c-share-modal"
 import { ChevronDown, ChevronUp, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
 import { useHub } from "@/src/services/merlin-hub-sdk/react"
@@ -171,11 +171,10 @@ export default function ResultClient() {
         }
       }
 
-      // 2) 사용자 식별 / 1회 체험 제한
-      const currentEmail = user?.email || localStorage.getItem('userEmail')
+      // [근본 수정] Hub 세션 기반 사용자 식별 (localStorage 잔재물 의존 금지)
       let analysisUserId: string | null = null
-      if (currentEmail) {
-        analysisUserId = getUserId()
+      if (isLoggedIn && user?.id) {
+        analysisUserId = user.id
       }
       
       if (!analysisUserId) {
@@ -244,7 +243,7 @@ export default function ResultClient() {
       if (!resolved?.analysisId) throw new Error('분석 결과를 받지 못했습니다.')
 
       window.dispatchEvent(new CustomEvent('creditsUpdated'))
-      if (isAnonymousUser()) {
+      if (!isLoggedIn) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1
         localStorage.setItem('anonAnalysisCount', String(count))
         
@@ -419,7 +418,7 @@ export default function ResultClient() {
               if (!isCancelled) {
                 setAnalysisData(data.analysisData)
                 const anonAnalysisCount = typeof window !== 'undefined' ? parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) : 0;
-                if (isAnonymousUser() && anonAnalysisCount >= 1) {
+                if (!isLoggedIn && anonAnalysisCount >= 1) {
                   import("@/src/services/merlin-hub-sdk/react").then(m => m.markFreeTrialCompleted())
                 }
               }
@@ -429,7 +428,7 @@ export default function ResultClient() {
           if (!hasCountedView.current) {
             hasCountedView.current = true;
 
-            const claimUid = getUserId()
+            const claimUid = user?.id || getUserId()
             if (claimUid) {
               fetch('/api/analysis/claim', {
                 method: 'POST',
@@ -444,7 +443,7 @@ export default function ResultClient() {
               body: JSON.stringify({ analysisId: id })
             }).catch(err => console.error('View counting failed:', err));
 
-            const trackUid = getUserId()
+            const trackUid = user?.id || getUserId()
             if (trackUid) {
               console.log('[subscription/track] sending', { analysisId: id, userId: trackUid })
               fetch('/api/subscription/track', {
@@ -554,7 +553,7 @@ export default function ResultClient() {
 
 
   const requireLogin = (action: "like" | "comment", callback: () => void) => {
-    if (isAnonymousUser()) {
+    if (!isLoggedIn) {
       window.dispatchEvent(new CustomEvent('openLoginModal'))
       return false
     }

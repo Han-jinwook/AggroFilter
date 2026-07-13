@@ -9,12 +9,12 @@ import { AnalysisStatus, AnalysisCharacter } from "@/app/c-home/analysis-status"
 import { FeatureCards } from "@/app/c-home/feature-cards"
 import { OnboardingGuide } from "@/app/c-home/onboarding-guide"
 import { Disclaimer } from "@/app/c-home/disclaimer"
-import { getUserId, isAnonymousUser } from "@/lib/anon"
+// [근본 수정] getUserId, isAnonymousUser 제거 — Hub 세션(isLoggedIn, user.id) 기준으로 전환
 import { checkSession } from "@/src/services/merlin-hub-sdk"
 
 export default function MainPage() {
   const router = useRouter()
-  const { user, isLoggedIn, refreshSession } = useHub()
+  const { user, isLoggedIn, isLoading, refreshSession } = useHub()
   const userEmail = user?.email || null
   
   const [url, setUrl] = useState("")
@@ -44,15 +44,22 @@ export default function MainPage() {
   // REFACTORED_BY_MERLIN_HUB: 매직링크 deprecated — Hub OTP 인증으로 전환됨
 
   const startAnalysis = useCallback(async (analysisUrl: string, clientTranscript?: string, clientTranscriptItems?: any[]) => {
+    // [근본 수정] Hub 세션 로딩 중이면 분석 차단 (레이스 컨디션 방지)
+    if (isLoading) {
+      console.log('[Analysis] Hub 세션 로딩 중 — 분석 대기')
+      return
+    }
+
     setIsAnalyzing(true)
     console.log("분석 요청:", analysisUrl, clientTranscript ? `(자막 ${clientTranscript.length}자)` : '(서버 자막)')
 
     try {
-      const currentEmail = userEmail || localStorage.getItem('userEmail')
+      // [근본 수정] Hub 세션(isLoggedIn)을 유일한 진실 공급원으로 사용
+      // localStorage 잔재물(userEmail, merlin_session_token)에 의존하면
+      // 세션 만료 기존회원이 코인 차감 없이 무료 분석하는 구멍이 발생함
       let analysisUserId: string
-      if (currentEmail) {
-        // REFACTORED_BY_MERLIN_HUB: 로그인 유저 — Hub family_uid 사용
-        analysisUserId = getUserId()
+      if (isLoggedIn && user?.id) {
+        analysisUserId = user.id
       } else {
         // 비로그인: 1회 무료 체험 (휘발성, DB 미보관)
         const trialCount = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10)
@@ -195,8 +202,8 @@ export default function MainPage() {
 
       const readyAnalysisId = result.analysisId;
 
-      // 익명 사용자 분석 횟수 추적 (모달은 결과 페이지에서 표시)
-      if (isAnonymousUser()) {
+      // [근본 수정] Hub 세션 기반으로 익명 여부 판단 (localStorage 잔재물 의존 금지)
+      if (!isLoggedIn) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1;
         localStorage.setItem('anonAnalysisCount', String(count));
         
@@ -220,7 +227,7 @@ export default function MainPage() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [router, userEmail])
+  }, [router, isLoggedIn, isLoading, user])
 
   // 크롬 확장팩에서 진입 시 처리
   useEffect(() => {
