@@ -23,11 +23,11 @@ export async function POST(request: Request) {
     console.log(`[Link Guest Analysis] Request to link videoId=${videoId} to userId=${userId}`);
     const client = await pool.connect();
     try {
-      // f_video_id가 일치하고 f_user_id가 trial_ 로 시작하거나 NULL인 레코드를 신규 유저 ID로 업데이트
+      // f_video_id 또는 f_id가 일치하고 f_user_id가 trial_ 로 시작하거나 NULL인 레코드를 신규 유저 ID로 업데이트
       const res = await client.query(`
         UPDATE t_analyses 
         SET f_user_id = $1 
-        WHERE f_video_id = $2 AND (f_user_id LIKE 'trial_%' OR f_user_id IS NULL)
+        WHERE (f_video_id = $2 OR f_id::text = $2) AND (f_user_id LIKE 'trial_%' OR f_user_id IS NULL)
       `, [userId, videoId]);
 
       console.log(`[Link Guest Analysis] Successfully linked. Updated rows: ${res.rowCount}`);
