@@ -1,6 +1,6 @@
 /**
- * Version: v1.1.0
- * Last Updated: 2026-05-16
+ * Version: v1.1.1
+ * Last Updated: 2026-07-17
  * Merlin Hub SDK — HTTP Client
  * - 모든 허브 통신에 CLIENT_ID/SECRET 헤더를 자동 부착
  * - 네트워크 실패 시 지수 백오프 재시도 (최대 3회)
@@ -47,7 +47,7 @@ export function getSessionToken(): string | null {
   // 1. 쿠키에서 최우선 확인 (타 패밀리 앱 서브도메인에서 구워진 토큰 우선)
   const match = document.cookie.match(new RegExp('(^| )' + SESSION_TOKEN_KEY + '=([^;]+)'));
   if (match) {
-    const cookieToken = match[2];
+    const cookieToken = decodeURIComponent(match[2]);
     // localStorage가 비어있거나 다르면 쿠키 값으로 동기화
     if (localStorage.getItem(SESSION_TOKEN_KEY) !== cookieToken) {
       localStorage.setItem(SESSION_TOKEN_KEY, cookieToken);
@@ -74,7 +74,7 @@ export function setSessionToken(token: string) {
   const domain = getRootDomain();
   const domainStr = (domain !== 'localhost' && domain !== '127.0.0.1' && !/^\d/.test(domain)) ? `;domain=${domain}` : '';
   
-  document.cookie = SESSION_TOKEN_KEY + "=" + token + ";" + expires + domainStr + ";path=/;SameSite=Lax";
+  document.cookie = SESSION_TOKEN_KEY + "=" + encodeURIComponent(token) + ";" + expires + domainStr + ";path=/;SameSite=Lax";
 }
 
 export function clearSessionToken() {
