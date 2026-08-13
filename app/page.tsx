@@ -23,6 +23,20 @@ export default function MainPage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [autoStarted, setAutoStarted] = useState(false)
 
+  // 신규 모바일 브릿지 관련 상태
+  const [searchUrl, setSearchUrl] = useState("")
+  const [channelData, setChannelData] = useState<any>(null)
+  const [showChannelCard, setShowChannelCard] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isQueueRegistering, setIsQueueRegistering] = useState(false)
+
+  // 텍스트에서 URL만 파싱하는 헬퍼
+  const extractUrlFromString = (text: string): string | null => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const match = text.match(urlRegex);
+    return match ? match[0] : null;
+  };
+
   // [대기제로 1단계] 확장팩 진입 시 홈 UI(찌꺼기) 즉시 숨김
   const [isExtensionEntry] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -30,14 +44,41 @@ export default function MainPage() {
     return params.get('from') === 'chrome-extension' && !!params.get('url')
   })
 
+  // 토스트 팝업 헬퍼
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => {
+      setToastMessage(null)
+    }, 4000)
+  }
+
   useEffect(() => {
-    // 추천인 코드(ref) 캡처
+    // 추천인 코드(ref) 캡처 및 PWA 공유 파라미터 캡처
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref')
     if (ref) {
       localStorage.setItem('pendingReferralCode', ref)
       console.log('Referral code captured from URL:', ref)
       window.dispatchEvent(new CustomEvent('openLoginModal'))
+    }
+
+    // PWA 공유(share_target) 파라미터 수신 처리
+    const shareText = params.get('text')
+    const shareUrl = params.get('url')
+    let resolvedUrl = shareUrl || ""
+
+    if (!resolvedUrl && shareText) {
+      resolvedUrl = extractUrlFromString(shareText) || ""
+    }
+
+    if (resolvedUrl) {
+      setSearchUrl(resolvedUrl)
+      // 쿼리 매개변수 제거하여 주소창 청소
+      window.history.replaceState({}, '', window.location.pathname)
+      // 즉시 조회 로직 자동 실행
+      setTimeout(() => {
+        handleSearch(resolvedUrl)
+      }, 500)
     }
   }, [])
 
@@ -229,6 +270,88 @@ export default function MainPage() {
     }
   }, [router, isLoggedIn, isLoading, user])
 
+  // 모바일 브릿지 검색 처리 함수
+  const handleSearch = async (targetUrlStr: string) => {
+    const trimmed = targetUrlStr.trim()
+    if (!trimmed) return
+
+    setIsQueueRegistering(true)
+    setShowChannelCard(false)
+    setChannelData(null)
+
+    try {
+      // 1. 이미 분석 완료된 영상인지 즉시 검증 (캐시 히트)
+      const statusRes = await fetch(`/api/analysis/status?url=${encodeURIComponent(trimmed)}`, { cache: 'no-store' })
+      if (statusRes.ok) {
+        const statusData = await statusRes.json()
+        if (
+          (statusData.status === 'pending' || statusData.status === 'speed_ready' || statusData.status === 'completed') &&
+          statusData.analysisId
+        ) {
+          console.log('[Cache Hit] 기 분석 완료 영상 발견 — 결과 리다이렉트:', statusData.analysisId)
+          router.push(`/p-result?id=${statusData.analysisId}`)
+          return
+        }
+      }
+
+      // 2. 캐시 미스 -> 무쿼터 채널 정보 추출 API 호출
+      const extractRes = await fetch('/api/channel/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed })
+      })
+
+      if (!extractRes.ok) {
+        const errData = await extractRes.json()
+        throw new Error(errData.error || '채널 정보를 긁어오지 못했습니다.')
+      }
+
+      const channelInfo = await extractRes.json()
+      const { channelId, channelName } = channelInfo
+
+      // 채널 전적 조회
+      const statsRes = await fetch(`/api/channel/${channelId}`)
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        setChannelData(statsData)
+      } else {
+        // 기록이 없는 채널인 경우 기본 템플릿
+        setChannelData({
+          id: channelId,
+          name: channelName,
+          totalAnalysis: 0,
+          trustScore: 0,
+          stats: { accuracy: 0, aggro: 'Low', trend: 'Stable' }
+        })
+      }
+      setShowChannelCard(true)
+
+      // 3. PC 분석 예약 등록 (t_analysis_queue 적재)
+      if (isLoggedIn) {
+        const queueRes = await fetch('/api/analysis/queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: trimmed })
+        })
+        if (queueRes.ok) {
+          showToast("✅ 영상이 보관함에 담겼습니다. PC 접속 시 자동 분석됩니다.")
+        } else {
+          showToast("⚠️ 보관함 저장에 실패했습니다.")
+        }
+      } else {
+        showToast("⚠️ 보관함 예약을 위해 로그인이 필요합니다.")
+        // 로그인 모달 열기 트리거
+        window.dispatchEvent(new CustomEvent('openLoginModal'))
+      }
+
+    } catch (err: any) {
+      console.error('[handleSearch Error]:', err)
+      alert(err.message || '조회 중 오류가 발생했습니다.')
+    } finally {
+      setIsQueueRegistering(false)
+    }
+  }
+
   // 크롬 확장팩에서 진입 시 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -298,6 +421,14 @@ export default function MainPage() {
     } catch {}
   }
 
+  const getGradeLabel = (score: number) => {
+    if (score >= 90) return { label: 'S급 (최고 신뢰)', color: 'text-green-600 bg-green-50' }
+    if (score >= 80) return { label: 'A급 (우수)', color: 'text-blue-600 bg-blue-50' }
+    if (score >= 70) return { label: 'B급 (보통)', color: 'text-yellow-600 bg-yellow-50' }
+    if (score >= 50) return { label: 'C급 (주의)', color: 'text-orange-600 bg-orange-50' }
+    return { label: 'F급 (사기/낚시 가득)', color: 'text-red-600 bg-red-50' }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
@@ -315,6 +446,84 @@ export default function MainPage() {
 
             {!isAnalyzing ? <AnalysisStatus isAnalyzing={isAnalyzing} isCompleted={isCompleted} /> : null}
 
+            {/* 신규 모바일 브릿지: URL 입력 폼 한가운데 배치 */}
+            {!isAnalyzing && !isCompleted && (
+              <div className="w-full max-w-xl mx-auto p-4 bg-white rounded-3xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="🔗 유튜브 영상 링크를 붙여넣으세요..."
+                    value={searchUrl}
+                    onChange={(e) => setSearchUrl(e.target.value)}
+                    disabled={isQueueRegistering}
+                    className="flex-1 px-4 py-3 rounded-2xl border-3 border-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => handleSearch(searchUrl)}
+                    disabled={isQueueRegistering || !searchUrl}
+                    className="px-6 py-3 bg-[#FF9800] text-black font-black rounded-2xl border-3 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[0px_0px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50"
+                  >
+                    {isQueueRegistering ? '조회 중...' : '신뢰도 조회'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 신규 모바일 브릿지: 채널 전적 조회 카드 렌더링 */}
+            {showChannelCard && channelData && (
+              <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-3xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="flex items-center gap-4">
+                  {channelData.profileImage && (
+                    <img
+                      src={channelData.profileImage}
+                      alt={channelData.name}
+                      className="w-16 h-16 rounded-full border-3 border-black object-cover"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-black text-slate-900 truncate">{channelData.name}</h2>
+                    <p className="text-xs font-bold text-slate-500">구독자 {channelData.subscribers || '0'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 border-t-3 border-b-3 border-black py-4 my-2 text-center bg-slate-50 rounded-2xl">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-500">총 분석 건수</p>
+                    <p className="text-lg font-black text-slate-900">{channelData.totalAnalysis}건</p>
+                  </div>
+                  <div className="space-y-1 border-l-2 border-r-2 border-black">
+                    <p className="text-[10px] font-black text-slate-500">과거 평균 신뢰도</p>
+                    {channelData.totalAnalysis > 0 ? (
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-black ${getGradeLabel(channelData.trustScore).color}`}>
+                        {getGradeLabel(channelData.trustScore).label}
+                      </span>
+                    ) : (
+                      <p className="text-lg font-black text-slate-400">-</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-500">어그로 위험도</p>
+                    <p className={`text-base font-black ${
+                      channelData.stats?.aggro === 'High' ? 'text-red-600' :
+                      channelData.stats?.aggro === 'Medium' ? 'text-amber-500' : 'text-green-600'
+                    }`}>
+                      {channelData.stats?.aggro === 'High' ? '🚨 높음' :
+                       channelData.stats?.aggro === 'Medium' ? '⚠️ 보통' : '✅ 낮음'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-blue-50 border-3 border-blue-600 rounded-2xl text-xs font-bold text-blue-800 space-y-1 leading-relaxed">
+                  <p className="font-extrabold flex items-center gap-1 text-sm text-blue-900">
+                    <span>🖥️ PC 정밀 분석 예약 완료</span>
+                  </p>
+                  <p>
+                    모바일 환경은 유튜브 자막 추출이 제한됩니다. 이 영상은 보관함(Queue)에 담겼으며, PC에서 어그로필터 크롬 확장팩이 설치된 브라우저를 켜시면 백그라운드에서 자동으로 정밀 팩트체크가 완료됩니다!
+                  </p>
+                </div>
+              </div>
+            )}
+
             {!isAnalyzing && !isCompleted && (
               <>
                 <FeatureCards />
@@ -330,6 +539,12 @@ export default function MainPage() {
         )}
       </main>
 
+      {/* 토스트 알림 메시지 팝업 */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-black px-6 py-3 rounded-full border-3 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2">
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   )
 }

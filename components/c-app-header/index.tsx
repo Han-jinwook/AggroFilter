@@ -5,7 +5,7 @@ import type React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { FileText, TrendingUp, User, Shield } from "lucide-react"
+import { FileText, TrendingUp, User, Shield, Inbox } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getAnonEmoji, getAnonNickname } from "@/lib/anon"
 import { useHub, HubProfileWidget } from "@/src/services/merlin-hub-sdk/react"
@@ -71,6 +71,38 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
   const isActive = (path: string) => {
     return pathname.startsWith(path)
   }
+
+  // 크롬 확장팩 세션 동기화 (모바일-PC 브릿지 자동 분석용)
+  useEffect(() => {
+    if (!mounted || !isLoggedIn) return
+
+    const syncTokenWithExtension = () => {
+      try {
+        const infoEl = document.getElementById('aggrofilter-extension-info')
+        const extensionId = infoEl?.getAttribute('data-extension-id')
+        const token = localStorage.getItem('merlin_session_token')
+
+        if (extensionId && token && window.chrome?.runtime?.sendMessage) {
+          window.chrome.runtime.sendMessage(extensionId, {
+            type: 'SET_SESSION_TOKEN',
+            token
+          }, (response) => {
+            if (window.chrome.runtime.lastError) {
+              // 에러 무시
+            } else {
+              console.log('[AppHeader] Session token synced with extension:', response)
+            }
+          })
+        }
+      } catch (err) {
+        console.warn('[AppHeader] Sync token with extension failed:', err)
+      }
+    }
+
+    // 2.5초 대기 후 동기화 (extension DOM 주입 완료 및 Cold Start 대응)
+    const timeout = setTimeout(syncTokenWithExtension, 2500)
+    return () => clearTimeout(timeout)
+  }, [mounted, isLoggedIn])
 
   const getFirstChar = (text: string) => {
     if (!text || text.length === 0) return "C"
@@ -172,6 +204,14 @@ export function AppHeader({ onLoginClick }: TAppHeaderProps) {
                 label="마이페이지"
                 href="/p-my-page?tab=analysis"
                 active={isActive("/p-my-page")}
+                onClick={handleMyPageClick}
+              />
+
+              <MenuItem
+                icon={Inbox}
+                label="보관함"
+                href="/p-library"
+                active={isActive("/p-library")}
                 onClick={handleMyPageClick}
               />
 

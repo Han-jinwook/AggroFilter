@@ -3,6 +3,20 @@
 // React가 리스너를 등록하기 전에 메시지가 발생할 수 있으므로 반복 전송합니다.
 
 (function() {
+  // 웹페이지에 확장프로그램 정보 태그 삽입 (동적 연동용)
+  try {
+    const div = document.createElement('div');
+    div.id = 'aggrofilter-extension-info';
+    div.setAttribute('data-extension-id', chrome.runtime.id);
+    div.style.display = 'none';
+    if (document.documentElement) {
+      document.documentElement.appendChild(div);
+      console.log('[어그로필터 확장팩] 동적 연동용 정보 주입 완료:', chrome.runtime.id);
+    }
+  } catch (e) {
+    console.error('[어그로필터 확장팩] 정보 주입 에러:', e);
+  }
+
   const params = new URLSearchParams(window.location.search);
   if (params.get('from') !== 'chrome-extension') return;
 

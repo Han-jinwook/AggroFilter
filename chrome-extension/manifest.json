@@ -4,7 +4,9 @@
   "version": "1.0.5",
   "description": "20분짜리 낚시 영상, 다 보지 마세요. AI가 썸네일의 '진짜 결론'만 1초 만에 핀셋 추출해 드립니다.",
   "permissions": [
-    "storage"
+    "storage",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
