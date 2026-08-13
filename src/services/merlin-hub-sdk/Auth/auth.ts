@@ -148,16 +148,14 @@ export async function checkSession(): Promise<SessionResult> {
     
     const u = data.user;
     
-    // UI 동기화를 위해 추천 코드 및 사용자 ID 저장 (SSO 자동 로그인 시 localStorage 동기화)
-    if (typeof window !== 'undefined') {
-      if (u.referral_code) {
-        localStorage.setItem('userReferralCode', u.referral_code);
-      }
-      const resolvedUserId = u.userId || u.id;
-      if (resolvedUserId) {
-        localStorage.setItem('merlin_user_id', resolvedUserId);
-        localStorage.setItem('merlin_family_uid', resolvedUserId);
-      }
+    // 롤링 세션: 서버에서 새 토큰이 발급되어 내려오면 로컬스토리지 갱신
+    if ((data as any).newToken) {
+      setSessionToken((data as any).newToken);
+    }
+
+    // UI 동기화를 위해 추천 코드 저장
+    if (typeof window !== 'undefined' && u.referral_code) {
+      localStorage.setItem('userReferralCode', u.referral_code);
     }
 
     return { 

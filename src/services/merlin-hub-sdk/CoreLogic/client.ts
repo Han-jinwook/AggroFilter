@@ -1,6 +1,6 @@
 /**
- * Version: v1.1.1
- * Last Updated: 2026-07-17
+ * Version: v1.1.0
+ * Last Updated: 2026-05-16
  * Merlin Hub SDK — HTTP Client
  * - 모든 허브 통신에 CLIENT_ID/SECRET 헤더를 자동 부착
  * - 네트워크 실패 시 지수 백오프 재시도 (최대 3회)
@@ -24,66 +24,21 @@ export function isTestSession(): boolean {
   return false;
 }
 
-// ── 세션 토큰 관리 (Cross-Subdomain SSO) ──
-
-function getRootDomain() {
-  if (typeof window === 'undefined') return '';
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return hostname;
-  // IP 주소인 경우 그대로 반환
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return hostname;
-  
-  // sundreamer.app 와 같은 루트 도메인 추출
-  const parts = hostname.split('.');
-  if (parts.length >= 2) {
-    return '.' + parts.slice(-2).join('.');
-  }
-  return hostname;
-}
+// ── 세션 토큰 관리 ──
 
 export function getSessionToken(): string | null {
   if (typeof window === 'undefined') return null;
-  
-  // 1. 쿠키에서 최우선 확인 (타 패밀리 앱 서브도메인에서 구워진 토큰 우선)
-  const match = document.cookie.match(new RegExp('(^| )' + SESSION_TOKEN_KEY + '=([^;]+)'));
-  if (match) {
-    const cookieToken = decodeURIComponent(match[2]);
-    // localStorage가 비어있거나 다르면 쿠키 값으로 동기화
-    if (localStorage.getItem(SESSION_TOKEN_KEY) !== cookieToken) {
-      localStorage.setItem(SESSION_TOKEN_KEY, cookieToken);
-    }
-    return cookieToken;
-  }
-  
-  // 2. localStorage 폴백 (가져온 후 쿠키도 복구)
-  const localToken = localStorage.getItem(SESSION_TOKEN_KEY);
-  if (localToken) {
-    setSessionToken(localToken); // 쿠키 복원
-  }
-  
-  return localToken;
+  return localStorage.getItem(SESSION_TOKEN_KEY);
 }
 
 export function setSessionToken(token: string) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(SESSION_TOKEN_KEY, token);
-  
-  const d = new Date();
-  d.setTime(d.getTime() + (30 * 24 * 60 * 60 * 1000));
-  const expires = "expires=" + d.toUTCString();
-  const domain = getRootDomain();
-  const domainStr = (domain !== 'localhost' && domain !== '127.0.0.1' && !/^\d/.test(domain)) ? `;domain=${domain}` : '';
-  
-  document.cookie = SESSION_TOKEN_KEY + "=" + encodeURIComponent(token) + ";" + expires + domainStr + ";path=/;SameSite=Lax";
 }
 
 export function clearSessionToken() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(SESSION_TOKEN_KEY);
-  
-  const domain = getRootDomain();
-  const domainStr = (domain !== 'localhost' && domain !== '127.0.0.1' && !/^\d/.test(domain)) ? `;domain=${domain}` : '';
-  document.cookie = SESSION_TOKEN_KEY + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC" + domainStr + ";path=/;";
 }
 
 /**
