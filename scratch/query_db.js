@@ -7,10 +7,11 @@ const pool = new Pool({
 
 async function run() {
   try {
-    const res = await pool.query('SELECT f_video_id, f_title, f_reliability_score, f_processing_stage FROM t_analyses ORDER BY f_created_at DESC LIMIT 10');
-    console.log(JSON.stringify(res.rows, null, 2));
+    console.log("t_analysis_queue 테이블 RLS 활성화 시도 중...");
+    await pool.query('ALTER TABLE public.t_analysis_queue ENABLE ROW LEVEL SECURITY;');
+    console.log("✅ RLS 활성화 성공!");
   } catch (err) {
-    console.error(err);
+    console.error("실패:", err);
   } finally {
     await pool.end();
   }
