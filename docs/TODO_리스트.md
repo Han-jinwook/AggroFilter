@@ -41,13 +41,4 @@
 - [x] **P-Settings 페이지 리팩토링**: 등급 로드맵 제거 및 레이아웃 최적화 완료.
 
 ---
-
-## ⚡ [4단계] 서비스 안정성 및 Keep-Alive (UptimeRobot) 연동 - 신설
-**목표**: 서버리스 함수 Cold Start 방지를 통한 진입 지연 0초 및 상시 액티브 상태 유지.
-
-- [ ] **UptimeRobot Keep-Alive 핑 등록 (의무)**:
-    - 릴리즈 완료 시 UptimeRobot에 어그로필터 헬스체크 API를 등록하여 5분 주기 HTTP 핑 송출.
-    - 대상 주소: `https://aggrofilter.sundreamer.app/api/analysis/videos` (가장 가벼운 단순 SELECT 쿼리 API)
-
----
 > "부품 공장에서 생산된 표준 부품을 어그로필터에 하나씩 정교하게 박아 넣는다." - Merlin 연동 강령
