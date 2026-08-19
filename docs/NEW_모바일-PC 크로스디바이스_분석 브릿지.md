@@ -108,3 +108,20 @@ sequenceDiagram
   - 알람 실행 시 동기화되어 저장된 허브 세션 토큰을 헤더에 실어 `GET /api/analysis/queue?pendingOnly=true` 호출.
   - 예약 영상이 잡히면 상태를 `processing`으로 돌려놓고, 백그라운드에서 직접 서버 분석 API `/api/analysis/request`를 쏴서 팩트체크 수행.
   - 분석 완료 시 `completed`로 갱신 후 윈도우/MacOS 화면에 OS 네이티브 푸시 알림 발송. 알림 클릭 시 웹앱의 보관함 페이지로 즉시 탭 오픈 및 이관.
+
+---
+
+## 6. 자막 전송 안정성 및 도메인 가드 정책 (Race Condition & Domain Guard)
+
+크롬 확장프로그램의 background Service Worker와 웹앱 간의 자막 데이터 통신(Handoff) 및 도메인 전환 시의 신뢰성을 담보하기 위해 도입된 상세 설계 규칙입니다.
+
+### 6-1. 8초 자막 수신 대기 가드
+- **레이스 컨디션 방지**: 확장팩 분석 버튼을 눌러 웹페이지가 마운트될 때, background Service Worker가 잠들어 있어(Cold Start) 자막 정보가 바로 도달하지 못하는 지연을 극복하기 위해 `ResultClient.tsx` 단에서 최대 8초 동안 자막 수신 포트(`MessageEvent`)를 열고 수신 대기합니다.
+
+### 6-2. 자막 미수신 시 프론트엔드 API 차단 (입구컷)
+- **서버 리소스 보호**: 8초 대기 후에도 자막 정보가 수신되지 않은 경우(`!clientTranscript`), 자막이 누락된 빈 요청을 백엔드 API(`/api/analysis/request`)로 쏘아 불필요한 과금 차감 및 YouTube 파서 실패(IP 차단 에러)를 유발하지 않도록 프론트엔드단에서 요청 발송을 즉각 거부(throw Error)합니다.
+- **오류 안내**: 사용자 화면에 `"크롬 확장 프로그램으로부터 자막 데이터를 수신하지 못했습니다. 유튜브 페이지에서 새로고침(F5)을 하신 뒤 다시 분석 버튼을 눌러주세요."` 라는 행동 가이드를 노출하여 이탈을 예방합니다.
+
+### 6-3. 구도메인(aggrofilter.com) 301 영구 리다이렉트
+- **확장팩 matches 불일치 리스크 차단**: 사용자가 구버전 도메인(`aggrofilter.com`)으로 들어왔을 때는 크롬 확장팩 `manifest.json` 의 matches 규칙 제약 때문에 자막을 주입하는 `inject-transcript.js`가 아예 실행되지 않습니다.
+- **자동 전환**: 미들웨어(`middleware.ts`)가 `aggrofilter.com` 호스트의 유입을 감지하는 즉시 공식 도메인(`aggrofilter.sundreamer.app`)으로 **301 영구 리다이렉트(301 Redirect)**를 실행하여 자막 연동 주입 기능이 무조건 실행될 수 있도록 도메인 환경을 정규화합니다.
