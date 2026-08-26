@@ -5,7 +5,7 @@ import sundreamerLogo from '../assets/logos/sundreamer.png';
 import whateatLogo from '../assets/logos/whateat.png';
 import aggrofilterLogo from '../assets/logos/aggrofilter.png';
 
-const LOCAL_LOGOS: Record<string, string> = {
+const LOCAL_LOGOS: Record<string, any> = {
   sundreamer: sundreamerLogo,
   whateat: whateatLogo,
   aggrofilter: aggrofilterLogo
@@ -156,7 +156,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     <div className={`text-3xl mb-2 flex items-center justify-center w-10 h-10 overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100 ${app.isLinkActive !== false ? 'transition-transform duration-300 hover:scale-110' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
-                      ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
+                      ) : typeof app.icon === 'string' && (app.icon.startsWith('http') || app.icon.startsWith('/') || app.icon.includes('.')) ? (
                         <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
                       ) : (
                         app.icon
@@ -192,7 +192,7 @@ export function HubAppSwitcher({ currentAppId, joinedAppIds = [] }: HubAppSwitch
                     <div className={`text-3xl bg-white w-12 h-12 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 ${app.isLinkActive !== false ? 'group-hover:scale-110 transition-transform duration-300' : ''}`}>
                       {LOCAL_LOGOS[app.id] ? (
                         <img src={typeof LOCAL_LOGOS[app.id] === 'string' ? LOCAL_LOGOS[app.id] : (LOCAL_LOGOS[app.id] as any)?.src} alt={app.name} className="w-full h-full object-cover" />
-                      ) : app.icon?.startsWith('http') || app.icon?.startsWith('/') || app.icon?.includes('.') ? (
+                      ) : typeof app.icon === 'string' && (app.icon.startsWith('http') || app.icon.startsWith('/') || app.icon.includes('.')) ? (
                         <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
                       ) : (
                         app.icon

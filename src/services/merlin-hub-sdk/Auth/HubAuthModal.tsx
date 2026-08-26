@@ -12,6 +12,7 @@ interface HubAuthModalProps {
   appLogoUrl: string;
   title?: string;
   subtitleActionText?: string;
+  rewardType?: 'coin' | 'point' | 'none';
   onSuccess?: () => void;
 }
 
@@ -27,6 +28,7 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
   appLogoUrl,
   title = "시작하기",
   subtitleActionText = "",
+  rewardType = 'coin',
   onSuccess,
 }) => {
   const { status, sendOtp, verifyOtp, timer, formatTimer, error, reset } = useHubAuth();
@@ -69,6 +71,7 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
     }
 
     await sendOtp(inputEmail);
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
   const handleDigitChange = (index: number, value: string) => {
@@ -144,12 +147,29 @@ export const HubAuthModal: React.FC<HubAuthModalProps> = ({
                     <span className="shrink-0 whitespace-nowrap">{title}</span>
                   </h2>
                   <p className="mt-2 text-[15px] text-slate-400 font-bold tracking-tight flex items-center justify-center gap-1.5">
-                    지금 바로 
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-coins w-3.5 h-3.5"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
-                      무료 코인
-                    </span> 
-                    받아 {subtitleActionText ? `${subtitleActionText} 사용하세요` : '사용하세요'}
+                    {rewardType === 'point' ? (
+                      <>
+                        지금 바로 
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                          5,000 포인트
+                        </span> 
+                        받아 {subtitleActionText ? `${subtitleActionText} 사용하세요` : '사용하세요'}
+                      </>
+                    ) : rewardType === 'none' ? (
+                      <>
+                        {subtitleActionText ? `${subtitleActionText} 지금 바로 시작하세요` : '지금 바로 간편하게 시작하세요'}
+                      </>
+                    ) : (
+                      <>
+                        지금 바로 
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-coins w-3.5 h-3.5"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                          무료 코인
+                        </span> 
+                        받아 {subtitleActionText ? `${subtitleActionText} 사용하세요` : '사용하세요'}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>

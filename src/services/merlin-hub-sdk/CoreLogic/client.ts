@@ -24,21 +24,65 @@ export function isTestSession(): boolean {
   return false;
 }
 
-// ── 세션 토큰 관리 ──
+// ── 세션 토큰 관리 (LocalStorage + *.sundreamer.app 서브도메인 공용 쿠키 30일 보장) ──
+
+const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60; // 2,592,000s
+
+function getCookieDomain(): string {
+  if (typeof window === 'undefined') return '';
+  const hostname = window.location.hostname;
+  if (hostname.endsWith('sundreamer.app')) {
+    return '; domain=.sundreamer.app';
+  }
+  return '';
+}
 
 export function getSessionToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(SESSION_TOKEN_KEY);
+  
+  // 1. localStorage 우선 확인
+  const localToken = localStorage.getItem(SESSION_TOKEN_KEY);
+  if (localToken) return localToken;
+
+  // 2. localStorage에 없으면 공용 쿠키(.sundreamer.app) 탐색
+  try {
+    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + SESSION_TOKEN_KEY + '=([^;]+)'));
+    if (match && match[1]) {
+      const cookieToken = decodeURIComponent(match[1]);
+      if (cookieToken) {
+        localStorage.setItem(SESSION_TOKEN_KEY, cookieToken); // 로컬에도 자동 복원
+        return cookieToken;
+      }
+    }
+  } catch (e) {
+    console.warn('[MerlinHub] Failed to read session cookie:', e);
+  }
+
+  return null;
 }
 
 export function setSessionToken(token: string) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(SESSION_TOKEN_KEY, token);
+  try {
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
+    const domainPart = getCookieDomain();
+    const securePart = window.location.protocol === 'https:' ? '; Secure; SameSite=Lax' : '; SameSite=Lax';
+    document.cookie = `${SESSION_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=${THIRTY_DAYS_SECONDS}${domainPart}${securePart}`;
+  } catch (e) {
+    console.warn('[MerlinHub] Failed to set session token/cookie:', e);
+  }
 }
 
 export function clearSessionToken() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(SESSION_TOKEN_KEY);
+  try {
+    localStorage.removeItem(SESSION_TOKEN_KEY);
+    const domainPart = getCookieDomain();
+    document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0${domainPart}`;
+    document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0`;
+  } catch (e) {
+    console.warn('[MerlinHub] Failed to clear session token/cookie:', e);
+  }
 }
 
 /**
@@ -291,9 +335,12 @@ export class MerlinHubClient {
   }
 
   async sendNotification(params: {
-    userId: string;
-    title: string;
-    content: string;
+    userId?: string;
+    title?: string;
+    content?: string;
+    type?: string;
+    templateId?: string;
+    data?: any;
     link?: string;
     link_text?: string;
     link2?: string;
@@ -312,6 +359,9 @@ export class MerlinHubClient {
         app_id: config.appId,
         title: params.title,
         content: params.content,
+        type: params.type,
+        templateId: params.templateId,
+        data: params.data,
         link: params.link,
         link_text: params.link_text,
         link2: params.link2,

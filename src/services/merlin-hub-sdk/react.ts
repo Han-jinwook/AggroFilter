@@ -41,6 +41,7 @@ export { HubShareButton } from './Referral/HubShareButton';
 export { HubShareSquare } from './Referral/HubShareSquare';
 export { HubWelcomeNudge } from './UI/HubWelcomeNudge';
 export { HubPWAInstallPrompt } from './UI/HubPWAInstallPrompt';
+export { HubAppSwitcher } from './Navigation/HubAppSwitcher';
 export { HubResponsiveWing } from './Ads/HubResponsiveWing';
 export { HubGoogleAd } from './Ads/HubGoogleAd';
 export * from './Auth/HubBenefitModal';

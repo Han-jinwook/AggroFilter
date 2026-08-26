@@ -4,8 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { HubShareSquare } from '../Referral/HubShareSquare';
 import { HubGoogleAd } from './HubGoogleAd';
 
-import { usePathname } from 'next/navigation';
-
 export interface HubResponsiveWingProps {
   /** 하단 배너 고유 ID (닫기 상태 저장용) */
   bannerId: string;
@@ -51,7 +49,17 @@ export function HubResponsiveWing({
   const [isClosed, setIsClosed] = useState(false);
   const [showFab, setShowFab] = useState(false);
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-  const pathname = usePathname();
+  const [pathname, setPathname] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : '/'));
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      if (typeof window !== 'undefined') {
+        setPathname(window.location.pathname);
+      }
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
   const storageKey = `hub_bottom_banner_closed_${bannerId}`;
 
   useEffect(() => {

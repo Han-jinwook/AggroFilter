@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { checkSession, getBalance, getUserId } from './CoreLogic/index';
+import { checkSession, getBalance, getUserId, getSessionToken, setSessionToken, clearSessionToken } from './CoreLogic/index';
 import { configureMerlinHub } from './CoreLogic/config';
 
 interface HubUser {
@@ -9,6 +9,7 @@ interface HubUser {
   email: string;
   nickname?: string;
   avatar_url?: string;
+  profile_image?: string;
   notification_settings?: any;
   registered_apps?: string[];
 }
@@ -130,8 +131,8 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       // SSO (Single Sign-On) 토큰 파싱: F 아이콘 앱 스위처를 통해 넘어올 때 로그인 상태 유지
       const ssoToken = urlParams.get('token');
       if (ssoToken) {
-        localStorage.setItem('merlin_session_token', ssoToken);
-        console.log('[HubProvider] Detected SSO token, saving to session');
+        setSessionToken(ssoToken);
+        console.log('[HubProvider] Detected SSO token, saving to session and domain cookie');
         
         // 보안 및 깔끔한 URL을 위해 주소창에서 token 파라미터 제거
         urlParams.delete('token');
@@ -141,8 +142,8 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       }
     }
 
-    // 1. SSR Hydration 이후 즉시 로컬 스토리지의 캐시 데이터를 읽어 UI 지연을 최소화 (SWR)
-    const token = localStorage.getItem('merlin_session_token');
+    // 1. SSR Hydration 이후 즉시 로컬 스토리지/공용 쿠키의 세션 토큰을 확인 (SWR)
+    const token = getSessionToken();
     if (token) {
       const cachedUser = localStorage.getItem('merlin_cached_user');
       const cachedBalance = localStorage.getItem('merlin_cached_balance');
@@ -198,20 +199,46 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       setUser(null);
       setIsLoggedIn(false);
       setBalance(null);
+      clearSessionToken();
       localStorage.removeItem('merlin_cached_user');
       localStorage.removeItem('merlin_cached_balance');
+    };
+
+    // 3. 멀티 탭 실시간 동기화: 다른 탭에서 로그인/로그아웃하거나 탭 활성화 시 세션 즉시 갱신
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const currentToken = getSessionToken();
+        if (currentToken) {
+          refreshSession();
+        } else if (isLoggedIn) {
+          // 다른 탭에서 로그아웃된 경우
+          handleSessionExpired();
+        }
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'merlin_session_token' || e.key === 'merlin_cached_user') {
+        refreshSession();
+      }
     };
 
     window.addEventListener('profileUpdated', handleProfileUpdate);
     window.addEventListener('creditsUpdated', handleCreditsUpdate);
     window.addEventListener('merlinSessionExpired', handleSessionExpired);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    window.addEventListener('storage', handleStorageChange);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
       window.removeEventListener('creditsUpdated', handleCreditsUpdate);
       window.removeEventListener('merlinSessionExpired', handleSessionExpired);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, [refreshSession, refreshBalance]);
+  }, [refreshSession, refreshBalance, isLoggedIn]);
 
   return (
     <HubContext.Provider value={{ 
