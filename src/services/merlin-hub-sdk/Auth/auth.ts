@@ -115,6 +115,7 @@ export async function verifyOTP(
 
 export interface SessionResult {
   valid: boolean;
+  status?: number;
   email?: string;
   userId?: string;
   nickname?: string;
@@ -128,7 +129,7 @@ export interface SessionResult {
  */
 export async function checkSession(): Promise<SessionResult> {
   const token = getSessionToken();
-  if (!token) return { valid: false };
+  if (!token) return { valid: false, status: 401 };
 
   try {
     const timestamp = Date.now();
@@ -138,12 +139,12 @@ export async function checkSession(): Promise<SessionResult> {
       if (status === 401 || status === 403) {
         clearSessionToken();
       }
-      return { valid: false };
+      return { valid: false, status };
     }
 
     if (!data?.success) {
       clearSessionToken();
-      return { valid: false };
+      return { valid: false, status: 401 };
     }
     
     const u = data.user;
@@ -160,6 +161,7 @@ export async function checkSession(): Promise<SessionResult> {
 
     return { 
       valid: true, 
+      status: 200,
       email: u.email, 
       userId: u.userId || u.id,
       nickname: u.nickname,
@@ -168,7 +170,7 @@ export async function checkSession(): Promise<SessionResult> {
       registered_apps: u.registered_apps || []
     };
   } catch {
-    return { valid: false };
+    return { valid: false, status: 0 };
   }
 }
 

@@ -22,11 +22,22 @@ export type { OTPRequestResult, OTPVerifyResult, ProfileUpdateParams, ProfileRes
 export { useCredit, getBalance, getUserId, requestKcpPayment } from '../Wallet/wallet';
 export type { WalletBalance } from '../Wallet/wallet';
 
+export { triggerHaptic } from './haptic';
+export type { HapticType } from './haptic';
+
+export { compressImage } from './imageCompressor';
+export type { ImageCompressionOptions, CompressedImageResult } from './imageCompressor';
+
+export { handleCursorToEnd, setCursorToEnd } from './inputUtils';
+
 // ── Namespace export for convenience ──
 import * as auth from '../Auth/auth';
 import * as wallet from '../Wallet/wallet';
 import * as client from './client';
 import { configureMerlinHub, getConfig } from './config';
+import { triggerHaptic } from './haptic';
+import { compressImage } from './imageCompressor';
+import { handleCursorToEnd, setCursorToEnd } from './inputUtils';
 
 export const MerlinHub = {
   configure: configureMerlinHub,
@@ -34,4 +45,8 @@ export const MerlinHub = {
   auth,
   wallet,
   client,
+  triggerHaptic,
+  compressImage,
+  handleCursorToEnd,
+  setCursorToEnd,
 } as const;

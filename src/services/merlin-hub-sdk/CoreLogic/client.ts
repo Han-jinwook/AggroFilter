@@ -77,9 +77,21 @@ export function clearSessionToken() {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(SESSION_TOKEN_KEY);
+    localStorage.removeItem('merlin_cached_user');
+    localStorage.removeItem('merlin_cached_balance');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userNickname');
+    localStorage.removeItem('userProfileImage');
+    sessionStorage.clear();
+
+    const expireStr = '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0';
     const domainPart = getCookieDomain();
-    document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0${domainPart}`;
-    document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0`;
+    
+    // 도메인 쿠키 및 호스트 쿠키 완벽 소멸 (WebKit/Safari 호환)
+    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}; SameSite=Lax; Secure`;
+    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}`;
+    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}; SameSite=Lax; Secure`;
+    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}`;
   } catch (e) {
     console.warn('[MerlinHub] Failed to clear session token/cookie:', e);
   }
@@ -288,12 +300,18 @@ export class MerlinHubClient {
     const { verifyOTP } = await import('../Auth/auth');
     const { getConfig } = await import('./config');
     
-    // 로컬스토리지에서 초대코드 및 가불 정보 조회 후 파라미터 전달
+    // 로컬스토리지 및 URL에서 초대코드 및 가불 정보 조회 후 파라미터 전달
     let referralCode = undefined;
     let pendingUsageFee = undefined;
     let pendingVideoId = undefined;
     if (typeof window !== 'undefined') {
-      referralCode = localStorage.getItem('pendingReferralCode') || undefined;
+      const urlParams = new URLSearchParams(window.location.search);
+      referralCode = localStorage.getItem('pendingReferralCode') 
+        || localStorage.getItem('pending_ref') 
+        || urlParams.get('ref') 
+        || urlParams.get('r') 
+        || urlParams.get('referral') 
+        || undefined;
       const pendingUsageFeeStr = localStorage.getItem('pending_usage_fee');
       pendingUsageFee = pendingUsageFeeStr ? parseInt(pendingUsageFeeStr, 10) : undefined;
       pendingVideoId = localStorage.getItem('pending_video_id') || undefined;
@@ -336,6 +354,7 @@ export class MerlinHubClient {
 
   async sendNotification(params: {
     userId?: string;
+    email?: string;
     title?: string;
     content?: string;
     type?: string;
@@ -345,6 +364,10 @@ export class MerlinHubClient {
     link_text?: string;
     link2?: string;
     link2_text?: string;
+    link3?: string;
+    link3_text?: string;
+    link4?: string;
+    link4_text?: string;
     sub_content_html?: string;
   }) {
     const { getConfig } = await import('./config');
@@ -356,6 +379,7 @@ export class MerlinHubClient {
       },
       body: JSON.stringify({
         userId: params.userId,
+        email: params.email,
         app_id: config.appId,
         title: params.title,
         content: params.content,
@@ -366,6 +390,10 @@ export class MerlinHubClient {
         link_text: params.link_text,
         link2: params.link2,
         link2_text: params.link2_text,
+        link3: params.link3,
+        link3_text: params.link3_text,
+        link4: params.link4,
+        link4_text: params.link4_text,
         sub_content_html: params.sub_content_html,
         channels: ['email'] // 이메일 단독 발송
       })

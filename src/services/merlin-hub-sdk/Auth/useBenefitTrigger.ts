@@ -11,14 +11,14 @@ export function markFreeTrialCompleted() {
 }
 
 export function useBenefitTrigger() {
-  const { isLoggedIn } = useHub();
+  const { isLoggedIn, isLoading } = useHub();
   const [shouldShow, setShouldShow] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // 만약 이미 로그인 상태라면 혜택 모달을 띄울 필요가 없음
-    if (isLoggedIn) {
+    // 로딩 중이거나 이미 로그인 상태라면 혜택 모달을 절대 띄우지 않음 (깜빡임 원천 차단)
+    if (isLoading || isLoggedIn) {
       setShouldShow(false);
       return;
     }

@@ -40,9 +40,18 @@ export { HubHistoryList } from './Referral/HubHistoryList';
 export { HubShareButton } from './Referral/HubShareButton';
 export { HubShareSquare } from './Referral/HubShareSquare';
 export { HubWelcomeNudge } from './UI/HubWelcomeNudge';
-export { HubPWAInstallPrompt } from './UI/HubPWAInstallPrompt';
+export { HubPWAInstallPrompt, HubPWAInstallButton } from './UI/HubPWAInstallPrompt';
 export { HubAppSwitcher } from './Navigation/HubAppSwitcher';
 export { HubResponsiveWing } from './Ads/HubResponsiveWing';
 export { HubGoogleAd } from './Ads/HubGoogleAd';
+export { HubOfflineBanner } from './UI/HubOfflineBanner';
 export * from './Auth/HubBenefitModal';
 export { markFreeTrialCompleted, useBenefitTrigger } from './Auth/useBenefitTrigger';
+
+// 4. Client Utilities (공통 클라이언트 엔진)
+export { triggerHaptic } from './CoreLogic/haptic';
+export type { HapticType } from './CoreLogic/haptic';
+export { compressImage } from './CoreLogic/imageCompressor';
+export type { ImageCompressionOptions, CompressedImageResult } from './CoreLogic/imageCompressor';
+export { handleCursorToEnd, setCursorToEnd } from './CoreLogic/inputUtils';
+

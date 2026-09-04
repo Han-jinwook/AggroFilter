@@ -1531,9 +1531,9 @@ export async function POST(request: Request) {
         if (dynamicRes.success) {
           console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, gptTokens=${speedTokens}, geminiTokens=${fullTokens}, searchCount=${groundingCount} → price=${estimatedPrice}`);
           
-          // 과금 성공 시 5분 광고 제거 타임패스 설정
+          // 과금 성공 시 24시간 광고 제거 타임패스 설정
           if (!isGuest) {
-            adFreeUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+            adFreeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
             console.log(`[AdFree] userId=${actualUserId} adFreeUntil=${adFreeUntil}`);
           }
         }

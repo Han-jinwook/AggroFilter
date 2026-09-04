@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { checkSession, getBalance, getUserId, getSessionToken, setSessionToken, clearSessionToken } from './CoreLogic/index';
 import { configureMerlinHub } from './CoreLogic/config';
+import { HubOfflineBanner } from './UI/HubOfflineBanner';
 
 interface HubUser {
   id: string;
@@ -10,6 +11,7 @@ interface HubUser {
   nickname?: string;
   avatar_url?: string;
   profile_image?: string;
+  referral_code?: string;
   notification_settings?: any;
   registered_apps?: string[];
 }
@@ -73,6 +75,7 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
           email: session.email,
           nickname: session.nickname,
           avatar_url: session.avatar_url,
+          referral_code: session.referral_code,
           notification_settings: (session as any).notification_settings || {},
           registered_apps: (session as any).registered_apps || [],
         };
@@ -80,18 +83,31 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
         setIsLoggedIn(true);
         if (typeof window !== 'undefined') {
           localStorage.setItem('merlin_cached_user', JSON.stringify(freshUser));
+          if (freshUser.id) {
+            localStorage.setItem('merlin_user_id', freshUser.id);
+          }
+          if (freshUser.email) {
+            localStorage.setItem('userEmail', freshUser.email);
+          }
+          if (freshUser.referral_code) {
+            localStorage.setItem('userReferralCode', freshUser.referral_code);
+          }
+          window.dispatchEvent(new CustomEvent('merlinLoggedIn', { detail: freshUser }));
         }
         // 세션 확인 성공 시 잔액도 업데이트
         refreshBalance();
-      } else {
+      } else if (session.status === 401 || session.status === 403) {
+        // 서버의 명시적인 인증 거부(401/403)일 때만 세션 클리어
         setUser(null);
         setIsLoggedIn(false);
         setBalance(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('merlin_cached_user');
           localStorage.removeItem('merlin_cached_balance');
+          localStorage.removeItem('userReferralCode');
         }
       }
+      // 일시적인 네트워크 오류(status 0, 502 등)일 때는 기존 캐시된 로그인 상태를 유지!
     } catch (err) {
       console.error('[HubProvider] Failed to sync session:', err);
     } finally {
@@ -119,10 +135,24 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
 
   // 초기 로드 및 이벤트 리스너
   useEffect(() => {
-    // URL에서 ref(추천인 코드) 파라미터 파싱하여 로컬 스토리지에 저장
+    // 🚀 안드로이드 카카오톡 감지 시 크롬 외부 브라우저로 원활한 즉시 탈출 (세션 격리 및 PWA 설치 불가 원천 방지)
     if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent || '';
+      const isAndroid = /Android/i.test(userAgent);
+      const isKakao = /KAKAOTALK|kakaowork/i.test(userAgent);
+      const hasEscaped = sessionStorage.getItem('kakaotalk_inapp_escaped');
+
+      if (isAndroid && isKakao && !hasEscaped) {
+        sessionStorage.setItem('kakaotalk_inapp_escaped', '1');
+        const cleanHost = window.location.host;
+        const cleanPath = window.location.pathname + window.location.search;
+        window.location.href = `intent://${cleanHost}${cleanPath}#Intent;scheme=https;package=com.android.chrome;end`;
+        return;
+      }
+
+      // URL에서 ref / r / referral (추천인 코드) 파라미터 파싱하여 로컬 스토리지에 저장
       const urlParams = new URLSearchParams(window.location.search);
-      const refCode = urlParams.get('ref');
+      const refCode = urlParams.get('ref') || urlParams.get('r') || urlParams.get('referral');
       if (refCode) {
         localStorage.setItem('pendingReferralCode', refCode);
         console.log('[HubProvider] Detected and saved pending referral code:', refCode);
@@ -204,14 +234,20 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       localStorage.removeItem('merlin_cached_balance');
     };
 
-    // 3. 멀티 탭 실시간 동기화: 다른 탭에서 로그인/로그아웃하거나 탭 활성화 시 세션 즉시 갱신
+    // 3. 멀티 탭 실시간 동기화: 다른 탭에서 로그인/로그아웃하거나 탭 활성화 시 세션 갱신 (5분 스마트 스로틀링)
+    let lastCheckTime = Date.now();
     const handleVisibilityOrFocus = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         const currentToken = getSessionToken();
+        const now = Date.now();
         if (currentToken) {
-          refreshSession();
+          // 탭 전환 시 과도한 API 연타 방지: 최소 5분(300,000ms) 경과 시에만 백그라운드 갱신
+          if (now - lastCheckTime > 5 * 60 * 1000) {
+            lastCheckTime = now;
+            refreshSession();
+          }
         } else if (isLoggedIn) {
-          // 다른 탭에서 로그아웃된 경우
+          // 다른 탭에서 명시적으로 로그아웃되어 토큰이 소멸된 경우
           handleSessionExpired();
         }
       }
@@ -251,6 +287,7 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       updateNotificationSettings
     }}>
       {children}
+      <HubOfflineBanner />
     </HubContext.Provider>
   );
 }

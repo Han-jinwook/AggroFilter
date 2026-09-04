@@ -1,6 +1,6 @@
 /**
- * Version: v1.3.4
- * Last Updated: 2026-05-21
+ * Version: v1.3.5
+ * Last Updated: 2026-09-04
  */
 import { useState, useCallback, useEffect } from 'react';
 import { requestKcpPayment } from './wallet';
@@ -47,6 +47,7 @@ export function useHubPayment() {
     coinAmount: number;
     payMethodType: 'card' | 'phone' | 'bank';
     returnUrl?: string;
+    productName?: string;
   }) => {
     try {
       setStatus('preparing');
@@ -61,6 +62,7 @@ export function useHubPayment() {
         coinAmount: params.coinAmount,
         payMethodType: params.payMethodType,
         returnUrl: returnUrl,
+        productName: params.productName
       });
 
       if (!res.success || !res.paymentData) {

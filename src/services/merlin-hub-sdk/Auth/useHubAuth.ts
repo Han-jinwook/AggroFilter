@@ -57,29 +57,40 @@ export function useHubAuth() {
   }, []);
 
   /**
-   * 인증 코드 검증 요청
+   * 인증 코드 검증 요청 (targetEmail 직접 전달 지원으로 이메일 변경 타이밍 이슈 원천 방어)
    */
-  const verifyOtp = useCallback(async (code: string) => {
+  const verifyOtp = useCallback(async (code: string, targetEmail?: string) => {
+    const emailToVerify = (targetEmail || email).trim().toLowerCase();
     try {
       setStatus('verifying');
       setError(null);
 
-      const result = await client.verifyOtp(email, code);
+      const result = await client.verifyOtp(emailToVerify, code);
       
       if (result.success) {
         setStatus('success');
+        const resolvedUserId = result.userId || result.familyUid;
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('profileUpdated'));
+          window.dispatchEvent(new CustomEvent('creditsUpdated'));
+          window.dispatchEvent(new CustomEvent('merlinLoggedIn', { 
+            detail: { email: emailToVerify, userId: resolvedUserId, user: result } 
+          }));
         }
-        // 인증 성공 시 세션 동기화를 위해 약간의 지연 후 성공 처리
-        return true;
+        return {
+          success: true,
+          userId: resolvedUserId,
+          email: emailToVerify,
+          nickname: result.nickname,
+          referral_code: result.referral_code
+        };
       } else {
         throw new Error(result.message || result.error || '인증 코드가 일치하지 않습니다.');
       }
     } catch (err: any) {
       setStatus('error');
       setError(err.message);
-      return false;
+      return { success: false, error: err.message };
     }
   }, [email]);
 

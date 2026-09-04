@@ -37,3 +37,12 @@ export {
   getHistory,
   requestKcpPayment 
 } from './Wallet/wallet';
+
+// 4. 공통 유틸리티 (이미지 압축 & 햅틱 피드백 & 모바일 커서 제어)
+export { triggerHaptic } from './CoreLogic/haptic';
+export type { HapticType } from './CoreLogic/haptic';
+export { compressImage } from './CoreLogic/imageCompressor';
+export type { ImageCompressionOptions, CompressedImageResult } from './CoreLogic/imageCompressor';
+export { handleCursorToEnd, setCursorToEnd } from './CoreLogic/inputUtils';
+
+

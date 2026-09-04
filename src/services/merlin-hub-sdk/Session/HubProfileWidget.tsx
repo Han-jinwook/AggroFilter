@@ -77,11 +77,12 @@ interface HubProfileWidgetProps {
   onProfileClick?: () => void;
   className?: string;
   showNickname?: boolean;
+  layout?: 'col' | 'row'; // 가로(row) / 세로(col) 배치 지원 (기본값: col)
   variant?: 'paw' | 'standard'; // 하위 호환성용
 }
 
 /**
- * [Custom] 허브 프로필 위젯 (Premium v1.2)
+ * [Custom] 허브 프로필 위젯 (Premium v1.3)
  * 헤더용 프로필 위젯이며 내부적으로 공통 HubAvatar를 재사용합니다.
  */
 export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
@@ -89,6 +90,7 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   onProfileClick,
   className = '',
   showNickname = true,
+  layout = 'col',
 }) => {
   const { isLoggedIn, isLoading, user } = useHub();
   const [mounted, setMounted] = useState(false);
@@ -97,12 +99,14 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
     setMounted(true);
   }, []);
 
+  const isRow = layout === 'row';
+
   // 로딩 상태 및 마운트 완료 전 스켈레톤 (Hydration Mismatch 완전 예방)
   if (!mounted || isLoading) {
     return (
-      <div className={`flex flex-col items-center gap-1.5 animate-pulse ${className}`}>
-        <div className="w-10 h-10 rounded-2xl bg-slate-100" />
-        {showNickname && <div className="w-10 h-2 bg-slate-50 rounded-full hidden sm:block" />}
+      <div className={`flex ${isRow ? 'items-center gap-2 px-1' : 'flex-col items-center gap-1.5'} animate-pulse ${className}`}>
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100" />
+        {showNickname && <div className={`${isRow ? 'w-12 h-3' : 'w-10 h-2'} bg-slate-100 rounded-full hidden sm:block`} />}
       </div>
     );
   }
@@ -112,11 +116,13 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
     return (
       <button
         onClick={onLoginClick}
-        className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all cursor-pointer ${className}`}
+        className={`flex ${isRow ? 'items-center gap-1 p-0.5 rounded-full hover:bg-slate-100/80' : 'flex-col items-center gap-1'} group transition-all cursor-pointer ${className}`}
       >
-        <HubAvatar isLoggedIn={false} className="group-hover:scale-105 transition-transform" />
+        <HubAvatar isLoggedIn={false} size="sm" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full group-hover:scale-105 transition-transform" />
         {showNickname && (
-          <span className="hidden sm:block text-[10px] sm:text-xs font-bold text-slate-400 group-hover:text-blue-600 transition-colors">게스트</span>
+          <span className={`hidden sm:block ${isRow ? 'text-[13px] sm:text-[14px] font-bold text-slate-500 pr-1' : 'text-[10px] sm:text-xs font-bold text-slate-400'} group-hover:text-blue-600 transition-colors`}>
+            게스트
+          </span>
         )}
       </button>
     );
@@ -130,16 +136,17 @@ export const HubProfileWidget: React.FC<HubProfileWidgetProps> = ({
   return (
     <button
       onClick={onProfileClick}
-      className={`flex flex-col items-center gap-1 group hover:opacity-80 transition-all cursor-pointer ${className}`}
+      className={`flex ${isRow ? 'items-center gap-1 p-0.5 rounded-full hover:bg-slate-100/80' : 'flex-col items-center gap-1'} group transition-all cursor-pointer ${className}`}
     >
       <HubAvatar 
         isLoggedIn={true} 
         avatarUrl={user?.avatar_url} 
         nickname={displayId} 
-        className="group-hover:scale-105 transition-transform" 
+        size="sm"
+        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full group-hover:scale-105 transition-transform" 
       />
       {showNickname && (
-        <span className="hidden sm:block text-[10px] sm:text-xs font-semibold text-gray-700 group-hover:text-blue-600">
+        <span className={`hidden sm:block ${isRow ? 'text-[13px] sm:text-[14px] font-bold text-slate-800 pr-1' : 'text-[10px] sm:text-xs font-semibold text-gray-700'} group-hover:text-blue-600 transition-colors truncate max-w-[100px] sm:max-w-[130px]`}>
           {displayId}
         </span>
       )}

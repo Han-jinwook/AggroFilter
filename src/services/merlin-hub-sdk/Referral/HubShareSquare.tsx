@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useHubReferral } from './useHubReferral';
 import { useHub } from '../HubProvider';
+import { triggerHaptic } from '../CoreLogic/haptic';
 
 interface HubShareSquareProps {
   className?: string;
@@ -72,12 +73,20 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
     }
   }, [getMyReferralInfo, isLoggedIn, isSessionLoading]);
 
+  const [canNativeShare, setCanNativeShare] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      setCanNativeShare(true);
+    }
+  }, []);
+
   // 페이지 이동(또는 customUrl 변경) 시 복사 완료 상태 초기화
   useEffect(() => {
     setIsCopied(false);
   }, [pathname, customUrl]);
 
-  const handleCopy = () => {
+  const handleShare = async () => {
     if (typeof window === 'undefined') return;
     
     let shareUrl = '';
@@ -106,25 +115,70 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
     } catch (e) {
       // fallback
     }
+
+    // 추천인 코드 확보 (상태값, 로컬스토리지, 또는 즉시 조회)
+    let currentCode = inviteCode || (typeof window !== 'undefined' ? localStorage.getItem('userReferralCode') : '') || '';
+    if (!currentCode && isLoggedIn) {
+      try {
+        const info = await getMyReferralInfo();
+        if (info?.code) {
+          currentCode = info.code;
+          setInviteCode(info.code);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userReferralCode', info.code);
+          }
+        }
+      } catch (err) {
+        console.warn('[HubShareSquare] Failed to fetch referral info on share:', err);
+      }
+    }
     
-    if (inviteCode) {
+    if (currentCode) {
       try {
         const urlObj = new URL(base);
-        urlObj.searchParams.set('ref', inviteCode);
+        urlObj.searchParams.set('ref', currentCode);
         shareUrl = urlObj.toString();
       } catch (e) {
-        shareUrl = `${base}${base.includes('?') ? '&' : '?'}ref=${inviteCode}`;
+        shareUrl = `${base}${base.includes('?') ? '&' : '?'}ref=${currentCode}`;
       }
     } else {
       shareUrl = base;
     }
     
-    // 복사될 텍스트 포맷 (제목 + 링크)
-    const textToCopy = `${customTitle}\n\n${shareUrl}`;
+    // 복사/공유 텍스트 (카카오톡 및 문자 전달 시 초대 링크가 본문 메시지에 100% 명확히 포함되도록 포맷)
+    const shareText = description 
+      ? `${customTitle}\n\n${description}\n\n👉 바로가기: ${shareUrl}`
+      : `${customTitle}\n\n👉 바로가기: ${shareUrl}`;
+    const textToCopy = `${shareText}`;
+
+    // 모바일 / PWA Web Share API 우선 호출 (카카오톡, 문자 등 네이티브 공유창 호출)
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: customTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        triggerHaptic('success');
+        return;
+      } catch (err: any) {
+        // 유저가 취소(AbortError)한 경우 복사 fallback 하지 않고 종료
+        if (err?.name === 'AbortError') {
+          return;
+        }
+        console.log('[HubShareSquare] Native share fallback to clipboard:', err);
+      }
+    }
     
-    navigator.clipboard.writeText(textToCopy);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    // PC 또는 네이티브 미지원 환경: 클립보드 복사
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      triggerHaptic('success');
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (e) {
+      console.error('[HubShareSquare] Clipboard copy failed:', e);
+    }
   };
 
   if (isLoading && !inviteCode) {
@@ -142,13 +196,13 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
           <h3 className="text-sm font-bold leading-snug tracking-tight line-clamp-2">
             {customTitle}
           </h3>
-          <p className="text-[11px] text-blue-100 mt-2 leading-relaxed opacity-90">
+          <p className="text-[11px] text-blue-100 mt-2 leading-relaxed opacity-90 whitespace-pre-line">
             {description}
           </p>
         </div>
 
         <button
-          onClick={handleCopy}
+          onClick={handleShare}
           className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold cursor-pointer transition-all shadow-sm active:scale-[0.98] ${
             isCopied 
               ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
@@ -161,6 +215,13 @@ export const HubShareSquare: React.FC<HubShareSquareProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
               복사 완료!
+            </>
+          ) : canNativeShare ? (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              카톡/앱으로 공유
             </>
           ) : (
             <>

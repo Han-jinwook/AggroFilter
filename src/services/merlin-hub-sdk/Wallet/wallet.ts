@@ -162,6 +162,7 @@ export async function requestKcpPayment(params: {
   coinAmount: number;
   payMethodType: 'card' | 'phone' | 'bank';
   returnUrl: string;
+  productName?: string;
 }): Promise<{ success: boolean; paymentData?: any; error?: string }> {
   try {
     const config = getConfig();
@@ -176,7 +177,8 @@ export async function requestKcpPayment(params: {
         coin_amount: params.coinAmount,
         pay_method_type: params.payMethodType,
         app_id: appId,
-        return_url: params.returnUrl
+        return_url: params.returnUrl,
+        product_name: params.productName
       }),
     });
     if (!ok) return { success: false, error: data?.message || '결제 준비 실패' };

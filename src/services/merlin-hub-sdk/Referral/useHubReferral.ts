@@ -1,6 +1,6 @@
 /**
- * Version: v1.1.0
- * Last Updated: 2026-05-16
+ * Version: v1.1.1
+ * Last Updated: 2026-08-31
  */
 import { useState, useCallback } from 'react';
 import { MerlinHubClient } from '../CoreLogic/client';
@@ -53,7 +53,7 @@ export function useHubReferral() {
   }, []);
 
   /**
-   * 나의 초대 실적 목록 조회
+   * 나의 초대 실적 목록 조회 (전체 패밀리 생태계 통합 실적)
    */
   const getReferralHistory = useCallback(async () => {
     try {
