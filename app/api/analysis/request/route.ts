@@ -427,10 +427,11 @@ export async function POST(request: Request) {
     // 0. 1단계 초경량 Title Guard 게이트키퍼 (비용 99% 방어)
     // - 안전 카테고리(IT, 교육, 뉴스 등)는 0초/0원으로 즉시 통과
     // - 코미디(23)/엔터(24)/자동차(2)/여행(19) 등 모호 카테고리는 제목+채널명(80토큰)만으로 1차 사전 검문
+    const officialCategoryId = videoInfo.officialCategoryId?.toString() || '';
     const titleGuard = await evaluateTitleGatekeeper(
       videoInfo.channelName || '',
       videoInfo.title || '',
-      videoInfo.officialCategoryId?.toString()
+      officialCategoryId
     );
 
     if (!titleGuard.isAnalyzable) {
