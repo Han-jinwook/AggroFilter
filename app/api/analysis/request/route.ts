@@ -3,6 +3,7 @@ import { pool } from '@/lib/db';
 import { extractVideoId, getVideoInfo, getTranscriptItems } from '@/lib/youtube';
 import { analyzeContent } from '@/lib/gemini';
 import { analyzeContentSpeed } from '@/lib/openai-speed';
+import { evaluateTitleGatekeeper } from '@/lib/title-guard';
 import { refreshRankingCache } from '@/lib/ranking_v2';
 import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
@@ -423,16 +424,25 @@ export async function POST(request: Request) {
     // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 즉시 차단 (비용 절감)
     const titleLower = (videoInfo.title || '').toLowerCase();
 
-    // 0. 카테고리 화이트리스트 기반 즉시 차단 (AI 분석 이전 — 비용 절감 및 빠른 거절)
-    // 유튜버의 카테고리 오지정(코미디로 등록된 코딩/지식 채널 등)을 포용하도록 확장 허용
-    const officialCategoryId = videoInfo.officialCategoryId?.toString();
-    const allowedCategoryIds = new Set(['1', '2', '15', '17', '19', '20', '22', '23', '24', '25', '26', '27', '28', '29', '43']);
-    const blockedCategoryMessages: Record<string, string> = {
-      '10': '음악(M/V, 음원) 카테고리 영상은 분석 대상이 아닙니다.\n음악 평론·비평 영상은 정상 분석됩니다.',
-    };
-    if (officialCategoryId === '10') {
-      const msg = blockedCategoryMessages['10'];
-      return NextResponse.json({ error: msg }, { status: 422, headers: corsHeaders });
+    // 0. 1단계 초경량 Title Guard 게이트키퍼 (비용 99% 방어)
+    // - 안전 카테고리(IT, 교육, 뉴스 등)는 0초/0원으로 즉시 통과
+    // - 코미디(23)/엔터(24)/자동차(2)/여행(19) 등 모호 카테고리는 제목+채널명(80토큰)만으로 1차 사전 검문
+    const titleGuard = await evaluateTitleGatekeeper(
+      videoInfo.channelName || '',
+      videoInfo.title || '',
+      videoInfo.officialCategoryId?.toString()
+    );
+
+    if (!titleGuard.isAnalyzable) {
+      console.log(`[TitleGuard Reject] channel=${videoInfo.channelName}, title=${videoInfo.title}, reason=${titleGuard.reason}`);
+      return NextResponse.json(
+        {
+          error: titleGuard.reason || '이 영상은 정보성 분석 대상이 아닙니다.',
+          notAnalyzable: true,
+          reason: titleGuard.reason,
+        },
+        { status: 422, headers: corsHeaders }
+      );
     }
 
     // 1. 단순 음악 영상 (MV, Official Video 등) — 카테고리 무관 키워드 차단
