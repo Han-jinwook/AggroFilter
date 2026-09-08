@@ -77,32 +77,17 @@ export default function ResultClient() {
     if (isLoading) return;
 
     if (isLoggedIn && user?.email) {
-      const email = user.email;
-      // DB에서 프로필 정보 fetch (source of truth)
-      fetch(`/api/user/profile?email=${encodeURIComponent(email)}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.user) {
-            const dbNickname = data.user.nickname || email.split('@')[0]
-            const dbImage = data.user.image || ''
-            setUserNickname(dbNickname)
-            setUserProfileImage(dbImage)
-            localStorage.setItem('userNickname', dbNickname)
-            localStorage.setItem('userProfileImage', dbImage)
-          } else {
-            setUserNickname(user.nickname || email.split('@')[0])
-            setUserProfileImage(user.avatar_url || '')
-          }
-        })
-        .catch(() => {
-          setUserNickname(user.nickname || email.split('@')[0])
-          setUserProfileImage(user.avatar_url || '')
-        })
+      const dbNickname = user.nickname || user.email.split('@')[0] || '사용자';
+      const dbImage = user.avatar_url || '';
+      setUserNickname(dbNickname);
+      setUserProfileImage(dbImage);
+      localStorage.setItem('userNickname', dbNickname);
+      localStorage.setItem('userProfileImage', dbImage);
     } else {
-      setUserNickname('게스트')
-      setUserProfileImage('🐾')
+      setUserNickname('게스트');
+      setUserProfileImage('🐾');
     }
-  }, [isLoading, isLoggedIn, user])
+  }, [isLoading, isLoggedIn, user]);
 
   useEffect(() => {
     setIsRefining(false)
