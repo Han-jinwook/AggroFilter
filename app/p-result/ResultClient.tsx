@@ -134,11 +134,13 @@ export default function ResultClient() {
           let resolved = false
           const handler = (event: MessageEvent) => {
             if (event.data?.type === 'AGGRO_TRANSCRIPT_DATA' && !resolved) {
-              resolved = true
-              window.removeEventListener('message', handler)
-              window.postMessage({ type: 'AGGRO_TRANSCRIPT_RECEIVED' }, '*')
               const d = event.data.data
-              resolve(d?.transcript ? d : null)
+              if (d?.transcript && typeof d.transcript === 'string' && d.transcript.trim().length > 50) {
+                resolved = true
+                window.removeEventListener('message', handler)
+                window.postMessage({ type: 'AGGRO_TRANSCRIPT_RECEIVED' }, '*')
+                resolve(d)
+              }
             }
           }
           window.addEventListener('message', handler)
@@ -153,14 +155,10 @@ export default function ResultClient() {
         if (ext?.transcript) {
           clientTranscript = ext.transcript
           clientTranscriptItems = ext.transcriptItems
+          console.log(`[ResultClient] 확장팩 자막 수신 성공: ${clientTranscript.length}자`)
+        } else {
+          console.log('[ResultClient] 확장팩 자막 대기 완료 - 서버 사이드 자막 추출로 연계 진행')
         }
-      }
-
-      // [보안 및 리소스 세이프 가드] 확장팩 진입인데 자막 데이터가 최종 미수신된 경우 (유실 및 레이스 컨디션 차단)
-      if (from === 'chrome-extension' && (!clientTranscript || clientTranscript.trim().length <= 50)) {
-        throw new Error(
-          '크롬 확장 프로그램으로부터 자막 데이터를 수신하지 못했습니다. 유튜브 페이지에서 새로고침(F5)을 하신 뒤 다시 분석 버튼을 눌러주세요.'
-        )
       }
 
       // [근본 수정] Hub 세션 기반 사용자 식별 (localStorage 잔재물 의존 금지)
