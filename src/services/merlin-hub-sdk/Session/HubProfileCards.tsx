@@ -389,7 +389,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
   const handleLogout = async () => {
     try {
       const { clearSessionToken } = await import('../CoreLogic/client');
-      clearSessionToken();
+      clearSessionToken('local');
     } catch (e) {}
 
     if (typeof window !== 'undefined') {
@@ -399,8 +399,7 @@ export const HubLogoutCard: React.FC<HubLogoutCardProps> = ({ onLogout, classNam
       localStorage.removeItem('merlin_user_id');
       localStorage.removeItem('merlin_family_uid');
       sessionStorage.clear();
-      // .sundreamer.app 공용 도메인 쿠키 삭제
-      document.cookie = 'merlin_session_token=; path=/; max-age=0; domain=.sundreamer.app';
+      // 🚨 해당 앱 호스트 쿠키만 소멸시키고, 타 패밀리 앱 세션을 위해 .sundreamer.app 공용 쿠키는 보존
       document.cookie = 'merlin_session_token=; path=/; max-age=0;';
       window.dispatchEvent(new CustomEvent('merlinSessionExpired'));
       window.dispatchEvent(new Event('profileUpdated'));

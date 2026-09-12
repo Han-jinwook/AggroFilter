@@ -1,9 +1,10 @@
 /**
- * Version: v1.1.2
- * Last Updated: 2026-05-17
+ * Version: v1.1.3
+ * Last Updated: 2026-09-12
  * Merlin Hub SDK — Auth Module
  * 이메일 OTP 인증: requestOTP → verifyOTP → JWT 저장
  * 프로필 관리: updateProfile → Hub family_users 직접 갱신
+ * 로그아웃 스코프 분리 ('local' vs 'global') 지원
  */
 
 import { hubFetch, setSessionToken, clearSessionToken, getSessionToken } from '../CoreLogic/client';
@@ -243,10 +244,11 @@ export async function getProfile(): Promise<ProfileResult> {
 }
 
 /**
- * 로그아웃 — 세션 토큰 삭제
+ * 로그아웃 — 세션 토큰 삭제 (기본값: local 스코프로 타 패밀리 앱 세션 보존)
+ * @param scope 'local' (해당 앱만 로그아웃) | 'global' (패밀리 전체 도메인 로그아웃)
  */
-export function logout() {
-  clearSessionToken();
+export function logout(scope: 'local' | 'global' = 'local') {
+  clearSessionToken(scope);
   if (typeof window !== 'undefined') {
     localStorage.removeItem('merlin_user_id');
     localStorage.removeItem('userEmail');

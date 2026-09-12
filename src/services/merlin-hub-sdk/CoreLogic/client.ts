@@ -1,10 +1,11 @@
 /**
- * Version: v1.1.0
- * Last Updated: 2026-05-16
+ * Version: v1.1.3
+ * Last Updated: 2026-09-12
  * Merlin Hub SDK — HTTP Client
  * - 모든 허브 통신에 CLIENT_ID/SECRET 헤더를 자동 부착
  * - 네트워크 실패 시 지수 백오프 재시도 (최대 3회)
  * - JWT 401 만료 감지 → 자동 세션 클리어 + 이벤트 발행
+ * - Local Token Shield: 개별 앱 독립 로그아웃 및 공용 쿠키 자가 치유(Self-Healing)
  */
 
 import { getConfig } from './config';
@@ -37,14 +38,34 @@ function getCookieDomain(): string {
   return '';
 }
 
+export const SESSION_LOGGED_OUT_KEY = 'merlin_logged_out';
+
 export function getSessionToken(): string | null {
   if (typeof window === 'undefined') return null;
   
   // 1. localStorage 우선 확인
   const localToken = localStorage.getItem(SESSION_TOKEN_KEY);
-  if (localToken) return localToken;
+  if (localToken) {
+    // 도메인 쿠키가 유실되었거나 비어있는 경우 유효한 로컬 토큰으로 공용 쿠키 자가 치유(Self-Healing)
+    try {
+      const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + SESSION_TOKEN_KEY + '=([^;]+)'));
+      if (!match || !match[1]) {
+        const domainPart = getCookieDomain();
+        if (domainPart) {
+          const securePart = window.location.protocol === 'https:' ? '; Secure; SameSite=Lax' : '; SameSite=Lax';
+          document.cookie = `${SESSION_TOKEN_KEY}=${encodeURIComponent(localToken)}; path=/; max-age=${THIRTY_DAYS_SECONDS}${domainPart}${securePart}`;
+        }
+      }
+    } catch {}
+    return localToken;
+  }
 
-  // 2. localStorage에 없으면 공용 쿠키(.sundreamer.app) 탐색
+  // 2. 이 앱에서 명시적으로 로그아웃한 상태라면 공용 쿠키로부터 자동 복원 금지 (게스트 유지)
+  if (localStorage.getItem(SESSION_LOGGED_OUT_KEY) === '1') {
+    return null;
+  }
+
+  // 3. localStorage에 없고 명시적 로그아웃도 아니라면 공용 쿠키(.sundreamer.app) 탐색 (SSO Handoff)
   try {
     const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + SESSION_TOKEN_KEY + '=([^;]+)'));
     if (match && match[1]) {
@@ -65,6 +86,7 @@ export function setSessionToken(token: string) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(SESSION_TOKEN_KEY, token);
+    localStorage.removeItem(SESSION_LOGGED_OUT_KEY); // 로그인 시 개별 앱 로그아웃 플래그 즉시 해제
     const domainPart = getCookieDomain();
     const securePart = window.location.protocol === 'https:' ? '; Secure; SameSite=Lax' : '; SameSite=Lax';
     document.cookie = `${SESSION_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=${THIRTY_DAYS_SECONDS}${domainPart}${securePart}`;
@@ -73,7 +95,7 @@ export function setSessionToken(token: string) {
   }
 }
 
-export function clearSessionToken() {
+export function clearSessionToken(scope: 'local' | 'global' = 'local') {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(SESSION_TOKEN_KEY);
@@ -85,13 +107,24 @@ export function clearSessionToken() {
     sessionStorage.clear();
 
     const expireStr = '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0';
-    const domainPart = getCookieDomain();
     
-    // 도메인 쿠키 및 호스트 쿠키 완벽 소멸 (WebKit/Safari 호환)
-    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}; SameSite=Lax; Secure`;
-    document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}`;
+    // 1. 현재 호스트의 쿠키는 언제나 소멸
     document.cookie = `${SESSION_TOKEN_KEY}${expireStr}; SameSite=Lax; Secure`;
     document.cookie = `${SESSION_TOKEN_KEY}${expireStr}`;
+
+    if (scope === 'local') {
+      // 로컬 로그아웃: 이 앱에서 명시적으로 로그아웃했음을 기록하여 공용 쿠키로부터 자동 복원을 차단
+      // 🚨 타 패밀리 앱의 세션을 보존하기 위해 .sundreamer.app 최상위 공용 쿠키는 절대 삭제하지 않음!
+      localStorage.setItem(SESSION_LOGGED_OUT_KEY, '1');
+    } else if (scope === 'global') {
+      // 전체 로그아웃: 패밀리 도메인 공용 쿠키까지 완벽 소멸
+      localStorage.removeItem(SESSION_LOGGED_OUT_KEY);
+      const domainPart = getCookieDomain();
+      if (domainPart) {
+        document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}; SameSite=Lax; Secure`;
+        document.cookie = `${SESSION_TOKEN_KEY}${expireStr}${domainPart}`;
+      }
+    }
   } catch (e) {
     console.warn('[MerlinHub] Failed to clear session token/cookie:', e);
   }

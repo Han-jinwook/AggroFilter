@@ -229,7 +229,7 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
       setUser(null);
       setIsLoggedIn(false);
       setBalance(null);
-      clearSessionToken();
+      clearSessionToken('local');
       localStorage.removeItem('merlin_cached_user');
       localStorage.removeItem('merlin_cached_balance');
     };
@@ -247,8 +247,11 @@ export function HubProvider({ children, appId }: { children: React.ReactNode; ap
             refreshSession();
           }
         } else if (isLoggedIn) {
-          // 다른 탭에서 명시적으로 로그아웃되어 토큰이 소멸된 경우
-          handleSessionExpired();
+          // 🚨 Local Token Shield: 이 앱 자체의 로컬스토리지에 토큰이 살아있다면, 타 앱 로그아웃이나 쿠키 변동으로 세션을 죽이지 않음!
+          const localToken = typeof window !== 'undefined' ? localStorage.getItem('merlin_session_token') : null;
+          if (!localToken) {
+            handleSessionExpired();
+          }
         }
       }
     };
