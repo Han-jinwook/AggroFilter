@@ -635,25 +635,126 @@ export async function POST(request: Request) {
     }
 
     if (clientTranscript && typeof clientTranscript === 'string' && clientTranscript.length > 50) {
-      // 크롬 확장팩/모바일 앱에서 보낸 자막 사용
+      // 1) 크롬 확장팩/모바일 클라이언트에서 직접 보낸 자막 사용 (0초 즉시 처리)
       transcript = clientTranscript;
       transcriptItems = Array.isArray(clientTranscriptItems) ? clientTranscriptItems : [];
       hasTranscript = true;
-      console.log(`클라이언트 자막 사용: ${transcript.length}자, items: ${transcriptItems.length}`);
+      console.log(`[Analysis] ⚡ 클라이언트/확장팩 자막 직접 사용: ${transcript.length}자, items: ${transcriptItems.length}`);
+
+      // 백그라운드 캐시 저장 (다른 유저/모바일 조회 시 즉시 재활용)
+      pool.query(`
+        INSERT INTO t_caption_tasks (f_video_id, f_status, f_transcript, f_transcript_items, f_created_at, f_updated_at)
+        VALUES ($1, 'READY', $2, $3, NOW(), NOW())
+        ON CONFLICT (f_video_id) DO UPDATE SET
+          f_status = 'READY',
+          f_transcript = EXCLUDED.f_transcript,
+          f_transcript_items = EXCLUDED.f_transcript_items,
+          f_error = NULL,
+          f_updated_at = NOW()
+      `, [videoId, transcript, JSON.stringify(transcriptItems)]).catch((err: any) => {
+        console.warn('[CaptionCache] 캐시 저장 실패(무시):', err?.message);
+      });
     } else {
-      // 서버에서 자막 추출 시도 (1회)
+      // 2) 클라이언트 자막 없음 (모바일 웹, PWA 공유, 확장팩 미설치 PC 등)
+      console.log(`[Analysis] 클라이언트 자막 없음 - 하이브리드 로컬 워커 큐 조회 (VideoId: ${videoId})`);
+
+      // 2-1) 캐시 확인 (기존에 READY나 NO_TRANSCRIPT로 끝난 작업이 있는지)
+      let foundReady = false;
       try {
-        const items = await getTranscriptItems(videoId);
-        if (items.length > 0) {
-          transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
-          transcript = items.map((it) => it.text).join(' ');
+        const existingTaskRes = await pool.query(
+          `SELECT f_status, f_transcript, f_transcript_items, f_error
+           FROM t_caption_tasks
+           WHERE f_video_id = $1
+           LIMIT 1`,
+          [videoId]
+        );
+
+        if (existingTaskRes.rows.length > 0) {
+          const task = existingTaskRes.rows[0];
+          if (task.f_status === 'READY' && task.f_transcript && task.f_transcript.length > 50) {
+            transcript = task.f_transcript;
+            transcriptItems = Array.isArray(task.f_transcript_items) ? task.f_transcript_items : [];
+            hasTranscript = true;
+            foundReady = true;
+            console.log(`[Analysis] ⚡ [캐시 히트] 큐 DB에서 자막 즉시 획득: ${transcript.length}자, items: ${transcriptItems.length}`);
+          } else if (task.f_status === 'NO_TRANSCRIPT') {
+            hasTranscript = false;
+            foundReady = true;
+            console.log(`[Analysis] ⚡ [캐시 히트] 자막 없는 영상 확인됨`);
+          }
+        }
+      } catch (cacheErr: any) {
+        console.warn('[Analysis] 큐 DB 캐시 조회 에러(무시):', cacheErr?.message);
+      }
+
+      // 2-2) 캐시 미스: PENDING 작업 등록 및 로컬 워커 대기 폴링 (최대 12초)
+      if (!foundReady) {
+        try {
+          await pool.query(`
+            INSERT INTO t_caption_tasks (f_video_id, f_status, f_created_at, f_updated_at)
+            VALUES ($1, 'PENDING', NOW(), NOW())
+            ON CONFLICT (f_video_id) DO UPDATE SET
+              f_status = CASE 
+                WHEN t_caption_tasks.f_status IN ('READY', 'NO_TRANSCRIPT') THEN t_caption_tasks.f_status
+                ELSE 'PENDING'
+              END,
+              f_updated_at = NOW()
+          `, [videoId]);
+
+          console.log(`[Analysis] 큐(t_caption_tasks)에 작업 등록 완료. 로컬 워커 응답 대기 시작...`);
+
+          const maxWaitMs = 12000;
+          const pollInterval = 500;
+          const startTime = Date.now();
+
+          while (Date.now() - startTime < maxWaitMs) {
+            await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+            const pollRes = await pool.query(
+              `SELECT f_status, f_transcript, f_transcript_items, f_error
+               FROM t_caption_tasks
+               WHERE f_video_id = $1`,
+              [videoId]
+            );
+
+            if (pollRes.rows.length > 0) {
+              const task = pollRes.rows[0];
+              if (task.f_status === 'READY') {
+                transcript = task.f_transcript || '';
+                transcriptItems = Array.isArray(task.f_transcript_items) ? task.f_transcript_items : [];
+                hasTranscript = !!(transcript && transcript.length > 50);
+                console.log(`[Analysis] ✅ 로컬 워커 자막 수신 성공! (${transcript.length}자, 소요시간: ${Date.now() - startTime}ms)`);
+                break;
+              } else if (task.f_status === 'NO_TRANSCRIPT') {
+                hasTranscript = false;
+                console.log(`[Analysis] ℹ️ 로컬 워커에서 자막 없음 확인 (${Date.now() - startTime}ms)`);
+                break;
+              } else if (task.f_status === 'FAILED') {
+                console.warn(`[Analysis] ⚠️ 로컬 워커 자막 추출 실패: ${task.f_error}`);
+                break;
+              }
+            }
+          }
+        } catch (queueErr: any) {
+          console.error('[Analysis] 큐 작업 등록/폴링 중 오류:', queueErr?.message);
         }
 
-        hasTranscript = !!(transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다'));
-        console.log('자막 상태:', hasTranscript ? `성공 (${transcript.length}자, items: ${transcriptItems.length})` : '자막 없음');
-      } catch (e) {
-        console.error('자막 추출 중 에러:', e);
-        hasTranscript = false;
+        // 2-3) 워커 미응답/타임아웃 시 기존 서버 Fallback 시도 (1회)
+        if (!hasTranscript) {
+          try {
+            console.log(`[Analysis] 로컬 워커 대기 후 서버 직접 추출 Fallback 시도...`);
+            const items = await getTranscriptItems(videoId);
+            if (items.length > 0) {
+              transcriptItems = items.map((it) => ({ text: it.text, start: it.offset, duration: it.duration }));
+              transcript = items.map((it) => it.text).join(' ');
+              hasTranscript = !!(transcript && transcript.length > 50 && !transcript.includes('가져올 수 없습니다'));
+              console.log('서버 자막 Fallback 상태:', hasTranscript ? `성공 (${transcript.length}자)` : '자막 없음');
+            }
+          } catch (e: any) {
+            console.error('서버 자막 Fallback 중 에러:', e?.message || e);
+            hasTranscript = false;
+          }
+        }
       }
     }
 

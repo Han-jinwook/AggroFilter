@@ -72,15 +72,12 @@ export default function MainPage() {
     }
 
     if (resolvedUrl) {
-      setSearchUrl(resolvedUrl)
       // 쿼리 매개변수 제거하여 주소창 청소
       window.history.replaceState({}, '', window.location.pathname)
-      // 즉시 조회 로직 자동 실행
-      setTimeout(() => {
-        handleSearch(resolvedUrl)
-      }, 500)
+      // 모바일 공유(share_target) 진입 시 즉시 정밀 분석 화면으로 직행
+      router.push(`/p-result?url=${encodeURIComponent(resolvedUrl)}`)
     }
-  }, [])
+  }, [router])
 
   // REFACTORED_BY_MERLIN_HUB: 매직링크 deprecated — Hub OTP 인증으로 전환됨
 
@@ -491,13 +488,23 @@ export default function MainPage() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-blue-50 border-3 border-blue-600 rounded-2xl text-xs font-bold text-blue-800 space-y-1 leading-relaxed">
-                  <p className="font-extrabold flex items-center gap-1 text-sm text-blue-900">
-                    <span>🖥️ PC 정밀 분석 예약 완료</span>
+                <div className="p-4 bg-indigo-50 border-3 border-indigo-600 rounded-2xl text-xs font-bold text-indigo-900 space-y-3 leading-relaxed">
+                  <div className="flex items-center justify-between">
+                    <p className="font-extrabold flex items-center gap-1.5 text-sm text-indigo-950">
+                      <span>⚡ 모바일/웹 즉시 정밀 분석 지원</span>
+                    </p>
+                    <span className="text-[10px] bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full font-black">자막 자동추출</span>
+                  </div>
+                  <p className="text-slate-600 font-medium">
+                    모바일 환경에서도 크롬 확장팩 없이 지금 바로 10초 만에 AI 스포일러 및 어그로 분석을 받아보실 수 있습니다.
                   </p>
-                  <p>
-                    모바일 환경은 유튜브 자막 추출이 제한됩니다. 이 영상은 보관함(Queue)에 담겼으며, PC에서 어그로필터 크롬 확장팩이 설치된 브라우저를 켜시면 백그라운드에서 자동으로 정밀 팩트체크가 완료됩니다!
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/p-result?url=${encodeURIComponent(searchUrl.trim())}`)}
+                    className="w-full py-3 bg-[#FF9800] hover:bg-[#F57C00] text-black font-black text-sm rounded-xl border-3 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>🚀 이 영상 지금 바로 분석하기 (10초 소요)</span>
+                  </button>
                 </div>
               </div>
             )}

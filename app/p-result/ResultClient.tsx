@@ -150,7 +150,7 @@ export default function ResultClient() {
               window.removeEventListener('message', handler)
               resolve(null)
             }
-          }, 8000)
+          }, 2000)
         })
         if (ext?.transcript) {
           clientTranscript = ext.transcript
