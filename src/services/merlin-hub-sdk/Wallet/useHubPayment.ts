@@ -1,6 +1,6 @@
 /**
- * Version: v1.3.5
- * Last Updated: 2026-09-04
+ * Version: v1.4.0
+ * Last Updated: 2026-10-01
  */
 import { useState, useCallback, useEffect } from 'react';
 import { requestKcpPayment } from './wallet';

@@ -192,9 +192,9 @@ export default function ChannelPage({ params }: TChannelPageProps) {
   }
 
   const CREDIT_PLANS = [
-    { credits: 30, label: '30코인', price: '1,000원' },
-    { credits: 150, label: '150코인', price: '4,500원' },
-    { credits: 300, label: '300코인', price: '8,000원' },
+    { credits: 1000, label: '1,000C', price: '1,000원' },
+    { credits: 5200, label: '5,200C', price: '5,000원' },
+    { credits: 11000, label: '11,000C', price: '10,000원' },
   ]
 
   const goToCheckout = () => {
@@ -238,7 +238,7 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
 
           {modalStep === 'charge' && (
             <div className="mt-3 text-sm text-slate-700 leading-relaxed">
-              <p>재분석 1회 요청 시 30 코인이 차감됩니다.</p>
+              <p>채널 소유자 재분석 1회 요청 시 <strong className="text-indigo-600 font-black">1,000 코인(1,000C)</strong>이 차감됩니다.</p>
               {typeof credits === 'number' && (
                 <p className="mt-1">현재 보유 코인: <span className="font-black text-indigo-600">{credits}</span></p>
               )}
@@ -322,12 +322,12 @@ PC에서 접속하여 진행해 주시기 바랍니다.`}
     }
 
     const c = typeof credits === 'number' ? credits : 0
-    if (c < 30) {
+    if (c < 1000) {
       setModalStep('charge')
       return
     }
 
-    if (!confirm('재분석 1회 요청 시 30 코인이 차감됩니다. 재검을 진행할까요?')) return
+    if (!confirm('채널 영상 소유자 재분석 1회 요청 시 1,000 코인이 차감됩니다. 재검수를 진행할까요?')) return
 
     try {
       setIsRecheckingVideoId(video.id)

@@ -34,6 +34,7 @@ export {
   getPricing, 
   processTransaction, 
   chargeDynamic, 
+  deductFlatAnalysis,
   getHistory,
   requestKcpPayment 
 } from './Wallet/wallet';

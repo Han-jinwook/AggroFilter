@@ -230,8 +230,10 @@ export default function ResultClient() {
         resolved = await requestPromise
       }
 
-      if (!resolved?.analysisId) throw new Error('분석 결과를 받지 못했습니다.')
-
+      if (resolved?.adFreeUntil) {
+        localStorage.setItem('ad_free_until', resolved.adFreeUntil);
+        console.log(`[AdFree] 타임패스 저장: ${resolved.adFreeUntil}`);
+      }
       window.dispatchEvent(new CustomEvent('creditsUpdated'))
       if (!isLoggedIn) {
         const count = parseInt(localStorage.getItem('anonAnalysisCount') || '0', 10) + 1

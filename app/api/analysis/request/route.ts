@@ -9,7 +9,7 @@ import { subscribeChannelAuto } from '@/lib/notification';
 import { detectLanguageFromText } from '@/lib/language-detection';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/server';
-import { getBalance, getPricing, processTransaction, chargeDynamic, configureMerlinHub, MerlinHubClient } from '@/src/services/merlin-hub-sdk';
+import { getBalance, getPricing, processTransaction, chargeDynamic, deductFlatAnalysis, configureMerlinHub, MerlinHubClient } from '@/src/services/merlin-hub-sdk';
 
 configureMerlinHub({ appId: 'AggroFilter' });
 
@@ -294,39 +294,7 @@ export async function POST(request: Request) {
           }
 
           if (!forceRecheck && row.f_reliability_score !== null && row.f_reliability_score > 0) {
-            console.log('이미 분석된 영상입니다. 기존 결과 반환:', row.f_id);
-
-            // ── 캐시 히트에도 코인 차감 (유료 콘텐츠 열람 Paywall) 및 가격 조회 ──
-            const pricingRes = await getPricing(videoId);
-            const fixedPrice = pricingRes.success && pricingRes.data?.price ? pricingRes.data.price : 30;
-
-            let cachedCreditDeducted = false;
-            if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
-              // 2. 잔액 조회 (잔액이 0 이상이면 허용, 첫 결제 후 웰컴 500C 보상을 위함)
-              const balanceRes = await getBalance(userId);
-              if (!balanceRes.success || (balanceRes.balance ?? 0) < 0) {
-                if (lockClient) {
-                  await lockClient.query(`SELECT pg_advisory_unlock(hashtext($1))`, [videoId]);
-                  lockClient.release();
-                }
-                return NextResponse.json(
-                  { error: `코인이 부족합니다. (${fixedPrice}C 필요)`, insufficientCredits: true, redirectUrl: '/payment/purchase' },
-                  { status: 402, headers: corsHeaders }
-                );
-              }
-
-              const displayTitle = row.f_title || videoInfo?.title || videoId;
-              const txRes = await processTransaction({
-                userId,
-                amount: -fixedPrice,
-                requestId: `cached_${videoId}_${Date.now()}`,
-                displayText: `어그로필터 - 영상 분석 (열람) - ${displayTitle}`
-              });
-              cachedCreditDeducted = txRes.success;
-              if (cachedCreditDeducted) {
-                console.log(`[Credit·Cache] userId=${userId}, -${fixedPrice}C → balance=${txRes.balance}`);
-              }
-            }
+            console.log('이미 분석된 영상입니다. 기존 결과 반환 (무료 열람/광고 노출):', row.f_id);
 
             await lockClient.query(`
               UPDATE t_analyses 
@@ -345,8 +313,8 @@ export async function POST(request: Request) {
               message: '이미 분석된 영상입니다.',
               analysisId: row.f_id,
               cached: true,
-              creditDeducted: cachedCreditDeducted,
-              price: fixedPrice,
+              creditDeducted: false,
+              price: 0,
             }, { headers: corsHeaders });
           }
         }
@@ -361,14 +329,13 @@ export async function POST(request: Request) {
         // Continue to fresh analysis if lock/check fails
       }
 
-    // ── 코인 잔액 체크 (새 분석 시 최소 임계값 체크) ──
-    if (!isRecheck && userId && !userId.startsWith('anon_')) {
+    // ── 코인 잔액 사전 체크 (새 분석 50C, 채널주인 재분석 1,000C) ──
+    if (userId && !userId.startsWith('anon_') && !userId.startsWith('trial_')) {
       const balanceRes = await getBalance(userId);
-      // 신규 분석 시 잔액 0 이상이면 허용 (첫 분석 후 웰컴 보상 500C로 자동 상환됨)
-      // 이미 잔액이 마이너스인 경우에만 차단
-      if (!balanceRes.success || (balanceRes.balance ?? 0) < 0) {
+      const requiredCoins = isRecheck ? 1000 : 50;
+      if (!balanceRes.success || (balanceRes.balance ?? 0) < requiredCoins) {
         return NextResponse.json(
-          { error: '코인이 부족합니다. 충전 후 다시 시도해주세요.', insufficientCredits: true, redirectUrl: '/payment/purchase' },
+          { error: `코인이 부족합니다. (${requiredCoins.toLocaleString()}C 필요)`, insufficientCredits: true, redirectUrl: '/payment/purchase' },
           { status: 402, headers: corsHeaders }
         );
       }
@@ -1578,67 +1545,56 @@ export async function POST(request: Request) {
         `, [cleanChannelId, videoInfo.officialCategoryId, finalLanguage]);
       }
 
+      // ⭐ 채널 영상 소유자 재분석 의뢰 (1,000C 고정 철칙)
       if (isRecheck) {
-        if (!actualUserId) {
-          throw new Error('로그인이 필요합니다.');
+        if (!actualUserId || actualUserId.startsWith('anon_')) {
+          const err: any = new Error('채널 영상 소유자 재분석은 로그인이 필요합니다.');
+          err.statusCode = 401;
+          throw err;
         }
-        // REFACTORED_BY_MERLIN_HUB: t_users recheck 코인 → Hub wallet 이관 예정
-        await ensureCreditHistoryTable(client);
-        const currentBalance = await getLatestCreditBalance(client, actualUserId);
-        if (!Number.isFinite(currentBalance) || currentBalance < 1) {
-          const err: any = new Error('코인이 부족합니다.');
+
+        const recheckRes = await deductFlatAnalysis({
+          userId: actualUserId,
+          videoId,
+          actionType: 'REANALYSIS_OWNER',
+          requestId: `recheck_owner_${videoId}_${Date.now()}`,
+          displayText: `어그로필터 - 채널 영상 소유자 재분석 의뢰 (1,000C) - ${videoInfo?.title || videoId}`,
+          skipReceiptEmail: false
+        });
+
+        if (!recheckRes.success) {
+          const err: any = new Error(recheckRes.error || '코인이 부족합니다. (1,000C 필요)');
           err.statusCode = 402;
           throw err;
         }
 
-        await appendCreditHistory(client, {
-          userId: actualUserId,
-          amount: -1,
-          description: '영상 재분석',
-          type: 'analysis',
-        });
-
         creditDeducted = true;
+        estimatedPrice = 1000;
+        adFreeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        console.log(`[Reanalysis·Owner] 채널 소유자 1,000C 정상 차감 완료: userId=${actualUserId}`);
       }
 
-      // ── 일반 코인 차감 (동적 과금 적용: GPT + Gemini + Grounding 합산) ──
+      // ── 일반 코인 차감 (무조건 일괄 50C 단일가 적용) ──
       if (!isRecheck && actualUserId) {
-        const speedTokens = Number(speedResult?.usage?.total_tokens || 0);
-        const fullTokens = Number(
-          analysisResult.usageMetadata?.totalTokenCount || 
-          analysisResult.usageMetadata?.total_token_count || 0
-        );
-        const groundingCount = Number(analysisResult.groundingQueries?.length || 0);
-        
         const displayTitle = videoInfo?.title || speedResult?.title || analysisResult?.title || videoId;
-        
-        // REFACTORED: 개별앱은 요금(환율, 검색가중치) 계산 공식을 직접 구현하지 않고,
-        // 순수 소모 메트릭(gpt4oMiniTokens, gemini25FlashTokens, googleSearchCount)만 허브로 전송합니다.
-        const dynamicRes = await chargeDynamic({
+        const isGuest = actualUserId.startsWith('anon_') || actualUserId.startsWith('trial_');
+
+        const dynamicRes = await deductFlatAnalysis({
           userId: actualUserId,
           videoId,
-          usageMetrics: {
-            gpt4oMiniTokens: speedTokens,
-            gemini25FlashTokens: fullTokens,
-            googleSearchCount: groundingCount
-          },
+          actionType: 'ANALYSIS',
           requestId: `fresh_${videoId}_${analysisId}`,
-          displayText: `어그로필터 - 영상 분석 - ${displayTitle}`,
+          displayText: `어그로필터 - 영상 분석 (50C, 당일 전체 광고 제거) - ${displayTitle}`,
           skipReceiptEmail: true
         });
 
-        const isGuest = actualUserId.startsWith('anon_') || actualUserId.startsWith('trial_');
         creditDeducted = !isGuest && dynamicRes.success;
-        estimatedPrice = dynamicRes.price || 30; // 30C fallback
+        estimatedPrice = 50;
 
-        if (dynamicRes.success) {
-          console.log(`[Credit·Dynamic] userId=${actualUserId}, guest=${isGuest}, gptTokens=${speedTokens}, geminiTokens=${fullTokens}, searchCount=${groundingCount} → price=${estimatedPrice}`);
-          
-          // 과금 성공 시 24시간 광고 제거 타임패스 설정
-          if (!isGuest) {
-            adFreeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-            console.log(`[AdFree] userId=${actualUserId} adFreeUntil=${adFreeUntil}`);
-          }
+        if (dynamicRes.success && !isGuest) {
+          // 50C 결제 유저 당일(24시간) 전체 광고 제거 타임패스 발급 (멀린님 확정 룰)
+          adFreeUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          console.log(`[AdFree] 50C 결제 유저 당일 광고제거 타임패스 발급: userId=${actualUserId}, adFreeUntil=${adFreeUntil}`);
         }
       }
 

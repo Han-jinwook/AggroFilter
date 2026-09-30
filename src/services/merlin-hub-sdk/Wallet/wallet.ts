@@ -1,3 +1,8 @@
+/**
+ * Version: v1.4.0
+ * Last Updated: 2026-10-01
+ * Description: 일괄 정액 과금(어그로필터 50C, 채널소유자 재분석 1000C, 노스트라 1~3천C) 및 당일 광고제거 혜택 연동
+ */
 import { hubFetch } from '../CoreLogic/client';
 import { getConfig } from '../CoreLogic/config';
 
@@ -79,11 +84,12 @@ export async function processTransaction(params: {
 }
 
 /**
- * 4. 동적 과금 계산 및 청구 (신규 영상 분석 시)
+ * 4. 동적/정액 과금 계산 및 청구 (신규 영상 분석 시)
  */
 export async function chargeDynamic(params: {
   userId: string;
   videoId: string;
+  actionType?: 'ANALYSIS' | 'REANALYSIS_OWNER' | string;
   rawCost?: number;
   usageMetrics?: {
     gpt4oMiniTokens?: number;
@@ -109,6 +115,7 @@ export async function chargeDynamic(params: {
         userId: params.userId,
         app_id: appId,
         resource_id: params.videoId,
+        action_type: params.actionType,
         raw_cost: params.rawCost,
         usage_metrics: params.usageMetrics ? {
           gpt_4o_mini_tokens: params.usageMetrics.gpt4oMiniTokens || params.usageMetrics.speedTokens,
@@ -121,12 +128,40 @@ export async function chargeDynamic(params: {
         skip_receipt_email: params.skipReceiptEmail
       }),
     });
-    if (!ok) return { success: false, error: data?.message || '동적 과금 처리 실패' };
+    if (!ok) return { success: false, error: data?.message || '과금 처리 실패' };
     return { success: true, balance: data.balance, price: data.price };
   } catch (err) {
     console.error('[MerlinHub] chargeDynamic error:', err);
     return { success: false, error: '허브 서버 연결 실패' };
   }
+}
+
+/**
+ * 4-1. 정액 분석/재분석 요금 청구 (어그로필터 50C, 채널소유자 재분석 1000C, 노스트라 등)
+ */
+export async function deductFlatAnalysis(params: {
+  userId: string;
+  videoId: string;
+  actionType?: 'ANALYSIS' | 'REANALYSIS_OWNER' | string;
+  requestId: string;
+  displayText?: string;
+  usageMetadata?: any;
+  skipReceiptEmail?: boolean;
+}): Promise<{ success: boolean; balance?: number; error?: string; price?: number }> {
+  const isOwner = params.actionType === 'REANALYSIS_OWNER';
+  const defaultText = isOwner 
+    ? '채널 영상 소유자 재분석 의뢰 (1,000C)' 
+    : '영상 어그로 분석 (50C, 당일 전체 광고 제거)';
+
+  return chargeDynamic({
+    userId: params.userId,
+    videoId: params.videoId,
+    actionType: params.actionType || 'ANALYSIS',
+    requestId: params.requestId,
+    displayText: params.displayText || defaultText,
+    usageMetadata: params.usageMetadata,
+    skipReceiptEmail: params.skipReceiptEmail
+  });
 }
 
 /**
