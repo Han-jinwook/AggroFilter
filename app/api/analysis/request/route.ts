@@ -647,6 +647,7 @@ export async function POST(request: Request) {
             console.log(`[Analysis] ⚡ [캐시 히트] 큐 DB에서 자막 즉시 획득: ${transcript.length}자, items: ${transcriptItems.length}`);
           } else if (task.f_status === 'NO_TRANSCRIPT') {
             hasTranscript = false;
+            isExplicitNoTranscript = true;
             foundReady = true;
             console.log(`[Analysis] ⚡ [캐시 히트] 자막 없는 영상 확인됨`);
           }
