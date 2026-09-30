@@ -65,6 +65,8 @@ export default function ResultClient() {
   const [showPhase2, setShowPhase2] = useState(false)
   const [showPhase3, setShowPhase3] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isQueued, setIsQueued] = useState(false)
+  const [queueMessage, setQueueMessage] = useState<string | null>(null)
   // [대기제로 3단계] 확장팩/URL 진입 시 썸네일 히어로
   const [pendingThumb, setPendingThumb] = useState<string | null>(null)
   const pendingStartedRef = useRef(false)
@@ -228,6 +230,14 @@ export default function ResultClient() {
         resolved = raced.data
       } else {
         resolved = await requestPromise
+      }
+
+      if (resolved?.queued) {
+        console.log('[ResultClient] ⏳ 분석 대기열 등록 완료 응답 수신');
+        setIsQueued(true);
+        setQueueMessage(resolved.message || '현재 자막 추출 대기열에 안전하게 등록되었습니다.');
+        setLoading(false);
+        return '';
       }
 
       if (resolved?.adFreeUntil) {
@@ -833,6 +843,46 @@ ${content}
         <div className="text-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-500">분석 결과를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isQueued) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <AppHeader />
+        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+          <div className="mb-4 rounded-3xl bg-indigo-50 border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <span className="text-5xl">⏳</span>
+          </div>
+          <h2 className="mb-2 text-2xl font-black text-slate-900">분석 대기열에 등록되었습니다</h2>
+          <div className="mb-6 max-w-sm p-5 bg-indigo-50 border-2 border-indigo-200 rounded-2xl text-xs font-bold text-slate-700 leading-relaxed text-left space-y-2.5">
+            <p className="text-indigo-950 font-black flex items-center gap-1.5 text-sm">
+              <span>🛡️ 코인은 차감되지 않았습니다</span>
+            </p>
+            <p className="text-slate-600">
+              {queueMessage || '현재 자막 추출 서버가 대기 상태입니다. 영상 정보가 대기열에 안전하게 등록되었으며, 서버가 가동되면 분석이 자동으로 완료됩니다.'}
+            </p>
+            <p className="text-indigo-600 font-extrabold text-[11px]">
+              분석 완료 시 회원님의 보관함 및 등록된 이메일로 결과를 즉시 안내해 드립니다.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Button 
+              onClick={() => router.push("/")}
+              className="w-full py-6 text-base font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] rounded-2xl border-3 border-black bg-[#FF9800] text-black hover:bg-[#F57C00]"
+            >
+              홈으로 돌아가기
+            </Button>
+            <Button 
+              onClick={() => router.push("/p-library")}
+              variant="outline"
+              className="w-full py-6 text-sm font-bold rounded-2xl border-2 border-slate-300"
+            >
+              내 보관함 확인하기
+            </Button>
+          </div>
         </div>
       </div>
     )

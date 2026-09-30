@@ -387,6 +387,7 @@ export async function POST(request: Request) {
     let transcript = '';
     let transcriptItems: { text: string; start: number; duration: number }[] = [];
     let hasTranscript = false;
+    let isExplicitNoTranscript = false;
 
     // [Filter] 입구컷: 분석 가치가 없는 영상 유형을 즉시 차단 (비용 절감)
     const titleLower = (videoInfo.title || '').toLowerCase();
@@ -658,15 +659,17 @@ export async function POST(request: Request) {
       if (!foundReady) {
         try {
           await pool.query(`
-            INSERT INTO t_caption_tasks (f_video_id, f_status, f_created_at, f_updated_at)
-            VALUES ($1, 'PENDING', NOW(), NOW())
+            INSERT INTO t_caption_tasks (f_video_id, f_status, f_user_id, f_url, f_created_at, f_updated_at)
+            VALUES ($1, 'PENDING', $2, $3, NOW(), NOW())
             ON CONFLICT (f_video_id) DO UPDATE SET
               f_status = CASE 
                 WHEN t_caption_tasks.f_status IN ('READY', 'NO_TRANSCRIPT') THEN t_caption_tasks.f_status
                 ELSE 'PENDING'
               END,
+              f_user_id = COALESCE(EXCLUDED.f_user_id, t_caption_tasks.f_user_id),
+              f_url = COALESCE(EXCLUDED.f_url, t_caption_tasks.f_url),
               f_updated_at = NOW()
-          `, [videoId]);
+          `, [videoId, userId, url]);
 
           console.log(`[Analysis] 큐(t_caption_tasks)에 작업 등록 완료. 로컬 워커 응답 대기 시작...`);
 
@@ -694,6 +697,7 @@ export async function POST(request: Request) {
                 break;
               } else if (task.f_status === 'NO_TRANSCRIPT') {
                 hasTranscript = false;
+                isExplicitNoTranscript = true;
                 console.log(`[Analysis] ℹ️ 로컬 워커에서 자막 없음 확인 (${Date.now() - startTime}ms)`);
                 break;
               } else if (task.f_status === 'FAILED') {
@@ -767,17 +771,35 @@ export async function POST(request: Request) {
     }
     console.log('자막 사용 여부:', hasTranscript);
 
-    // 자막 없는 영상은 분석 대상에서 제외
+    // 자막 없는 영상은 분석 대상에서 제외 or [B안] 대기열 보관 응답
     if (!hasTranscript) {
-      const err: any = new Error('자막이 없는 영상은 분석할 수 없습니다. 자막이 있는 영상만 분석 가능합니다.');
-      err.statusCode = 422;
-      throw err;
-    }
+      if (isExplicitNoTranscript) {
+        return NextResponse.json(
+          { error: '자막이 제공되지 않는 영상입니다.\n자막(CC)이 포함된 영상만 분석이 가능합니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
 
-    if (isRecheck && !hasTranscript) {
-      const err: any = new Error('자막을 가져오지 못해 재검수가 불가능합니다.');
-      err.statusCode = 422;
-      throw err;
+      if (isRecheck) {
+        return NextResponse.json(
+          { error: '자막을 가져오지 못해 재검수가 불가능합니다.' },
+          { status: 422, headers: corsHeaders }
+        );
+      }
+
+      // [B안] 로컬 워커 미응답/타임아웃 -> 큐 대기열 보관 및 사후 안내 응답 (202 Accepted)
+      console.log(`[Analysis] ⏳ 로컬 워커 응답 지연 - B안 대기열 보관 응답 (VideoId: ${videoId})`);
+      return NextResponse.json(
+        {
+          queued: true,
+          status: 'queued',
+          message: '현재 자막 추출 대기열에 안전하게 등록되었습니다.\n자막 추출 서버가 가동되면 분석이 자동으로 완료되며, 완료 시 이메일 및 보관함으로 결과를 안내해 드립니다.',
+          videoId,
+          title: videoInfo.title,
+          thumbnailUrl: videoInfo.thumbnailUrl,
+        },
+        { status: 202, headers: corsHeaders }
+      );
     }
 
     // 4. AI 분석 (Speed + Full 완전 병렬)

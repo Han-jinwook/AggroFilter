@@ -111,7 +111,7 @@ async function processNextTask() {
 
     // 동시성 락을 걸고 가장 오래된 PENDING 작업 1건 획득 (SKIP LOCKED)
     const pickRes = await client.query(`
-      SELECT f_id, f_video_id
+      SELECT f_id, f_video_id, f_user_id, f_url
       FROM t_caption_tasks
       WHERE f_status = 'PENDING'
       ORDER BY f_created_at ASC
@@ -159,6 +159,32 @@ async function processNextTask() {
       processedCount++;
       consecutiveErrors = 0;
       console.log(`[CaptionWorker] ✅ [완료] Video: ${videoId} | ${result.items.length}줄 (${result.text.length}자) | 소요시간: ${elapsed}ms`);
+
+      // B안: 대기열에 등록되었던 사용자 작업이면 백엔드 AI 분석 자동 실행 ➔ 이메일/알림 발송
+      if (task.f_url && task.f_user_id) {
+        console.log(`[CaptionWorker] 🤖 [사후 AI 분석 요청] User: ${task.f_user_id}, URL: ${task.f_url}`);
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://aggrofilter.sundreamer.app';
+        fetch(`${appUrl}/api/analysis/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: task.f_url,
+            userId: task.f_user_id,
+            clientTranscript: result.text,
+            clientTranscriptItems: result.items,
+          }),
+        }).then(async (apiRes) => {
+          if (apiRes.ok) {
+            const apiData = await apiRes.json();
+            console.log(`[CaptionWorker] 🎉 [사후 AI 분석 및 알림 완료] Analysis ID: ${apiData.analysisId}`);
+          } else {
+            const errTxt = await apiRes.text();
+            console.warn(`[CaptionWorker] ⚠️ 사후 AI 분석 응답 실패:`, errTxt);
+          }
+        }).catch((apiErr) => {
+          console.error(`[CaptionWorker] ❌ 사후 AI 분석 호출 에러:`, apiErr?.message);
+        });
+      }
     } else if (result.noTranscript) {
       await client.query(`
         UPDATE t_caption_tasks
