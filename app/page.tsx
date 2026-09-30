@@ -430,16 +430,37 @@ export default function MainPage() {
                     placeholder="🔗 유튜브 영상 링크를 붙여넣으세요..."
                     value={searchUrl}
                     onChange={(e) => setSearchUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchUrl.trim()) {
+                        router.push(`/p-result?url=${encodeURIComponent(searchUrl.trim())}`)
+                      }
+                    }}
                     disabled={isQueueRegistering}
                     className="flex-1 px-4 py-3 rounded-2xl border-3 border-black text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button
-                    onClick={() => handleSearch(searchUrl)}
-                    disabled={isQueueRegistering || !searchUrl}
-                    className="px-6 py-3 bg-[#FF9800] text-black font-black rounded-2xl border-3 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[0px_0px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50"
-                  >
-                    {isQueueRegistering ? '조회 중...' : '신뢰도 조회'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmed = searchUrl.trim()
+                        if (!trimmed) return
+                        router.push(`/p-result?url=${encodeURIComponent(trimmed)}`)
+                      }}
+                      disabled={isQueueRegistering || !searchUrl.trim()}
+                      className="flex-1 sm:flex-none px-6 py-3 bg-[#FF9800] hover:bg-[#F57C00] text-black font-black rounded-2xl border-3 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-[0px_0px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 whitespace-nowrap"
+                    >
+                      <span>⚡ 즉시 분석</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSearch(searchUrl)}
+                      disabled={isQueueRegistering || !searchUrl.trim()}
+                      className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border-3 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all disabled:opacity-50 whitespace-nowrap"
+                      title="채널 과거 전적만 조회"
+                    >
+                      {isQueueRegistering ? '조회중' : '채널전적'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
