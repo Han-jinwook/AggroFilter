@@ -1,37 +1,37 @@
-# AggroFilter Chrome Extension — 미해결 이슈
-> 작업 완료 기록은 `plan.md` 참조 (§17, §18)
+# 🛠️ 어그로필터 크롬 확장팩 트러블슈팅 & 기술 명세
 
-## ⚠️ 미해결 이슈 (2026-03-30 기준)
-
-### 1. 분석 API 504 재발 가능성
-- Netlify 함수 타임아웃 26초, gemini-2.5-flash 18초 제한
-- 긴 자막 + thinking 시 초과 가능
-- **해결 방안**: Vercel 이전 (`maxDuration=300`) 또는 Gemini 응답 스트리밍
-
-### 2. ANDROID `/get_transcript` 응답 구조 미파악
-- 200 응답이 오지만 파싱 실패 (actions 구조가 WEB과 다름)
-- 해결 시 caption track URL 호출 없이 바로 자막 추출 가능 (속도 개선)
-```javascript
-// 디버깅용: main-world.js fetchTranscript 함수에서
-console.log(TAG, '/get_transcript [ANDROID] 전체 응답:', JSON.stringify(data).substring(0, 500));
-```
+본 문서는 크롬 확장 프로그램의 동작 원리 및 주요 기술 이슈 대응 요령을 다룹니다.
 
 ---
 
-## 참고: 핵심 함수 위치 (main-world.js)
+## 1. 자막 추출 메커니즘 (main-world.js)
 
-| 함수 | 역할 |
-|------|------|
-| `getTranscriptParams` | `/next` → transcript params 추출 |
-| `fetchTranscript` | WEB→MWEB→ANDROID 순차 시도 |
-| `extractCaptionTrackUrls` | 5단계 폴백 (player API → 런타임 → page fetch → timedtext → deep search) |
-| `fetchTranscriptFromCaptionTrackFallback` | caption track URL 파싱 (json3/xml/srv3/vtt) |
+확장팩은 유튜브 플레이어 내부의 인메모리 및 네트워크 컨텍스트를 활용하여 다단계로 자막을 획득합니다:
 
-## 참고: innertube clientName
+1. **`getTranscriptParams`**: 유튜브 `/next` 응답 내 transcript params 감지.
+2. **`fetchTranscript`**: WEB ➔ MWEB ➔ ANDROID 클라이언트 순차 시도.
+3. **`extractCaptionTrackUrls`**: 5단계 폴백 (player API ➔ 런타임 ➔ page fetch ➔ timedtext ➔ deep search).
+4. **`fetchTranscriptFromCaptionTrackFallback`**: Caption track URL 파싱 (json3 / xml / srv3 / vtt).
 
-| clientName | header | 용도 |
-|------------|--------|------|
-| `WEB` | `1` | 기본 |
-| `MWEB` | `2` | 모바일 웹 |
-| `ANDROID` | `3` | Android (captionTracks 성공률 높음) |
-| `IOS` | `5` | iOS (미시도) |
+---
+
+## 2. 모바일 및 일반 웹과의 협업 관계
+
+- PC 확장팩은 **"초고속 0초 자막 제공자(Provider)"** 역할을 수행합니다.
+- 확장팩이 획득한 자막(`clientTranscript`)을 백엔드에 전송하면, 백엔드는 즉시 분석을 수행하는 동시에 Supabase `t_caption_tasks` 테이블에 `f_status = 'READY'`로 적재합니다.
+- 이로 인해 이후 모바일이나 확장팩 미설치 PC에서 해당 영상을 조회할 때 즉시 캐시 히트(0초)를 보장받습니다.
+
+---
+
+## 3. 트러블슈팅
+
+### Q1. 영상 페이지에서 버튼이 안 보일 때
+- 확장팩이 로드되어 있는지 `chrome://extensions`에서 새로고침 아이콘을 클릭합니다.
+- 유튜브 페이지를 `F5`로 새로고침합니다.
+
+### Q2. 로그인 세션 불일치 시
+- 어그로필터 공식 웹사이트(`https://aggrofilter.sundreamer.app`)에 접속하여 로그인하면, 헤더 컴포넌트(`AppHeader`)가 확장팩과 세션 토큰을 자동으로 동기화합니다.
+
+---
+
+*Last Updated: 2026-10-01 | Merlin Family OS*

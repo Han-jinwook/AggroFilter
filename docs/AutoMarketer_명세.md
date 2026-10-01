@@ -1,7 +1,7 @@
 ---
 Title: AutoMarketer 명세
-Version: v7.0
-Last Updated: 2026-05-14
+Version: v7.1
+Last Updated: 2026-10-01
 ---
 
 # ⚙️ 어그로필터 오토마케터 (AutoMarketer)
@@ -12,7 +12,7 @@ Last Updated: 2026-05-14
 ### 1.1 아키텍처 구조
 - **위치**: `auto-marketer/` 독립 폴더 (Node.js).
 - **실행 방식**: 봇 스크립트 + 로컬 웹 서버(`http://localhost:3001`) 대시보드 UI.
-- **DB 연동**: 메인 웹앱과 동일 DB 공유. (의뢰자 식별: `user_id = 'bot'`)
+- **DB 및 큐 연동**: 메인 웹앱과 동일 DB(`iwzwiimyxfduuwulpugu`) 공유 및 로컬 자막 큐(`t_caption_tasks`) 자동 활용. (의뢰자 식별: `user_id = 'bot'`)
 
 ## 2. 핵심 섹션별 기능
 

@@ -1,22 +1,60 @@
-# 문제 보고서
+# 🛠️ 어그로필터 운영 & 트러블슈팅 가이드 (Operation & Troubleshooting)
 
-- **일시**: 2026-06-07 21:50 KST (발견 및 리셋 완료 시점)
+본 문서는 어그로필터 로컬 자막 워커 데몬 구동 및 시스템 운영 시 참고하는 트러블슈팅 가이드입니다.
 
-## 현상 및 오진 사유
-- **현상**: 회원이 로그인 상태(644 코인 보유)에서 분석을 돌렸음에도 과금이 되지 않고 통과되는 버그.
-- **오진 사유**: `route.ts`에 비회원 차감 코드가 누락된 줄 착각하여 `t_credit_history`에서 마이너스 차감(가불)하는 로직을 서버에 새로 추가했었으나, 사실 기존 설계는 **비회원 가불액(`pending_usage_fee`)을 프론트엔드(`localStorage`)에 저장하고 가입 시 정산**하는 방식이었으므로 서버에서 차감하는 방식은 완전한 오판(병신 짓)이었습니다. 해당 커밋(`1a6c99e`)은 즉시 리버트(`3946b30`)하여 원래 상태로 롤백 완료했습니다.
+---
 
-## 진짜 원인 (Root Cause)
-회원임에도 불구하고 왜 과금이 되지 않고 비회원(Guest) 취급을 받았는가가 핵심입니다.
-문제는 **프론트엔드의 비동기 세션 로드와 확장팩 자동 시작 로직 간의 충돌(타이밍 이슈)**입니다.
+## 1. 로컬 자막 워커 데몬 (Caption Daemon) 상시 가동
 
-1. **로그인 상태이나 세션 초기화 지연**: 유저가 DB/캐시를 지우거나, 브라우저 확장팩을 통해 `/?from=chrome-extension&url=...` 형태로 어그로필터에 진입했습니다.
-2. **`useEffect` 즉시 실행**: `page.tsx`의 `autoStarted` 로직이 발동하여 확장팩 파라미터를 감지하자마자 `startAnalysis()` 함수를 **즉시 호출**했습니다.
-3. **세션 변수 누락 (`useHub`)**: `startAnalysis()`가 호출된 찰나의 순간, `useHub()` 훅은 아직 비동기로 세션(이메일 등)을 불러오는 중(`isLoading: true`)이었습니다. 따라서 `userEmail`은 `null`이었고, DB 정리 여파로 `localStorage.getItem('userEmail')`마저 비어 있었습니다.
-4. **비회원으로 둔갑**: `currentEmail`이 Falsy가 되면서, `page.tsx`는 유저를 비로그인 상태로 착각하고 `trial_...`라는 1회용 임시 ID를 생성하여 백엔드로 전송했습니다.
-5. **서버의 판단과 가불 처리**: 백엔드 `route.ts`는 넘어온 `trial_...` ID를 보고 비회원으로 판정하여 Hub 차감을 건너뛰었습니다. (Merlin Hub는 `status: 'GUEST_PRICING_CACHED'`를 반환) 그 후 프론트엔드에서는 해당 요금을 `pending_usage_fee`라는 가불금으로 `localStorage`에만 몰래 저장하고 넘어갔습니다.
-6. **잔액 불일치**: 분석이 진행되는 몇 초 사이에 `useHub()` 로드가 완료되어 헤더에는 정상적으로 "644 C"가 떴지만, 해당 분석 자체는 이미 '비회원' 자격으로 날아간 뒤라 실제 코인은 영원히 차감되지 않는 현상이 발생했습니다.
+모바일 및 웹 사용자가 유튜브 자막을 1초 만에 추출하여 즉시 분석할 수 있도록, 사장님 로컬 PC에서 상시 데몬을 가동합니다.
 
-## 요약 및 조치 필요 사항
-- 사용자가 확장팩으로 진입 시, `useHub`의 세션 확인 로직(`isLoading` 상태)이 끝날 때까지 기다렸다가 `startAnalysis()`를 쏘도록 프론트엔드(`page.tsx`)의 `useEffect` 타이밍을 교정해야 합니다.
-- (현재 모든 쓸데없는 짓은 원복해 두었습니다. 새 세션에서 위 타이밍 이슈를 해결하시면 됩니다.)
+### 실행 방법
+```bash
+# Windows 상시 가동 배치 파일 (에러 발생 시 5초 자동 재시작)
+D:\AggroFilter\run_caption_worker.bat
+
+# 또는 Node.js 단독 실행
+cd D:\AggroFilter
+node scripts/caption_daemon.mjs
+```
+
+### 정상 가동 로그 예시
+```
+[Caption Daemon] 🚀 로컬 자막 추출 데몬 기동 완료! (간격: 1500ms)
+[Caption Daemon] 🎯 일감 1건 접수: bI2JNE5Xljk
+[Caption Daemon] ⚡ 자막 추출 성공: bI2JNE5Xljk (1284줄, 1301ms)
+[Caption Daemon] 💾 상태 업데이트 완료: READY
+```
+
+---
+
+## 2. 장애 상황별 대응 요령
+
+### Q1. 로컬 PC가 꺼져 있거나 데몬이 멈춘 경우
+- **시스템 동작**: 유저 화면에 에러(422)를 띄우지 않고, **202 Accepted (대기열 등록)** 카드가 표시됩니다.
+- **코인**: 유저 코인은 단 1원도 차감되지 않습니다 (0C).
+- **조치**: 사장님이 PC를 켜고 `run_caption_worker.bat`을 실행하면, 데몬이 대기 중인 일감(`PENDING`)을 감지하여 1초 만에 자막을 추출하고 백엔드 AI 분석을 자동 완주한 뒤 유저에게 이메일 알림을 보냅니다.
+
+### Q2. 유튜브 IP 차단(429) 의심 시
+- 가정용 초고속 인터넷 IP는 데이터센터(AWS/Netlify) IP와 달리 차단율이 극히 낮습니다.
+- 데몬에 3회 연속 실패 감지 로직이 탑재되어 있으며, 장애 지속 시 텔레그램 봇으로 알림이 발송됩니다.
+- 일시적 차단 발생 시 공유기 재부팅(IP 갱신) 또는 잠시 대기 후 재가동합니다.
+
+### Q3. 자막 큐 상태 확인 쿼리 (Supabase DB: `iwzwiimyxfduuwulpugu`)
+```sql
+-- 대기 중인 작업 확인
+SELECT f_video_id, f_status, f_created_at, f_error 
+FROM t_caption_tasks 
+WHERE f_status = 'PENDING' 
+ORDER BY f_created_at ASC;
+
+-- 최근 완료된 자막 작업 확인
+SELECT f_video_id, f_status, LENGTH(f_transcript) as len, f_updated_at 
+FROM t_caption_tasks 
+ORDER BY f_updated_at DESC 
+LIMIT 10;
+```
+
+---
+
+*Last Updated: 2026-10-01 | Merlin Family OS*
