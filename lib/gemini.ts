@@ -895,74 +895,112 @@ export async function analyzeContent(
         jsonString = jsonString.substring(firstBrace, lastBrace + 1);
     }
     
-    let analysisData;
+    let analysisData: any;
     try {
       analysisData = JSON.parse(jsonString);
     } catch (parseError) {
-      console.warn("JSON Parse Error (attempting repair):", (parseError as Error).message);
+      console.warn("JSON Parse Error (attempting multi-tier repair):", (parseError as Error).message);
       
-      // Repair attempt 1: Fix unescaped control characters inside string values
-      let repaired = jsonString
-        .replace(/[\x00-\x1F\x7F]/g, (ch: string) => {
-          if (ch === '\n') return '\\n';
-          if (ch === '\r') return '\\r';
-          if (ch === '\t') return '\\t';
-          return '';
-        });
-      
+      // Tier 1: Trailing commas removal
+      const cleaned = jsonString.replace(/,\s*([}\]])/g, '$1');
       try {
-        analysisData = JSON.parse(repaired);
-        console.log("JSON repair (control chars) succeeded");
+        analysisData = JSON.parse(cleaned);
+        console.log("JSON repair (trailing commas) succeeded");
       } catch {
-        // Repair attempt 2: Extract field-by-field using regex
-        console.warn("Control char repair failed, trying regex extraction");
-        try {
-          const getNum = (key: string) => {
-            const m = repaired.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`));
-            return m ? parseInt(m[1], 10) : null;
-          };
-          const getStr = (key: string) => {
-            const m = repaired.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
-            return m ? m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : null;
-          };
-          // For long string fields, use a greedy approach between keys
-          const getLongStr = (key: string, nextKey: string) => {
-            const pattern = new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*,\\s*"${nextKey}"`);
-            const m = repaired.match(pattern);
-            return m ? m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : null;
-          };
-
-          analysisData = {
-            accuracy: getNum('accuracy'),
-            clickbait: getNum('clickbait'),
-            reliability: getNum('reliability'),
-            clickbaitTierLabel: getStr('clickbaitTierLabel'),
-            thumbnail_spoiler: (() => {
-              // 배열 형태 추출 시도
-              const arrMatch = repaired.match(/"thumbnail_spoiler"\s*:\s*(\[[\s\S]*?\])\s*,/);
-              if (arrMatch) {
-                try { return JSON.parse(arrMatch[1]); } catch {}
-              }
-              // fallback: 구 string 형태
-              const str = getLongStr('thumbnail_spoiler', 'subtitleSummary') || getStr('thumbnail_spoiler');
-              const ts = getStr('thumbnail_spoiler_ts');
-              return str ? [{ text: str, ts: ts || null }] : [];
-            })(),
-            subtitleSummary: getLongStr('subtitleSummary', 'evaluationReason') || getStr('subtitleSummary'),
-            evaluationReason: getLongStr('evaluationReason', 'overallAssessment') || getStr('evaluationReason'),
-            overallAssessment: getLongStr('overallAssessment', 'recommendedTitle') || getStr('overallAssessment'),
-            recommendedTitle: getStr('recommendedTitle'),
-          };
-
-          if (analysisData.accuracy === null || analysisData.clickbait === null) {
-            throw new Error("Regex extraction failed: missing required numeric fields");
+        // Tier 2: Selective control char escaping (only inside quotes)
+        let inString = false;
+        let escaped = false;
+        let sb = '';
+        for (let i = 0; i < cleaned.length; i++) {
+          const ch = cleaned[i];
+          if (ch === '\\' && inString) {
+            escaped = !escaped;
+            sb += ch;
+            continue;
           }
-          console.log("JSON repair (regex extraction) succeeded");
-        } catch (regexError) {
-          console.error("All JSON repair attempts failed");
-          console.error("Raw Text (first 500 chars):", text?.substring(0, 500));
-          console.error("Extracted jsonString (first 500 chars):", jsonString?.substring(0, 500));
-          throw new Error("Failed to parse AI response");
+          if (ch === '"' && !escaped) {
+            inString = !inString;
+            sb += ch;
+            continue;
+          }
+          escaped = false;
+          if (inString) {
+            if (ch === '\n') { sb += '\\n'; continue; }
+            if (ch === '\r') { sb += '\\r'; continue; }
+            if (ch === '\t') { sb += '\\t'; continue; }
+            if (ch < ' ') { continue; } // strip unprintable control chars
+          }
+          sb += ch;
+        }
+
+        try {
+          analysisData = JSON.parse(sb);
+          console.log("JSON repair (selective string control chars) succeeded");
+        } catch {
+          // Tier 3: Independent regex extraction per field (order-independent)
+          console.warn("Control char repair failed, trying independent regex extraction");
+          try {
+            const getNum = (key: string) => {
+              const m = jsonString.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`));
+              return m ? parseInt(m[1], 10) : null;
+            };
+            const getBool = (key: string) => {
+              const m = jsonString.match(new RegExp(`"${key}"\\s*:\\s*(true|false)`));
+              return m ? m[1] === 'true' : null;
+            };
+            const getField = (key: string) => {
+              const regex = new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"[a-zA-Z0-9_]+"|\\s*}\\s*$)`);
+              const m = jsonString.match(regex);
+              if (m) {
+                return m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+              }
+              const m2 = jsonString.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+              return m2 ? m2[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : null;
+            };
+
+            const accuracy = getNum('accuracy');
+            const clickbait = getNum('clickbait');
+            const reliability = getNum('reliability');
+
+            if (accuracy === null || clickbait === null) {
+              throw new Error("Regex extraction failed: missing required numeric fields");
+            }
+
+            let spoiler: any[] = [];
+            const arrMatch = jsonString.match(/"thumbnail_spoiler"\s*:\s*(\[[\s\S]*?\])(?=\s*,\s*"[a-zA-Z0-9_]+"|\s*})/);
+            if (arrMatch) {
+              try {
+                spoiler = JSON.parse(arrMatch[1]);
+              } catch {
+                try {
+                  const cleanArr = arrMatch[1].replace(/[\x00-\x1F\x7F]/g, ' ');
+                  spoiler = JSON.parse(cleanArr);
+                } catch {}
+              }
+            }
+
+            analysisData = {
+              is_valid_target: getBool('is_valid_target') ?? true,
+              needs_admin_review: getBool('needs_admin_review') ?? false,
+              review_reason: getField('review_reason'),
+              notAnalyzable: getBool('notAnalyzable') ?? false,
+              accuracy,
+              clickbait,
+              reliability: reliability ?? Math.max(0, 100 - clickbait),
+              clickbaitTierLabel: getField('clickbaitTierLabel'),
+              thumbnail_spoiler: spoiler,
+              subtitleSummary: getField('subtitleSummary'),
+              evaluationReason: getField('evaluationReason'),
+              overallAssessment: getField('overallAssessment'),
+              recommendedTitle: getField('recommendedTitle'),
+            };
+            console.log("JSON repair (independent regex extraction) succeeded");
+          } catch (regexError) {
+            console.error("All JSON repair attempts failed");
+            console.error("Raw Text (first 500 chars):", text?.substring(0, 500));
+            console.error("Extracted jsonString (first 500 chars):", jsonString?.substring(0, 500));
+            throw new Error("Failed to parse AI response");
+          }
         }
       }
     }
@@ -972,6 +1010,17 @@ export async function analyzeContent(
     const groundingQueries: string[] = groundingMetadata?.webSearchQueries ?? [];
     const groundingUsed = groundingQueries.length > 0;
     console.log(`[grounding] used=${groundingUsed}, queries=${JSON.stringify(groundingQueries)}`);
+
+    // [Post-processing] evaluationReason 완전 누락 방지 가드 (빈 문자열 또는 null 차단)
+    if (!analysisData.evaluationReason || typeof analysisData.evaluationReason !== 'string' || analysisData.evaluationReason.trim().length === 0) {
+      const acc = analysisData.accuracy ?? 50;
+      const cb = analysisData.clickbait ?? 50;
+      const rel = analysisData.reliability ?? 50;
+      const emoji = rel >= 70 ? '🟢' : rel >= 40 ? '🟡' : '🔴';
+      const colorLabel = rel >= 70 ? 'Green' : rel >= 40 ? 'Yellow' : 'Red';
+      analysisData.evaluationReason = `1. 내용 정확성 검증 (${acc}점):<br />영상 내용 및 팩트 데이터를 종합 검증한 결과 ${acc}점입니다.<br /><br />2. 어그로성 평가 (${cb}점):<br />제목과 썸네일 대비 실제 내용의 일치도를 분석한 결과 ${cb}점입니다.<br /><br />3. 신뢰도 총평 (${rel}점 / ${emoji} ${colorLabel}):<br />종합 신뢰도 ${rel}점으로 ${colorLabel} 등급입니다.`;
+      console.warn('🚨 [Post-processing] evaluationReason 완전 누락 감지 -> 기본 평가사유 자동 보완');
+    }
 
     // [Post-processing] evaluationReason에 3번(신뢰도 총평)이 누락된 경우 자동 보완
     if (analysisData.evaluationReason && typeof analysisData.evaluationReason === 'string') {
@@ -991,6 +1040,14 @@ export async function analyzeContent(
         analysisData.evaluationReason = analysisData.evaluationReason.replace(/[0-9]{4}년 상반기 구글 검색 결과와 일치하며,?/g, '자체 학습 데이터와 일치하며,');
         analysisData.evaluationReason = analysisData.evaluationReason.replace(/구글 검색( 결과)?/g, '자체 데이터');
       }
+    }
+
+    // [Post-processing] overallAssessment 및 recommendedTitle 누락 방지 가드
+    if (!analysisData.overallAssessment || typeof analysisData.overallAssessment !== 'string' || analysisData.overallAssessment.trim().length === 0) {
+      analysisData.overallAssessment = `종합 신뢰도 ${analysisData.reliability ?? 50}점이며, 영상의 사실성 및 낚시성 요소를 종합 분석한 결과입니다.`;
+    }
+    if ((!analysisData.recommendedTitle || typeof analysisData.recommendedTitle !== 'string' || analysisData.recommendedTitle.trim().length === 0) && (analysisData.clickbait ?? 0) >= 30) {
+      analysisData.recommendedTitle = title;
     }
 
     // [Final Safety Check] 삭제

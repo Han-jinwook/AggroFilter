@@ -479,7 +479,7 @@
   }
 
   // ytplayer 런타임 객체에서 captionTracks 추출 (SPA 전환 후에도 최신)
-  function getCaptionTracksFromRuntime() {
+  function getCaptionTracksFromRuntime(videoId) {
     const sources = [
       window.ytplayer?.config?.args?.raw_player_response,
       window.ytplayer?.bootstrapPlayerResponse,
@@ -487,9 +487,15 @@
     ];
     for (const src of sources) {
       if (!src) continue;
+      // [중요] 반드시 현재 요청된 videoId와 일치하는지 검증 (쇼츠 스크롤 등 SPA 이동 시 이전 영상 캐시 오염 방지)
+      const srcVideoId = src?.videoDetails?.videoId;
+      if (srcVideoId && videoId && srcVideoId !== videoId) {
+        console.log(TAG, `captionTracks: 런타임 객체 videoId 불일치로 건너뜀 (요청: ${videoId}, 캐시: ${srcVideoId})`);
+        continue;
+      }
       const tracks = src?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
       if (tracks && tracks.length > 0) {
-        console.log(TAG, `captionTracks: 런타임 객체에서 ${tracks.length}개 발견`);
+        console.log(TAG, `captionTracks: 런타임 객체에서 ${tracks.length}개 발견 (videoId: ${srcVideoId || videoId})`);
         return tracks;
       }
     }
@@ -585,7 +591,7 @@
     }
 
     // 2. ytplayer 런타임 객체 (SPA 전환 시 최신 데이터)
-    const runtimeTracks = getCaptionTracksFromRuntime();
+    const runtimeTracks = getCaptionTracksFromRuntime(videoId);
     if (runtimeTracks.length > 0) {
       return buildCaptionTrackCandidates(runtimeTracks);
     }

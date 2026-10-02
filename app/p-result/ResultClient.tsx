@@ -917,9 +917,11 @@ ${content}
   const topPercentile = analysisData.channelStats?.topPercentile
   const hasTopPercentile = typeof topPercentile === "number" && !Number.isNaN(topPercentile)
   const channelRank = analysisData.channelStats?.rank
-  const totalChannels = analysisData.channelStats?.totalChannels
-  const evaluationReasonText = typeof analysisData.evaluationReason === 'string' ? analysisData.evaluationReason : ''
-  const channelRankText = typeof channelRank === "number" && !Number.isNaN(channelRank) ? `${channelRank}위` : "-"
+  const evaluationReasonText = typeof analysisData.evaluationReason === 'string' && analysisData.evaluationReason.trim().length > 0
+    ? analysisData.evaluationReason
+    : (typeof analysisData.overallAssessment === 'string' && analysisData.overallAssessment.trim().length > 0
+        ? analysisData.overallAssessment
+        : '상세 평가 사유를 불러오는 중입니다.')
   const totalChannelsText = typeof totalChannels === "number" && !Number.isNaN(totalChannels) ? `${totalChannels}개` : "-"
   const topPercentileText = hasTopPercentile ? `${Math.round(topPercentile)}%` : "-"
   const isSpeedPhase = showPhase2 && !showPhase3 && (isRefining || analysisData?.processingStage !== 'completed')
