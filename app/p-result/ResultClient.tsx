@@ -12,6 +12,7 @@ import { AnalysisGuide } from "@/app/p-result/c-result/analysis-guide"
 import { getCategoryName, getRankingCategoryId } from "@/lib/constants"
 import { getUserId } from "@/lib/anon" // claim/track API용 (레거시 호환)
 import { ShareModal } from "@/components/c-share-modal"
+import { TranscriptCopyModal } from "@/components/c-transcript-modal"
 import { ChevronDown, ChevronUp, MoreVertical, ChevronLeft, Share2, Play } from "lucide-react"
 import { useHub } from "@/src/services/merlin-hub-sdk/react"
 
@@ -578,6 +579,7 @@ export default function ResultClient() {
   }
 
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false)
 
   const handleShare = () => {
     if (!analysisData) return
@@ -944,6 +946,15 @@ ${content}
           url={typeof window !== 'undefined' ? window.location.href : ''}
         />
       )}
+      {analysisData && (
+        <TranscriptCopyModal
+          open={showTranscriptModal}
+          onOpenChange={setShowTranscriptModal}
+          analysisId={analysisData.id}
+          videoTitle={analysisData.videoTitle}
+          initialTranscript={analysisData.fullSubtitle}
+        />
+      )}
       <main className="pt-4 pb-8">
         <div className="mx-auto max-w-[var(--app-max-width)] space-y-4 px-4">
           <div ref={captureRef} className="bg-blue-50 p-4 rounded-3xl">
@@ -1221,28 +1232,41 @@ ${content}
             </div>
           </div>
           <div className="rounded-3xl border-4 border-teal-300 bg-teal-50 px-3 py-2">
-            <div className="mb-2 flex items-center gap-1">
-              <h3 className="text-base font-bold text-gray-800">&lt;청소년 서비스&gt;</h3>
-              <div className="relative">
-                <button
-                  onMouseEnter={() => setActiveTooltip("youth")}
-                  onMouseLeave={() => setActiveTooltip(null)}
-                  onClick={() => toggleTooltip("youth")}
-                  className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] text-gray-500 hover:bg-gray-100"
-                >
-                  ?
-                </button>
-                {activeTooltip === "youth" && (
-                  <div className="absolute left-1/2 top-full z-20 mt-2 w-80 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
-                    <p className="text-xs leading-relaxed text-gray-700">
-                      &lt;청소년의 미디어 리터러시 교육용 서비스&gt;
-                      <br />( )속에 8 ~ 18의 나이를 넣고 &apos;클릭&apos; 하면 ChatGPT가 선생님이 되어, 나의
-                      나이에 맞는 설명과 간단한 퀴즈를 보여줘요.
-                    </p>
-                    <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
-                  </div>
-                )}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <h3 className="text-base font-bold text-gray-800">&lt;청소년 서비스&gt;</h3>
+                <div className="relative">
+                  <button
+                    onMouseEnter={() => setActiveTooltip("youth")}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    onClick={() => toggleTooltip("youth")}
+                    className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] text-gray-500 hover:bg-gray-100"
+                  >
+                    ?
+                  </button>
+                  {activeTooltip === "youth" && (
+                    <div className="absolute left-1/2 top-full z-20 mt-2 w-80 -translate-x-1/2 rounded-lg border-2 border-gray-300 bg-white p-3 shadow-lg">
+                      <p className="text-xs leading-relaxed text-gray-700">
+                        &lt;청소년의 미디어 리터러시 교육용 서비스&gt;
+                        <br />( )속에 8 ~ 18의 나이를 넣고 &apos;클릭&apos; 하면 ChatGPT가 선생님이 되어, 나의
+                        나이에 맞는 설명과 간단한 퀴즈를 보여줘요.
+                      </p>
+                      <div className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-gray-300 bg-white"></div>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* [신규 킬러 기능] 저작권 동의 후 원본 대본 복사 버튼 */}
+              <button
+                type="button"
+                onClick={() => setShowTranscriptModal(true)}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-teal-700 bg-white border border-teal-300 rounded-full shadow-xs hover:bg-teal-100 hover:border-teal-400 active:scale-95 transition-all cursor-pointer"
+                title="원본 영상 대본 복사"
+              >
+                <span>📜</span>
+                <span>대본 복사</span>
+              </button>
             </div>
             <div className="w-full rounded-2xl border-2 border-teal-200 bg-white px-4 py-3">
               <div className="flex items-center gap-1 text-sm leading-relaxed text-gray-800">
